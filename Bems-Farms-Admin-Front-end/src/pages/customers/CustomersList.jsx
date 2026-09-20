@@ -50,6 +50,7 @@ export default function CustomersList() {
   const [search, setSearch]   = useState('')
   const [filterTier, setTier] = useState('all')
   const [filterSt, setSt]     = useState('all')
+  const [filterVerif, setVerif] = useState('all')
   const [selected, setSelected] = useState(null)
   const [modal, setModal]     = useState(null) // 'delete'
   const [adminPassword, setAdminPassword] = useState('')
@@ -65,6 +66,7 @@ export default function CustomersList() {
           search: search || undefined,
           tier: filterTier !== 'all' ? filterTier : undefined,
           status: filterSt !== 'all' ? filterSt : undefined,
+          verification: filterVerif !== 'all' ? filterVerif : undefined,
         },
       })
       setCustomers(res.data.customers || [])
@@ -74,7 +76,7 @@ export default function CustomersList() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterTier, filterSt])
+  }, [search, filterTier, filterSt, filterVerif])
 
   useEffect(() => {
     const t = setTimeout(load, 300)
@@ -145,12 +147,12 @@ export default function CustomersList() {
       {/* KPIs */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Customers',   val:stats?.total ?? customers.length, icon:'ri-group-line',             color:'#3b82f6', bg:'#eff6ff' },
-          { label:'Active',            val:stats?.active ?? '—',             icon:'ri-user-follow-line',       color:'#22c55e', bg:'#f0fdf4' },
-          { label:'New This Month',    val:stats?.new_this_month ?? '—',     icon:'ri-user-add-line',          color:'#0ea5e9', bg:'#f0f9ff' },
-          { label:'Platinum Members',  val:stats?.platinum ?? '—',           icon:'ri-vip-crown-2-line',       color:'#8b5cf6', bg:'#f5f3ff' },
-          { label:'Total Revenue',     val:fmt(stats?.total_revenue ?? totalRevenue), icon:'ri-money-naira-circle-line',color:'#22c55e', bg:'#f0fdf4' },
-          { label:'Avg Spend/Customer',val:fmt(stats?.avg_spent ?? 0),       icon:'ri-shopping-cart-2-line',   color:'#f59e0b', bg:'#fffbeb' },
+          { label:'Total Customers',       val:stats?.total ?? customers.length,                 icon:'ri-group-line',             color:'#3b82f6', bg:'#eff6ff' },
+          { label:'Active (Verified)',     val:stats?.active_verified ?? '—',                    icon:'ri-user-follow-line',       color:'#22c55e', bg:'#f0fdf4' },
+          { label:'Pending Verification',  val:stats?.pending_verification ?? '—',               icon:'ri-mail-unread-line',       color:'#f59e0b', bg:'#fffbeb' },
+          { label:'New This Month',        val:stats?.new_this_month ?? '—',                     icon:'ri-user-add-line',          color:'#0ea5e9', bg:'#f0f9ff' },
+          { label:'Total Revenue',         val:fmt(stats?.total_revenue ?? totalRevenue),         icon:'ri-money-naira-circle-line',color:'#22c55e', bg:'#f0fdf4' },
+          { label:'Avg Spend/Customer',    val:fmt(stats?.avg_spent ?? 0),                       icon:'ri-shopping-cart-2-line',   color:'#8b5cf6', bg:'#f5f3ff' },
         ].map((k,i) => (
           <div key={i} className="col-6 col-md-4 col-xl-2">
             <div className="card border-0 shadow-sm h-100">
@@ -171,32 +173,60 @@ export default function CustomersList() {
         ))}
       </div>
 
-      {/* Tier tabs */}
-      <div className="d-flex gap-2 flex-wrap mb-3 align-items-center">
-        {['all','Platinum','Gold','Silver','Bronze'].map(t => {
-          const cfg = t !== 'all' ? TIER_CFG[t] : null
-          const isActive = filterTier === t
-          return (
-            <button key={t} onClick={()=>setTier(t)} className="btn btn-sm" style={{
-              fontSize:11,
-              background: isActive ? (cfg ? cfg.color : '#1e293b') : '#f8fafc',
-              color: isActive ? '#fff' : '#64748b',
-              border:`1px solid ${isActive ? 'transparent' : '#e2e8f0'}`,
-            }}>
-              {cfg && <i className={`${cfg.icon} me-1`}/>}
-              {t==='all' ? 'All Tiers' : t}
+      {/* Filter Tabs */}
+      <div className="d-flex gap-2 flex-wrap mb-3 align-items-center justify-content-between">
+        <div className="d-flex gap-2 flex-wrap align-items-center">
+          {['all','Platinum','Gold','Silver','Bronze'].map(t => {
+            const cfg = t !== 'all' ? TIER_CFG[t] : null
+            const isActive = filterTier === t
+            return (
+              <button key={t} onClick={()=>setTier(t)} className="btn btn-sm" style={{
+                fontSize:11,
+                background: isActive ? (cfg ? cfg.color : '#1e293b') : '#f8fafc',
+                color: isActive ? '#fff' : '#64748b',
+                border:`1px solid ${isActive ? 'transparent' : '#e2e8f0'}`,
+              }}>
+                {cfg && <i className={`${cfg.icon} me-1`}/>}
+                {t==='all' ? 'All Tiers' : t}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Verification & Status Filters */}
+        <div className="d-flex gap-2 flex-wrap align-items-center">
+          <div className="btn-group btn-group-sm" role="group">
+            <button
+              onClick={() => { setVerif('all'); setSt('all'); }}
+              className={`btn btn-sm ${filterVerif === 'all' && filterSt === 'all' ? 'btn-dark' : 'btn-light border'}`}
+              style={{ fontSize: 11 }}
+            >
+              All Statuses
             </button>
-          )
-        })}
-        <div className="ms-auto d-flex gap-2">
-          {['active','inactive'].map(s => (
-            <button key={s} onClick={()=>setSt(filterSt===s?'all':s)} className="btn btn-sm" style={{
-              fontSize:11,
-              background: filterSt===s ? STATUS_CFG[s].color : '#f8fafc',
-              color: filterSt===s ? '#fff' : '#64748b',
-              border:`1px solid ${filterSt===s ? 'transparent' : '#e2e8f0'}`,
-            }}>{s.charAt(0).toUpperCase()+s.slice(1)}</button>
-          ))}
+            <button
+              onClick={() => { setVerif('verified'); setSt('active'); }}
+              className={`btn btn-sm ${filterVerif === 'verified' ? 'btn-success text-white' : 'btn-light border'}`}
+              style={{ fontSize: 11 }}
+            >
+              <i className="ri-checkbox-circle-line me-1" />
+              Verified &amp; Active
+            </button>
+            <button
+              onClick={() => { setVerif('pending'); setSt('all'); }}
+              className={`btn btn-sm ${filterVerif === 'pending' ? 'btn-warning text-dark fw-medium' : 'btn-light border text-warning-emphasis'}`}
+              style={{ fontSize: 11 }}
+            >
+              <i className="ri-mail-unread-line me-1" />
+              Pending Email
+            </button>
+            <button
+              onClick={() => { setVerif('all'); setSt(filterSt === 'inactive' ? 'all' : 'inactive'); }}
+              className={`btn btn-sm ${filterSt === 'inactive' ? 'btn-danger text-white' : 'btn-light border'}`}
+              style={{ fontSize: 11 }}
+            >
+              Inactive
+            </button>
+          </div>
         </div>
       </div>
 
@@ -250,7 +280,6 @@ export default function CustomersList() {
               )}
               {!loading && customers.map((c,i) => {
                 const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
-                const sc = STATUS_CFG[c.status] || STATUS_CFG.active
                 const customerId = (c.id != null && String(c.id) !== 'null') ? c.id : c.customer_code
                 const profileUrl = `/customers/${customerId}`
                 const displayCode = (c.customer_code && c.customer_code !== 'null' && c.customer_code !== 'undefined')
@@ -258,6 +287,9 @@ export default function CustomersList() {
                   : ('CUS-' + String(c.id || '').padStart(4, '0'))
                 const ch = (c.last_channel || 'web').toLowerCase()
                 const chCfg = CHANNEL_CFG[ch] || CHANNEL_CFG.web
+                const isVerified = Boolean(c.email_verified)
+                const hasZone = c.zone && c.zone !== 'No Address Set' && c.zone !== '—'
+
                 return (
                   <tr key={c.id}>
                     <td className="px-3 py-2">
@@ -279,7 +311,18 @@ export default function CustomersList() {
                     </td>
                     <td className="px-3 py-2">
                       <div style={{fontSize:12}}>{c.phone}</div>
-                      <div className="text-muted" style={{fontSize:11}}>{c.email}</div>
+                      <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize:11}}>
+                        <span>{c.email}</span>
+                        {isVerified ? (
+                          <span className="text-success" title="Email Verified">
+                            <i className="ri-checkbox-circle-fill" style={{fontSize:12}}/>
+                          </span>
+                        ) : (
+                          <span className="text-warning" title="Email Verification Pending">
+                            <i className="ri-error-warning-fill" style={{fontSize:12}}/>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-nowrap">
                       <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
@@ -289,10 +332,24 @@ export default function CustomersList() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="d-flex align-items-center gap-1" style={{fontSize:12}}>
-                        <i className="ri-map-pin-line text-muted" style={{fontSize:11}}/>
-                        {c.zone || '—'}
-                      </div>
+                      {hasZone ? (
+                        <div>
+                          <div className="d-flex align-items-center gap-1 fw-medium text-dark" style={{fontSize:12}}>
+                            <i className="ri-map-pin-2-fill text-primary" style={{fontSize:13}}/>
+                            <span>{c.zone}</span>
+                          </div>
+                          {c.verified_address && (
+                            <div className="text-muted text-truncate" style={{fontSize:10, maxWidth:180, paddingLeft:17}}>
+                              {c.verified_address}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize:12}}>
+                          <i className="ri-map-pin-line text-muted" style={{fontSize:12}}/>
+                          <span className="fst-italic text-secondary" style={{fontSize:11}}>No address yet</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <span className="badge d-flex align-items-center gap-1"
@@ -303,27 +360,58 @@ export default function CustomersList() {
                     <td className="px-3 py-2 fw-semibold text-center">{c.total_orders || 0}</td>
                     <td className="px-3 py-2 fw-bold text-success">{fmt(c.total_spent)}</td>
                     <td className="px-3 py-2 text-nowrap">
-                      <div className="d-flex align-items-center gap-1" style={{fontSize:12, fontWeight:500, color: c.last_login ? '#0f172a' : '#94a3b8'}}>
-                        <i className={`ri-time-line ${c.last_login ? 'text-primary' : 'text-muted'}`} style={{fontSize:13}}/>
-                        <span>{fmtLogin(c.last_login)}</span>
-                      </div>
-                      {c.last_login && (
-                        <div className="text-muted" style={{fontSize:10, paddingLeft:17}}>
-                          {new Date(c.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {c.last_login ? (
+                        <div>
+                          <div className="d-flex align-items-center gap-1" style={{fontSize:12, fontWeight:500, color: '#0f172a'}}>
+                            <i className="ri-time-line text-primary" style={{fontSize:13}}/>
+                            <span>{fmtLogin(c.last_login)}</span>
+                          </div>
+                          <div className="text-muted" style={{fontSize:10, paddingLeft:17}}>
+                            {new Date(c.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize:12}}>
+                            <i className="ri-time-line text-muted" style={{fontSize:13}}/>
+                            <span>Never Logged In</span>
+                          </div>
+                          <div className="text-warning fw-medium" style={{fontSize:10, paddingLeft:17}}>
+                            {isVerified ? 'Awaiting Login' : 'Unverified Email'}
+                          </div>
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="form-check form-switch mb-0">
-                          <input className="form-check-input" type="checkbox" role="switch"
-                            checked={c.status==='active'} onChange={()=>toggleStatus(c)}
-                            style={{width:34,height:18,cursor:'pointer'}} title="Toggle Customer Active Status"/>
-                        </div>
-                        <span className="badge" style={{fontSize:10,background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
-                          {sc.label}
+                      {!isVerified ? (
+                        <span className="badge d-inline-flex align-items-center gap-1"
+                          style={{fontSize:10, background:'#fffbeb', color:'#d97706', border:'1px solid #fde68a', padding:'4px 8px', borderRadius:6}}
+                          title="Registered account pending email confirmation">
+                          <i className="ri-mail-unread-line"/> Pending Email
                         </span>
-                      </div>
+                      ) : c.status === 'active' ? (
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="form-check form-switch mb-0">
+                            <input className="form-check-input" type="checkbox" role="switch"
+                              checked={true} onChange={()=>toggleStatus(c)}
+                              style={{width:32,height:17,cursor:'pointer'}} title="Toggle Customer Active Status"/>
+                          </div>
+                          <span className="badge" style={{fontSize:10,background:'#f0fdf4',color:'#16a34a',border:'1px solid #bbf7d0',padding:'3px 6px'}}>
+                            Active
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="form-check form-switch mb-0">
+                            <input className="form-check-input" type="checkbox" role="switch"
+                              checked={false} onChange={()=>toggleStatus(c)}
+                              style={{width:32,height:17,cursor:'pointer'}} title="Toggle Customer Active Status"/>
+                          </div>
+                          <span className="badge" style={{fontSize:10,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'3px 6px'}}>
+                            Inactive
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1 align-items-center">

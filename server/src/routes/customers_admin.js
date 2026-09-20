@@ -45,6 +45,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
       search = "",
       tier = "",
       status = "",
+      verification = "",
     } = req.query;
     const cappedLimit = clampLimit(limit, 20);
     const offset = (parseInt(page) - 1) * cappedLimit;
@@ -68,6 +69,11 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     if (tier) {
       params.push(tier);
       where.push(`lt.name = $${params.length}`);
+    }
+    if (verification === "verified") {
+      where.push("COALESCE(c.email_verified, false) = true");
+    } else if (verification === "unverified" || verification === "pending") {
+      where.push("COALESCE(c.email_verified, false) = false");
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
@@ -101,7 +107,21 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
           ELSE 'CUS-' || LPAD(c.id::text, 4, '0')
         END AS customer_code,
         c.name, c.phone, c.email,
-        c.address AS zone, c.status, c.total_orders, c.total_spent,
+        COALESCE(c.email_verified, false) AS email_verified,
+        COALESCE(
+          dz_match.zone_name,
+          dz_order.zone_name,
+          CASE 
+            WHEN ua.city IS NOT NULL AND ua.city != '' THEN ua.city || COALESCE(', ' || ua.state, '')
+            WHEN c.address IS NOT NULL AND c.address != '' THEN c.address
+            ELSE NULL
+          END,
+          'No Address Set'
+        ) AS zone,
+        ua.street_address AS verified_address,
+        ua.city AS verified_city,
+        ua.latitude, ua.longitude,
+        c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at, c.last_login,
         COALESCE(c.last_channel, 'web') AS last_channel,
         COALESCE(cl.points_balance, 0) AS points,
@@ -114,6 +134,28 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
+      LEFT JOIN LATERAL (
+        SELECT * FROM user_addresses 
+        WHERE user_id = c.id 
+        ORDER BY is_default DESC, created_at DESC 
+        LIMIT 1
+      ) ua ON true
+      LEFT JOIN LATERAL (
+        SELECT delivery_city, address, zone_id 
+        FROM orders 
+        WHERE customer_id = c.id OR user_id = c.id 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      ) o_last ON true
+      LEFT JOIN delivery_zones dz_order ON dz_order.zone_id = o_last.zone_id
+      LEFT JOIN LATERAL (
+        SELECT zone_name FROM delivery_zones 
+        WHERE (ua.city IS NOT NULL AND areas_covered ILIKE '%' || ua.city || '%')
+           OR (ua.state IS NOT NULL AND areas_covered ILIKE '%' || ua.state || '%')
+           OR (ua.street_address IS NOT NULL AND areas_covered ILIKE '%' || ua.street_address || '%')
+           OR (c.address IS NOT NULL AND areas_covered ILIKE '%' || c.address || '%')
+        LIMIT 1
+      ) dz_match ON true
       ${whereClause}
       ORDER BY c.total_spent DESC NULLS LAST
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -125,7 +167,9 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     const stats = await pool.query(`
       SELECT
         COUNT(*)                                          AS total,
+        COUNT(*) FILTER (WHERE status = 'active' AND COALESCE(email_verified, false) = true) AS active_verified,
         COUNT(*) FILTER (WHERE status = 'active')        AS active,
+        COUNT(*) FILTER (WHERE COALESCE(email_verified, false) = false) AS pending_verification,
         COUNT(*) FILTER (WHERE DATE_TRUNC('month', joined_at) = DATE_TRUNC('month', NOW())) AS new_this_month,
         COALESCE(SUM(total_spent), 0)                    AS total_revenue,
         COALESCE(AVG(total_spent), 0)                    AS avg_spent
