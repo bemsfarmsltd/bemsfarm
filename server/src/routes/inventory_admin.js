@@ -459,7 +459,8 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
 
       pool.query(`
         SELECT
-          p.id, p.name, p.sku, p.stock, p.unit, cat.name AS category,
+          p.id, p.name, p.sku, p.barcode, p.image_url, p.stock, p.unit, cat.name AS category,
+          COALESCE(p.low_stock_threshold, p.reorder_level, 5) AS low_stock_threshold,
           COALESCE(p.unit_price, p.price, 0) AS unit_price,
           COALESCE(p.cost_price, 0)          AS cost_price,
           p.stock * COALESCE(p.cost_price, 0) AS cost_value,
