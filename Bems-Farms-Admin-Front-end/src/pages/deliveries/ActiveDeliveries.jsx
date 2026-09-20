@@ -3,14 +3,31 @@ import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+const DEFAULT_STATUS_CFG = {
+  label: 'Active Delivery',
+  color: '#3b82f6',
+  bg: '#dbeafe',
+  icon: 'ri-truck-line',
+}
 
 const STATUS_CFG = {
   assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   driver_assigned:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
-  shipped:            { label: 'En Route',           color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
-  out_for_delivery:   { label: 'En Route',           color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
-  delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
+  awaiting_pickup:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
+  packed_ready:       { label: 'Packed & Ready',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-archive-line'         },
+  shipped:            { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
+  out_for_delivery:   { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
+  en_route:           { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
+  arrived:            { label: 'Arrived at Doorstep', color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-map-pin-user-line'   },
+  driver_arrived:     { label: 'Arrived at Doorstep', color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-map-pin-user-line'   },
+  delivered:          { label: 'Delivered',         color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line' },
+  completed:          { label: 'Delivered',         color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line' },
+  delivery_attempted: { label: 'Delivery Attempted',color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
+  failed:             { label: 'Delivery Attempted',color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
+  cancelled:          { label: 'Cancelled',         color: '#ef4444', bg: '#fee2e2', icon: 'ri-close-circle-line'    },
+  pending:            { label: 'Pending Processing',color: '#eab308', bg: '#fef9c3', icon: 'ri-time-line'            },
+  confirmed:          { label: 'Confirmed',         color: '#06b6d4', bg: '#cffafe', icon: 'ri-check-line'           },
+  processing:         { label: 'Processing',        color: '#3b82f6', bg: '#dbeafe', icon: 'ri-loader-line'          },
 }
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
@@ -463,7 +480,7 @@ export default function ActiveDeliveries() {
 
       <div className="row g-3">
         {filtered.map(del => {
-          const cfg = STATUS_CFG[del.status]
+          const cfg = STATUS_CFG[del?.status] || DEFAULT_STATUS_CFG
           return (
             <div key={del.id} className="col-md-6 col-xl-4">
               <div className="card h-100" style={{ borderTop: `3px solid ${cfg.color}` }}>
@@ -638,7 +655,7 @@ export default function ActiveDeliveries() {
                   <div className="text-muted small">{selected.orderId}</div>
                 </div>
                 <div className="d-flex gap-2 align-items-center">
-                  {(() => { const c = STATUS_CFG[selected.status]; return (
+                  {(() => { const c = STATUS_CFG[selected?.status] || DEFAULT_STATUS_CFG; return (
                     <span className="badge" style={{ background: c.bg, color: c.color }}>
                       <i className={`${c.icon} me-1`} />{c.label}
                     </span>
