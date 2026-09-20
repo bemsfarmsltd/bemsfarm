@@ -262,11 +262,12 @@ export default function OrdersList() {
     if (type === 'view' || type === 'receipt') {
       try {
         setDetailLoading(true)
-        const res = await api.get(`/admin/orders/${order.id}`)
+        const targetId = order.id || order.order_ref
+        const res = await api.get(`/admin/orders/${targetId}`)
         if (res.data) {
           const d = res.data
           setSelected((prev) => {
-            if (!prev || prev.id !== order.id) return prev
+            if (!prev || (prev.id !== order.id && prev.order_ref !== order.id)) return prev
             return {
               ...prev,
               ...d,
@@ -294,7 +295,6 @@ export default function OrdersList() {
         }
       } catch (err) {
         console.warn('Could not fetch deep order detail:', err.message)
-        toast.error('Full product details could not be loaded for this receipt')
       } finally {
         setDetailLoading(false)
       }

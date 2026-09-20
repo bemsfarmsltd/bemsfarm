@@ -735,12 +735,17 @@ router.delete("/returns/:id", requireRole("superadmin", "manager", "admin"), asy
 // ── GET /api/admin/orders/:id ─────────────────────────────────────
 router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
   try {
+    const rawId = String(req.params.id || "").trim();
+    if (!rawId || rawId === "null" || rawId === "undefined") {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
     const order = await pool.query(
       `
       SELECT
         o.*,
-        COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,
-        COALESCE(o.customer_phone, c.phone, '')       AS customer_phone,
+        COALESCE(o.customer_name, c.name, 'Walk-In Customer') AS customer_name,
+        COALESCE(o.customer_phone, c.phone, '')               AS customer_phone,
         c.email AS customer_email,
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate, dr.vehicle_type,
@@ -748,58 +753,83 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         d.attempts, d.eta_minutes, d.dispatched_at, d.picked_up_at, d.arrived_at, d.delivered_at,
         d.proof_photos, d.item_proofs, d.notes AS delivery_notes
       FROM orders o
-      LEFT JOIN users c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id OR o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
-      WHERE o.id = $1
+      WHERE o.id = $1 OR o.order_ref = $1 OR UPPER(o.id) = UPPER($1) OR UPPER(COALESCE(o.order_ref, '')) = UPPER($1)
+      LIMIT 1
     `,
-      [req.params.id],
+      [rawId],
     );
 
-    if (!order.rows.length)
+    if (!order.rows.length) {
       return res.status(404).json({ message: "Order not found" });
+    }
 
-    const items = await pool.query(
-      `
-      SELECT
-        oi.*,
-        COALESCE(oi.product_name, p.name) AS name,
-        COALESCE(oi.sku, p.sku) AS sku,
-        p.image_url,
-        COALESCE(oi.unit_price, oi.price) AS unit_price,
-        COALESCE(oi.subtotal, oi.quantity * oi.price) AS subtotal
-      FROM order_items oi
-      LEFT JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = $1
-    `,
-      [req.params.id],
-    );
+    const o = order.rows[0];
+    const realOrderId = o.id;
 
-    const timeline = await pool.query(
-      `
-      SELECT * FROM order_status_history
-      WHERE order_id = $1
-      ORDER BY created_at ASC
-    `,
-      [req.params.id],
-    );
+    let items = [];
+    try {
+      const itemsRes = await pool.query(
+        `
+        SELECT
+          oi.*,
+          COALESCE(oi.product_name, p.name, 'Item') AS name,
+          COALESCE(oi.sku, p.sku, '') AS sku,
+          p.image_url,
+          COALESCE(oi.unit_price, oi.price, 0) AS unit_price,
+          COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)) AS subtotal
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1 OR oi.order_id = $2
+        ORDER BY oi.id ASC
+      `,
+        [realOrderId, rawId],
+      );
+      items = itemsRes.rows;
+    } catch (e) {
+      console.warn("Could not query order_items:", e.message);
+    }
 
-    const tracking = await pool.query(
-      `
-      SELECT * FROM order_tracking_events
-      WHERE order_id = $1
-      ORDER BY created_at ASC
-    `,
-      [req.params.id],
-    );
+    let timeline = [];
+    try {
+      const timelineRes = await pool.query(
+        `
+        SELECT * FROM order_status_history
+        WHERE order_id = $1 OR order_id = $2
+        ORDER BY created_at ASC
+      `,
+        [realOrderId, rawId],
+      );
+      timeline = timelineRes.rows;
+    } catch (e) {
+      console.warn("Could not query order_status_history:", e.message);
+    }
+
+    let tracking = [];
+    try {
+      const trackingRes = await pool.query(
+        `
+        SELECT * FROM order_tracking_events
+        WHERE order_id = $1 OR order_id = $2
+        ORDER BY created_at ASC
+      `,
+        [realOrderId, rawId],
+      );
+      tracking = trackingRes.rows;
+    } catch (e) {
+      console.warn("Could not query order_tracking_events:", e.message);
+    }
 
     res.json({
-      ...order.rows[0],
-      items: items.rows,
-      timeline: timeline.rows,
-      tracking: tracking.rows,
+      ...o,
+      items,
+      timeline,
+      tracking,
     });
   } catch (err) {
+    console.error("GET /api/admin/orders/:id error:", err.message);
     next(err);
   }
 });
