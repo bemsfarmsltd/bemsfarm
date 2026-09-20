@@ -191,24 +191,76 @@ export default function Income() {
       {/* Stats */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Income (Completed)', val:fmt(totalIncome), icon:'ri-arrow-up-circle-line',  color:'#22c55e', bg:'#f0fdf4' },
-          { label:"Today's Income",      val:fmt(todayInc),    icon:'ri-calendar-check-line',    color:'#3b82f6', bg:'#eff6ff' },
-          { label:'Pending Income',      val:fmt(pending),     icon:'ri-time-line',               color:'#f59e0b', bg:'#fffbeb' },
-          { label:'Total Records',       val:totalRecords,     icon:'ri-file-list-3-line',        color:'#8b5cf6', bg:'#f5f3ff' },
-          { label:'Avg per Transaction', val:fmt(avgPerTxn),  icon:'ri-bar-chart-line',          color:'#0ea5e9', bg:'#f0f9ff' },
+          {
+            label: 'Total Income (Completed)',
+            val: fmt(totalIncome),
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(34, 197, 94, 0.14)',
+            iconColor: '#16a34a',
+            valColor: 'text-success',
+            icon: 'ri-arrow-up-circle-line',
+            subLeft: 'Realized revenue',
+            subRight: 'Settled',
+          },
+          {
+            label: "Today's Income",
+            val: fmt(todayInc),
+            glow: 'bg-card-glow-blue',
+            iconBg: 'rgba(59, 130, 246, 0.12)',
+            iconColor: '#2563eb',
+            icon: 'ri-calendar-check-line',
+            subLeft: 'Current 24h',
+            subRight: "Today's volume",
+          },
+          {
+            label: 'Pending Income',
+            val: fmt(pending),
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(245, 158, 11, 0.14)',
+            iconColor: '#d97706',
+            valColor: pending > 0 ? 'text-warning-emphasis' : 'text-dark',
+            icon: 'ri-time-line',
+            subLeft: 'In clearance',
+            subRight: 'Awaiting confirm',
+          },
+          {
+            label: 'Total Records',
+            val: totalRecords,
+            glow: 'bg-card-glow-purple',
+            iconBg: 'rgba(139, 92, 246, 0.14)',
+            iconColor: '#7c3aed',
+            icon: 'ri-file-list-3-line',
+            subLeft: 'Income entries',
+            subRight: 'Logged',
+          },
+          {
+            label: 'Avg per Transaction',
+            val: fmt(avgPerTxn),
+            glow: 'bg-card-glow-cyan',
+            iconBg: 'rgba(14, 165, 233, 0.14)',
+            iconColor: '#0284c7',
+            icon: 'ri-bar-chart-line',
+            subLeft: 'Ticket size',
+            subRight: 'Mean / txn',
+          },
         ].map((s, i) => (
-          <div key={i} className="col-6 col-md-4 col-xl">
-            <div className="card border-0 shadow-sm h-100">
+          <div key={i} className="col-12 col-sm-6 col-md-4 col-xl">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${s.glow}`}>
               <div className="card-body p-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width:44, height:44, background:s.bg }}>
-                    <i className={`${s.icon} fs-20`} style={{ color:s.color }}/>
-                  </div>
-                  <div>
-                    <div className="text-muted" style={{ fontSize:11 }}>{s.label}</div>
-                    <div className="fw-bold fs-15">{s.val}</div>
-                  </div>
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={s.label}>
+                    {s.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: s.iconBg, color: s.iconColor }}>
+                    <i className={`${s.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-20 fw-bolder mb-1 font-display text-truncate ${s.valColor || 'text-dark'}`}>
+                  {s.val}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-1.5 pt-1.5 border-top">
+                  <span className="text-truncate me-2">{s.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{s.subRight}</strong>
                 </div>
               </div>
             </div>

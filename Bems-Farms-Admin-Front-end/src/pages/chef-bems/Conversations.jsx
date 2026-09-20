@@ -136,22 +136,65 @@ export default function Conversations() {
       {/* KPI Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Requests (24h)', value: Number(auditStats.requests_24h || 0).toLocaleString(), icon: 'ri-flashlight-line', bg: '#eff6ff', color: '#1d4ed8' },
-          { label: 'Tokens Consumed (24h)', value: Number(auditStats.tokens_24h || 0).toLocaleString(), icon: 'ri-cpu-line', bg: '#fef3c7', color: '#b45309' },
-          { label: 'Unique IP Visitors (24h)', value: Number(auditStats.unique_ips_24h || 0).toLocaleString(), icon: 'ri-fingerprint-line', bg: '#f3e8ff', color: '#7e22ce' },
-          { label: 'Guests vs Registered', value: `${auditStats.guest_requests_24h || 0} / ${auditStats.registered_requests_24h || 0}`, icon: 'ri-user-shared-line', bg: '#dcfce7', color: '#15803d' },
+          {
+            label: 'Total Requests (24h)',
+            value: Number(auditStats.requests_24h || 0).toLocaleString(),
+            icon: 'ri-flashlight-line',
+            glow: 'bg-card-glow-blue',
+            iconBg: 'rgba(59, 130, 246, 0.12)',
+            iconColor: '#2563eb',
+            subLeft: 'AI prompts processed',
+            subRight: '24h Activity',
+          },
+          {
+            label: 'Tokens Consumed (24h)',
+            value: Number(auditStats.tokens_24h || 0).toLocaleString(),
+            icon: 'ri-cpu-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(245, 158, 11, 0.14)',
+            iconColor: '#d97706',
+            subLeft: 'Gemini API usage',
+            subRight: '24h Tokens',
+          },
+          {
+            label: 'Unique IP Visitors (24h)',
+            value: Number(auditStats.unique_ips_24h || 0).toLocaleString(),
+            icon: 'ri-fingerprint-line',
+            glow: 'bg-card-glow-purple',
+            iconBg: 'rgba(139, 92, 246, 0.14)',
+            iconColor: '#7c3aed',
+            subLeft: 'Distinct clients',
+            subRight: '24h Visitors',
+          },
+          {
+            label: 'Guests vs Registered',
+            value: `${auditStats.guest_requests_24h || 0} / ${auditStats.registered_requests_24h || 0}`,
+            icon: 'ri-user-shared-line',
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(34, 197, 94, 0.14)',
+            iconColor: '#16a34a',
+            valColor: 'text-success',
+            subLeft: 'Session breakdown',
+            subRight: 'Guest / Auth',
+          },
         ].map(k => (
           <div className="col-12 col-sm-6 col-xl-3" key={k.label}>
-            <div className="card mb-0 border-0 shadow-sm rounded-4" style={{ background: k.bg }}>
-              <div className="card-body py-3 px-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="avatar size-10 rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.7)' }}>
-                    <i className={`${k.icon} fs-4`} style={{ color: k.color }}></i>
-                  </div>
-                  <div>
-                    <div className="fw-bold fs-5 lh-1" style={{ color: k.color }}>{k.value}</div>
-                    <div style={{ fontSize: 11, color: k.color, opacity: 0.85, marginTop: 4 }}>{k.label}</div>
-                  </div>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${k.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={k.label}>
+                    {k.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: k.iconBg, color: k.iconColor }}>
+                    <i className={`${k.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${k.valColor || 'text-dark'}`}>
+                  {k.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{k.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{k.subRight}</strong>
                 </div>
               </div>
             </div>
