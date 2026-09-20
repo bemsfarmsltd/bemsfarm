@@ -598,112 +598,146 @@ export default function SalesHub({
 
               {/* 1. Gross Revenue */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Gross Sales</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#059669', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-money-dollar-circle-line"></i>
-                    </div>
-                  </div>
-                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{fmt(kpis.gross_sales)}</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    {kpis.growth_pct != null ? (
-                      <span className={`fw-bold ${kpis.growth_pct >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {kpis.growth_pct >= 0 ? '↑' : '↓'} {Math.abs(kpis.growth_pct).toFixed(1)}% vs prior period
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-green">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Gross Sales
                       </span>
-                    ) : <span>{TIMEFRAME_LABELS[timeframe]}</span>}
-                    <span>{kpis.txn_count ?? 0} tickets</span>
+                      <span className="kpi-icon-pill" style={{ background: '#ECFDF5', color: '#059669' }}>
+                        <i className="ri-money-dollar-circle-line fs-18"></i>
+                      </span>
+                    </div>
+                    <div className="fs-22 fw-bolder text-emerald mb-1 font-display text-truncate">
+                      {fmt(kpis.gross_sales)}
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">{kpis.growth_pct != null ? `${kpis.growth_pct >= 0 ? '↑ +' : '↓ '}${Math.abs(kpis.growth_pct).toFixed(1)}%` : TIMEFRAME_LABELS[timeframe]}</span>
+                      <strong className="text-dark font-monospace flex-shrink-0">{kpis.txn_count ?? 0} tickets</strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 2. Cash Collected (In Drawer) */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Cash Drawer</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#FEF3C7', color: '#B45309', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-hand-coin-line"></i>
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-amber">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Cash Drawer
+                      </span>
+                      <span className="kpi-icon-pill" style={{ background: '#FEF3C7', color: '#D97706' }}>
+                        <i className="ri-hand-coin-line fs-18"></i>
+                      </span>
                     </div>
-                  </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—'}</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>{kpis.starting_float != null ? `Float: ${fmt(kpis.starting_float)}` : 'No active shift'}</span>
-                    <span className="text-success fw-semibold">+{fmt(cashSales)}</span>
+                    <div className="fs-22 fw-bolder text-amber mb-1 font-display text-truncate">
+                      {kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—'}
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">{kpis.starting_float != null ? `Float: ${fmt(kpis.starting_float)}` : 'No shift'}</span>
+                      <strong className="text-emerald font-monospace flex-shrink-0">+{fmt(cashSales)}</strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 3. Card & Digital Payments */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Digital Tender</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-bank-card-line"></i>
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-blue">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Digital Tender
+                      </span>
+                      <span className="kpi-icon-pill" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+                        <i className="ri-bank-card-line fs-18"></i>
+                      </span>
                     </div>
-                  </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(tenderTotal - cashSales)}</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>{kpis.txn_count ?? 0} total tickets</span>
-                    <span className="badge bg-primary-subtle text-primary">{tenderBreakdown.length} method{tenderBreakdown.length === 1 ? '' : 's'}</span>
+                    <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                      {fmt(tenderTotal - cashSales)}
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">Electronic Total</span>
+                      <span className="badge bg-primary-subtle text-primary font-monospace text-xs px-2 flex-shrink-0">
+                        {tenderBreakdown.length} Methods
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 4. Average Ticket Size (AOV) */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Average Ticket</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#F5F3FF', color: '#7C3AED', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-shopping-bag-2-line"></i>
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-purple">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Average Ticket
+                      </span>
+                      <span className="kpi-icon-pill" style={{ background: '#FAF5FF', color: '#7C3AED' }}>
+                        <i className="ri-shopping-bag-2-line fs-18"></i>
+                      </span>
                     </div>
-                  </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(kpis.aov)}</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>UPT: {(kpis.items_per_txn ?? 0).toFixed(1)} items</span>
-                    <span className="fw-bold text-primary">{kpis.sku_count ?? 0} SKUs sold</span>
+                    <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                      {fmt(kpis.aov)}
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">UPT: {(kpis.items_per_txn ?? 0).toFixed(1)}</span>
+                      <strong className="text-dark font-monospace flex-shrink-0">{kpis.sku_count ?? 0} SKUs</strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 5. Estimated Gross Margin & Profit */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Gross Margin</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#047857', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-pie-chart-line"></i>
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-teal">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Gross Margin
+                      </span>
+                      <span className="kpi-icon-pill" style={{ background: '#F0FDFA', color: '#0D9488' }}>
+                        <i className="ri-pie-chart-line fs-18"></i>
+                      </span>
                     </div>
-                  </div>
-                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{(kpis.gross_margin_pct ?? 0).toFixed(1)}%</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>Est. Profit:</span>
-                    <strong className="text-dark">{fmt(kpis.estimated_profit)}</strong>
+                    <div className="fs-22 fw-bolder text-emerald mb-1 font-display text-truncate">
+                      {(kpis.gross_margin_pct ?? 0).toFixed(1)}%
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">Est. Profit:</span>
+                      <strong className="text-dark font-monospace flex-shrink-0">{fmt(kpis.estimated_profit)}</strong>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* 6. Online Inflow Queue */}
               <div className="col-12 col-sm-6 col-xl-2">
-                <div className="sh-card h-100">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <span className="text-muted fs-xs fw-bold text-uppercase">Online Queue</span>
-                    <div className="sh-icon-circle" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', width: 36, height: 36, fontSize: '1.1rem' }}>
-                      <i className="ri-notification-3-line"></i>
+                <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-indigo">
+                  <div className="card-body p-3.5">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                        Online Queue
+                      </span>
+                      <span className="kpi-icon-pill" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+                        <i className="ri-notification-3-line fs-18"></i>
+                      </span>
                     </div>
-                  </div>
-                  <div className="sh-metric-val text-warning" style={{ fontSize: '1.45rem' }}>{pendingOnlineCount} New</div>
-                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>{onlineOrders.length} Total orders</span>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-decoration-none fs-xxs fw-bold text-primary"
-                      onClick={() => setMainAnalyticsTab('channels')}
-                    >
-                      View Hub →
-                    </button>
+                    <div className="fs-22 fw-bolder text-indigo mb-1 font-display text-truncate">
+                      {pendingOnlineCount} New
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                      <span className="text-truncate me-1">{onlineOrders.length} Total</span>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-decoration-none fs-12 fw-bold text-primary flex-shrink-0"
+                        onClick={() => setMainAnalyticsTab('channels')}
+                      >
+                        View Hub →
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

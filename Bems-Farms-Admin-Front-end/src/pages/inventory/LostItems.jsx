@@ -181,21 +181,72 @@ export default function LostItems() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Reports',       value: stats.total,    icon: 'ri-file-damage-line',         color: '#405189', filter: 'all' },
-          { label: 'Pending Review',      value: stats.pending,  icon: 'ri-time-line',                color: '#f7b84b', filter: 'pending' },
-          { label: 'Approved',            value: stats.approved, icon: 'ri-checkbox-circle-line',     color: '#f06548', filter: 'approved' },
-          { label: 'Confirmed Value Lost', value: `₦${stats.totalVal.toLocaleString()}`, icon: 'ri-money-dollar-circle-line', color: '#f06548', filter: 'approved' },
+          {
+            label: 'Total Loss Reports',
+            value: stats.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-file-damage-line',
+            filter: 'all',
+            subLeft: 'Incident Logs',
+            subRight: `${stats.total} Reports`
+          },
+          {
+            label: 'Pending Review',
+            value: stats.pending,
+            glow: stats.pending > 0 ? 'bg-card-glow-amber' : 'bg-card-glow-teal',
+            iconBg: stats.pending > 0 ? '#FEF3C7' : '#F0FDFA',
+            iconColor: stats.pending > 0 ? '#D97706' : '#0D9488',
+            icon: 'ri-time-line',
+            filter: 'pending',
+            subLeft: 'Awaiting Sign-off',
+            subRight: stats.pending > 0 ? `${stats.pending} Action Needed` : 'All Reviewed'
+          },
+          {
+            label: 'Approved Write-offs',
+            value: stats.approved,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-checkbox-circle-line',
+            filter: 'approved',
+            subLeft: 'Written Off',
+            subRight: `${stats.approved} Logged`
+          },
+          {
+            label: 'Confirmed Value Lost',
+            value: `₦${stats.totalVal.toLocaleString()}`,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-money-dollar-circle-line',
+            filter: 'approved',
+            subLeft: 'Wastage Outlay',
+            subRight: 'Gross Loss'
+          },
         ].map(c => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0 cursor-pointer" style={{ borderLeft: `3px solid ${c.color}` }} onClick={() => setFilterStatus(c.filter)}>
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 44, height: 44, background: `${c.color}1a` }}>
-                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}></i>
+          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+            <div
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setFilterStatus(c.filter)}
+            >
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="fs-18 fw-bold" style={{ color: c.color }}>{c.value}</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{c.label}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>
