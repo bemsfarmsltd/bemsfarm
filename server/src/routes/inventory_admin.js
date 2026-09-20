@@ -1061,52 +1061,54 @@ router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res, nex
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 100, product_id = "", status = "", expiring = "" } = req.query;
-    const limit = clampLimit(limitRaw, 100);
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    const params = [];
-    const where  = [];
-
     // Automatically ensure all products in catalog are populated as batches
     try {
       const whRes = await pool.query("SELECT id FROM warehouses WHERE status = 'active' ORDER BY id ASC LIMIT 1");
       const defaultWh = whRes.rows[0]?.id || null;
+
+      // Unify batch_no to date-based batch consignments
+      await pool.query(`
+        UPDATE batch_management 
+        SET batch_no = CONCAT('BATCH-', TO_CHAR(COALESCE(received_at, created_at, NOW()), 'YYYY-MM-DD'))
+        WHERE batch_no LIKE 'LOT-%';
+      `);
+
       await pool.query(`
         INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, status, notes, received_at, created_at)
         SELECT 
           p.id,
           $1,
-          CONCAT('LOT-', TO_CHAR(COALESCE(p.created_at, NOW()), 'YYYYMMDD'), '-', LPAD(p.id::text, 3, '0')),
+          CONCAT('BATCH-', TO_CHAR(COALESCE(p.created_at, NOW()), 'YYYY-MM-DD')),
           COALESCE(p.stock, 100),
           p.price,
           (CURRENT_DATE + INTERVAL '180 days')::date,
           COALESCE(p.created_at::date, CURRENT_DATE),
           'active',
-          'Produce batch lot',
+          'Produce batch consignment',
           COALESCE(p.created_at, NOW()),
           COALESCE(p.created_at, NOW())
         FROM products p
         WHERE NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
       `, [defaultWh]);
     } catch (syncErr) {
-      console.error("Batch sync in GET /batches error:", syncErr.message);
+      console.error("Batch sync error in GET /batches:", syncErr.message);
     }
 
-    if (product_id) { params.push(parseInt(product_id)); where.push(`b.product_id = $${params.length}`); }
-    if (status)     { params.push(status);               where.push(`b.status = $${params.length}`); }
-    if (expiring === "7")  where.push("b.expiry_date <= CURRENT_DATE + INTERVAL '7 days'  AND b.expiry_date >= CURRENT_DATE");
-    if (expiring === "30") where.push("b.expiry_date <= CURRENT_DATE + INTERVAL '30 days' AND b.expiry_date >= CURRENT_DATE");
-    if (expiring === "expired") where.push("b.expiry_date < CURRENT_DATE");
-
-    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const countRes    = await pool.query(`SELECT COUNT(*) FROM batch_management b ${whereClause}`, params);
-
-    params.push(parseInt(limit));
-    params.push(offset);
-
-    const rows = await pool.query(`
+    // Fetch all batch items
+    const rowsRes = await pool.query(`
       SELECT
-        b.*,
+        b.id AS batch_item_id,
+        b.id,
+        b.batch_no,
+        b.product_id,
+        b.quantity,
+        b.cost_price,
+        b.expiry_date,
+        b.manufactured_date,
+        b.status,
+        b.notes,
+        b.received_at,
+        b.created_at,
         p.name AS product_name,
         CONCAT('PRD-', p.id) AS sku,
         p.price AS product_price,
@@ -1119,18 +1121,48 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
       FROM batch_management b
       LEFT JOIN products   p ON b.product_id   = p.id
       LEFT JOIN warehouses w ON b.warehouse_id  = w.id
-      ${whereClause}
-      ORDER BY b.expiry_date ASC NULLS LAST, b.id DESC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `, params);
+      ORDER BY b.batch_no DESC, b.expiry_date ASC NULLS LAST
+    `);
 
+    // Group items by batch_no
+    const batchesMap = new Map();
+    for (const r of rowsRes.rows) {
+      const bNo = r.batch_no || 'UNASSIGNED-BATCH';
+      if (!batchesMap.has(bNo)) {
+        batchesMap.set(bNo, {
+          batch_no: bNo,
+          intake_date: r.received_at || r.created_at,
+          warehouse_name: r.warehouse_name,
+          warehouse_code: r.warehouse_code,
+          warehouse_location: r.warehouse_location,
+          status: 'active',
+          earliest_expiry: r.expiry_date,
+          min_days_until_expiry: r.days_until_expiry,
+          item_count: 0,
+          total_units: 0,
+          total_valuation: 0,
+          items: []
+        });
+      }
+      const b = batchesMap.get(bNo);
+      b.item_count++;
+      b.total_units += parseInt(r.quantity) || 0;
+      b.total_valuation += (parseFloat(r.product_price) || 0) * (parseInt(r.quantity) || 0);
+      if (r.days_until_expiry !== null && (b.min_days_until_expiry === null || r.days_until_expiry < b.min_days_until_expiry)) {
+        b.min_days_until_expiry = r.days_until_expiry;
+        b.earliest_expiry = r.expiry_date;
+      }
+      b.items.push(r);
+    }
+
+    const batchList = Array.from(batchesMap.values());
     res.json({
-      batches: rows.rows,
-      total: parseInt(countRes.rows[0].count),
-      page: parseInt(page),
-      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
+      batches: batchList,
+      total: batchList.length,
+      raw_items: rowsRes.rows,
     });
   } catch (err) {
+    console.error("GET /batches error:", err);
     next(err);
   }
 });
