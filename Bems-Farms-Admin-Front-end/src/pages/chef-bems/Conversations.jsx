@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import DateFilterControls from '../../components/ui/DateFilterControls'
 
 const AVATAR_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#8b5cf6','#14b8a6','#f97316','#06b6d4']
 const ini = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -16,6 +17,12 @@ const STATUS_CFG = {
 export default function Conversations() {
   const [activeTab, setActiveTab] = useState('conversations') // 'conversations' | 'audit_logs'
 
+  // Timeframe / Duration Filter state (matching Dashboard)
+  const [timeRange, setTimeRange] = useState('today')
+  const [dateFrom, setDateFrom]   = useState('')
+  const [dateTo, setDateTo]       = useState('')
+  const [rangeLabel, setRangeLabel] = useState('Today')
+
   // Conversation state
   const [convos, setConvos] = useState([])
   const [loadingConvos, setLoadingConvos] = useState(true)
@@ -28,6 +35,11 @@ export default function Conversations() {
   const [auditLogs, setAuditLogs] = useState([])
   const [loadingAudit, setLoadingAudit] = useState(true)
   const [auditStats, setAuditStats] = useState({
+    requests_period: 0,
+    tokens_period: 0,
+    unique_ips_period: 0,
+    guest_requests_period: 0,
+    registered_requests_period: 0,
     requests_24h: 0,
     tokens_24h: 0,
     unique_ips_24h: 0,
@@ -42,19 +54,34 @@ export default function Conversations() {
   const [auditTotal, setAuditTotal] = useState(0)
   const [selectedAuditLog, setSelectedAuditLog] = useState(null)
 
+  const handleFilterChange = (newRange, newFrom = '', newTo = '') => {
+    setTimeRange(newRange)
+    setDateFrom(newFrom)
+    setDateTo(newTo)
+    setAuditPage(1)
+  }
+
   // Load conversations
   const loadConversations = useCallback(() => {
     setLoadingConvos(true)
     api.get('/admin/chef-bems/conversations', {
-      params: { search: searchConvos || undefined, status: statusFilter !== 'all' ? statusFilter : undefined, limit: 50 },
+      params: {
+        search: searchConvos || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        range: timeRange,
+        from: dateFrom || undefined,
+        to: dateTo || undefined,
+        limit: 50,
+      },
     })
       .then(res => {
         setConvos(res.data.conversations || [])
+        if (res.data.rangeLabel) setRangeLabel(res.data.rangeLabel)
         setSelected(prev => prev ? (res.data.conversations || []).find(c => c.id === prev.id) || null : null)
       })
       .catch(() => toast.error('Failed to load conversations'))
       .finally(() => setLoadingConvos(false))
-  }, [searchConvos, statusFilter])
+  }, [searchConvos, statusFilter, timeRange, dateFrom, dateTo])
 
   // Load Audit Logs
   const loadAuditLogs = useCallback(() => {
@@ -64,6 +91,9 @@ export default function Conversations() {
         search: auditSearch || undefined,
         role: auditRoleFilter !== 'all' ? auditRoleFilter : undefined,
         status: auditStatusFilter !== 'all' ? auditStatusFilter : undefined,
+        range: timeRange,
+        from: dateFrom || undefined,
+        to: dateTo || undefined,
         page: auditPage,
         limit: 25,
       },
@@ -72,11 +102,12 @@ export default function Conversations() {
         setAuditLogs(res.data.logs || [])
         setAuditTotal(res.data.total || 0)
         setAuditTotalPages(res.data.pages || 1)
+        if (res.data.rangeLabel) setRangeLabel(res.data.rangeLabel)
         if (res.data.stats) setAuditStats(res.data.stats)
       })
       .catch(() => toast.error('Failed to load AI audit logs'))
       .finally(() => setLoadingAudit(false))
-  }, [auditSearch, auditRoleFilter, auditStatusFilter, auditPage])
+  }, [auditSearch, auditRoleFilter, auditStatusFilter, timeRange, dateFrom, dateTo, auditPage])
 
   useEffect(() => {
     const t = setTimeout(loadConversations, 250)
@@ -103,6 +134,21 @@ export default function Conversations() {
 
   const messages = Array.isArray(selected?.messages) ? selected.messages : []
 
+  const displayPeriodLabel =
+    timeRange === 'today' ? 'Today' :
+    timeRange === '7d'    ? '7 Days' :
+    timeRange === '12d'   ? '12 Days' :
+    timeRange === '1m'    ? '1 Month' :
+    timeRange === '1y'    ? '1 Year' :
+    timeRange === 'all'   ? 'All Time' :
+    (dateFrom && dateTo)  ? `${dateFrom} → ${dateTo}` : 'Selected Range'
+
+  const requestsCount = auditStats.requests_period != null ? auditStats.requests_period : auditStats.requests_24h
+  const tokensCount   = auditStats.tokens_period != null ? auditStats.tokens_period : auditStats.tokens_24h
+  const uniqueIps     = auditStats.unique_ips_period != null ? auditStats.unique_ips_period : auditStats.unique_ips_24h
+  const guestCount    = auditStats.guest_requests_period != null ? auditStats.guest_requests_period : auditStats.guest_requests_24h
+  const regCount      = auditStats.registered_requests_period != null ? auditStats.registered_requests_period : auditStats.registered_requests_24h
+
   return (
     <div className="container-fluid py-3">
       {/* Header */}
@@ -114,22 +160,32 @@ export default function Conversations() {
           <p className="text-muted mb-0 fs-13">Monitor live AI customer chat transcripts, inspect token consumption, and trace visitor identities.</p>
         </div>
 
-        {/* View Switcher Tabs */}
-        <div className="btn-group shadow-sm p-1 bg-light rounded-3">
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'conversations' ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
-            onClick={() => setActiveTab('conversations')}
-          >
-            <i className="ri-chat-3-line me-1"></i> Live Chat Sessions ({convos.length})
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'audit_logs' ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
-            onClick={() => setActiveTab('audit_logs')}
-          >
-            <i className="ri-shield-keyhole-line me-1"></i> AI Token &amp; Request Audit Log
-          </button>
+        {/* View Switcher Tabs & Duration Filter Bar */}
+        <div className="d-flex align-items-center gap-2.5 flex-wrap">
+          <DateFilterControls
+            range={timeRange}
+            from={dateFrom}
+            to={dateTo}
+            onFilterChange={handleFilterChange}
+            showAllOption={true}
+          />
+
+          <div className="btn-group shadow-sm p-1 bg-light rounded-3">
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'conversations' ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
+              onClick={() => setActiveTab('conversations')}
+            >
+              <i className="ri-chat-3-line me-1"></i> Live Chat Sessions ({convos.length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeTab === 'audit_logs' ? 'btn-primary shadow-sm' : 'btn-light text-muted'}`}
+              onClick={() => setActiveTab('audit_logs')}
+            >
+              <i className="ri-shield-keyhole-line me-1"></i> AI Token &amp; Request Audit Log
+            </button>
+          </div>
         </div>
       </div>
 
@@ -137,38 +193,38 @@ export default function Conversations() {
       <div className="row g-3 mb-4">
         {[
           {
-            label: 'Total Requests (24h)',
-            value: Number(auditStats.requests_24h || 0).toLocaleString(),
+            label: `Total Requests (${displayPeriodLabel})`,
+            value: Number(requestsCount || 0).toLocaleString(),
             icon: 'ri-flashlight-line',
             glow: 'bg-card-glow-blue',
             iconBg: 'rgba(59, 130, 246, 0.12)',
             iconColor: '#2563eb',
             subLeft: 'AI prompts processed',
-            subRight: '24h Activity',
+            subRight: displayPeriodLabel,
           },
           {
-            label: 'Tokens Consumed (24h)',
-            value: Number(auditStats.tokens_24h || 0).toLocaleString(),
+            label: `Tokens Consumed (${displayPeriodLabel})`,
+            value: Number(tokensCount || 0).toLocaleString(),
             icon: 'ri-cpu-line',
             glow: 'bg-card-glow-amber',
             iconBg: 'rgba(245, 158, 11, 0.14)',
             iconColor: '#d97706',
             subLeft: 'Gemini API usage',
-            subRight: '24h Tokens',
+            subRight: `${Number(tokensCount || 0).toLocaleString()} tokens`,
           },
           {
-            label: 'Unique IP Visitors (24h)',
-            value: Number(auditStats.unique_ips_24h || 0).toLocaleString(),
+            label: `Unique IP Visitors (${displayPeriodLabel})`,
+            value: Number(uniqueIps || 0).toLocaleString(),
             icon: 'ri-fingerprint-line',
             glow: 'bg-card-glow-purple',
             iconBg: 'rgba(139, 92, 246, 0.14)',
             iconColor: '#7c3aed',
             subLeft: 'Distinct clients',
-            subRight: '24h Visitors',
+            subRight: `${uniqueIps} visitors`,
           },
           {
-            label: 'Guests vs Registered',
-            value: `${auditStats.guest_requests_24h || 0} / ${auditStats.registered_requests_24h || 0}`,
+            label: `Guests vs Registered (${displayPeriodLabel})`,
+            value: `${guestCount || 0} / ${regCount || 0}`,
             icon: 'ri-user-shared-line',
             glow: 'bg-card-glow-green',
             iconBg: 'rgba(34, 197, 94, 0.14)',

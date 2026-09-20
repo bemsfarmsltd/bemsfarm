@@ -87,11 +87,91 @@ async function ensureChefTables() {
   }
 }
 
+// ─── HELPER: AI Date Range & Timeframe Parser ──────────────────────────────
+function parseAiDateFilter(query = {}) {
+  const range = (query.range || 'all').toLowerCase();
+  const customFrom = query.from;
+  const customTo = query.to;
+
+  if (range === 'custom' && customFrom && customTo) {
+    const fromStr = `${customFrom} 00:00:00`;
+    const toStr = `${customTo} 23:59:59`;
+    return {
+      range: 'custom',
+      label: `${customFrom} → ${customTo}`,
+      filterClause: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
+      logClause: `l.created_at >= '${fromStr}'::timestamp AND l.created_at <= '${toStr}'::timestamp`,
+      convosClause: `(ac.last_message_at >= '${fromStr}'::timestamp OR (ac.last_message_at IS NULL AND ac.created_at >= '${fromStr}'::timestamp)) AND ac.created_at <= '${toStr}'::timestamp`,
+      from: customFrom,
+      to: customTo,
+    };
+  }
+
+  if (range === 'today') {
+    return {
+      range: 'today',
+      label: 'Today',
+      filterClause: `DATE(created_at) = CURRENT_DATE`,
+      logClause: `DATE(l.created_at) = CURRENT_DATE`,
+      convosClause: `DATE(COALESCE(ac.last_message_at, ac.created_at)) = CURRENT_DATE`,
+    };
+  }
+
+  if (range === '7d') {
+    return {
+      range: '7d',
+      label: 'Last 7 Days',
+      filterClause: `created_at >= NOW() - INTERVAL '7 days'`,
+      logClause: `l.created_at >= NOW() - INTERVAL '7 days'`,
+      convosClause: `COALESCE(ac.last_message_at, ac.created_at) >= NOW() - INTERVAL '7 days'`,
+    };
+  }
+
+  if (range === '12d') {
+    return {
+      range: '12d',
+      label: 'Last 12 Days',
+      filterClause: `created_at >= NOW() - INTERVAL '12 days'`,
+      logClause: `l.created_at >= NOW() - INTERVAL '12 days'`,
+      convosClause: `COALESCE(ac.last_message_at, ac.created_at) >= NOW() - INTERVAL '12 days'`,
+    };
+  }
+
+  if (range === '1m' || range === '30d' || range === 'month') {
+    return {
+      range: '1m',
+      label: 'Last 1 Month',
+      filterClause: `created_at >= NOW() - INTERVAL '30 days'`,
+      logClause: `l.created_at >= NOW() - INTERVAL '30 days'`,
+      convosClause: `COALESCE(ac.last_message_at, ac.created_at) >= NOW() - INTERVAL '30 days'`,
+    };
+  }
+
+  if (range === '1y' || range === '365d' || range === 'year') {
+    return {
+      range: '1y',
+      label: 'Last 1 Year',
+      filterClause: `created_at >= NOW() - INTERVAL '1 year'`,
+      logClause: `l.created_at >= NOW() - INTERVAL '1 year'`,
+      convosClause: `COALESCE(ac.last_message_at, ac.created_at) >= NOW() - INTERVAL '1 year'`,
+    };
+  }
+
+  return {
+    range: 'all',
+    label: 'All Time',
+    filterClause: null,
+    logClause: null,
+    convosClause: null,
+  };
+}
+
 // ─── CONVERSATIONS ────────────────────────────────────────────────────────────
 router.get("/conversations", AI_ROLES, async (req, res, next) => {
   try {
     await ensureChefTables();
     const { search = "", status, page = 1, limit: limitRaw = 20 } = req.query;
+    const dateFilter = parseAiDateFilter(req.query);
     const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
     if (search) {
@@ -102,6 +182,8 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     if (status === "completed") where.push("ac.archived = true");
     if (status === "active") where.push("ac.archived = false");
     if (status === "escalated" || status === "abandoned") where.push("false");
+    if (dateFilter.convosClause) where.push(dateFilter.convosClause);
+
     const clause = `WHERE ${where.join(" AND ")}`;
     const offset = (parseInt(page)-1)*parseInt(limit);
     const [rows, cnt] = await Promise.all([
@@ -130,7 +212,14 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
       pool.query(`SELECT COUNT(*) FROM admin_ai_conversations ac LEFT JOIN users u ON u.id = ac.user_id ${clause}`, params).catch(() => ({ rows: [{ count: '0' }] })),
     ]);
     const total = parseInt(cnt.rows[0]?.count || 0);
-    res.json({ conversations: rows.rows || [], total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+    res.json({
+      conversations: rows.rows || [],
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)) || 1,
+      range: dateFilter.range,
+      rangeLabel: dateFilter.label,
+    });
   } catch (err) {
     console.error("GET /admin/chef-bems/conversations error:", err.message);
     res.json({ conversations: [], total: 0, page: 1, pages: 1 });
@@ -142,6 +231,7 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
   try {
     await ensureChefTables();
     const { search = "", role = "all", status = "all", bot_type = "all", page = 1, limit: limitRaw = 30 } = req.query;
+    const dateFilter = parseAiDateFilter(req.query);
     const limit = clampLimit(limitRaw, 30);
     const params = [];
     const where = [];
@@ -166,8 +256,14 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
       where.push(`l.bot_type = $${params.length}`);
     }
 
+    if (dateFilter.logClause) {
+      where.push(dateFilter.logClause);
+    }
+
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const statsWhere = dateFilter.filterClause ? `WHERE ${dateFilter.filterClause}` : "";
 
     const [rows, cnt, stats] = await Promise.all([
       pool.query(
@@ -182,27 +278,53 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
       pool.query(`SELECT COUNT(*) FROM ai_audit_logs l ${clause}`, params).catch(() => ({ rows: [{ count: '0' }] })),
       pool.query(`
         SELECT 
+          COUNT(*) AS requests_period,
+          COALESCE(SUM(tokens_used), 0) AS tokens_period,
+          COUNT(DISTINCT ip_address) AS unique_ips_period,
+          COUNT(*) FILTER (WHERE user_role = 'guest') AS guest_requests_period,
+          COUNT(*) FILTER (WHERE user_role != 'guest') AS registered_requests_period,
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS requests_24h,
           COALESCE(SUM(tokens_used) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours'), 0) AS tokens_24h,
           COUNT(DISTINCT ip_address) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS unique_ips_24h,
           COUNT(*) FILTER (WHERE user_role = 'guest' AND created_at >= NOW() - INTERVAL '24 hours') AS guest_requests_24h,
           COUNT(*) FILTER (WHERE user_role != 'guest' AND created_at >= NOW() - INTERVAL '24 hours') AS registered_requests_24h
         FROM ai_audit_logs
-      `).catch(() => ({ rows: [{ requests_24h: 0, tokens_24h: 0, unique_ips_24h: 0, guest_requests_24h: 0, registered_requests_24h: 0 }] })),
-    ]);
-
-    const total = parseInt(cnt.rows[0]?.count || 0);
-    res.json({
-      logs: rows.rows || [],
-      total,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)) || 1,
-      stats: stats.rows[0] || {
+        ${statsWhere}
+      `).catch(() => ({ rows: [{
+        requests_period: 0,
+        tokens_period: 0,
+        unique_ips_period: 0,
+        guest_requests_period: 0,
+        registered_requests_period: 0,
         requests_24h: 0,
         tokens_24h: 0,
         unique_ips_24h: 0,
         guest_requests_24h: 0,
         registered_requests_24h: 0,
+      }] })),
+    ]);
+
+    const total = parseInt(cnt.rows[0]?.count || 0);
+    const rawStats = stats.rows[0] || {};
+
+    res.json({
+      logs: rows.rows || [],
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)) || 1,
+      range: dateFilter.range,
+      rangeLabel: dateFilter.label,
+      stats: {
+        requests_period: Number(rawStats.requests_period || 0),
+        tokens_period: Number(rawStats.tokens_period || 0),
+        unique_ips_period: Number(rawStats.unique_ips_period || 0),
+        guest_requests_period: Number(rawStats.guest_requests_period || 0),
+        registered_requests_period: Number(rawStats.registered_requests_period || 0),
+        requests_24h: Number(rawStats.requests_24h || 0),
+        tokens_24h: Number(rawStats.tokens_24h || 0),
+        unique_ips_24h: Number(rawStats.unique_ips_24h || 0),
+        guest_requests_24h: Number(rawStats.guest_requests_24h || 0),
+        registered_requests_24h: Number(rawStats.registered_requests_24h || 0),
       },
     });
   } catch (err) {
@@ -212,7 +334,20 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
       total: 0,
       page: 1,
       pages: 1,
-      stats: { requests_24h: 0, tokens_24h: 0, unique_ips_24h: 0, guest_requests_24h: 0, registered_requests_24h: 0 },
+      range: 'all',
+      rangeLabel: 'All Time',
+      stats: {
+        requests_period: 0,
+        tokens_period: 0,
+        unique_ips_period: 0,
+        guest_requests_period: 0,
+        registered_requests_period: 0,
+        requests_24h: 0,
+        tokens_24h: 0,
+        unique_ips_24h: 0,
+        guest_requests_24h: 0,
+        registered_requests_24h: 0,
+      },
     });
   }
 });
