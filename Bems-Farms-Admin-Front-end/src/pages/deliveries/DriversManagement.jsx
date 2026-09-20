@@ -305,19 +305,30 @@ export default function DriversManagement() {
   return (
     <div className="container-fluid pb-5">
       {/* Page Header */}
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div>
-          <h5 className="mb-1 fw-bold text-dark font-display">Dispatch Drivers Management</h5>
+          <h5 className="mb-1 fw-bold text-dark font-display fs-20">Dispatch Drivers Management</h5>
           <p className="text-muted mb-0 fs-13">
             Fleet operations, automated driver invitation emails, compliance verification, and dispatch controls.
           </p>
         </div>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item">
-            <Link to="/deliveries/active">Deliveries</Link>
-          </li>
-          <li className="breadcrumb-item active">Drivers &amp; Compliance</li>
-        </ul>
+        <div className="d-flex align-items-center gap-2.5">
+          <ul className="breadcrumb mb-0 d-none d-sm-flex">
+            <li className="breadcrumb-item">
+              <Link to="/deliveries/active">Deliveries</Link>
+            </li>
+            <li className="breadcrumb-item active">Drivers &amp; Compliance</li>
+          </ul>
+          <button
+            type="button"
+            className="btn btn-success fw-bold px-3.5 py-2 d-flex align-items-center gap-2 shadow-sm text-white rounded-3"
+            style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 13 }}
+            onClick={() => openModal('add')}
+          >
+            <i className="ri-user-add-line fs-16" />
+            <span>+ Onboard New Driver</span>
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -397,9 +408,14 @@ export default function DriversManagement() {
             <span className="text-muted small">
               {drivers.length} driver{drivers.length !== 1 ? 's' : ''}
             </span>
-            <button className="btn btn-emerald-solid px-3 py-2 fw-bold text-white fs-13" onClick={() => openModal('add')}>
-              <i className="ri-user-add-line me-1.5" />
-              Onboard New Driver
+            <button
+              type="button"
+              className="btn btn-success px-3 py-2 fw-bold text-white fs-13 d-flex align-items-center gap-1.5 shadow-sm rounded-2"
+              style={{ background: '#16a34a', borderColor: '#16a34a' }}
+              onClick={() => openModal('add')}
+            >
+              <i className="ri-user-add-line fs-15" />
+              <span>Onboard New Driver</span>
             </button>
           </div>
         </div>
