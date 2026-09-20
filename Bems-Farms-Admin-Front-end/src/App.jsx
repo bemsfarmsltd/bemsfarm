@@ -83,6 +83,7 @@ import Income            from './pages/accounts/Income'
 import MoneyTransfer     from './pages/accounts/MoneyTransfer'
 import Transactions      from './pages/accounts/Transactions'
 import DriverCommissions from './pages/accounts/DriverCommissions'
+import WalletManagement  from './pages/finance/WalletManagement'
 
 // Chef Bems AI
 import Conversations    from './pages/chef-bems/Conversations'
@@ -238,6 +239,9 @@ function App() {
                 <Route path="/accounts/transfer"     element={<MoneyTransfer />} />
                 <Route path="/accounts/transactions" element={<Transactions />} />
                 <Route path="/accounts/commissions"  element={<DriverCommissions />} />
+                <Route path="/accounts/wallets"      element={<WalletManagement />} />
+                <Route path="/deliveries/wallets"    element={<WalletManagement />} />
+                <Route path="/wallets"               element={<Navigate to="/accounts/wallets" replace />} />
               </Route>
 
               {/* ── Chef Bems AI ── */}
