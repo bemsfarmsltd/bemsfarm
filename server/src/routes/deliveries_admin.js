@@ -48,30 +48,44 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       SELECT
         d.id, d.delivery_ref, d.status, d.attempts,
         d.eta_minutes, d.assigned_at, d.dispatched_at,
-        d.delivery_address,
-        o.id AS order_id, o.total AS order_total, o.notes,
-        o.latitude AS customer_lat, o.longitude AS customer_lng,
-        COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,
-        COALESCE(o.customer_phone, c.phone, '')       AS customer_phone,
+        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), 'Aba Delivery Destination') AS delivery_address,
+        o.id AS order_id, o.total AS order_total, o.notes, o.source AS order_source,
+        o.payment_method, o.payment_status, o.delivery_fee, o.created_at AS order_created_at,
+        COALESCE(o.latitude, 5.1120) AS customer_lat,
+        COALESCE(o.longitude, 7.3550) AS customer_lng,
+        COALESCE(
+          NULLIF(o.customer_name, ''),
+          NULLIF(c.name, ''),
+          NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''),
+          NULLIF(o.shipping_name, ''),
+          'Customer (Online Order)'
+        ) AS customer_name,
+        COALESCE(NULLIF(o.customer_phone, ''), NULLIF(c.phone, ''), '') AS customer_phone,
+        COALESCE(NULLIF(c.email, ''), '') AS customer_email,
         dr.id AS driver_id, dr.name AS driver_name,
         dr.phone AS driver_phone, dr.vehicle_plate AS driver_plate,
         dr.vehicle_type,
         dz.zone_name AS zone,
         dl.latitude AS driver_lat, dl.longitude AS driver_lng, dl.heading AS driver_heading,
+        dl.speed AS driver_speed, dl.recorded_at AS driver_last_ping,
         (SELECT JSON_AGG(JSON_BUILD_OBJECT(
-            'name',  COALESCE(oi.product_name, p.name),
-            'qty',   oi.quantity || ' ' || COALESCE(p.unit, '')
+            'id', oi.id,
+            'name', COALESCE(oi.product_name, p.name, 'Farm Produce Item'),
+            'qty', oi.quantity || ' ' || COALESCE(p.unit, 'pcs'),
+            'quantity', oi.quantity,
+            'unit', COALESCE(p.unit, 'pcs'),
+            'price', COALESCE(oi.price, 0)
           ))
           FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
           WHERE oi.order_id = o.id
         ) AS items
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      LEFT JOIN users c ON o.customer_id = c.id
+      LEFT JOIN users c ON (o.customer_id = c.id OR o.user_id = c.id)
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
-        SELECT latitude, longitude, heading 
+        SELECT latitude, longitude, heading, speed, recorded_at 
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 
