@@ -159,15 +159,24 @@ function storeIcon(title, subtitle, type = 'depot') {
 // ── Map Pan/Bounds Controller ──────────────────────────────────────────────────
 function MapCameraController({ target, bounds }) {
   const map = useMap()
+
   useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize()
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [map])
+
+  useEffect(() => {
+    map.invalidateSize()
     if (bounds && Array.isArray(bounds) && bounds.length >= 2) {
       try {
         const cleanBounds = bounds
           .filter(b => b && Array.isArray(b))
           .map(b => [safeNum(b[0], null), safeNum(b[1], null)])
-          .filter(([lat, lng]) => lat != null && lng != null)
+          .filter(([lat, lng]) => lat != null && lng != null && lat !== 0 && lng !== 0)
         if (cleanBounds.length >= 2) {
-          map.fitBounds(cleanBounds, { padding: [60, 60], maxZoom: 15, duration: 1.2 })
+          map.fitBounds(cleanBounds, { padding: [50, 50], maxZoom: 14, animate: false })
         }
       } catch (err) {
         console.error('fitBounds failed:', err)
@@ -175,8 +184,8 @@ function MapCameraController({ target, bounds }) {
     } else if (target && Array.isArray(target)) {
       const lat = safeNum(target[0], null)
       const lng = safeNum(target[1], null)
-      if (lat != null && lng != null) {
-        map.flyTo([lat, lng], 15, { duration: 1.2 })
+      if (lat != null && lng != null && lat !== 0 && lng !== 0) {
+        map.setView([lat, lng], 13)
       }
     }
   }, [target, bounds, map])
@@ -584,7 +593,7 @@ export default function DeliveryMap() {
       <div className="flex-grow-1 row g-0 border rounded-4 overflow-hidden shadow-sm bg-white" style={{ minHeight: '620px', position: 'relative' }}>
 
         {/* ── Left Sidebar: Active Deliveries & Recipient Filter ──────────────── */}
-        <div className="col-12 col-lg-4 col-xl-3.5 d-flex flex-column border-end bg-white" style={{ height: '100%', zIndex: 10 }}>
+        <div className="col-12 col-lg-4 d-flex flex-column border-end bg-white" style={{ minHeight: '650px', zIndex: 10 }}>
           
           {/* Search and Filters Bar */}
           <div className="p-3 border-bottom bg-light-subtle">
@@ -808,12 +817,13 @@ export default function DeliveryMap() {
         </div>
 
         {/* ── Right Column: Interactive Leaflet Map & Live Journey HUD ─────────── */}
-        <div className="col-12 col-lg-8 col-xl-8.5 position-relative" style={{ height: '100%', minHeight: '620px' }}>
+        <div className="col-12 col-lg-8 position-relative d-flex flex-column" style={{ minHeight: '650px', height: '100%', flex: 1 }}>
 
           <MapContainer
             center={DEFAULT_CENTER}
             zoom={12}
-            style={{ width: '100%', height: '100%', zIndex: 1 }}
+            scrollWheelZoom={true}
+            style={{ width: '100%', height: '100%', minHeight: '650px', flex: 1, zIndex: 1 }}
             zoomControl={true}>
 
             <TileLayer
