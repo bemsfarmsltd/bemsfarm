@@ -792,10 +792,6 @@ export default function Sidebar() {
                 <NavLink to="/deliveries/drivers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Dispatch Drivers</span>
                 </NavLink>
-                <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Driver Wallets &amp; Payouts</span>
-                  <span className="sub-badge" style={{ background: '#EFF6FF', color: '#2563EB' }}>DVA</span>
-                </NavLink>
               </>
             )}
 
@@ -851,9 +847,17 @@ export default function Sidebar() {
             {/* 8. FINANCE */}
             {activeTab === 'finance' && (
               <>
-                <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                <NavLink to="/accounts/wallets" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Wallet Accounts &amp; DVA</span>
                   <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>DVA</span>
+                </NavLink>
+                <NavLink to="/accounts/wallets?tab=payouts" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Payout Pipeline &amp; Disburse</span>
+                  <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>Disburse</span>
+                </NavLink>
+                <NavLink to="/accounts/wallets?tab=gateway" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Payment Gateway &amp; Monnify</span>
+                  <span className="sub-badge" style={{ background: '#EFF6FF', color: '#2563EB' }}>Live</span>
                 </NavLink>
                 <NavLink to="/accounts/transactions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>All Transactions</span>
