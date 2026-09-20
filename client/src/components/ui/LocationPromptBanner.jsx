@@ -85,6 +85,7 @@ export default function LocationPromptBanner() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onLocationConfirmed={handleLocationConfirmed}
+        showSaveToAccount={true}
       />
     </>
   );

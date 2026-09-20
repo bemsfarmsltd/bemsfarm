@@ -69,6 +69,7 @@ export default function VerifiedLocationModal({
   initialAddress = "",
   initialLat = null,
   initialLng = null,
+  showSaveToAccount = false,
 }) {
   // Default coordinate: Umuahia, Abia State
   const defaultCenter = [5.5245, 7.4912];
@@ -82,7 +83,7 @@ export default function VerifiedLocationModal({
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedData, setVerifiedData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [saveToAccount, setSaveToAccount] = useState(true);
+  const [saveToAccount, setSaveToAccount] = useState(showSaveToAccount);
 
   // Reverse geocode and verify location whenever pin position changes
   const verifyCoordinates = useCallback(async (lat, lng, addressHint = "") => {
@@ -237,9 +238,9 @@ export default function VerifiedLocationModal({
       verified: true,
     };
 
-    // Save to user address book only if user is logged in
+    // Save to user address book only if explicitly enabled (e.g. standalone prompt) and user is logged in
     const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
-    if (saveToAccount && token) {
+    if (showSaveToAccount && saveToAccount && token) {
       try {
         await api.post("/addresses", {
           label: "Home / Office",
@@ -430,15 +431,17 @@ export default function VerifiedLocationModal({
           )}
 
           <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={saveToAccount}
-                onChange={(e) => setSaveToAccount(e.target.checked)}
-                className="rounded text-green-600 focus:ring-green-500"
-              />
-              <span>Save as my default delivery address</span>
-            </label>
+            {showSaveToAccount ? (
+              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveToAccount}
+                  onChange={(e) => setSaveToAccount(e.target.checked)}
+                  className="rounded text-green-600 focus:ring-green-500"
+                />
+                <span>Save as my default delivery address</span>
+              </label>
+            ) : <div />}
 
             <div className="flex gap-2">
               <button

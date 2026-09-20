@@ -7,6 +7,7 @@
     "start": "node swagger.js && node src/index.js",
     "dev": "node swagger.js && nodemon src/index.js",
     "test": "node scripts/syntax-check.js && node scripts/authz-test.js && node scripts/smoke-test.js",
+    "test:order-flow": "node scripts/test-order-flow.js",
     "migrate:crm-audit": "node scripts/migrate-crm-audit.js"
   },
   "keywords": [],

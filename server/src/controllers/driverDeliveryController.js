@@ -421,6 +421,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     }
 
     // Update deliveries table
+    const dbDeliveryStatus = deliveryStatus === "arrived" ? "en_route" : deliveryStatus;
     const updateDeliveryQuery = `
       UPDATE deliveries 
       SET 
@@ -442,7 +443,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     `;
 
     const updatedDeliveryResult = await client.query(updateDeliveryQuery, [
-      deliveryStatus,
+      dbDeliveryStatus,
       acceptedAt,
       dispatchedAt,
       deliveredAt,
@@ -487,6 +488,37 @@ const updateDeliveryStatus = async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    // Asynchronously notify customer of milestone status update (In Transit, Arrived, Delivered)
+    (async () => {
+      try {
+        const orderUserRes = await pool.query(
+          `SELECT o.id, o.order_ref, o.address, o.total, u.name, u.email, drv.name as driver_name, drv.vehicle_type
+           FROM orders o
+           LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+           LEFT JOIN drivers drv ON drv.id = $1
+           WHERE o.id = $2`,
+          [driverId, actualOrderId]
+        );
+        if (orderUserRes.rows.length > 0 && orderUserRes.rows[0].email) {
+          const row = orderUserRes.rows[0];
+          const emailService = require("../services/emailService");
+          await emailService.sendOrderStatusEmail(
+            { id: row.id, order_ref: row.order_ref, address: row.address, total: row.total },
+            { name: row.name, email: row.email },
+            rawStatus,
+            {
+              delivery_ref: delivery.delivery_ref,
+              driver_name: row.driver_name,
+              vehicle_type: row.vehicle_type,
+              eta_minutes,
+            }
+          );
+        }
+      } catch (emailErr) {
+        console.warn("Milestone email notification failed:", emailErr.message);
+      }
+    })();
 
     res.json({
       message: `Delivery status updated to ${rawStatus}`,

@@ -148,50 +148,107 @@ async function sendOrderConfirmationEmail(order, user, items) {
   });
 }
 
-async function sendOrderStatusEmail(order, user, newStatus) {
+async function sendOrderStatusEmail(order, user, newStatus, deliveryDetails = {}) {
+  const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
+  const trackingCode = order.id || order.order_ref || "";
+  const trackingUrl = `${domain}/track-order?code=${encodeURIComponent(trackingCode)}`;
+  const deliveryRef = deliveryDetails.delivery_ref || order.delivery_ref || `DEL-${String(trackingCode).replace(/[^A-Z0-9]/gi, '')}`;
+
   const statusMessages = {
     confirmed: {
       emoji: "✅",
-      title: "Order Confirmed",
-      msg: "Your order has been confirmed and is being packed.",
+      title: "Order Confirmed & Processing",
+      msg: "Your fresh farm order has been confirmed and is being prepared by our packaging team.",
     },
     being_packed: {
       emoji: "📦",
-      title: "Order Being Packed",
-      msg: "Your fresh produce is being carefully packed right now.",
+      title: "Order Packed & Ready",
+      msg: "Your fresh produce is neatly packed and awaiting courier pickup.",
+    },
+    en_route: {
+      emoji: "🚚",
+      title: "Your Order is In Transit / Out for Delivery!",
+      msg: "Great news! Your courier is on the way with your delivery.",
     },
     out_for_delivery: {
       emoji: "🚚",
-      title: "Out for Delivery!",
-      msg: "Your order is on its way! Expect delivery within 2 hours.",
+      title: "Your Order is In Transit / Out for Delivery!",
+      msg: "Great news! Your courier is on the way with your delivery.",
+    },
+    arrived: {
+      emoji: "📍",
+      title: "Courier Has Arrived at Your Location",
+      msg: "Your delivery courier has arrived at your doorstep. Please step out to receive your package.",
     },
     delivered: {
       emoji: "🎉",
-      title: "Delivered Successfully!",
-      msg: "Your order has been delivered. Enjoy your fresh produce!",
+      title: "Order Delivered Successfully!",
+      msg: "Your order has been delivered. Thank you for choosing BemsFarms fresh produce!",
     },
     cancelled: {
       emoji: "❌",
       title: "Order Cancelled",
-      msg: "Your order has been cancelled. A refund will be processed within 3-5 days.",
+      msg: "Your order has been cancelled. If you have already paid, a refund will be processed.",
     },
   };
+
   const s = statusMessages[newStatus] || {
     emoji: "📋",
-    title: "Order Update",
-    msg: "Your order status has been updated.",
+    title: "Delivery Status Update",
+    msg: "There is a new update regarding your delivery.",
   };
+
+  const driverSection = deliveryDetails.driver_name ? `
+    <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 14px 18px; margin: 16px 0; text-align: left;">
+      <p style="margin: 0 0 6px; font-weight: 700; color: #166534; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">🚚 Assigned Courier</p>
+      <p style="margin: 0; font-size: 15px; font-weight: 700; color: #14532D;">${deliveryDetails.driver_name} ${deliveryDetails.vehicle_type ? `(${deliveryDetails.vehicle_type})` : ''}</p>
+      ${deliveryDetails.eta_minutes ? `<p style="margin: 4px 0 0; font-size: 12px; color: #15803D;">Estimated Arrival: <strong>~${deliveryDetails.eta_minutes} mins</strong></p>` : ''}
+    </div>
+  ` : '';
 
   return sendMail({
     to: user.email,
-    subject: `${s.emoji} Order #${order.id} — ${s.title}`,
+    subject: `${s.emoji} Order #${order.id} [${deliveryRef}] — ${s.title}`,
     html: `<div style="${emailStyles}">
       ${header(`${s.emoji} ${s.title}`)}
-      <p style="color: #4B5563;">${s.msg}</p>
-      <div style="background: #F8FAF9; border-radius: 12px; padding: 16px; margin: 16px 0; text-align: center;">
-        <p style="font-size: 14px; color: #6B7280; margin: 0 0 4px;">Order ID</p>
-        <p style="font-size: 20px; font-weight: 800; color: #1B4332; margin: 0;">#${order.id}</p>
+      <p style="color: #4B5563; font-size: 15px; line-height: 1.6;">Hello <strong>${user.name || "Valued Customer"}</strong>,</p>
+      <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">${s.msg}</p>
+      
+      <div style="background: #F8FAF9; border-radius: 12px; padding: 16px; margin: 16px 0; display: table; width: 100%; box-sizing: border-box;">
+        <table style="width: 100%;">
+          <tr>
+            <td style="text-align: left; padding: 4px 0;">
+              <span style="font-size: 12px; color: #6B7280; text-transform: uppercase;">Order Reference</span><br/>
+              <strong style="font-size: 16px; color: #1B4332;">#${order.id}</strong>
+            </td>
+            <td style="text-align: right; padding: 4px 0;">
+              <span style="font-size: 12px; color: #6B7280; text-transform: uppercase;">Delivery ID</span><br/>
+              <strong style="font-size: 16px; color: #0284C7;">${deliveryRef}</strong>
+            </td>
+          </tr>
+        </table>
       </div>
+
+      ${driverSection}
+
+      ${order.address ? `
+        <div style="background: #F8FAF9; border-left: 4px solid #10B981; padding: 12px 16px; border-radius: 6px; margin: 16px 0; text-align: left;">
+          <p style="margin: 0; color: #374151; font-size: 13px;">
+            📍 <strong>Destination:</strong> ${order.address}
+          </p>
+        </div>
+      ` : ''}
+
+      <div style="text-align: center; margin: 28px 0 20px;">
+        <a href="${trackingUrl}" style="background: #143C2D; color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 14px; font-weight: 700; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(20,60,45,0.25);">
+          📍 Track Live Delivery Progress →
+        </a>
+      </div>
+
+      <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 10px;">
+        Or enter code <strong>${trackingCode}</strong> at <a href="${domain}/track-order" style="color: #10B981;">bemsfarms.com/track-order</a>
+      </p>
+
       ${footer}
     </div>`,
   });
