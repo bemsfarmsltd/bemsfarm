@@ -1,0 +1,323 @@
+{
+	"info": {
+		"_postman_id": "bems-farms-driver-api-v1",
+		"name": "Bems Farms - Driver Mobile App API",
+		"description": "Complete API Collection for Bems Farms Driver App & Logistics Dispatch",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://api.bemsfarms.com/api/driver",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication & Profile",
+			"item": [
+				{
+					"name": "Driver Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"    console.log('Driver Token Saved!');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"08012345678\",\n  \"password\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Profile (Me)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile & Bank Info",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"bank_name\": \"Guaranty Trust Bank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Ibrahim Musa\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Toggle Online / Offline Availability",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"is_available\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/availability",
+							"host": ["{{baseUrl}}"],
+							"path": ["availability"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Deliveries & Orders",
+			"item": [
+				{
+					"name": "Get Active Assigned Deliveries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/deliveries",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries"]
+						}
+					}
+				},
+				{
+					"name": "Get Delivery Details by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/42",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "42"]
+						}
+					}
+				},
+				{
+					"name": "Update Status - En Route (Out for Delivery)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"en_route\",\n  \"eta_minutes\": 20\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/42/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "42", "status"]
+						}
+					}
+				},
+				{
+					"name": "Update Status - Delivered with Proof",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"delivered\",\n  \"proof_note\": \"Delivered in person\",\n  \"proof_photo\": \"https://example.com/proof.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/42/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "42", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get Delivery History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/history?page=1&limit=20",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "history"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Location Tracking",
+			"item": [
+				{
+					"name": "Send GPS Location Ping",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986,\n  \"heading\": 180.0,\n  \"speed\": 35.0,\n  \"accuracy\": 4.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/location",
+							"host": ["{{baseUrl}}"],
+							"path": ["location"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Wallet & Withdrawals",
+			"item": [
+				{
+					"name": "Get Wallet Balance & Commissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/earnings",
+							"host": ["{{baseUrl}}"],
+							"path": ["earnings"]
+						}
+					}
+				},
+				{
+					"name": "Request Withdrawal (Payout)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 5000,\n  \"bank_name\": \"GTBank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Ibrahim Musa\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/withdraw",
+							"host": ["{{baseUrl}}"],
+							"path": ["withdraw"]
+						}
+					}
+				}
+			]
+		}
+	]
+}
