@@ -962,6 +962,19 @@ export default function CheckoutPage() {
                                 <p style={{ fontSize: "12px", color: "#6B7280", margin: "4px 0 0" }}>
                                   Recipient: <strong style={{ color: "#111827" }}>{addr.receiver_name}</strong> · Phone: <strong style={{ color: "#111827" }}>{addr.receiver_phone}</strong>
                                 </p>
+                                {addr.latitude && addr.longitude ? (
+                                  <div style={{ marginTop: "6px" }}>
+                                    <span style={{ backgroundColor: "#DCFCE7", color: "#166534", fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                      <span>📍</span><span>GPS Verified Coordinates</span>
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div style={{ marginTop: "6px" }}>
+                                    <span style={{ backgroundColor: "#FEF3C7", color: "#92400E", fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                      <span>⚠️</span><span>Unverified Location</span>
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );

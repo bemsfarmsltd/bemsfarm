@@ -14,8 +14,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Bems Farms warehouse — dispatch origin (Aba)
-const STORE_POS = [6.4553, 3.3862]
+// Bems Farms Warehouse & Retail Hubs
+const UMUAHIA_HUB = [5.5245, 7.4912] // Main Distribution Center
+const ABA_HUB     = [5.1065, 7.3667] // Commercial Express Depot
 
 const STATUS_CFG = {
   assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', pulse: false },
@@ -85,7 +86,7 @@ function customerIcon(color) {
   })
 }
 
-function storeIcon() {
+function storeIcon(title = "BEMS") {
   return L.divIcon({
     className: '',
     iconSize: [44, 44],
@@ -101,7 +102,7 @@ function storeIcon() {
         flex-direction:column;gap:1px;
       ">
         <i class="ri-store-2-fill" style="font-size:18px;"></i>
-        <div style="font-size:7px;font-weight:700;letter-spacing:0.5px;">BEMS</div>
+        <div style="font-size:7px;font-weight:700;letter-spacing:0.5px;">${title}</div>
       </div>`,
   })
 }
@@ -119,11 +120,14 @@ export default function DeliveryMap() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected]   = useState(null)
   const [flyTarget, setFlyTarget] = useState(null)
+  const [refreshSec, setRefreshSec] = useState(5)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
 
   const load = useCallback(async () => {
     try {
       const res = await api.get('/admin/deliveries/active')
       setDeliveries(res.data.deliveries || [])
+      setLastUpdated(new Date())
     } catch {
       toast.error('Failed to load active deliveries')
     } finally {
@@ -133,9 +137,9 @@ export default function DeliveryMap() {
 
   useEffect(() => {
     load()
-    const id = setInterval(load, 20000)
+    const id = setInterval(load, refreshSec * 1000)
     return () => clearInterval(id)
-  }, [load])
+  }, [load, refreshSec])
 
   const withGps = deliveries.filter(d => d.driver_lat != null && d.driver_lng != null)
 
@@ -323,8 +327,8 @@ export default function DeliveryMap() {
           `}</style>
 
           <MapContainer
-            center={STORE_POS}
-            zoom={12}
+            center={UMUAHIA_HUB}
+            zoom={11}
             style={{ width: '100%', height: '100%' }}
             zoomControl={true}>
 
@@ -335,11 +339,23 @@ export default function DeliveryMap() {
 
             {flyTarget && <FlyToDriver pos={flyTarget} />}
 
-            <Marker position={STORE_POS} icon={storeIcon()}>
+            {/* Umuahia Distribution Hub */}
+            <Marker position={UMUAHIA_HUB} icon={storeIcon("HQ · UMUAHIA")}>
               <Popup>
-                <div style={{ padding: '12px 14px', minWidth: 200 }}>
-                  <div className="fw-bold mb-1" style={{ fontSize: 13 }}>🏪 Bems Farms Warehouse</div>
-                  <div className="text-muted small">Dispatch origin · All active deliveries depart here</div>
+                <div style={{ padding: '12px 14px', minWidth: 220 }}>
+                  <div className="fw-bold text-success mb-1" style={{ fontSize: 13 }}>🌾 Bems Farms HQ (Umuahia)</div>
+                  <div className="text-muted small">Central Logistics & Farm Produce Processing Center</div>
+                  <div className="mt-2 small"><i className="ri-map-pin-line me-1" />Umuahia, Abia State</div>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Aba Commercial Depot */}
+            <Marker position={ABA_HUB} icon={storeIcon("ABA DEPOT")}>
+              <Popup>
+                <div style={{ padding: '12px 14px', minWidth: 220 }}>
+                  <div className="fw-bold text-primary mb-1" style={{ fontSize: 13 }}>🏪 Bems Farms Commercial Depot</div>
+                  <div className="text-muted small">Aba Retail Dispatch & Express Fulfillment Hub</div>
                   <div className="mt-2 small"><i className="ri-map-pin-line me-1" />Aba, Abia State</div>
                 </div>
               </Popup>

@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import PageWrapper from "../components/layout/PageWrapper";
+import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
@@ -250,6 +251,8 @@ export default function ProfilePage() {
       street_address: "",
       city: "",
       state: "Abia State",
+      latitude: null,
+      longitude: null,
       is_default: addresses.length === 0,
     });
     setAddressError(null);
@@ -265,6 +268,8 @@ export default function ProfilePage() {
       street_address: addr.street_address || "",
       city: addr.city || "",
       state: addr.state || "Abia State",
+      latitude: addr.latitude || null,
+      longitude: addr.longitude || null,
       is_default: !!addr.is_default,
     });
     setAddressError(null);
@@ -851,12 +856,24 @@ export default function ProfilePage() {
 
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-bold text-gray-700 mb-1">
-                            Street Address *
+                            Street Address & Location Pin *
                           </label>
-                          <input
+                          <AddressAutocomplete
                             value={addressForm.street_address}
                             onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })}
-                            placeholder="e.g. 14 Farm Road, Lekki Phase 1"
+                            onPlaceSelected={(place) => {
+                              setAddressForm(prev => ({
+                                ...prev,
+                                street_address: place.address,
+                                city: place.city || prev.city,
+                                state: place.state || prev.state,
+                                latitude: place.latitude,
+                                longitude: place.longitude,
+                              }));
+                            }}
+                            initialLat={addressForm.latitude}
+                            initialLng={addressForm.longitude}
+                            placeholder="e.g. 14 Farm Road, Umuahia (or click Pin Map)"
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
                           />
                         </div>
@@ -868,7 +885,7 @@ export default function ProfilePage() {
                           <input
                             value={addressForm.city}
                             onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                            placeholder="e.g. Lekki, Ikeja, Victoria Island"
+                            placeholder="e.g. Umuahia, Aba, Owerri"
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
                           />
                         </div>
@@ -942,6 +959,13 @@ export default function ProfilePage() {
                             <p className="m-0 text-[11px] text-gray-500">
                               Phone: {addr.receiver_phone}
                             </p>
+                          )}
+
+                          {addr.latitude && addr.longitude && (
+                            <div className="mt-2 text-[10px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-200 rounded-lg px-2 py-0.5 inline-flex items-center gap-1">
+                              <span>📍</span>
+                              <span>GPS Mapped for Driver Navigation</span>
+                            </div>
                           )}
                         </div>
 
