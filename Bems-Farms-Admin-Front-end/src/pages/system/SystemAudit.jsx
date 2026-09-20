@@ -159,10 +159,26 @@ export function getHumanNarrative(e) {
 
   // 2. Authentication & Security
   if (e.category === 'auth' || e.category === 'security' || action.includes('LOGIN') || action.includes('/auth/')) {
+    if (action.includes('forgot-password')) {
+      return {
+        title: '🔑 Password Reset Requested',
+        story: `${actor} requested a password recovery link/code for account "${details.email || actor}".`,
+        icon: '🔑',
+        type: 'security'
+      }
+    }
+    if (action.includes('change-password') || action.includes('reset-password') || action.includes('password') || action === 'PASSWORD_RESET') {
+      return {
+        title: '🔑 Changed Password',
+        story: `${actor} successfully updated/reset their account security password.`,
+        icon: '🔑',
+        type: 'security'
+      }
+    }
     if (action === 'LOGIN_SUCCESS' || (action.includes('login') && isSuccess && statusCode !== 401)) {
       return {
-        title: '🔐 Successful Login',
-        story: `${actor} (${e.actor_role || 'User'}) signed in successfully to Bems Farms.`,
+        title: '🔐 Logged In',
+        story: `${actor} (${e.actor_role || 'User'}) signed into their account successfully.`,
         icon: '🔐',
         type: 'auth'
       }
@@ -173,6 +189,30 @@ export function getHumanNarrative(e) {
         story: `Sign-in attempt failed: Incorrect credentials entered for account "${details.email || actor}".`,
         icon: '⚠️',
         type: 'security'
+      }
+    }
+    if (action.includes('logout')) {
+      return {
+        title: '🚪 Logged Out',
+        story: `${actor} signed out of their active session.`,
+        icon: '🚪',
+        type: 'auth'
+      }
+    }
+    if (action.includes('register') || action.includes('signup') || action === 'REGISTER') {
+      return {
+        title: '🎉 Registered New Account',
+        story: `${actor} created a new customer account with verified delivery coordinates.`,
+        icon: '🎉',
+        type: 'auth'
+      }
+    }
+    if (action.includes('verify-email') || action.includes('verify-otp') || action === 'VERIFY_EMAIL') {
+      return {
+        title: '✉️ Email Verification Completed',
+        story: `${actor} verified their email address using the OTP security code.`,
+        icon: '✉️',
+        type: 'auth'
       }
     }
     if (action.includes('refresh')) {
@@ -189,30 +229,6 @@ export function getHumanNarrative(e) {
         story: `Active session security token automatically renewed for ${actor}.`,
         icon: '🔄',
         type: 'auth'
-      }
-    }
-    if (action.includes('register') || action === 'REGISTER') {
-      return {
-        title: '🎉 New Customer Registered',
-        story: `${actor} created a new customer account with verified GPS delivery coordinates.`,
-        icon: '🎉',
-        type: 'auth'
-      }
-    }
-    if (action.includes('verify-email') || action === 'VERIFY_EMAIL') {
-      return {
-        title: '✉️ Email Verification Completed',
-        story: `${actor} verified their email address using the 6-digit OTP code.`,
-        icon: '✉️',
-        type: 'auth'
-      }
-    }
-    if (action.includes('password') || action === 'PASSWORD_RESET') {
-      return {
-        title: '🔑 Password Changed',
-        story: `Password was successfully updated for account "${details.email || actor}".`,
-        icon: '🔑',
-        type: 'security'
       }
     }
   }
@@ -251,32 +267,244 @@ export function getHumanNarrative(e) {
     }
   }
 
-  // 4. API Requests
-  if (action.startsWith('GET ') || action.startsWith('POST ') || action.startsWith('PATCH ') || action.startsWith('DELETE ')) {
+  // 4. API Requests (Translate to Human Actions)
+  if (action.startsWith('GET ') || action.startsWith('POST ') || action.startsWith('PATCH ') || action.startsWith('PUT ') || action.startsWith('DELETE ')) {
     const [method, ...urlParts] = action.split(' ')
     const path = urlParts.join(' ')
+    const lowerPath = path.toLowerCase()
 
-    // Products / Storefront
-    if (path.startsWith('/api/products') || path === '/api/products') {
+    // ── Live Support & Chat ──
+    if (lowerPath.includes('/support/messages') || lowerPath.includes('/customer-chat')) {
+      if (method === 'POST') {
+        const msgText = details.body?.message || details.body?.text || details.body?.content || ''
+        return {
+          title: '💬 Sent Live Support Message',
+          story: `${actor} sent a live message to customer care: ${msgText ? `"${msgText.slice(0, 80)}${msgText.length > 80 ? '…' : ''}"` : 'asking for assistance.'}`,
+          icon: '💬',
+          type: 'comms'
+        }
+      }
+      return {
+        title: '💬 Checked Support Messages',
+        story: `${actor} opened live customer support chat to check for new messages.`,
+        icon: '💬',
+        type: 'comms'
+      }
+    }
+    if (lowerPath.includes('/support') || lowerPath.includes('/broadcasts')) {
+      if (lowerPath.includes('/broadcasts')) {
+        return {
+          title: '📢 Viewed Store Broadcasts',
+          story: `${actor} viewed active farm store announcements and news broadcasts.`,
+          icon: '📢',
+          type: 'comms'
+        }
+      }
+      if (method === 'POST') {
+        return {
+          title: '💬 Created Support Ticket',
+          story: `${actor} opened a new customer support ticket.`,
+          icon: '💬',
+          type: 'comms'
+        }
+      }
+      return {
+        title: '💬 Checked Customer Support',
+        story: `${actor} checked customer support messages and status.`,
+        icon: '💬',
+        type: 'comms'
+      }
+    }
+
+    // ── Chef Bems AI Assistant ──
+    if (lowerPath.includes('/chef-bems') || lowerPath.includes('/advanced-ai') || lowerPath.startsWith('/api/ai')) {
+      if (method === 'POST') {
+        const queryText = details.body?.prompt || details.body?.message || details.body?.query || details.body?.text || ''
+        return {
+          title: '🤖 Messaged Chef Bems AI',
+          story: `${actor} asked Chef Bems AI for recipes, meal ideas, or cooking assistance: ${queryText ? `"${queryText.slice(0, 80)}${queryText.length > 80 ? '…' : ''}"` : 'recipe inquiry.'}`,
+          icon: '🤖',
+          type: 'ai'
+        }
+      }
+      return {
+        title: '🤖 Chef Bems AI Dialogues Viewed',
+        story: `${actor} reviewed Chef Bems AI chat history and culinary advice.`,
+        icon: '🤖',
+        type: 'ai'
+      }
+    }
+
+    // ── Auth, Login, Profile & Password ──
+    if (lowerPath.includes('/auth/change-password') || lowerPath.includes('/auth/reset-password') || lowerPath.includes('/auth/password')) {
+      return {
+        title: '🔑 Changed Password',
+        story: `${actor} updated or changed their account password.`,
+        icon: '🔑',
+        type: 'security'
+      }
+    }
+    if (lowerPath.includes('/auth/forgot-password')) {
+      return {
+        title: '🔑 Password Reset Requested',
+        story: `${actor} requested a password recovery link/code.`,
+        icon: '🔑',
+        type: 'security'
+      }
+    }
+    if (lowerPath.includes('/auth/login')) {
+      if (isSuccess && statusCode !== 401) {
+        return {
+          title: '🔐 Logged In',
+          story: `${actor} signed into their account successfully.`,
+          icon: '🔐',
+          type: 'auth'
+        }
+      }
+      return {
+        title: '⚠️ Failed Login Attempt',
+        story: `Sign-in attempt failed for account "${details.email || actor}".`,
+        icon: '⚠️',
+        type: 'security'
+      }
+    }
+    if (lowerPath.includes('/auth/logout')) {
+      return {
+        title: '🚪 Logged Out',
+        story: `${actor} signed out of their account session.`,
+        icon: '🚪',
+        type: 'auth'
+      }
+    }
+    if (lowerPath.includes('/auth/register') || lowerPath.includes('/auth/signup')) {
+      return {
+        title: '🎉 Registered New Account',
+        story: `${actor} created a new Bems Farms account.`,
+        icon: '🎉',
+        type: 'auth'
+      }
+    }
+    if (lowerPath.includes('/auth/verify-email') || lowerPath.includes('/auth/verify-otp')) {
+      return {
+        title: '✉️ Email Verification Completed',
+        story: `${actor} verified their email address with OTP code.`,
+        icon: '✉️',
+        type: 'auth'
+      }
+    }
+    if (lowerPath.includes('/auth/me') || lowerPath.includes('/auth/user')) {
+      return {
+        title: '👤 Active User Session Checked',
+        story: `${actor} verified current profile credentials and session state.`,
+        icon: '👤',
+        type: 'auth'
+      }
+    }
+    if (lowerPath.includes('/auth/profile') || (lowerPath.includes('/profile') && method === 'PUT')) {
+      return {
+        title: '👤 Updated Profile Info',
+        story: `${actor} updated personal profile details or contact information.`,
+        icon: '👤',
+        type: 'auth'
+      }
+    }
+
+    // ── Shopping Cart & Wishlist ──
+    if (lowerPath.includes('/cart')) {
+      if (method === 'POST') {
+        return {
+          title: '🛒 Added Item to Cart',
+          story: `${actor} added grocery products to their shopping cart.`,
+          icon: '🛒',
+          type: 'customer'
+        }
+      }
+      if (method === 'PATCH' || method === 'PUT') {
+        return {
+          title: '🛒 Updated Cart Quantities',
+          story: `${actor} adjusted item quantities in their shopping cart.`,
+          icon: '🛒',
+          type: 'customer'
+        }
+      }
+      if (method === 'DELETE') {
+        return {
+          title: '🛒 Removed Item from Cart',
+          story: `${actor} removed products from their shopping cart.`,
+          icon: '🛒',
+          type: 'customer'
+        }
+      }
+      return {
+        title: '🛒 Viewed Shopping Cart',
+        story: `${actor} opened shopping cart to review items and total price.`,
+        icon: '🛒',
+        type: 'customer'
+      }
+    }
+
+    if (lowerPath.includes('/wishlist')) {
+      if (method === 'POST') {
+        return {
+          title: '❤️ Saved Item to Wishlist',
+          story: `${actor} added a product to their saved favorites.`,
+          icon: '❤️',
+          type: 'customer'
+        }
+      }
+      if (method === 'DELETE') {
+        return {
+          title: '💔 Removed from Wishlist',
+          story: `${actor} removed a product from their favorites list.`,
+          icon: '💔',
+          type: 'customer'
+        }
+      }
+      return {
+        title: '❤️ Checked Saved Wishlist',
+        story: `${actor} viewed their saved favorite products.`,
+        icon: '❤️',
+        type: 'customer'
+      }
+    }
+
+    // ── Storefront Products & Catalog ──
+    if (lowerPath.startsWith('/api/products') || lowerPath === '/api/products') {
       if (!isSuccess || statusCode === 500) {
         return {
-          title: '🔴 Storefront Products Query Slowdown',
+          title: '🔴 Storefront Products Slowdown',
           story: `A storefront visitor requested products, but the request timed out (${details.duration_ms || 1165}ms) [HTTP ${statusCode || 500}]. System auto-recovered.`,
           icon: '🔴',
           type: 'error'
         }
       }
+      if (method === 'GET' && lowerPath.match(/\/products\/[^\/]+$/)) {
+        return {
+          title: '🔍 Inspected Product Details',
+          story: `${actor} viewed pricing, nutrition, and details for a product.`,
+          icon: '🔍',
+          type: 'api'
+        }
+      }
       return {
-        title: '🛒 Storefront Products Catalog Loaded',
-        story: `A visitor or customer browsed the product catalog (${details.duration_ms || 12}ms).`,
-        icon: '🛒',
+        title: '🛍️ Browsed Storefront Products',
+        story: `${actor} browsed fresh farm groceries and product listings.`,
+        icon: '🛍️',
+        type: 'api'
+      }
+    }
+    if (lowerPath.includes('/categories')) {
+      return {
+        title: '📂 Explored Product Categories',
+        story: `${actor} navigated farm food and grocery categories.`,
+        icon: '📂',
         type: 'api'
       }
     }
 
-    // Orders API
-    if (path.includes('/api/admin/orders') || path.includes('/api/orders')) {
-      if (path.includes('/assign-driver')) {
+    // ── Orders API ──
+    if (lowerPath.includes('/api/admin/orders') || lowerPath.includes('/api/orders')) {
+      if (lowerPath.includes('/assign-driver')) {
         return {
           title: '🛵 Delivery Driver Assigned',
           story: `Admin ${actor} assigned a delivery driver to Order #${e.entity_id || ''}.`,
@@ -284,60 +512,185 @@ export function getHumanNarrative(e) {
           type: 'delivery'
         }
       }
-      if (path.includes('/status')) {
+      if (lowerPath.includes('/status')) {
         return {
           title: '📦 Order Status Changed',
-          story: `Admin ${actor} changed order fulfillment status for Order #${e.entity_id || ''}.`,
+          story: `Admin ${actor} changed fulfillment status for Order #${e.entity_id || ''}.`,
           icon: '📦',
           type: 'order'
         }
       }
-      if (method === 'GET' && path.match(/\/orders\/[^\/]+$/)) {
+      if (method === 'POST') {
         return {
-          title: '📋 Order Full Details Inspected',
-          story: `Admin ${actor} opened deep tracking and item breakdown for Order #${e.entity_id || ''}.`,
+          title: '🛍️ Placed New Order',
+          story: `${actor} placed and checked out a new grocery delivery order.`,
+          icon: '🛍️',
+          type: 'order'
+        }
+      }
+      if (method === 'GET' && lowerPath.match(/\/orders\/[^\/]+$/)) {
+        return {
+          title: '📋 Checked Order Details',
+          story: `${actor} opened full tracking and item breakdown for Order #${e.entity_id || ''}.`,
           icon: '📋',
           type: 'order'
         }
       }
       if (method === 'GET') {
         return {
-          title: '📊 Sales & Orders Dashboard Refreshed',
-          story: `Admin ${actor} viewed multi-channel sales and order fulfillment queue.`,
+          title: e.actor_role === 'superadmin' || e.actor_role === 'admin' ? '📊 Sales & Orders Queue Viewed' : '📦 Checked Order History',
+          story: e.actor_role === 'superadmin' || e.actor_role === 'admin' ? `Admin ${actor} viewed sales and order fulfillment queue.` : `${actor} viewed past order receipts and delivery statuses.`,
           icon: '📊',
-          type: 'order'
-        }
-      }
-      if (method === 'POST') {
-        return {
-          title: '🛍️ New Order Submitted',
-          story: `New order submitted via storefront checkout or POS terminal.`,
-          icon: '🛍️',
           type: 'order'
         }
       }
     }
 
-    // Deliveries & Drivers
-    if (path.includes('/driver/location')) {
+    // ── Deliveries, Addresses & Driver App ──
+    if (lowerPath.includes('/driver/location')) {
       return {
-        title: '📡 Live Driver GPS Telemetry',
-        story: `Driver broadcasted live road coordinates to the active dispatch fleet map.`,
+        title: '📡 Driver Live GPS Updated',
+        story: `Driver broadcasted live road coordinates to dispatch map.`,
         icon: '📡',
         type: 'delivery'
       }
     }
-    if (path.includes('/locations/verify') || path.includes('/locations/search')) {
+    if (lowerPath.includes('/driver/assigned-orders') || lowerPath.includes('/driver/orders')) {
       return {
-        title: '📍 Address Geocoded & Verified',
-        story: `Customer checked delivery address coordinates and matched local delivery zone.`,
+        title: '🛵 Driver Checked Assigned Runs',
+        story: `Driver viewed today's assigned delivery schedule and route.`,
+        icon: '🛵',
+        type: 'delivery'
+      }
+    }
+    if (lowerPath.includes('/driver/accept') || lowerPath.includes('/driver/deliver') || lowerPath.includes('/driver/pickup')) {
+      return {
+        title: '🛵 Driver Updated Delivery Status',
+        story: `Driver updated delivery transit progress for order #${e.entity_id || ''}.`,
+        icon: '🛵',
+        type: 'delivery'
+      }
+    }
+    if (lowerPath.includes('/addresses')) {
+      if (method === 'POST') {
+        return {
+          title: '📍 Added Delivery Address',
+          story: `${actor} saved a new home or office delivery address.`,
+          icon: '📍',
+          type: 'location'
+        }
+      }
+      if (method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+        return {
+          title: '📍 Updated Delivery Address',
+          story: `${actor} updated or removed a saved delivery address.`,
+          icon: '📍',
+          type: 'location'
+        }
+      }
+      return {
+        title: '📍 Checked Delivery Addresses',
+        story: `${actor} viewed saved delivery addresses and GPS locations.`,
+        icon: '📍',
+        type: 'location'
+      }
+    }
+    if (lowerPath.includes('/locations/verify') || lowerPath.includes('/locations/search') || lowerPath.includes('/locations')) {
+      return {
+        title: '📍 Delivery Zone & Fee Calculated',
+        story: `${actor} verified delivery address coordinates and matched local delivery zone.`,
         icon: '📍',
         type: 'location'
       }
     }
 
-    // Customers Admin
-    if (path.includes('/api/admin/customers')) {
+    // ── Admin Subsystems (POS, Inventory, Staff, Finance, Coupons, God Eye) ──
+    if (lowerPath.includes('/admin/pos')) {
+      if (method === 'POST') {
+        return {
+          title: '💳 POS Sale Completed',
+          story: `Cashier ${actor} checked out a walk-in counter customer sale.`,
+          icon: '💳',
+          type: 'financial'
+        }
+      }
+      return {
+        title: '💳 POS Terminal Active',
+        story: `Cashier ${actor} operated the in-store POS checkout terminal.`,
+        icon: '💳',
+        type: 'admin'
+      }
+    }
+
+    if (lowerPath.includes('/admin/inventory')) {
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        return {
+          title: '📦 Stock Level Adjusted',
+          story: `Admin ${actor} updated stock quantities, batch dates, or warehouse allocation.`,
+          icon: '📦',
+          type: 'admin'
+        }
+      }
+      return {
+        title: '📦 Inventory Stock Inspected',
+        story: `Admin ${actor} reviewed warehouse inventory and stock levels.`,
+        icon: '📦',
+        type: 'admin'
+      }
+    }
+
+    if (lowerPath.includes('/admin/staff')) {
+      if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+        return {
+          title: '👥 Staff Role / Permissions Modified',
+          story: `Admin ${actor} updated staff profile, permissions, or access control.`,
+          icon: '👥',
+          type: 'admin'
+        }
+      }
+      return {
+        title: '👥 Staff Directory Viewed',
+        story: `Admin ${actor} reviewed staff accounts and team members.`,
+        icon: '👥',
+        type: 'admin'
+      }
+    }
+
+    if (lowerPath.includes('/admin/accounts') || lowerPath.includes('/admin/payments') || lowerPath.includes('/admin/purchases')) {
+      if (method === 'POST' || method === 'PUT') {
+        return {
+          title: '💰 Financial Transaction Recorded',
+          story: `Admin ${actor} posted income, expense ledger entry, or bank transfer.`,
+          icon: '💰',
+          type: 'financial'
+        }
+      }
+      return {
+        title: '💰 Accounts & Ledger Inspected',
+        story: `Admin ${actor} reviewed financial statements and bank balances.`,
+        icon: '💰',
+        type: 'financial'
+      }
+    }
+
+    if (lowerPath.includes('/admin/coupons')) {
+      if (method === 'POST' || method === 'PUT' || method === 'DELETE') {
+        return {
+          title: '🏷️ Discount Coupon Modified',
+          story: `Admin ${actor} created or edited discount coupon promo codes.`,
+          icon: '🏷️',
+          type: 'admin'
+        }
+      }
+      return {
+        title: '🏷️ Promo Coupons Viewed',
+        story: `Admin ${actor} viewed active promotional discount coupons.`,
+        icon: '🏷️',
+        type: 'admin'
+      }
+    }
+
+    if (lowerPath.includes('/admin/customers')) {
       if (method === 'DELETE') {
         return {
           title: '🗑️ Customer Account Deleted',
@@ -348,16 +701,38 @@ export function getHumanNarrative(e) {
       }
       return {
         title: '👥 Customers CRM Viewed',
-        story: `Admin ${actor} accessed customer management records.`,
+        story: `Admin ${actor} accessed customer management records and profile histories.`,
         icon: '👥',
         type: 'admin'
       }
     }
 
-    // Default API summary
+    if (lowerPath.includes('/audit') || lowerPath.includes('/god-eye')) {
+      return {
+        title: '👁️ God Eye Audit Logs Inspected',
+        story: `Admin ${actor} monitored real-time activity and security logs across Bems Farms.`,
+        icon: '👁️',
+        type: 'system'
+      }
+    }
+
+    if (lowerPath.includes('/admin/dashboard') || lowerPath.includes('/admin/reports')) {
+      return {
+        title: '📊 Admin Reports / Analytics Viewed',
+        story: `Admin ${actor} viewed store revenue, analytics, and KPI reports.`,
+        icon: '📊',
+        type: 'admin'
+      }
+    }
+
+    // ── Smart Plain-English Formatter for any other endpoint ──
+    const cleanSegments = path.replace(/^\/api\//, '').split('/').filter(Boolean)
+    const resourceName = cleanSegments.map(s => s.replace(/[-_]/g, ' ')).join(' > ')
+    const verb = method === 'GET' ? 'Viewed' : method === 'POST' ? 'Submitted' : method === 'DELETE' ? 'Deleted' : 'Updated'
+
     return {
-      title: `${method} ${path.replace('/api/', '')}`,
-      story: `${actor} requested endpoint "${path}" ${isSuccess ? 'successfully' : `(Status ${statusCode || 500})`} [${details.duration_ms || 0}ms].`,
+      title: `${verb} ${cleanSegments[0] ? cleanSegments[0].replace(/[-_]/g, ' ').toUpperCase() : 'System'}`,
+      story: `${actor} ${verb.toLowerCase()} ${resourceName || 'system data'} ${isSuccess ? 'successfully' : `(Status ${statusCode || 500})`}.`,
       icon: isSuccess ? '⚡' : '⚠️',
       type: 'api'
     }
