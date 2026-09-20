@@ -979,11 +979,67 @@ a.link-custom-primary {
     print-color-adjust:exact; -webkit-print-color-adjust:exact;
   }
   body.thermal-print-active.thermal-print-58 .thermal-receipt-print-root {
-    width:54mm !important; max-width:54mm !important; padding:1.5mm 2mm !important; zoom:1 !important;
+    width: 54mm !important; max-width: 54mm !important; padding: 1.5mm 2mm !important; zoom: 1 !important;
   }
 }
-@media screen and (max-width:380px) {
-  .thermal-receipt-preview { padding:6px; }
-  .thermal-receipt { width:58mm; padding:2mm; font-size:9.5px; }
-  .thermal-receipt__brand h1 { font-size:14px; }
+@media screen and (max-width: 380px) {
+  .thermal-receipt-preview { padding: 6px; }
+  .thermal-receipt { width: 58mm; padding: 2mm; font-size: 9.5px; }
+  .thermal-receipt__brand h1 { font-size: 14px; }
+}
+
+/* ── UNIVERSAL VALUATION KPI TOP CARDS ───────────────────────────── */
+.valuation-kpi-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: #ffffff;
+  border-radius: 1rem !important;
+}
+.valuation-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08) !important;
+}
+.kpi-icon-pill {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bg-card-glow-blue {
+  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%) !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+.bg-card-glow-green, .bg-card-glow-emerald {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fdfa 100%) !important;
+  border-left: 4px solid #10b981 !important;
+}
+.bg-card-glow-teal {
+  background: linear-gradient(180deg, #ffffff 0%, #f4fdfb 100%) !important;
+  border-left: 4px solid #14b8a6 !important;
+}
+.bg-card-glow-amber, .bg-card-glow-yellow {
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf7 100%) !important;
+  border-left: 4px solid #f59e0b !important;
+}
+.bg-card-glow-purple, .bg-card-glow-violet {
+  background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%) !important;
+  border-left: 4px solid #8b5cf6 !important;
+}
+.bg-card-glow-red, .bg-card-glow-rose {
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+}
+.bg-card-glow-cyan, .bg-card-glow-sky {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%) !important;
+  border-left: 4px solid #0ea5e9 !important;
+}
+.bg-card-glow-indigo {
+  background: linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%) !important;
+  border-left: 4px solid #6366f1 !important;
+}
+.bg-card-glow-slate {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-left: 4px solid #64748b !important;
 }

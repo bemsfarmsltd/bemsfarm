@@ -168,66 +168,92 @@ export default function SalesReport() {
 
       {/* KPI Stats Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-primary border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Gross Revenue</p>
-              <h5 className="fw-bold mb-1 text-primary">{formatNaira(summary.gross_revenue)}</h5>
-              <p className="text-muted fs-xs mb-0">Total order receipts</p>
+        {[
+          {
+            label: 'Gross Revenue',
+            value: formatNaira(summary.gross_revenue),
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-money-cny-box-line',
+            subLeft: 'Total Inflow',
+            subRight: 'Order Receipts'
+          },
+          {
+            label: 'Net Revenue',
+            value: formatNaira(summary.net_revenue),
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-funds-box-line',
+            subLeft: 'Realized Margin',
+            subRight: 'After Discounts'
+          },
+          {
+            label: 'Total Orders',
+            value: summary.total_orders || 0,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-shopping-bag-3-line',
+            subLeft: 'Fulfillment Count',
+            subRight: `${summary.valid_orders || 0} Fulfilled`
+          },
+          {
+            label: 'Avg Order Value',
+            value: formatNaira(summary.avg_order_value),
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-bar-chart-box-line',
+            subLeft: 'Basket Size',
+            subRight: 'Per Transaction'
+          },
+          {
+            label: 'Unique Buyers',
+            value: summary.unique_customers || 0,
+            glow: 'bg-card-glow-purple',
+            iconBg: '#FAF5FF',
+            iconColor: '#7C3AED',
+            icon: 'ri-user-star-line',
+            subLeft: 'Customer Base',
+            subRight: 'Active Buyers'
+          },
+          {
+            label: 'Discounts Given',
+            value: formatNaira(summary.total_discounts),
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-coupon-3-line',
+            subLeft: 'Promotions Applied',
+            subRight: 'Coupons'
+          },
+        ].map(c => (
+          <div key={c.label} className="col-12 col-sm-6 col-xl-4 col-xxl-2">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-success border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Net Revenue</p>
-              <h5 className="fw-bold mb-1 text-success">{formatNaira(summary.net_revenue)}</h5>
-              <p className="text-muted fs-xs mb-0">After discounts</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-info border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Total Orders</p>
-              <h5 className="fw-bold mb-1 text-info">{summary.total_orders || 0}</h5>
-              <p className="text-muted fs-xs mb-0">{summary.valid_orders || 0} fulfilled</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-warning border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Avg Order Value</p>
-              <h5 className="fw-bold mb-1 text-warning">{formatNaira(summary.avg_order_value)}</h5>
-              <p className="text-muted fs-xs mb-0">Basket size</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-purple border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Unique Buyers</p>
-              <h5 className="fw-bold mb-1 text-purple">{summary.unique_customers || 0}</h5>
-              <p className="text-muted fs-xs mb-0">Active customers</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-sm-6 col-xl-2">
-          <div className="card shadow-sm border-0 border-start border-danger border-4 h-100">
-            <div className="card-body p-3">
-              <p className="text-muted fs-xs mb-1 fw-bold text-uppercase">Discounts Given</p>
-              <h5 className="fw-bold mb-1 text-danger">{formatNaira(summary.total_discounts)}</h5>
-              <p className="text-muted fs-xs mb-0">Coupons & promo</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
+
 
       {/* Main Breakdown Row */}
       <div className="row g-3 mb-4">

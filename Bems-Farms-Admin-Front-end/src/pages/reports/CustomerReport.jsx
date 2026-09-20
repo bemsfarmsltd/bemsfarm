@@ -66,28 +66,73 @@ export default function CustomerReport() {
       </div>
 
       {/* Stats */}
-      <div className="row g-4 mb-5">
+      <div className="row g-3 mb-4">
         {[
-          { label: 'Total Customers', value: '1,247', sub: '↑ 18 new this week',  icon: 'ri-user-3-line',        color: 'primary' },
-          { label: 'Active (30 days)', value: '892',  sub: '71.5% of total',       icon: 'ri-user-heart-line',    color: 'success' },
-          { label: 'Avg. Order Value', value: '₦14,200', sub: '↑ 6% vs last month', icon: 'ri-money-dollar-circle-line', color: 'warning' },
-          { label: 'Retention Rate',  value: '74%',   sub: 'Industry avg: 65%',    icon: 'ri-repeat-line',        color: 'info'    },
-        ].map(({ label, value, sub, icon, color }) => (
-          <div className="col-sm-6 col-xl-3" key={label}>
-            <div className="card mb-0">
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div className={`avatar size-10 rounded bg-${color}-subtle text-${color} d-flex align-items-center justify-content-center`}>
-                  <i className={`${icon} fs-4`}></i>
+          {
+            label: 'Total Customers',
+            value: '1,247',
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-user-3-line',
+            subLeft: 'Registered Profiles',
+            subRight: '+18 This Week'
+          },
+          {
+            label: 'Active (30 Days)',
+            value: '892',
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-user-heart-line',
+            subLeft: 'Monthly Active Share',
+            subRight: '71.5% Base'
+          },
+          {
+            label: 'Avg. Order Value',
+            value: '₦14,200',
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-money-dollar-circle-line',
+            subLeft: 'Spend Benchmark',
+            subRight: '↑ 6% MoM'
+          },
+          {
+            label: 'Retention Rate',
+            value: '74%',
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-repeat-line',
+            subLeft: 'Cohort Loyalty',
+            subRight: 'Above Avg'
+          },
+        ].map(c => (
+          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <h5 className="fw-bold mb-0">{value}</h5>
-                  <p className="text-muted fs-xs mb-0">{sub}</p>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
 
       {/* Charts */}
       <div className="row g-4 mb-4">

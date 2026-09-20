@@ -272,29 +272,91 @@ export default function DeliveryZones() {
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Zones',      value: stats.total,           color: '#6366f1', icon: 'ri-map-2-line'              },
-          { label: 'Active Zones',     value: stats.active,          color: '#22c55e', icon: 'ri-checkbox-circle-line'    },
-          { label: 'Inactive Zones',   value: stats.inactive,        color: '#ef4444', icon: 'ri-close-circle-line'       },
-          { label: 'Total Deliveries', value: stats.totalDeliveries, color: '#3b82f6', icon: 'ri-truck-line'             },
-          { label: 'Zone Revenue',     value: fmt(stats.totalRevenue),color: '#10b981', icon: 'ri-money-dollar-circle-line'},
-          { label: 'Avg Delivery Fee', value: fmt(stats.avgFee),     color: '#f59e0b', icon: 'ri-price-tag-3-line'       },
+          {
+            label: 'Total Zones',
+            value: stats.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-map-2-line',
+            subLeft: 'Configured Geofences',
+            subRight: `${stats.total} Zones`
+          },
+          {
+            label: 'Active Coverage',
+            value: stats.active,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Live Dispatch Enabled',
+            subRight: `${stats.active} Online`
+          },
+          {
+            label: 'Inactive Zones',
+            value: stats.inactive,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-close-circle-line',
+            subLeft: 'Temporarily Paused',
+            subRight: `${stats.inactive} Offline`
+          },
+          {
+            label: 'Total Deliveries',
+            value: stats.totalDeliveries,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-truck-line',
+            subLeft: 'Fulfilled Orders',
+            subRight: 'Across All Zones'
+          },
+          {
+            label: 'Zone Revenue',
+            value: fmt(stats.totalRevenue),
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-money-dollar-circle-line',
+            subLeft: 'Logistics Gross',
+            subRight: 'Delivery Earnings'
+          },
+          {
+            label: 'Avg Delivery Fee',
+            value: fmt(stats.avgFee),
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-price-tag-3-line',
+            subLeft: 'Tariff Benchmark',
+            subRight: 'Per Dropoff'
+          },
         ].map(c => (
-          <div key={c.label} className="col-6 col-md-4 col-xl-2">
-            <div className="card p-3 shadow-xs h-100" style={{ borderLeft: `4px solid ${c.color}` }}>
-              <div className="d-flex align-items-center gap-3">
-                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 40, height: 40, background: c.color + '20' }}>
-                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
+          <div key={c.label} className="col-12 col-sm-6 col-xl-4 col-xxl-2">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>{c.label}</div>
-                  <div className="fw-bold fs-18">{c.value}</div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
 
       {/* Filter + Actions bar */}
       <div className="card mb-3 shadow-xs">

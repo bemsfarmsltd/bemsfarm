@@ -1,67 +1,95 @@
 /**
- * StatsCard — Luxury Executive Stat Widget
+ * StatsCard — Modern Executive Valuation KPI Card
  */
 const TINT_MAP = {
-  green:  { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
-  blue:   { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' },
-  amber:  { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
-  red:    { bg: '#ffe4e6', text: '#be123c', border: '#fecdd3' },
-  purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' },
-  teal:   { bg: '#ccfbf1', text: '#0f766e', border: '#99f6e4' },
-  slate:  { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
+  green:   { bg: '#ECFDF5', text: '#059669', glow: 'bg-card-glow-green',  valColor: 'text-dark' },
+  emerald: { bg: '#ECFDF5', text: '#059669', glow: 'bg-card-glow-green',  valColor: 'text-emerald' },
+  blue:    { bg: '#EFF6FF', text: '#2563EB', glow: 'bg-card-glow-blue',   valColor: 'text-dark' },
+  cyan:    { bg: '#F0F9FF', text: '#0284C7', glow: 'bg-card-glow-cyan',   valColor: 'text-dark' },
+  amber:   { bg: '#FEF3C7', text: '#D97706', glow: 'bg-card-glow-amber',  valColor: 'text-amber' },
+  yellow:  { bg: '#FEF3C7', text: '#D97706', glow: 'bg-card-glow-amber',  valColor: 'text-dark' },
+  red:     { bg: '#FFF1F2', text: '#E11D48', glow: 'bg-card-glow-red',    valColor: 'text-danger' },
+  rose:    { bg: '#FFF1F2', text: '#E11D48', glow: 'bg-card-glow-rose',   valColor: 'text-danger' },
+  purple:  { bg: '#FAF5FF', text: '#7C3AED', glow: 'bg-card-glow-purple', valColor: 'text-dark' },
+  indigo:  { bg: '#EEF2FF', text: '#4F46E5', glow: 'bg-card-glow-indigo', valColor: 'text-dark' },
+  teal:    { bg: '#F0FDFA', text: '#0D9488', glow: 'bg-card-glow-teal',   valColor: 'text-dark' },
+  slate:   { bg: '#F8FAFC', text: '#475569', glow: 'bg-card-glow-slate',  valColor: 'text-dark' },
 }
 
-export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color = 'green', trend, onClick }) {
-  const tint = TINT_MAP[color] ?? TINT_MAP.green
+export default function StatsCard({
+  title,
+  value,
+  sub,
+  subLeft,
+  subRight,
+  icon: Icon,
+  riIcon,
+  color = 'green',
+  trend,
+  badge,
+  onClick
+}) {
+  const cfg = TINT_MAP[color] ?? TINT_MAP.green
   const clickable = typeof onClick === 'function'
+
+  // Decide bottom sub label and value
+  const displaySubLeft = subLeft || sub || ''
+  const hasSub = Boolean(displaySubLeft || subRight || trend !== undefined || badge)
 
   return (
     <div
-      className={`card mb-0 h-100${clickable ? ' stats-card-clickable' : ''}`}
-      style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6', boxShadow: '0 2px 12px -2px rgba(20, 60, 45, 0.04)', cursor: clickable ? 'pointer' : 'default' }}
+      className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${cfg.glow}${clickable ? ' cursor-pointer' : ''}`}
+      style={{ cursor: clickable ? 'pointer' : 'default' }}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
       onClick={onClick}
       onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e) } } : undefined}
     >
-      <div className="card-body p-3">
-        <div className="d-flex align-items-start justify-content-between gap-2">
-          <div className="flex-grow-1 overflow-hidden">
-            <p className="text-muted text-uppercase fw-bold mb-1 text-truncate" style={{ fontSize: '0.625rem', letterSpacing: '0.05em' }}>{title}</p>
-            <h4 className="fw-black mb-0.5 font-display text-dark text-truncate" style={{ letterSpacing: '-0.02em', fontSize: '1.25rem' }}>{value}</h4>
-            {sub && <p className="text-muted fw-medium mb-1 text-truncate" style={{ fontSize: '0.72rem' }}>{sub}</p>}
-            {trend !== undefined && (
-              <div className="d-inline-flex align-items-center gap-1">
-                <span className="badge" style={{
-                  backgroundColor: trend >= 0 ? '#dcfce7' : '#ffe4e6',
-                  color: trend >= 0 ? '#15803d' : '#be123c',
-                  fontSize: '0.625rem',
-                  fontWeight: 800,
-                  padding: '0.15rem 0.45rem'
-                }}>
-                  {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% vs last week
-                </span>
-              </div>
-            )}
-          </div>
-          <div
-            className="d-flex align-items-center justify-content-center flex-shrink-0"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: '0.625rem',
-              backgroundColor: tint.bg,
-              color: tint.text,
-              border: `1px solid ${tint.border}`
-            }}
-          >
-            {riIcon
-              ? <i className={`${riIcon} fs-5`}></i>
-              : Icon ? <Icon size={16} /> : null
-            }
-          </div>
+      <div className="card-body p-3.5">
+        {/* Top Title & Icon Pill */}
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={title}>
+            {title}
+          </span>
+          <span className="kpi-icon-pill" style={{ background: cfg.bg, color: cfg.text }}>
+            {riIcon ? (
+              <i className={`${riIcon} fs-18`}></i>
+            ) : Icon ? (
+              <Icon size={18} />
+            ) : null}
+          </span>
         </div>
+
+        {/* Big Bold Display Metric */}
+        <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${cfg.valColor}`} title={String(value)}>
+          {value}
+        </div>
+
+        {/* Bottom Sub-row with Divider */}
+        {hasSub && (
+          <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+            <span className="text-truncate me-2" style={{ maxWidth: '65%' }}>{displaySubLeft}</span>
+            {subRight ? (
+              <strong className="text-dark font-monospace flex-shrink-0">{subRight}</strong>
+            ) : badge ? (
+              <span className="badge bg-light text-dark border font-monospace text-xs px-2 flex-shrink-0">
+                {badge}
+              </span>
+            ) : trend !== undefined ? (
+              <span
+                className="badge font-monospace text-xs px-2 flex-shrink-0"
+                style={{
+                  backgroundColor: trend >= 0 ? '#DCFCE7' : '#FFE4E6',
+                  color: trend >= 0 ? '#15803D' : '#BE123C',
+                }}
+              >
+                {trend >= 0 ? '↑ +' : '↓ '}{Math.abs(trend)}%
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   )
 }
+

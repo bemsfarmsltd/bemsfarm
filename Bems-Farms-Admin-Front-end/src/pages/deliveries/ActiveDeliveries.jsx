@@ -410,22 +410,76 @@ export default function ActiveDeliveries() {
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Active',       value: stats.total,     color: '#6366f1', icon: 'ri-route-line',           filter: 'all'               },
-          { label: 'En Route',           value: stats.enRoute,   color: '#3b82f6', icon: 'ri-truck-line',           filter: 'shipped'           },
-          { label: 'Awaiting Pickup',    value: stats.awaiting,  color: '#06b6d4', icon: 'ri-user-location-line',   filter: 'assigned'          },
-          { label: 'Delivery Attempted', value: stats.attempted, color: '#f97316', icon: 'ri-error-warning-line',   filter: 'delivery_attempted'},
+          {
+            label: 'Total Active',
+            value: stats.total,
+            color: '#6366f1',
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-route-line',
+            filter: 'all',
+            subLeft: 'Live Dispatched',
+            subRight: `${stats.total} Orders`
+          },
+          {
+            label: 'En Route',
+            value: stats.enRoute,
+            color: '#3b82f6',
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-truck-line',
+            filter: 'shipped',
+            subLeft: 'In Transit Now',
+            subRight: `${stats.enRoute} Couriers`
+          },
+          {
+            label: 'Awaiting Pickup',
+            value: stats.awaiting,
+            color: '#06b6d4',
+            glow: 'bg-card-glow-cyan',
+            iconBg: '#F0F9FF',
+            iconColor: '#0284C7',
+            icon: 'ri-user-location-line',
+            filter: 'assigned',
+            subLeft: 'Assigned Driver',
+            subRight: 'Pending Handover'
+          },
+          {
+            label: 'Delivery Attempted',
+            value: stats.attempted,
+            color: '#f97316',
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-error-warning-line',
+            filter: 'delivery_attempted',
+            subLeft: 'Requires Action',
+            subRight: stats.attempted > 0 ? `${stats.attempted} Need Retry` : 'All Clear'
+          },
         ].map(c => (
-          <div key={c.label} className="col-6 col-md-3">
-            <div className="card p-3" style={{ borderLeft: `3px solid ${c.color}`, cursor: 'pointer' }}
-              onClick={() => setFilterStatus(c.filter)}>
-              <div className="d-flex align-items-center gap-3">
-                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 40, height: 40, background: c.color + '20' }}>
-                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
+            <div
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setFilterStatus(c.filter)}
+            >
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider">
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>{c.label}</div>
-                  <div className="fw-bold fs-24">{c.value}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span>{c.subLeft}</span>
+                  <strong className="text-dark font-monospace">{c.subRight}</strong>
                 </div>
               </div>
             </div>

@@ -331,52 +331,127 @@ export default function DriversManagement() {
         </div>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat KPI Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Fleet', value: stats.total, color: '#6366f1', icon: 'ri-group-line', filter: 'all' },
           {
-            label: 'Compliance Review Needed',
+            label: 'Total Fleet',
+            value: stats.total,
+            color: '#3b82f6',
+            icon: 'ri-group-line',
+            filter: 'all',
+            subLeft: 'Fleet Registry',
+            subRight: `${stats.total} Drivers`,
+            glowClass: 'bg-card-glow-blue',
+          },
+          {
+            label: 'Compliance Review',
             value: stats.pendingCompliance,
             color: '#d97706',
             icon: 'ri-file-shield-line',
             filter: 'onboarding_review',
-            badge: stats.pendingCompliance > 0 ? 'Action Required' : null,
+            subLeft: 'Pending Documents',
+            subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
+            badgeBg: stats.pendingCompliance > 0 ? '#FEF3C7' : '#DCFCE7',
+            badgeColor: stats.pendingCompliance > 0 ? '#D97706' : '#16A34A',
+            glowClass: 'bg-card-glow-amber',
           },
-          { label: 'Invited (Pending Docs)', value: stats.invited, color: '#2563eb', icon: 'ri-mail-send-line', filter: 'onboarding_invited' },
-          { label: 'Active Standby', value: stats.active, color: '#22c55e', icon: 'ri-checkbox-circle-line', filter: 'active' },
-          { label: 'On Delivery', value: stats.onDelivery, color: '#3b82f6', icon: 'ri-truck-line', filter: 'on_delivery' },
-          { label: 'Suspended', value: stats.suspended, color: '#ef4444', icon: 'ri-forbid-line', filter: 'suspended' },
+          {
+            label: 'Invited Couriers',
+            value: stats.invited,
+            color: '#2563eb',
+            icon: 'ri-mail-send-line',
+            filter: 'onboarding_invited',
+            subLeft: 'Pending Sign-ups',
+            subRight: 'Link Sent',
+            glowClass: 'bg-card-glow-blue',
+          },
+          {
+            label: 'Active Standby',
+            value: stats.active,
+            color: '#10b981',
+            icon: 'ri-checkbox-circle-line',
+            filter: 'active',
+            subLeft: 'Online & Available',
+            subRight: 'Ready for Orders',
+            badgeBg: '#ECFDF5',
+            badgeColor: '#059669',
+            glowClass: 'bg-card-glow-green',
+          },
+          {
+            label: 'On Delivery',
+            value: stats.onDelivery,
+            color: '#0ea5e9',
+            icon: 'ri-truck-line',
+            filter: 'on_delivery',
+            subLeft: 'Live En Route',
+            subRight: 'Active Dropoffs',
+            badgeBg: '#E0F2FE',
+            badgeColor: '#0284C7',
+            glowClass: 'bg-card-glow-teal',
+          },
+          {
+            label: 'Suspended',
+            value: stats.suspended,
+            color: '#ef4444',
+            icon: 'ri-forbid-line',
+            filter: 'suspended',
+            subLeft: 'Restricted Couriers',
+            subRight: stats.suspended > 0 ? 'Action Taken' : '0 Restricted',
+            badgeBg: stats.suspended > 0 ? '#FEE2E2' : '#F3F4F6',
+            badgeColor: stats.suspended > 0 ? '#DC2626' : '#6B7280',
+            glowClass: 'bg-card-glow-amber',
+          },
         ].map((c) => (
-          <div key={c.label} className="col-6 col-md-4 col-xl-2">
+          <div key={c.label} className="col-12 col-sm-6 col-xl-2">
             <div
-              className="card h-100 p-3 shadow-sm border-0"
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glowClass}`}
               style={{
                 borderLeft: `4px solid ${c.color}`,
                 cursor: c.filter ? 'pointer' : 'default',
-                background: filterStatus === c.filter ? `${c.color}08` : '#fff',
+                transform: filterStatus === c.filter ? 'translateY(-2px)' : 'none',
+                boxShadow: filterStatus === c.filter ? `0 8px 20px ${c.color}25` : undefined,
               }}
               onClick={() => c.filter && setFilterStatus(c.filter)}
             >
-              <div className="d-flex align-items-center gap-2.5">
-                <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 38, height: 38, background: c.color + '18' }}
-                >
-                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
-                </div>
-                <div>
-                  <div className="text-muted text-uppercase fw-semibold" style={{ fontSize: 10 }}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider" style={{ fontSize: 10 }}>
                     {c.label}
-                  </div>
-                  <div className="fw-bold fs-18 text-dark">{c.value}</div>
+                  </span>
+                  <span
+                    className="kpi-icon-pill"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: c.color + '18',
+                      color: c.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <i className={`${c.icon} fs-16`} />
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display">{c.value}</div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                  <span style={{ fontSize: 10 }}>{c.subLeft}</span>
+                  {c.badgeBg ? (
+                    <span
+                      className="badge font-monospace text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: c.badgeBg, color: c.badgeColor, fontSize: 9 }}
+                    >
+                      {c.subRight}
+                    </span>
+                  ) : (
+                    <strong className="text-dark font-monospace" style={{ fontSize: 10 }}>
+                      {c.subRight}
+                    </strong>
+                  )}
                 </div>
               </div>
-              {c.badge && (
-                <span className="badge bg-warning text-dark text-xs mt-2 align-self-start fw-bold">
-                  {c.badge}
-                </span>
-              )}
             </div>
           </div>
         ))}

@@ -10,88 +10,82 @@ export default function InventoryReport() {
                   <li className="breadcrumb-item active">Products</li>
               </ul>
           </div>
-          <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xxl-5">
-              <div className="col">
-                  <div className="card">
-                      <div className="card-body">
-                          <p className="text-muted mb-5">Total Products</p>
-                          <div className="d-flex justify-content-between align-items-end mb-3">
-                              <h3 className="mb-0 font-base">9,423</h3>
-                              <span className="text-success fw-medium me-2">
-                                  <i data-lucide="arrow-up" className="size-4"></i>9.8%
-                              </span>
-                          </div>
-                          <div className="progress progress-1" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
-                              <div className="progress-bar" style={{width: "60%"}}></div>
-                          </div>
-                      </div>
-                  </div>
+      <div className="row g-3 mb-4">
+        {[
+          {
+            label: 'Total Products',
+            value: '9,423',
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-store-2-line',
+            subLeft: 'Catalog Items',
+            subRight: '+9.8% Growth'
+          },
+          {
+            label: 'Published Products',
+            value: '7,856',
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Live Online & POS',
+            subRight: '83.4% Active'
+          },
+          {
+            label: 'Inactive Products',
+            value: '1,142',
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-pause-circle-line',
+            subLeft: 'Drafts & Paused',
+            subRight: 'Archived'
+          },
+          {
+            label: 'Out of Stock',
+            value: '425',
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-alert-line',
+            subLeft: 'Zero Inventory',
+            subRight: 'Restock Needed'
+          },
+          {
+            label: 'Inventory Value',
+            value: '₦42.8M',
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-money-cny-box-line',
+            subLeft: 'Stock Cost Valuation',
+            subRight: '+12.4% MoM'
+          },
+        ].map(c => (
+          <div className="col-12 col-sm-6 col-xl" key={c.label}>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
               </div>
-              <div className="col">
-                  <div className="card">
-                      <div className="card-body">
-                          <p className="text-muted mb-5">Published Products</p>
-                          <div className="d-flex justify-content-between align-items-end mb-3">
-                              <h3 className="mb-0 font-base">7,856</h3>
-                              <span className="text-success fw-medium me-2">
-                                  <i data-lucide="arrow-up" className="size-4"></i>6.3%
-                              </span>
-                          </div>
-                          <div className="progress progress-1">
-                              <div className="progress-bar bg-secondary" style={{width: "75%"}}></div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card">
-                      <div className="card-body">
-                          <p className="text-muted mb-5">Inactive Products</p>
-                          <div className="d-flex justify-content-between align-items-end mb-3">
-                              <h3 className="mb-0 font-base">1,142</h3>
-                              <span className="text-danger fw-medium me-2">
-                                  <i data-lucide="arrow-down" className="size-4"></i>2.1%
-                              </span>
-                          </div>
-                          <div className="progress progress-1">
-                              <div className="progress-bar bg-danger" style={{width: "30%"}}></div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card">
-                      <div className="card-body">
-                          <p className="text-muted mb-5">Out of Stock</p>
-                          <div className="d-flex justify-content-between align-items-end mb-3">
-                              <h3 className="mb-0 font-base">425</h3>
-                              <span className="text-success fw-medium me-2">
-                                  <i data-lucide="arrow-up" className="size-4"></i>4.7%
-                              </span>
-                          </div>
-                          <div className="progress progress-1">
-                              <div className="progress-bar bg-success" style={{width: "69%"}}></div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card">
-                      <div className="card-body">
-                          <p className="text-muted mb-5">Inventory Value</p>
-                          <div className="d-flex justify-content-between align-items-end mb-3">
-                              <h3 className="mb-0 font-base">$428K</h3>
-                              <span className="text-success fw-medium me-2">
-                                  <i data-lucide="arrow-up" className="size-4"></i>12.4%
-                              </span>
-                          </div>
-                          <div className="progress progress-1">
-                              <div className="progress-bar bg-info" style={{width: "68%"}}></div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+            </div>
           </div>
+        ))}
+      </div>
           <div className="card">
               <div className="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
                   <h5 className="card-title mb-0">Product List</h5>

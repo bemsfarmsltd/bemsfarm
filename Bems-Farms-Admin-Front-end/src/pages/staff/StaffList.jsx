@@ -170,59 +170,72 @@ export default function StaffList() {
 
       {/* KPI Stats Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 border-start border-primary border-4 h-100">
-            <div className="card-body d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted fs-sm mb-1 fw-medium">Total Staff</p>
-                <h4 className="fw-bold mb-0">{stats.total || 0}</h4>
-              </div>
-              <div className="size-11 rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fs-xl">
-                <i className="ri-team-line"></i>
+        {[
+          {
+            label: 'Total Staff',
+            value: stats.total || 0,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-team-line',
+            subLeft: 'Workforce Roster',
+            subRight: `${stats.total || 0} Members`
+          },
+          {
+            label: 'Active Accounts',
+            value: stats.active || 0,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Authorized Credentials',
+            subRight: `${stats.active || 0} Enabled`
+          },
+          {
+            label: 'On Duty Today',
+            value: stats.on_duty_today || 0,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-user-follow-line',
+            subLeft: 'Active Shift Present',
+            subRight: 'Shift Check-in'
+          },
+          {
+            label: 'Departments',
+            value: stats.departments || 0,
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-building-line',
+            subLeft: 'Operational Units',
+            subRight: 'Farm & Retail'
+          },
+        ].map(c => (
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 border-start border-success border-4 h-100">
-            <div className="card-body d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted fs-sm mb-1 fw-medium">Active Accounts</p>
-                <h4 className="fw-bold mb-0 text-success">{stats.active || 0}</h4>
-              </div>
-              <div className="size-11 rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center fs-xl">
-                <i className="ri-checkbox-circle-line"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 border-start border-info border-4 h-100">
-            <div className="card-body d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted fs-sm mb-1 fw-medium">On Duty Today</p>
-                <h4 className="fw-bold mb-0 text-info">{stats.on_duty_today || 0}</h4>
-              </div>
-              <div className="size-11 rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center fs-xl">
-                <i className="ri-user-follow-line"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 border-start border-warning border-4 h-100">
-            <div className="card-body d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted fs-sm mb-1 fw-medium">Departments</p>
-                <h4 className="fw-bold mb-0 text-warning">{stats.departments || 0}</h4>
-              </div>
-              <div className="size-11 rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center fs-xl">
-                <i className="ri-building-line"></i>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
+
 
       {/* Main Table Card */}
       <div className="card shadow-sm border-0">

@@ -515,37 +515,123 @@ export default function OrdersList() {
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Orders',       value: stats.total,             color:'#6366f1', icon:'ri-shopping-bag-3-line',    filter:'all'                },
-          { label:'New Orders',         value: stats.newOrders,         color:'#0ea5e9', icon:'ri-money-dollar-circle-line',filter:'paid'               },
-          { label:'In Progress',        value: stats.inProgress,        color:'#f59e0b', icon:'ri-loader-line',             filter:'processing'         },
-          { label:'Out for Delivery',   value: stats.outForDelivery,    color:'#3b82f6', icon:'ri-truck-line',              filter:'shipped'            },
-          { label:'Delivery Attempted', value: stats.deliveryAttempted, color:'#f97316', icon:'ri-route-line',              filter:'delivery_attempted' },
-          { label:'Delivered',          value: stats.delivered,         color:'#22c55e', icon:'ri-checkbox-circle-line',    filter:'delivered'          },
-          { label:'Disputes',           value: stats.disputes,          color:'#ef4444', icon:'ri-alert-line',              filter:'dispute'            },
-          { label:'Total Revenue',      value: fmt(stats.revenue),      color:'#10b981', icon:'ri-bar-chart-2-line',        filter: null                },
+          {
+            label: 'Total Orders',
+            value: stats.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-shopping-bag-3-line',
+            filter: 'all',
+            subLeft: 'All Channels',
+            subRight: `${stats.total} Orders`
+          },
+          {
+            label: 'New & Paid',
+            value: stats.newOrders,
+            glow: 'bg-card-glow-cyan',
+            iconBg: '#F0F9FF',
+            iconColor: '#0284C7',
+            icon: 'ri-money-dollar-circle-line',
+            filter: 'paid',
+            subLeft: 'Awaiting Fulfillment',
+            subRight: `${stats.newOrders} New`
+          },
+          {
+            label: 'In Picking / Pack',
+            value: stats.inProgress,
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-loader-line',
+            filter: 'processing',
+            subLeft: 'Warehouse Queue',
+            subRight: 'Processing'
+          },
+          {
+            label: 'Out for Delivery',
+            value: stats.outForDelivery,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-truck-line',
+            filter: 'shipped',
+            subLeft: 'Couriers En Route',
+            subRight: `${stats.outForDelivery} Active`
+          },
+          {
+            label: 'Delivery Attempted',
+            value: stats.deliveryAttempted,
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-route-line',
+            filter: 'delivery_attempted',
+            subLeft: 'Customer Contacted',
+            subRight: stats.deliveryAttempted > 0 ? `${stats.deliveryAttempted} Retry` : 'None'
+          },
+          {
+            label: 'Delivered',
+            value: stats.delivered,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            filter: 'delivered',
+            subLeft: 'Successfully Handed Over',
+            subRight: `${stats.delivered} Complete`
+          },
+          {
+            label: 'Disputes / Issues',
+            value: stats.disputes,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-alert-line',
+            filter: 'dispute',
+            subLeft: 'Requires Review',
+            subRight: stats.disputes > 0 ? `${stats.disputes} Open` : 'Resolved'
+          },
+          {
+            label: 'Total Revenue',
+            value: fmt(stats.revenue),
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-bar-chart-2-line',
+            filter: null,
+            subLeft: 'Aggregate Value',
+            subRight: 'Gross Sales'
+          },
         ].map((c) => (
-          <div key={c.label} className="col-6 col-md-3">
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
             <div
-              className="card p-3 h-100 shadow-sm transition-all"
-              style={{ borderLeft: `3px solid ${c.color}`, cursor: c.filter ? 'pointer' : 'default' }}
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}
+              style={{ cursor: c.filter ? 'pointer' : 'default' }}
               onClick={() => c.filter && setFilterStatus(c.filter)}
             >
-              <div className="d-flex align-items-center gap-3">
-                <div
-                  className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 42, height: 42, background: `${c.color}20` }}
-                >
-                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>{c.label}</div>
-                  <div className="fw-bold fs-18">{c.value}</div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+
 
       {/* Main Filter & Category Bar */}
       <div className="card mb-3 shadow-sm border-0">
