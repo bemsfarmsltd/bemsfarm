@@ -466,6 +466,7 @@ export default function TeamOnboarding({ initialTab }) {
             iconColor: '#405189',
             subLeft: 'Active credentials',
             subRight: `${staffStats.active || staff.filter((s) => s.status === 'active').length} active`,
+            viewKey: 'staff',
             onClick: () => setView('staff'),
             title: 'View Staff Directory',
           },
@@ -479,6 +480,7 @@ export default function TeamOnboarding({ initialTab }) {
             valColor: 'text-success',
             subLeft: 'Ready to access',
             subRight: 'Verified access',
+            viewKey: 'staff',
             onClick: () => setView('staff'),
             title: 'View Active Staff',
           },
@@ -492,6 +494,7 @@ export default function TeamOnboarding({ initialTab }) {
             valColor: pendingInvitesCount > 0 ? 'text-warning-emphasis' : 'text-dark',
             subLeft: 'Total sent',
             subRight: `${invitations.length} total`,
+            viewKey: 'onboarding',
             onClick: () => setView('onboarding'),
             title: 'View Onboarding Invitations',
           },
@@ -504,37 +507,45 @@ export default function TeamOnboarding({ initialTab }) {
             iconColor: '#7c3aed',
             subLeft: 'Permission profiles',
             subRight: 'Configured',
+            viewKey: 'roles',
             onClick: () => setView('roles'),
             title: 'View Roles & Permissions',
           },
-        ].map((c, i) => (
-          <div key={i} className="col-12 col-sm-6 col-xl-3">
-            <div
-              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
-              style={{ cursor: 'pointer' }}
-              onClick={c.onClick}
-              title={c.title}
-            >
-              <div className="card-body p-3.5">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
-                    {c.label}
-                  </span>
-                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
-                    <i className={`${c.icon} fs-18`}></i>
-                  </span>
-                </div>
-                <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${c.valColor || 'text-dark'}`}>
-                  {c.val}
-                </div>
-                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
-                  <span className="text-truncate me-2">{c.subLeft}</span>
-                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+        ].map((c, i) => {
+          const isSelected = activeView === c.viewKey && (c.viewKey !== 'staff' || c.label === 'Total Staff')
+          return (
+            <div key={i} className="col-12 col-sm-6 col-xl-3">
+              <div
+                className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+                style={{
+                  cursor: 'pointer',
+                  outline: isSelected ? `2px solid ${c.iconColor}` : 'none',
+                  outlineOffset: '2px',
+                }}
+                onClick={c.onClick}
+                title={c.title}
+              >
+                <div className="card-body p-3.5">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                      {c.label}
+                    </span>
+                    <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                      <i className={`${c.icon} fs-18`}></i>
+                    </span>
+                  </div>
+                  <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${c.valColor || 'text-dark'}`}>
+                    {c.val}
+                  </div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                    <span className="text-truncate me-2">{c.subLeft}</span>
+                    <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
 
