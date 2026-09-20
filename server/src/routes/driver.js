@@ -10,6 +10,30 @@ const driverDeliveryController = require("../controllers/driverDeliveryControlle
 const driverLocationController = require("../controllers/driverLocationController");
 const driverEarningsController = require("../controllers/driverEarningsController");
 
+// ── Root Driver API Info / Health ──────────────────────────────────
+router.get("/", (req, res) => {
+  res.json({
+    service: "Bems Farms Driver API",
+    status: "online",
+    version: "1.0.0",
+    description: "Backend endpoints for Bems Farms Driver Mobile Application & Dispatch",
+    endpoints: {
+      auth_login: "POST /api/driver/auth/login",
+      auth_me: "GET /api/driver/auth/me",
+      update_profile: "PATCH /api/driver/auth/profile",
+      toggle_availability: "PATCH /api/driver/availability",
+      active_deliveries: "GET /api/driver/deliveries",
+      delivery_details: "GET /api/driver/deliveries/:orderId",
+      update_delivery_status: "PATCH /api/driver/deliveries/:orderId/status",
+      delivery_history: "GET /api/driver/deliveries/history",
+      location_ping: "POST /api/driver/location",
+      earnings: "GET /api/driver/earnings",
+      withdraw: "POST /api/driver/withdraw"
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ── 1. Driver Authentication & Availability ─────────────────────────
 router.post("/auth/login", driverAuthController.login);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
