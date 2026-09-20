@@ -1,51 +1,92 @@
-// ─── Order Detail Page with Return Request button ────────────────────────────
-// Replace/update your existing OrderDetailPage.jsx with this version.
-// It adds a "Request Return" button that appears when order status is "delivered"
-// and the delivery was within the last 7 days.
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ordersAPI } from "../services/api"; // adjust path if needed
+import { ordersAPI } from "../services/api";
 import Toast from "../components/ui/Toast";
+import LiveOrderMap from "../components/ui/LiveOrderMap";
+import { getProductImage } from "../utils/productImages";
 
 const STATUS_CONFIG = {
   pending: {
-    label: "Pending",
+    label: "Order Placed",
     bg: "#FEF3C7",
     color: "#92400E",
     dot: "#F59E0B",
+    stepIndex: 0,
+    desc: "Order received and awaiting warehouse processing",
   },
   confirmed: {
-    label: "Confirmed",
+    label: "Confirmed & Paid",
     bg: "#DBEAFE",
     color: "#1E40AF",
     dot: "#3B82F6",
+    stepIndex: 1,
+    desc: "Payment verified, farm produce queued for packaging",
   },
   processing: {
-    label: "Processing",
+    label: "Packaging & Quality Inspection",
     bg: "#EDE9FE",
     color: "#5B21B6",
     dot: "#8B5CF6",
+    stepIndex: 2,
+    desc: "Items sorted, de-stoned, and sealed in tamper-proof crates",
   },
   shipped: {
-    label: "Shipped",
+    label: "Dispatched · In Transit",
     bg: "#FEF9C3",
     color: "#713F12",
     dot: "#EAB308",
+    stepIndex: 3,
+    desc: "Courier assigned and en route with your fresh produce",
   },
-  delivered: {
-    label: "Delivered",
+  en_route: {
+    label: "Out For Doorstep Delivery",
+    bg: "#FEF9C3",
+    color: "#713F12",
+    dot: "#EAB308",
+    stepIndex: 3,
+    desc: "Courier is approaching your delivery destination",
+  },
+  out_for_delivery: {
+    label: "Out For Doorstep Delivery",
+    bg: "#FEF9C3",
+    color: "#713F12",
+    dot: "#EAB308",
+    stepIndex: 3,
+    desc: "Courier is nearby with your delivery",
+  },
+  arrived: {
+    label: "Courier Arrived",
     bg: "#D1FAE5",
     color: "#065F46",
     dot: "#10B981",
+    stepIndex: 3,
+    desc: "Courier is at your doorstep or entrance",
+  },
+  delivered: {
+    label: "Delivered Successfully",
+    bg: "#D1FAE5",
+    color: "#065F46",
+    dot: "#10B981",
+    stepIndex: 4,
+    desc: "Order has been safely delivered to your doorstep",
   },
   cancelled: {
     label: "Cancelled",
     bg: "#FEE2E2",
     color: "#991B1B",
     dot: "#EF4444",
+    stepIndex: -1,
+    desc: "This order was cancelled",
   },
 };
+
+const MILESTONE_STEPS = [
+  { key: "pending", label: "Placed", desc: "Order Logged" },
+  { key: "confirmed", label: "Confirmed", desc: "Payment Verified" },
+  { key: "processing", label: "Packaging", desc: "Sealed & Inspected" },
+  { key: "shipped", label: "Out for Delivery", desc: "En Route on Map" },
+  { key: "delivered", label: "Delivered", desc: "Doorstep Arrival" },
+];
 
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
@@ -59,8 +100,9 @@ function StatusBadge({ status }) {
         color: cfg.color,
         padding: "6px 16px",
         borderRadius: 20,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 700,
+        border: `1px solid ${cfg.dot}33`,
       }}
     >
       <span
@@ -76,7 +118,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -84,19 +125,47 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [toast, setToast] = useState(null);
+  const pollingTimerRef = useRef(null);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
+  const loadOrder = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await ordersAPI.getById(id);
+      const fetchedOrder = res.data?.order || res.data;
+      setOrder(fetchedOrder);
+    } catch {
+      if (!silent) navigate("/orders");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [id, navigate]);
+
   useEffect(() => {
-    ordersAPI
-      .getById(id)
-      .then((res) => setOrder(res.data?.order || res.data))
-      .catch(() => navigate("/orders"))
-      .finally(() => setLoading(false));
-  }, [id]);
+    loadOrder(false);
+  }, [loadOrder]);
+
+  // Live polling for real-time driver movement & telemetry every 8 seconds
+  useEffect(() => {
+    if (!order) return;
+    const isCompleted = ["delivered", "cancelled"].includes(String(order.status).toLowerCase());
+    if (isCompleted) {
+      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+      return;
+    }
+
+    pollingTimerRef.current = setInterval(() => {
+      loadOrder(true);
+    }, 8000);
+
+    return () => {
+      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+    };
+  }, [order?.status, loadOrder]);
 
   if (loading) {
     return (
@@ -134,7 +203,13 @@ export default function OrderDetailPage() {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
   const total = Number(order.total || 0);
+  const subtotal = Number(order.subtotal || total - 1500 > 0 ? order.subtotal || (total - 1500) : total);
+  const deliveryFee = Number(order.delivery_fee || 1500);
   const date = new Date(order.created_at || order.createdAt);
+
+  const isIncomplete = !["delivered", "cancelled"].includes(String(order.status).toLowerCase());
+  const isCancelled = order.status === "cancelled";
+  const isDelivered = order.status === "delivered";
 
   // Check if eligible for return (delivered within last 7 days)
   const updatedAt = new Date(
@@ -161,20 +236,21 @@ export default function OrderDetailPage() {
       style={{
         fontFamily: "var(--body-font)",
         padding: "32px 5%",
-        maxWidth: 800,
+        maxWidth: 920,
         margin: "0 auto",
         minHeight: "100vh",
       }}
     >
       <Toast toast={toast} onClose={() => setToast(null)} />
 
+      {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
         <div
           onClick={() => setShowCancelConfirm(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(0,0,0,0.5)",
             zIndex: 1054,
             display: "flex",
             alignItems: "center",
@@ -186,19 +262,35 @@ export default function OrderDetailPage() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#fff",
-              borderRadius: 16,
+              borderRadius: 20,
               width: "100%",
-              maxWidth: 380,
+              maxWidth: 400,
               padding: 28,
               textAlign: "center",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              boxShadow: "0 25px 70px rgba(0,0,0,0.3)",
             }}
           >
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0D1117", margin: "0 0 8px" }}>
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "#fee2e2",
+                color: "#dc2626",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 24,
+                margin: "0 auto 16px",
+              }}
+            >
+              ⚠️
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0D1117", margin: "0 0 8px" }}>
               Cancel this order?
             </h3>
-            <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
-              This can't be undone. The order will be marked as cancelled.
+            <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.5 }}>
+              This action cannot be undone. Your allocated items will be returned to stock.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -238,14 +330,14 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Breadcrumb */}
+      {/* Breadcrumb Navigation */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 8,
-          marginBottom: 24,
-          fontSize: 14,
+          marginBottom: 20,
+          fontSize: 13,
           color: "#9CA3AF",
         }}
       >
@@ -257,20 +349,20 @@ export default function OrderDetailPage() {
           My Orders
         </Link>
         <span>/</span>
-        <span style={{ color: "#1a1a1a", fontWeight: 600 }}>
+        <span style={{ color: "#1a1a1a", fontWeight: 700 }}>
           #{String(order.id).toUpperCase().slice(-10)}
         </span>
       </div>
 
-      {/* Header */}
+      {/* Top Header Card */}
       <div
         style={{
           background: "#fff",
           borderRadius: 20,
-          padding: "28px 32px",
+          padding: "24px 28px",
           marginBottom: 20,
           border: "1px solid #E5E7EB",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
         }}
       >
         <div
@@ -283,20 +375,49 @@ export default function OrderDetailPage() {
           }}
         >
           <div>
-            <h1
-              style={{
-                fontSize: 24,
-                fontWeight: 900,
-                color: "#0D1117",
-                margin: "0 0 6px",
-              }}
-            >
-              Order Details
-            </h1>
-            <p style={{ color: "#9CA3AF", fontSize: 14, margin: 0 }}>
-              #{String(order.id).toUpperCase().slice(-10)} · Placed{" "}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <h1
+                style={{
+                  fontSize: 22,
+                  fontWeight: 900,
+                  color: "#0D1117",
+                  margin: 0,
+                }}
+              >
+                Order #{String(order.id).toUpperCase().slice(-10)}
+              </h1>
+              {isIncomplete && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    background: "#ecfdf5",
+                    color: "#059669",
+                    padding: "3px 8px",
+                    borderRadius: 12,
+                    fontWeight: 700,
+                    border: "1px solid #a7f3d0",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#10b981",
+                      animation: "pulse 1.5s infinite",
+                    }}
+                  />
+                  Live Tracking
+                </span>
+              )}
+            </div>
+            <p style={{ color: "#6B7280", fontSize: 13, margin: 0 }}>
+              Placed on{" "}
               {date.toLocaleDateString("en-NG", {
-                day: "2-digit",
+                day: "numeric",
                 month: "long",
                 year: "numeric",
                 hour: "2-digit",
@@ -307,136 +428,255 @@ export default function OrderDetailPage() {
           <StatusBadge status={order.status} />
         </div>
 
-        {/* Status timeline */}
-        <div
-          style={{
-            marginTop: 24,
-            display: "flex",
-            gap: 0,
-            alignItems: "center",
-          }}
-        >
-          {["pending", "confirmed", "processing", "shipped", "delivered"].map(
-            (s, i, arr) => {
-              const statuses = [
-                "pending",
-                "confirmed",
-                "processing",
-                "shipped",
-                "delivered",
-              ];
-              const currentIdx = statuses.indexOf(
-                order.status === "cancelled" ? "pending" : order.status,
-              );
-              const stepIdx = statuses.indexOf(s);
-              const isPast = stepIdx <= currentIdx;
-              const isCancelled = order.status === "cancelled";
-              const sCfg = STATUS_CONFIG[s];
+        {/* Milestone Progress Bar */}
+        {!isCancelled && (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #f1f5f9" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {MILESTONE_STEPS.map((step, i, arr) => {
+                const currentIdx = cfg.stepIndex >= 0 ? cfg.stepIndex : 0;
+                const isDone = i <= currentIdx;
+                const isCurrent = i === currentIdx;
 
-              return (
-                <div
-                  key={s}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    flex: i < arr.length - 1 ? 1 : "none",
-                  }}
-                >
+                return (
                   <div
+                    key={step.key}
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      flexShrink: 0,
-                      background: isCancelled
-                        ? "#FEE2E2"
-                        : isPast
-                          ? "linear-gradient(135deg,#2E7D32,#388E3C)"
-                          : "#F3F4F6",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      border: `2px solid ${isCancelled ? "#EF4444" : isPast ? "#2E7D32" : "#E5E7EB"}`,
-                      transition: "all 0.3s",
+                      flex: i < arr.length - 1 ? 1 : "none",
                     }}
                   >
-                    {isPast && !isCancelled ? (
-                      <span style={{ color: "#fff", fontSize: 19 }}></span>
-                    ) : (
-                      <span
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        background: isDone
+                          ? "linear-gradient(135deg, #15803d 0%, #16a34a 100%)"
+                          : "#f1f5f9",
+                        color: isDone ? "#ffffff" : "#94a3b8",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        boxShadow: isCurrent ? "0 0 0 4px #bbf7d0" : "none",
+                        border: isDone ? "2px solid #ffffff" : "1.5px solid #e2e8f0",
+                        transition: "all 0.3s",
+                      }}
+                    >
+                      {isDone ? "✓" : i + 1}
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div
                         style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          background: isCancelled ? "#EF4444" : "#D1D5DB",
+                          flex: 1,
+                          height: 3,
+                          background: i < currentIdx ? "#16a34a" : "#e2e8f0",
+                          transition: "background 0.3s",
+                          margin: "0 4px",
+                          borderRadius: 2,
                         }}
                       />
                     )}
                   </div>
-                  {i < arr.length - 1 && (
-                    <div
-                      style={{
-                        flex: 1,
-                        height: 2,
-                        background:
-                          isPast && !isCancelled ? "#2E7D32" : "#E5E7EB",
-                        transition: "background 0.3s",
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            },
-          )}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: 8,
-          }}
-        >
-          {["Pending", "Confirmed", "Processing", "Shipped", "Delivered"].map(
-            (l) => (
-              <span
-                key={l}
-                style={{
-                  fontSize: 10,
-                  color: "#9CA3AF",
-                  fontWeight: 600,
-                  textAlign: "center",
-                  flex: 1,
-                }}
-              >
-                {l}
-              </span>
-            ),
-          )}
-        </div>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: 10,
+              }}
+            >
+              {MILESTONE_STEPS.map((s, i) => {
+                const isCurrent = i === cfg.stepIndex;
+                return (
+                  <div key={s.key} style={{ flex: 1, textAlign: i === 0 ? "left" : i === MILESTONE_STEPS.length - 1 ? "right" : "center" }}>
+                    <div style={{ fontSize: 11, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? "#15803d" : "#475569" }}>
+                      {s.label}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#94a3b8" }}>{s.desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Items */}
+      {/* ── REAL-TIME MAP & COURIER MOVEMENT (FOR INCOMPLETE / IN-PROGRESS ORDERS) ── */}
+      {isIncomplete && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 20,
+            padding: "24px",
+            marginBottom: 20,
+            border: "1px solid #E5E7EB",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0D1117", margin: "0 0 2px" }}>
+                🗺️ Real-Time Delivery Map &amp; ETA
+              </h2>
+              <p style={{ fontSize: 12, color: "#6B7280", margin: 0 }}>
+                Live GPS movement tracking from Bems Farms Dispatch Hub to your doorstep.
+              </p>
+            </div>
+            {order.eta_minutes != null && (
+              <span
+                style={{
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  border: "1px solid #fde68a",
+                }}
+              >
+                ⏱️ Estimated Arrival: ~{order.eta_minutes} mins
+              </span>
+            )}
+          </div>
+
+          <LiveOrderMap
+            customerLat={order.customer_lat}
+            customerLng={order.customer_lng}
+            driverLat={order.driver_lat}
+            driverLng={order.driver_lng}
+            driverName={order.driver_name}
+            driverPhone={order.driver_phone}
+            vehicleType={order.vehicle_type}
+            vehiclePlate={order.vehicle_plate}
+            etaMinutes={order.eta_minutes}
+            deliveryAddress={order.address}
+            orderStatus={order.status}
+            height="360px"
+          />
+        </div>
+      )}
+
+      {/* ── ASSIGNED COURIER PROFILE (IF ASSIGNED) ── */}
+      {order.driver_name && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
+            color: "#fff",
+            borderRadius: 20,
+            padding: "20px 24px",
+            marginBottom: 20,
+            boxShadow: "0 6px 20px rgba(4,120,87,0.25)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+                border: "2px solid rgba(255,255,255,0.3)",
+              }}
+            >
+              🛵
+            </div>
+            <div>
+              <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", color: "#a7f3d0", fontWeight: 700 }}>
+                Assigned Delivery Courier
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 900 }}>{order.driver_name}</div>
+              <div style={{ fontSize: 12, color: "#d1fae5" }}>
+                {order.vehicle_type || "Motorcycle"} {order.vehicle_plate ? `(${order.vehicle_plate})` : ""} · {order.driver_rating ? `⭐ ${order.driver_rating}` : "⭐ 5.0 Star Courier"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            {order.driver_phone && (
+              <a
+                href={`tel:${order.driver_phone}`}
+                style={{
+                  background: "#ffffff",
+                  color: "#064e3b",
+                  padding: "9px 18px",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                }}
+              >
+                <span>📞</span>
+                <span>Call Driver</span>
+              </a>
+            )}
+            {order.driver_phone && (
+              <a
+                href={`https://wa.me/${String(order.driver_phone).replace(/[^0-9]/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  background: "#f59e0b",
+                  color: "#064e3b",
+                  padding: "9px 18px",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 900,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                }}
+              >
+                <span>💬</span>
+                <span>WhatsApp</span>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ITEMS ORDERED & PRICING BREAKDOWN ── */}
       <div
         style={{
           background: "#fff",
           borderRadius: 20,
-          padding: "28px 32px",
+          padding: "28px",
           marginBottom: 20,
           border: "1px solid #E5E7EB",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
         }}
       >
         <h2
           style={{
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: 800,
             color: "#0D1117",
-            margin: "0 0 20px",
+            margin: "0 0 16px",
           }}
         >
-          Items Ordered
+          Items in this Order ({items.length})
         </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {items.length > 0 ? (
             items.map((item, i) => (
               <div
@@ -445,61 +685,51 @@ export default function OrderDetailPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 16,
-                  padding: "12px",
+                  padding: "12px 16px",
                   background: "#F8FAFC",
-                  borderRadius: 12,
+                  borderRadius: 14,
+                  border: "1px solid #f1f5f9",
                 }}
               >
-                {item.image_url && (
-                  <div
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    background: "#e2e8f0",
+                  }}
+                >
+                  <img
+                    src={getProductImage(item)}
+                    alt={item.name}
                     style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 10,
-                      overflow: "hidden",
-                      flexShrink: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
                     }}
-                  >
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  </div>
-                )}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
-                  <div
-                    style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 15 }}
-                  >
-                    {item.name || `Item ${i + 1}`}
+                  <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 14 }}>
+                    {item.name || `Produce Item #${i + 1}`}
                   </div>
-                  <div style={{ color: "#9CA3AF", fontSize: 13 }}>
-                    Qty: {item.quantity} · ₦
-                    {Number(item.price || item.unit_price || 0).toLocaleString()} each
+                  <div style={{ color: "#64748b", fontSize: 12 }}>
+                    Qty: {item.quantity} · ₦{Number(item.price || item.unit_price || 0).toLocaleString()} each
                   </div>
                 </div>
-                <div
-                  style={{ fontWeight: 800, color: "#1a1a1a", fontSize: 16 }}
-                >
-                  ₦
-                  {(
-                    Number(item.quantity) *
-                    Number(item.price || item.unit_price || 0)
-                  ).toLocaleString()}
+                <div style={{ fontWeight: 900, color: "#15803d", fontSize: 15 }}>
+                  ₦{(Number(item.quantity) * Number(item.price || item.unit_price || 0)).toLocaleString()}
                 </div>
               </div>
             ))
           ) : (
-            <p style={{ color: "#9CA3AF", fontSize: 14 }}>
-              No item details available
-            </p>
+            <p style={{ color: "#9CA3AF", fontSize: 13 }}>No item details available</p>
           )}
         </div>
 
+        {/* Bill Breakdown */}
         <div
           style={{
             borderTop: "2px solid #F3F4F6",
@@ -507,163 +737,136 @@ export default function OrderDetailPage() {
             paddingTop: 16,
           }}
         >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "#64748b" }}>
+            <span>Subtotal</span>
+            <span style={{ fontWeight: 700, color: "#1e293b" }}>₦{subtotal.toLocaleString()}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 13, color: "#64748b" }}>
+            <span>Doorstep Delivery Fee</span>
+            <span style={{ fontWeight: 700, color: "#1e293b" }}>₦{deliveryFee.toLocaleString()}</span>
+          </div>
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              paddingTop: 12,
+              borderTop: "1px dashed #e2e8f0",
             }}
           >
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
               Total Amount
             </span>
-            <span style={{ fontSize: 22, fontWeight: 900, color: "#1a1a1a" }}>
+            <span style={{ fontSize: 22, fontWeight: 900, color: "#15803d" }}>
               ₦{total.toLocaleString()}
             </span>
           </div>
           <div
             style={{
-              fontSize: 13,
-              color: "#9CA3AF",
-              marginTop: 4,
+              fontSize: 12,
+              color: "#64748b",
+              marginTop: 6,
               textAlign: "right",
             }}
           >
-            Paid via {order.payment_method === "monnify" ? "Online Payment (Card/Transfer)" : (order.payment_method || "Online Payment")}
+            Paid via {order.payment_method === "monnify" ? "Online Payment (Monnify)" : (order.payment_method || "Online Payment")}
           </div>
         </div>
       </div>
 
-      {/* Actions */}
+      {/* ── DELIVERY DESTINATION DETAILS ── */}
       <div
         style={{
           background: "#fff",
           borderRadius: 20,
-          padding: "24px 32px",
+          padding: "24px 28px",
+          marginBottom: 20,
           border: "1px solid #E5E7EB",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
         }}
       >
-        <h2
-          style={{
-            fontSize: 17,
-            fontWeight: 800,
-            color: "#0D1117",
-            margin: "0 0 16px",
-          }}
-        >
-          Order Actions
+        <h2 style={{ fontSize: 15, fontWeight: 800, color: "#0D1117", margin: "0 0 12px" }}>
+          📍 Delivery Destination Details
         </h2>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {/* Cancel button */}
-          {canCancel && (
-            <button
-              onClick={() => setShowCancelConfirm(true)}
-              style={{
-                padding: "12px 24px",
-                borderRadius: 12,
-                border: "2px solid #EF4444",
-                background: "#FEF2F2",
-                color: "#DC2626",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "#DC2626";
-                e.target.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "#FEF2F2";
-                e.target.style.color = "#DC2626";
-              }}
-            >
-              Cancel Order
-            </button>
+        <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700 }}>{order.address || "Main Store Pick-Up / Delivery Address"}</div>
+          {order.delivery_city && <div style={{ color: "#64748b" }}>{order.delivery_city}</div>}
+          {order.zone_name && (
+            <span style={{ display: "inline-block", background: "#f1f5f9", color: "#334155", padding: "2px 8px", borderRadius: 6, fontSize: 11, marginTop: 4, fontWeight: 600 }}>
+              Zone: {order.zone_name}
+            </span>
           )}
+        </div>
+      </div>
 
-          {/* Return button — only for delivered orders within 7 days */}
-          {canReturn && (
-            <button
-              onClick={() => navigate("/returns", { state: { orderId: order.id } })}
-              style={{
-                padding: "12px 24px",
-                borderRadius: 12,
-                border: "2px solid #F59E0B",
-                background: "#FEF3C7",
-                color: "#92400E",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#F59E0B";
-                e.currentTarget.style.color = "#fff";
-                e.currentTarget.style.borderColor = "#F59E0B";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#FEF3C7";
-                e.currentTarget.style.color = "#92400E";
-                e.currentTarget.style.borderColor = "#F59E0B";
-              }}
-            >
-              <div
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 6,
-                  overflow: "hidden",
-                }}
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=20&q=80"
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-              Request Return
-            </button>
-          )}
-
-          {/* Return ineligible notice */}
-          {order.status === "delivered" && !canReturn && (
-            <div
-              style={{
-                padding: "12px 20px",
-                borderRadius: 12,
-                background: "#F9FAFB",
-                border: "1px solid #E5E7EB",
-                color: "#9CA3AF",
-                fontSize: 14,
-              }}
-            >
-              Return window has expired (7 days from delivery)
-            </div>
-          )}
-
-          <Link
-            to="/products"
+      {/* ── ACTION BUTTONS ── */}
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 20,
+          padding: "20px 28px",
+          border: "1px solid #E5E7EB",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        {canCancel && (
+          <button
+            onClick={() => setShowCancelConfirm(true)}
             style={{
-              padding: "12px 24px",
+              padding: "11px 22px",
               borderRadius: 12,
-              background: "#2E7D32",
-              color: "#fff",
+              border: "1.5px solid #EF4444",
+              background: "#FEF2F2",
+              color: "#DC2626",
               fontWeight: 700,
-              fontSize: 14,
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
+              fontSize: 13,
+              cursor: "pointer",
             }}
           >
-            Shop Again →
-          </Link>
-        </div>
+            Cancel Order
+          </button>
+        )}
+
+        {canReturn && (
+          <button
+            onClick={() => navigate("/returns", { state: { orderId: order.id } })}
+            style={{
+              padding: "11px 22px",
+              borderRadius: 12,
+              border: "1.5px solid #F59E0B",
+              background: "#FEF3C7",
+              color: "#92400E",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            Request Return
+          </button>
+        )}
+
+        <Link
+          to="/products"
+          style={{
+            padding: "11px 24px",
+            borderRadius: 12,
+            background: "#15803d",
+            color: "#fff",
+            fontWeight: 800,
+            fontSize: 13,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            marginLeft: "auto",
+          }}
+        >
+          Shop More Produce →
+        </Link>
       </div>
 
       <style>{`
@@ -672,3 +875,4 @@ export default function OrderDetailPage() {
     </div>
   );
 }
+

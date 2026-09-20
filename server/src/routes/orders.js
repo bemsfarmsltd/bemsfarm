@@ -493,7 +493,7 @@ router.get("/track/:code", async (req, res, next) => {
 });
 
 // ─────────────────────────────────────────────
-// GET SINGLE ORDER
+// GET SINGLE ORDER (WITH REALTIME TRACKING & DRIVER TELEMETRY)
 // ─────────────────────────────────────────────
 router.get("/:id", protect, async (req, res, next) => {
   try {
@@ -501,24 +501,76 @@ router.get("/:id", protect, async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT
-         o.id, o.total, o.status, o.payment_method, o.payment_ref, o.address,
+         o.id, o.order_ref, o.total, o.subtotal, o.delivery_fee, o.status,
+         o.payment_method, o.payment_status, o.payment_ref, o.address,
+         o.delivery_city, o.latitude AS customer_lat, o.longitude AS customer_lng,
          o.created_at, o.delivered_at, o.updated_at, o.cancelled_at, o.cancel_reason,
-         COALESCE(o.tracking_status, o.status) as tracking_status,
+         COALESCE(o.tracking_status, o.status) AS tracking_status,
          o.tracking_notes,
+         delivery.delivery_id,
+         delivery.delivery_ref,
+         delivery.delivery_status,
+         delivery.eta_minutes,
+         delivery.assigned_at,
+         delivery.dispatched_at,
+         delivery.arrived_at,
+         dr.id AS driver_id,
+         dr.name AS driver_name,
+         dr.phone AS driver_phone,
+         dr.vehicle_type,
+         dr.vehicle_plate,
+         dr.rating AS driver_rating,
+         loc.latitude AS driver_lat,
+         loc.longitude AS driver_lng,
+         loc.heading AS driver_heading,
+         loc.speed AS driver_speed,
+         loc.recorded_at AS location_updated_at,
+         dz.zone_name,
          json_agg(
            json_build_object(
              'name', p.name,
              'quantity', oi.quantity,
-             'price', oi.price,
+             'price', COALESCE(oi.unit_price, oi.price),
+             'total_price', COALESCE(oi.total_price, oi.quantity * COALESCE(oi.unit_price, oi.price)),
              'product_id', p.id,
-             'image_url', p.image_url
+             'image_url', p.image_url,
+             'unit', COALESCE(p.unit, 'item')
            )
-         ) as items
+         ) AS items
        FROM orders o
        JOIN order_items oi ON oi.order_id = o.id
-       JOIN products p ON p.id = oi.product_id
-       WHERE o.id = $1 AND o.user_id = $2
-       GROUP BY o.id`,
+       LEFT JOIN products p ON p.id = oi.product_id
+       LEFT JOIN LATERAL (
+         SELECT 
+           d.id AS delivery_id,
+           d.delivery_ref,
+           d.driver_id,
+           d.status AS delivery_status,
+           d.eta_minutes,
+           d.assigned_at,
+           d.dispatched_at,
+           d.arrived_at,
+           d.zone_id
+         FROM deliveries d
+         WHERE d.order_id = o.id
+         ORDER BY d.created_at DESC
+         LIMIT 1
+       ) delivery ON true
+       LEFT JOIN drivers dr ON dr.id = delivery.driver_id
+       LEFT JOIN LATERAL (
+         SELECT dl.latitude, dl.longitude, dl.heading, dl.speed, dl.recorded_at
+         FROM driver_locations dl
+         WHERE dl.driver_id = delivery.driver_id
+         ORDER BY dl.recorded_at DESC
+         LIMIT 1
+       ) loc ON true
+       LEFT JOIN delivery_zones dz ON dz.zone_id = delivery.zone_id
+       WHERE o.id = $1 AND (o.user_id = $2 OR o.customer_id = $2)
+       GROUP BY 
+         o.id, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
+         delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at, delivery.arrived_at,
+         dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
+         loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name`,
       [id, req.user.id],
     );
 

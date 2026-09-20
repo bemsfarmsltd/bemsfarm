@@ -651,6 +651,17 @@ export default function OrdersPage() {
                               </button>
                             )}
 
+                            {!["delivered", "cancelled"].includes(String(order.status).toLowerCase()) && (
+                              <button
+                                className="op-primary-btn"
+                                style={{ background: "linear-gradient(135deg, #065f46 0%, #059669 100%)", display: "flex", alignItems: "center", gap: 6 }}
+                                onClick={() => navigate(`/orders/${order.id}`)}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block" }} />
+                                <span>Track &amp; Live Map</span>
+                              </button>
+                            )}
+
                             {(order.status === "pending" || order.status === "confirmed") && (
                               <button className="op-secondary-btn" style={{ color: "#EF4444", borderColor: "#EF4444" }} onClick={() => setCancelModal(order)}>
                                 Cancel Order
