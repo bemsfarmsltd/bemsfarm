@@ -163,6 +163,13 @@ async function ensureInventoryTables() {
       );
 
       ALTER TABLE products ADD COLUMN IF NOT EXISTS warehouse_id INT REFERENCES warehouses(id) ON DELETE SET NULL;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(100);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price DECIMAL(10,2);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS expiry_date DATE;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
     `);
     inventoryTablesReady = true;
   } catch (err) {
@@ -1002,8 +1009,8 @@ router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res, nex
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 20, product_id = "", status = "", expiring = "" } = req.query;
-    const limit = clampLimit(limitRaw, 20);
+    const { page = 1, limit: limitRaw = 50, product_id = "", status = "", expiring = "" } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -1023,14 +1030,20 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
     const rows = await pool.query(`
       SELECT
         b.*,
-        p.name AS product_name, p.sku,
+        p.name AS product_name,
+        COALESCE(p.sku, CONCAT('PRD-', p.id)) AS sku,
+        p.price AS product_price,
+        p.stock AS current_stock,
+        p.image_url AS product_image,
         w.name AS warehouse_name,
+        w.code AS warehouse_code,
+        w.location AS warehouse_location,
         (b.expiry_date - CURRENT_DATE) AS days_until_expiry
       FROM batch_management b
       LEFT JOIN products   p ON b.product_id   = p.id
       LEFT JOIN warehouses w ON b.warehouse_id  = w.id
       ${whereClause}
-      ORDER BY b.expiry_date ASC NULLS LAST
+      ORDER BY b.expiry_date ASC NULLS LAST, b.id DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `, params);
 
@@ -1084,31 +1097,38 @@ router.patch("/batches/:id", requireRole("superadmin", "manager", "admin", "kitc
 
 router.post("/batches/auto-populate", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
+    const whRes = await pool.query("SELECT id FROM warehouses WHERE status = 'active' ORDER BY id ASC LIMIT 1");
+    const defaultWarehouseId = whRes.rows[0]?.id || null;
+
     const productsRes = await pool.query(`
-      SELECT p.id, p.name, p.sku, p.stock, p.stock_quantity, p.cost_price, p.expiry_date, p.created_at
+      SELECT p.id, p.name, COALESCE(p.stock, 0) AS stock, p.price, p.created_at, p.warehouse_id
       FROM products p
-      WHERE (p.stock > 0 OR p.stock_quantity > 0 OR p.expiry_date IS NOT NULL)
+      WHERE COALESCE(p.stock, 0) > 0
         AND NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
     `);
 
     let createdCount = 0;
     for (const p of productsRes.rows) {
-      const stockQty = parseInt(p.stock || p.stock_quantity || 0);
-      const batchNo = `LOT-${new Date(p.created_at || Date.now()).toISOString().slice(0, 10).replace(/-/g, "")}-${p.id}`;
-      const defaultExp = p.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const stockQty = parseInt(p.stock || 0);
+      const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const batchNo = `LOT-${todayStr}-${String(p.id).padStart(3, "0")}`;
+      const defaultExp = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const mfgDate = new Date(p.created_at || Date.now()).toISOString().slice(0, 10);
+      const costEst = p.price ? Math.round(parseFloat(p.price) * 0.7 * 100) / 100 : null;
+      const targetWh = p.warehouse_id || defaultWarehouseId;
 
       await pool.query(
         `INSERT INTO batch_management
-           (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-         VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())
-         ON CONFLICT DO NOTHING`,
-        [p.id, batchNo, stockQty, p.cost_price ? parseFloat(p.cost_price) : null, defaultExp]
+           (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, status, notes, received_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'Initial batch auto-generated from active stock', NOW(), NOW())`,
+        [p.id, targetWh, batchNo, stockQty, costEst, defaultExp, mfgDate]
       );
       createdCount++;
     }
 
     res.json({ message: `Successfully initialized ${createdCount} batches for current in-stock products.`, count: createdCount });
   } catch (err) {
+    console.error("Auto-populate error:", err);
     next(err);
   }
 });
@@ -1120,13 +1140,10 @@ router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin"
       return res.status(400).json({ message: "No batch rows provided for import" });
     }
 
-    // Cache products and warehouses
-    const prodRes = await pool.query("SELECT id, name, sku, barcode, stock FROM products WHERE status != 'archived'");
+    const prodRes = await pool.query("SELECT id, name, price, stock FROM products");
     const prodMap = new Map();
     prodRes.rows.forEach(p => {
       prodMap.set(String(p.id), p);
-      if (p.sku) prodMap.set(p.sku.toLowerCase().trim(), p);
-      if (p.barcode) prodMap.set(p.barcode.toLowerCase().trim(), p);
       if (p.name) prodMap.set(p.name.toLowerCase().trim(), p);
     });
 
@@ -1146,7 +1163,7 @@ router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin"
       const rowNum = i + 2;
       try {
         const prodIdentifier = String(row.product_id || row.sku || row.barcode || row.product_name || row.product || "").trim().toLowerCase();
-        if (!prodIdentifier) throw new Error("Product identifier (name, SKU, or ID) is required");
+        if (!prodIdentifier) throw new Error("Product identifier (name or ID) is required");
 
         const product = prodMap.get(prodIdentifier);
         if (!product) throw new Error(`Product "${prodIdentifier}" not found in catalog`);
@@ -1165,7 +1182,7 @@ router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin"
         const rawCost = row.cost_price ? String(row.cost_price).replace(/[^0-9.]/g, "") : null;
         const costPrice = rawCost && !isNaN(parseFloat(rawCost)) ? parseFloat(rawCost) : null;
 
-        const expiryDate = row.expiry_date?.trim() || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const expiryDate = row.expiry_date?.trim() || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         const mfgDate = row.manufactured_date?.trim() || row.mfg_date?.trim() || new Date().toISOString().slice(0, 10);
         const batchNo = row.batch_no?.trim() || `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}-${Date.now().toString().slice(-4)}`;
         const notes = row.notes?.trim() || "Bulk batch import";
@@ -1177,10 +1194,9 @@ router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin"
           [product.id, warehouseId, batchNo, quantity, costPrice, expiryDate, mfgDate, notes]
         );
 
-        // Also ensure product stock reflects newly imported batch if positive
         if (quantity > 0) {
           await pool.query(
-            `UPDATE products SET stock = stock + $1, stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE id = $2`,
+            `UPDATE products SET stock = COALESCE(stock, 0) + $1 WHERE id = $2`,
             [quantity, product.id]
           );
         }
@@ -1198,6 +1214,181 @@ router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin"
     });
   } catch (err) {
     next(err);
+  }
+});
+
+// ── ROUTE BATCH GOODS TO CHEF BEMS KITCHEN ───────────────────────────────────
+router.post("/batches/:id/route-kitchen", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { quantity, notes } = req.body;
+    const batchId = parseInt(req.params.id);
+    const qty = parseInt(quantity);
+    if (!qty || qty <= 0) return res.status(400).json({ message: "Valid transfer quantity required" });
+
+    await client.query("BEGIN");
+    const bRes = await client.query("SELECT * FROM batch_management WHERE id = $1 FOR UPDATE", [batchId]);
+    if (!bRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Batch not found" });
+    }
+    const batch = bRes.rows[0];
+    if (batch.quantity < qty) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Insufficient batch quantity. Only ${batch.quantity} available in this lot.` });
+    }
+
+    const newQty = batch.quantity - qty;
+    const newStatus = newQty === 0 ? "exhausted" : batch.status;
+
+    await client.query(
+      "UPDATE batch_management SET quantity = $1, status = $2 WHERE id = $3",
+      [newQty, newStatus, batchId]
+    );
+
+    // Update product stock
+    await client.query(
+      "UPDATE products SET stock = GREATEST(0, COALESCE(stock, 0) - $1) WHERE id = $2",
+      [qty, batch.product_id]
+    );
+
+    // Record stock movement
+    await client.query(
+      `INSERT INTO stock_movements
+         (product_id, warehouse_id, type, quantity, reference, reason, notes, created_by, created_at)
+       VALUES ($1, $2, 'stock_out', $3, $4, 'Routed to Chef Bems Kitchen / Meal Preparation', $5, $6, NOW())`,
+      [batch.product_id, batch.warehouse_id, qty, batch.batch_no, notes || "Dispatched to Kitchen", req.user?.id || null]
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: `Successfully routed ${qty} units from batch ${batch.batch_no} to Chef Bems Kitchen.` });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── INTER-WAREHOUSE BATCH TRANSFER ─────────────────────────────────────────
+router.post("/batches/:id/transfer", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { target_warehouse_id, quantity, notes } = req.body;
+    const batchId = parseInt(req.params.id);
+    const targetWhId = parseInt(target_warehouse_id);
+    const qty = parseInt(quantity);
+
+    if (!targetWhId) return res.status(400).json({ message: "Target warehouse required" });
+    if (!qty || qty <= 0) return res.status(400).json({ message: "Valid transfer quantity required" });
+
+    await client.query("BEGIN");
+    const bRes = await client.query("SELECT * FROM batch_management WHERE id = $1 FOR UPDATE", [batchId]);
+    if (!bRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Batch not found" });
+    }
+    const batch = bRes.rows[0];
+    if (batch.warehouse_id === targetWhId) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Destination warehouse must be different from source warehouse" });
+    }
+    if (batch.quantity < qty) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Insufficient batch quantity. Only ${batch.quantity} available in this lot.` });
+    }
+
+    if (batch.quantity === qty) {
+      await client.query("UPDATE batch_management SET warehouse_id = $1 WHERE id = $2", [targetWhId, batchId]);
+    } else {
+      const remainQty = batch.quantity - qty;
+      await client.query("UPDATE batch_management SET quantity = $1 WHERE id = $2", [remainQty, batchId]);
+      await client.query(
+        `INSERT INTO batch_management
+           (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, status, notes, received_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
+        [
+          batch.product_id,
+          targetWhId,
+          `${batch.batch_no}-TR`,
+          qty,
+          batch.cost_price,
+          batch.expiry_date,
+          batch.manufactured_date,
+          batch.status,
+          notes ? `Transferred from batch ${batch.batch_no}: ${notes}` : `Transferred from batch ${batch.batch_no}`
+        ]
+      );
+    }
+
+    await client.query(
+      `INSERT INTO stock_movements
+         (product_id, warehouse_id, type, quantity, reference, reason, notes, created_by, created_at)
+       VALUES ($1, $2, 'transfer_out', $3, $4, 'Inter-warehouse Batch Transfer', $5, $6, NOW())`,
+      [batch.product_id, batch.warehouse_id, qty, batch.batch_no, notes || "Warehouse relocation", req.user?.id || null]
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: `Successfully transferred ${qty} units of batch ${batch.batch_no} to new warehouse.` });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── LOG DAMAGED / EXPIRED BATCH STOCK ──────────────────────────────────────
+router.post("/batches/:id/log-damage", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { quantity, reason, notes } = req.body;
+    const batchId = parseInt(req.params.id);
+    const qty = parseInt(quantity);
+    if (!qty || qty <= 0) return res.status(400).json({ message: "Valid quantity required" });
+
+    await client.query("BEGIN");
+    const bRes = await client.query("SELECT * FROM batch_management WHERE id = $1 FOR UPDATE", [batchId]);
+    if (!bRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Batch not found" });
+    }
+    const batch = bRes.rows[0];
+    if (batch.quantity < qty) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Insufficient batch quantity. Only ${batch.quantity} available in this lot.` });
+    }
+
+    const newQty = batch.quantity - qty;
+    const newStatus = newQty === 0 ? "exhausted" : batch.status;
+
+    await client.query("UPDATE batch_management SET quantity = $1, status = $2 WHERE id = $3", [newQty, newStatus, batchId]);
+    await client.query("UPDATE products SET stock = GREATEST(0, COALESCE(stock, 0) - $1) WHERE id = $2", [qty, batch.product_id]);
+
+    const unitCost = batch.cost_price ? parseFloat(batch.cost_price) : 0;
+    const estimatedValue = unitCost * qty;
+
+    await client.query(
+      `INSERT INTO lost_items
+         (product_id, warehouse_id, quantity, reason, estimated_value, notes, reported_by, approved_by, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, 'approved', NOW())`,
+      [batch.product_id, batch.warehouse_id, qty, reason || "Expired / Damaged Batch Stock", notes || `Lot: ${batch.batch_no}`, req.user?.id || null]
+    );
+
+    await client.query(
+      `INSERT INTO stock_movements
+         (product_id, warehouse_id, type, quantity, reference, reason, notes, unit_cost, created_by, created_at)
+       VALUES ($1, $2, 'lost', $3, $4, $5, $6, $7, $8, NOW())`,
+      [batch.product_id, batch.warehouse_id, qty, batch.batch_no, reason || "Expired / Damaged Batch Stock", notes, unitCost, req.user?.id || null]
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: `Logged ${qty} units as damaged / written-off from batch ${batch.batch_no}.` });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
   }
 });
 

@@ -22,6 +22,7 @@ function daysToExpiry(expDate) {
   const today = new Date(); today.setHours(0,0,0,0)
   return Math.ceil((d - today) / 86400000)
 }
+
 function getBatchStatus(status, expDate, qty) {
   if (status === 'recalled') return 'recalled'
   if (qty === 0) return 'exhausted'
@@ -32,11 +33,11 @@ function getBatchStatus(status, expDate, qty) {
 }
 
 const STATUS_CFG = {
-  active:        { label:'Active',        cls:'bg-success-subtle text-success', icon:'ri-checkbox-circle-line' },
-  expiring_soon: { label:'Expiring Soon', cls:'bg-warning-subtle text-warning', icon:'ri-alarm-warning-line'   },
-  expired:       { label:'Expired',       cls:'bg-danger-subtle text-danger',   icon:'ri-close-circle-line'    },
-  exhausted:     { label:'Exhausted',     cls:'bg-secondary-subtle text-secondary', icon:'ri-archive-line'     },
-  recalled:      { label:'Recalled',      cls:'bg-danger-subtle text-danger',   icon:'ri-forbid-line'          },
+  active:        { label:'Active Fresh',   cls:'bg-success-subtle text-success', icon:'ri-checkbox-circle-line' },
+  expiring_soon: { label:'Expiring Soon',  cls:'bg-warning-subtle text-warning', icon:'ri-alarm-warning-line'   },
+  expired:       { label:'Expired',        cls:'bg-danger-subtle text-danger',   icon:'ri-close-circle-line'    },
+  exhausted:     { label:'Exhausted',      cls:'bg-secondary-subtle text-secondary', icon:'ri-archive-line'     },
+  recalled:      { label:'Recalled',       cls:'bg-danger-subtle text-danger',   icon:'ri-forbid-line'          },
 }
 
 export default function BatchManagement() {
@@ -47,17 +48,24 @@ export default function BatchManagement() {
   const [search, setSearch]   = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
-  const [editItem, setEditItem]         = useState(null)
+  const [selectedBatch, setSelectedBatch] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showExplainer, setShowExplainer] = useState(true)
+
+  // Action forms state
   const [form, setForm] = useState({
     product_id: '', warehouse_id: '', batch_no: '', manufactured_date: '', expiry_date: '', quantity: 0, cost_price: '', notes: '',
   })
+  const [actionQuantity, setActionQuantity] = useState(1)
+  const [actionTargetWarehouse, setActionTargetWarehouse] = useState('')
+  const [actionReason, setActionReason] = useState('')
+  const [actionNotes, setActionNotes] = useState('')
 
   useEffect(() => {
     async function loadMeta() {
       try {
         const [prodRes, whRes] = await Promise.all([
-          api.get('/admin/products', { params: { limit: 150 } }),
+          api.get('/admin/products', { params: { limit: 200 } }),
           api.get('/admin/inventory/warehouses').catch(() => ({ data: { warehouses: [] } })),
         ])
         if (prodRes.data?.products) setProducts(prodRes.data.products)
@@ -72,7 +80,7 @@ export default function BatchManagement() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/inventory/batches', { params: { limit: 100 } })
+      const res = await api.get('/admin/inventory/batches', { params: { limit: 200 } })
       setRecords(res.data.batches || [])
     } catch {
       toast.error('Failed to load batches')
@@ -101,7 +109,7 @@ export default function BatchManagement() {
 
   const filtered = useMemo(() => enriched.filter(r => {
     const q = search.toLowerCase()
-    const m = (r.batch_no || '').toLowerCase().includes(q) || (r.product_name || '').toLowerCase().includes(q)
+    const m = (r.batch_no || '').toLowerCase().includes(q) || (r.product_name || '').toLowerCase().includes(q) || (r.warehouse_name || '').toLowerCase().includes(q)
     return m && (filterStatus === 'all' || r.computedStatus === filterStatus)
   }), [enriched, search, filterStatus])
 
@@ -113,31 +121,66 @@ export default function BatchManagement() {
   }), [enriched])
 
   function openAdd() {
-    setEditItem(null)
+    setSelectedBatch(null)
     setForm({
-      product_id: products[0]?.id ? String(products[0].id) : '', warehouse_id: '',
-      batch_no: `BCH-${Date.now().toString().slice(-6)}`, manufactured_date: new Date().toISOString().slice(0,10),
-      expiry_date: '', quantity: 0, cost_price: '', notes: '',
+      product_id: products[0]?.id ? String(products[0].id) : '',
+      warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
+      batch_no: `LOT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Date.now().toString().slice(-4)}`,
+      manufactured_date: new Date().toISOString().slice(0,10),
+      expiry_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0,10),
+      quantity: 50,
+      cost_price: '',
+      notes: '',
     })
     setActiveModal('form')
   }
+
   function openEdit(r) {
-    setEditItem(r)
-    setForm({ quantity: r.quantity, expiry_date: r.expiry_date ? r.expiry_date.slice(0,10) : '', notes: r.notes || '' })
+    setSelectedBatch(r)
+    setForm({
+      product_id: String(r.product_id),
+      warehouse_id: r.warehouse_id ? String(r.warehouse_id) : '',
+      batch_no: r.batch_no,
+      quantity: r.quantity,
+      expiry_date: r.expiry_date ? r.expiry_date.slice(0,10) : '',
+      manufactured_date: r.manufactured_date ? r.manufactured_date.slice(0,10) : '',
+      cost_price: r.cost_price || '',
+      notes: r.notes || '',
+    })
     setActiveModal('form')
   }
-  function openDelete(r) { setEditItem(r); setActiveModal('delete') }
-  function closeModal() { setActiveModal(null); setEditItem(null) }
+
+  function openInspect(r) {
+    setSelectedBatch(r)
+    setActionQuantity(r.quantity > 0 ? Math.min(r.quantity, 10) : 0)
+    setActionTargetWarehouse(warehouses.find(w => w.id !== r.warehouse_id)?.id || '')
+    setActionReason('Damaged / spoiled produce write-off')
+    setActionNotes('')
+    setActiveModal('inspect')
+  }
+
+  function openDelete(r) {
+    setSelectedBatch(r)
+    setActiveModal('delete')
+  }
+
+  function closeModal() {
+    setActiveModal(null)
+    setSelectedBatch(null)
+    setSaving(false)
+  }
 
   async function saveForm(e) {
     e.preventDefault()
     setSaving(true)
     try {
-      if (editItem) {
-        await api.patch(`/admin/inventory/batches/${editItem.id}`, {
-          quantity: form.quantity, expiry_date: form.expiry_date || undefined, notes: form.notes,
+      if (selectedBatch) {
+        await api.patch(`/admin/inventory/batches/${selectedBatch.id}`, {
+          quantity: parseInt(form.quantity) || 0,
+          expiry_date: form.expiry_date || undefined,
+          notes: form.notes,
         })
-        toast.success('Batch updated')
+        toast.success('Batch updated successfully')
       } else {
         if (!form.product_id) { toast.error('Select a product'); setSaving(false); return }
         if (!form.batch_no.trim()) { toast.error('Batch number required'); setSaving(false); return }
@@ -151,12 +194,84 @@ export default function BatchManagement() {
           manufactured_date: form.manufactured_date || undefined,
           notes: form.notes || undefined,
         })
-        toast.success('Batch added')
+        toast.success('New batch registered')
       }
       closeModal()
       load()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save batch')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRouteKitchen() {
+    if (!selectedBatch) return
+    if (actionQuantity <= 0 || actionQuantity > selectedBatch.quantity) {
+      toast.error(`Please select a valid quantity (1 to ${selectedBatch.quantity})`)
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await api.post(`/admin/inventory/batches/${selectedBatch.id}/route-kitchen`, {
+        quantity: actionQuantity,
+        notes: actionNotes || 'Routed to Chef Bems Kitchen',
+      })
+      toast.success(res.data.message || 'Dispatched to Chef Bems Kitchen')
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to dispatch to kitchen')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleTransferWarehouse() {
+    if (!selectedBatch) return
+    if (!actionTargetWarehouse) {
+      toast.error('Please select destination warehouse')
+      return
+    }
+    if (actionQuantity <= 0 || actionQuantity > selectedBatch.quantity) {
+      toast.error(`Please select a valid transfer quantity (1 to ${selectedBatch.quantity})`)
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await api.post(`/admin/inventory/batches/${selectedBatch.id}/transfer`, {
+        target_warehouse_id: parseInt(actionTargetWarehouse),
+        quantity: actionQuantity,
+        notes: actionNotes,
+      })
+      toast.success(res.data.message || 'Batch stock transferred')
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to transfer batch stock')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleLogDamage() {
+    if (!selectedBatch) return
+    if (actionQuantity <= 0 || actionQuantity > selectedBatch.quantity) {
+      toast.error(`Please select a valid quantity (1 to ${selectedBatch.quantity})`)
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await api.post(`/admin/inventory/batches/${selectedBatch.id}/log-damage`, {
+        quantity: actionQuantity,
+        reason: actionReason || 'Damaged / expired produce',
+        notes: actionNotes,
+      })
+      toast.success(res.data.message || 'Batch stock written-off to loss registry')
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to log damage')
     } finally {
       setSaving(false)
     }
@@ -178,7 +293,7 @@ export default function BatchManagement() {
 
   async function confirmDelete() {
     try {
-      await api.delete(`/admin/inventory/batches/${editItem.id}`)
+      await api.delete(`/admin/inventory/batches/${selectedBatch.id}`)
       toast.success('Batch recalled')
       closeModal()
       load()
@@ -188,22 +303,93 @@ export default function BatchManagement() {
   }
 
   return (
-    <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3">
-        <h6 className="flex-grow-1 mb-0">Batch Management</h6>
+    <div className="container-fluid py-3">
+      {/* Page Header */}
+      <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-4">
+        <div>
+          <h4 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+            <i className="ri-archive-stack-line text-success"></i>
+            Batches &amp; Consignment Expiry Hub
+          </h4>
+          <p className="text-muted mb-0 fs-13">
+            Track incoming farm produce lots, monitor FIFO shelf-life countdowns, and execute rapid kitchen dispatch or warehouse transfers.
+          </p>
+        </div>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
-          <li className="breadcrumb-item active">Batch Management</li>
+          <li className="breadcrumb-item"><Link to="/inventory/stock" className="text-decoration-none">Inventory</Link></li>
+          <li className="breadcrumb-item active">Batches &amp; Expiry</li>
         </ul>
       </div>
 
-      {stats.expiring > 0 && (
-        <div className="alert border-0 mb-4 d-flex align-items-center gap-2" style={{ background:'#fff8ec', color:'#8a5a00', borderLeft:'4px solid #f7b84b !important' }}>
-          <i className="ri-alarm-warning-line fs-20 text-warning"></i>
-          <span><strong>{stats.expiring} batch{stats.expiring > 1 ? 'es' : ''}</strong> expiring within 7 days — review and use or dispose.</span>
+      {/* Concept Explainer Banner */}
+      {showExplainer && (
+        <div className="card border-0 shadow-sm rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #0d5c3a 0%, #15803d 100%)', color: '#fff' }}>
+          <div className="card-body p-4 position-relative">
+            <button 
+              type="button" 
+              className="btn-close btn-close-white position-absolute top-0 end-0 m-3" 
+              aria-label="Close"
+              onClick={() => setShowExplainer(false)}
+            ></button>
+            <div className="row align-items-center g-3">
+              <div className="col-lg-8">
+                <div className="d-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill bg-white bg-opacity-20 text-white fs-12 fw-semibold mb-2">
+                  <i className="ri-lightbulb-flash-line"></i> How Bems Farms Batch Tracking Works
+                </div>
+                <h5 className="fw-bold text-white mb-2">Every produce shipment is a traceable Batch Lot</h5>
+                <p className="text-white-50 mb-3 fs-13" style={{ maxWidth: 700 }}>
+                  Whenever new goods or fresh harvests arrive, they are grouped under a unique <strong>Batch Number</strong>. You can inspect all items received in that consignment, watch days remaining before expiration, and trigger instant operations (dispatching to <strong>Chef Bems Kitchen</strong>, inter-warehouse relocation, or clearance pricing).
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
+                    <i className="ri-truck-line me-1"></i> 1. Intake / Lot Registry
+                  </span>
+                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
+                    <i className="ri-timer-flash-line me-1"></i> 2. Expiry &amp; FIFO Priority
+                  </span>
+                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
+                    <i className="ri-restaurant-2-line me-1"></i> 3. Route to Chef Bems Kitchen
+                  </span>
+                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
+                    <i className="ri-exchange-line me-1"></i> 4. Warehouse Transfers
+                  </span>
+                </div>
+              </div>
+              <div className="col-lg-4 text-lg-end">
+                <button 
+                  className="btn btn-warning fw-bold text-dark px-3 py-2 shadow-sm d-inline-flex align-items-center gap-2 rounded-pill"
+                  onClick={handleAutoPopulate}
+                  disabled={autoPopulating}
+                >
+                  <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-fill'}`}></i>
+                  {autoPopulating ? 'Initializing Lots...' : '⚡ Auto-Generate from Stock'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Near-Expiry Urgency Alert */}
+      {stats.expiring > 0 && (
+        <div className="alert border-0 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm" style={{ background:'#fff8ec', color:'#8a5a00', borderLeft:'5px solid #f7b84b' }}>
+          <div className="d-flex align-items-center gap-2">
+            <i className="ri-alarm-warning-fill fs-22 text-warning"></i>
+            <div>
+              <strong className="fs-14">{stats.expiring} Batch{stats.expiring > 1 ? 'es' : ''} Expiring Within 7 Days!</strong>
+              <div className="fs-12 text-muted">Prioritize dispatching these lots to <strong>Chef Bems Kitchen</strong> or mark down prices to avoid farm produce spoilage.</div>
+            </div>
+          </div>
+          <button 
+            className="btn btn-sm btn-warning text-dark fw-bold px-3 rounded-pill"
+            onClick={() => setFilterStatus('expiring_soon')}
+          >
+            Inspect Expiring Lots
+          </button>
+        </div>
+      )}
+
+      {/* KPI Stats Row */}
       <div className="row g-3 mb-4">
         {[
           {
@@ -225,7 +411,7 @@ export default function BatchManagement() {
             iconColor: '#059669',
             icon: 'ri-checkbox-circle-line',
             filter: 'active',
-            subLeft: 'Usable & In-Stock',
+            subLeft: 'Usable & Fresh',
             subRight: `${stats.active} Valid`
           },
           {
@@ -237,23 +423,23 @@ export default function BatchManagement() {
             icon: 'ri-alarm-warning-line',
             filter: 'expiring_soon',
             subLeft: 'FIFO Priority',
-            subRight: stats.expiring > 0 ? `${stats.expiring} Near Expiry` : 'Fresh Stock'
+            subRight: stats.expiring > 0 ? `${stats.expiring} Near Expiry` : 'Optimal Freshness'
           },
           {
-            label: 'Expired / Done',
+            label: 'Exhausted / Recalled',
             value: stats.expired,
             glow: stats.expired > 0 ? 'bg-card-glow-red' : 'bg-card-glow-slate',
             iconBg: stats.expired > 0 ? '#FFF1F2' : '#F8FAFC',
             iconColor: stats.expired > 0 ? '#E11D48' : '#64748B',
-            icon: 'ri-close-circle-line',
+            icon: 'ri-archive-line',
             filter: 'expired',
-            subLeft: 'Archived Batches',
+            subLeft: 'Archived Lots',
             subRight: `${stats.expired} Closed`
           },
         ].map(c => (
           <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
             <div
-              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer transition-all ${filterStatus === c.filter ? 'border-primary border-2' : ''}`}
               style={{ cursor: 'pointer' }}
               onClick={() => setFilterStatus(c.filter)}
             >
@@ -262,7 +448,7 @@ export default function BatchManagement() {
                   <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
                     {c.label}
                   </span>
-                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                  <span className="kpi-icon-pill p-2 rounded-circle" style={{ background: c.iconBg, color: c.iconColor }}>
                     <i className={`${c.icon} fs-18`}></i>
                   </span>
                 </div>
@@ -279,61 +465,78 @@ export default function BatchManagement() {
         ))}
       </div>
 
-      <div className="card">
-        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+      {/* Main Table Card */}
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap gap-3 justify-content-between align-items-center">
           <div className="position-relative">
-            <input className="form-control ps-9" placeholder="Search batch no, product…" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <input 
+              className="form-control ps-5 rounded-pill" 
+              placeholder="Search batch no, produce name, warehouse…" 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              style={{ minWidth: 260, fontSize: 13 }} 
+            />
             <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <div className="d-flex gap-2 ms-auto flex-wrap">
+          <div className="d-flex gap-2 ms-auto flex-wrap align-items-center">
             <button
-              className="btn btn-outline-success d-flex align-items-center gap-1"
+              className="btn btn-outline-success d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13"
               onClick={handleAutoPopulate}
               disabled={autoPopulating}
               title="Creates batch records automatically for existing products with positive stock"
             >
               <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'}`}></i>
-              {autoPopulating ? 'Generating...' : '⚡ Generate Initial Batches from Stock'}
+              {autoPopulating ? 'Generating...' : '⚡ Auto-Generate Batches'}
             </button>
             <button
-              className="btn btn-outline-primary d-flex align-items-center gap-1"
+              className="btn btn-outline-primary d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13"
               onClick={() => setActiveModal('import')}
               title="Bulk import batch lot records from CSV or Excel"
             >
               <i className="ri-upload-2-line"></i> Bulk Upload
             </button>
-            <select className="form-select" style={{ width:'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="all">All Batches</option>
-              <option value="active">Active</option>
-              <option value="expiring_soon">Expiring Soon</option>
-              <option value="expired">Expired</option>
-              <option value="exhausted">Exhausted</option>
+            <select 
+              className="form-select rounded-pill fs-13" 
+              style={{ width:'auto' }} 
+              value={filterStatus} 
+              onChange={e => setFilterStatus(e.target.value)}
+            >
+              <option value="all">All Batches ({enriched.length})</option>
+              <option value="active">Active Fresh ({stats.active})</option>
+              <option value="expiring_soon">Expiring Soon ({stats.expiring})</option>
+              <option value="expired">Expired / Exhausted ({stats.expired})</option>
               <option value="recalled">Recalled</option>
             </select>
-            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
-              <i className="ri-add-line"></i> Add Batch
+            <button className="btn btn-success d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13 shadow-sm" onClick={openAdd}>
+              <i className="ri-add-line"></i> + Add Batch
             </button>
           </div>
         </div>
-        <div className="card-body pt-0">
+
+        <div className="card-body p-0">
           <div className="table-responsive">
-            <table className="table align-middle text-nowrap mb-0">
-              <thead>
-                <tr className="bg-light border-bottom">
-                  <th className="fw-medium text-muted">Batch No</th>
-                  <th className="fw-medium text-muted">Product</th>
-                  <th className="fw-medium text-muted">Mfg Date</th>
-                  <th className="fw-medium text-muted">Expiry Date</th>
-                  <th className="fw-medium text-muted">Days Left</th>
-                  <th className="fw-medium text-muted">Qty</th>
-                  <th className="fw-medium text-muted">Warehouse</th>
-                  <th className="fw-medium text-muted">Status</th>
-                  <th className="fw-medium text-muted">Action</th>
+            <table className="table align-middle text-nowrap mb-0 table-hover">
+              <thead className="bg-light">
+                <tr className="text-uppercase fs-11 text-muted border-bottom">
+                  <th className="ps-4">Batch / Lot No</th>
+                  <th>Produce &amp; Product</th>
+                  <th>Intake / Mfg Date</th>
+                  <th>Expiry Date</th>
+                  <th>Shelf Life</th>
+                  <th>Lot Quantity</th>
+                  <th>Warehouse / Store</th>
+                  <th>Status</th>
+                  <th className="text-end pe-4">Consignment Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={9} className="text-center py-5 text-muted">Loading batches…</td></tr>
+                  <tr>
+                    <td colSpan={9} className="text-center py-5 text-muted">
+                      <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                      Loading farm batch records…
+                    </td>
+                  </tr>
                 )}
                 {!loading && filtered.length === 0 && (
                   <tr>
@@ -342,14 +545,14 @@ export default function BatchManagement() {
                         <div className="avatar-lg mx-auto mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: 64, height: 64 }}>
                           <i className="ri-archive-stack-line fs-1 text-muted"></i>
                         </div>
-                        <h6 className="fw-bold mb-1">No Batches Registered Yet</h6>
+                        <h6 className="fw-bold mb-1">No Batches Found</h6>
                         <p className="text-muted mx-auto mb-4" style={{ maxWidth: 520, fontSize: 13 }}>
                           Batches &amp; produce lots help you track intake dates, expiry dates, and warehouse locations for fresh farm products. 
                           You can register a new batch, bulk upload a CSV file, or auto-generate initial batch records from current in-stock products.
                         </p>
                         <div className="d-flex justify-content-center gap-2 flex-wrap">
                           <button 
-                            className="btn btn-success d-flex align-items-center gap-2" 
+                            className="btn btn-success d-flex align-items-center gap-2 rounded-pill px-3 shadow-sm" 
                             onClick={handleAutoPopulate}
                             disabled={autoPopulating}
                           >
@@ -357,12 +560,12 @@ export default function BatchManagement() {
                             {autoPopulating ? 'Generating Batches...' : '⚡ Auto-Generate from Stock'}
                           </button>
                           <button 
-                            className="btn btn-outline-success d-flex align-items-center gap-1"
+                            className="btn btn-outline-success d-flex align-items-center gap-1 rounded-pill px-3"
                             onClick={() => setActiveModal('import')}
                           >
                             <i className="ri-upload-2-line"></i> Bulk Import (CSV)
                           </button>
-                          <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+                          <button className="btn btn-primary d-flex align-items-center gap-1 rounded-pill px-3" onClick={openAdd}>
                             <i className="ri-add-line"></i> + Add Batch
                           </button>
                         </div>
@@ -371,27 +574,81 @@ export default function BatchManagement() {
                   </tr>
                 )}
                 {!loading && filtered.map(r => {
-                  const sc   = STATUS_CFG[r.computedStatus]
+                  const sc   = STATUS_CFG[r.computedStatus] || STATUS_CFG.active
                   const days = daysToExpiry(r.expiry_date)
                   const daysColor = days === null ? '#adb5bd' : days < 0 ? '#f06548' : days <= 7 ? '#f7b84b' : '#0ab39c'
+                  
                   return (
-                    <tr key={r.id}>
-                      <td><span className="fw-medium text-primary">{r.batch_no}</span></td>
-                      <td className="fw-medium">{r.product_name}</td>
-                      <td>{r.manufactured_date ? r.manufactured_date.slice(0,10) : '—'}</td>
-                      <td>{r.expiry_date ? r.expiry_date.slice(0,10) : '—'}</td>
+                    <tr key={r.id} className="cursor-pointer" onClick={() => openInspect(r)}>
+                      <td className="ps-4">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-light text-primary font-monospace fs-12 border px-2 py-1">
+                            {r.batch_no}
+                          </span>
+                        </div>
+                      </td>
                       <td>
-                        <span className="fw-bold" style={{ color: daysColor }}>
-                          {days === null ? '—' : days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'Today!' : `${days}d`}
+                        <div className="d-flex align-items-center gap-2">
+                          {r.product_image ? (
+                            <img src={r.product_image} alt="" className="rounded-circle object-fit-cover" style={{ width: 32, height: 32 }} />
+                          ) : (
+                            <div className="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
+                              <i className="ri-plant-line"></i>
+                            </div>
+                          )}
+                          <div>
+                            <div className="fw-bold text-dark fs-13">{r.product_name || `Product #${r.product_id}`}</div>
+                            <div className="text-muted fs-11">{r.sku || `ID: ${r.product_id}`}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-muted fs-12">{r.manufactured_date ? r.manufactured_date.slice(0,10) : '—'}</td>
+                      <td className="fs-12 fw-medium text-dark">{r.expiry_date ? r.expiry_date.slice(0,10) : '—'}</td>
+                      <td>
+                        <span className="fw-bold fs-12 px-2 py-0.5 rounded" style={{ color: daysColor, background: `${daysColor}15` }}>
+                          {days === null ? '—' : days < 0 ? `${Math.abs(days)}d expired` : days === 0 ? 'Expires Today!' : `${days} days left`}
                         </span>
                       </td>
-                      <td className="fw-medium">{r.quantity}</td>
-                      <td><span className="badge bg-light text-dark border">{r.warehouse_name || '—'}</span></td>
-                      <td><span className={`badge ${sc.cls}`}><i className={`${sc.icon} me-1`}></i>{sc.label}</span></td>
                       <td>
-                        <div className="d-flex gap-1">
-                          <button className="btn btn-sm btn-soft-primary p-1 px-2" onClick={() => openEdit(r)}><i className="ri-pencil-line"></i></button>
-                          <button className="btn btn-sm btn-soft-danger p-1 px-2" onClick={() => openDelete(r)}><i className="ri-delete-bin-line"></i></button>
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="fw-bold fs-13 text-dark">{r.quantity}</span>
+                          <span className="text-muted fs-11">units</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border px-2.5 py-1 fs-12">
+                          <i className="ri-store-2-line text-muted me-1"></i>
+                          {r.warehouse_name || 'Central Store'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${sc.cls} px-2.5 py-1 fs-12`}>
+                          <i className={`${sc.icon} me-1`}></i>{sc.label}
+                        </span>
+                      </td>
+                      <td className="text-end pe-4" onClick={e => e.stopPropagation()}>
+                        <div className="d-flex gap-1 justify-content-end align-items-center">
+                          <button 
+                            className="btn btn-sm btn-soft-success d-flex align-items-center gap-1 px-2 py-1 rounded fs-12"
+                            onClick={() => openInspect(r)}
+                            title="Inspect goods and dispatch to kitchen or transfer"
+                          >
+                            <i className="ri-flashlight-line"></i> Actions
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-soft-primary p-1 px-2 rounded" 
+                            onClick={() => openEdit(r)}
+                            title="Edit batch lot details"
+                          >
+                            <i className="ri-pencil-line"></i>
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-soft-danger p-1 px-2 rounded" 
+                            onClick={() => openDelete(r)}
+                            title="Recall or archive batch"
+                          >
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -400,72 +657,279 @@ export default function BatchManagement() {
               </tbody>
             </table>
           </div>
-          <div className="mt-3 text-muted" style={{ fontSize:13 }}>Showing {filtered.length} of {records.length} batches</div>
+          <div className="p-3 bg-light border-top d-flex justify-content-between align-items-center text-muted fs-13">
+            <span>Showing <strong>{filtered.length}</strong> of <strong>{records.length}</strong> batches</span>
+            <span>Click any batch to inspect produce consignment &amp; execute operations</span>
+          </div>
         </div>
       </div>
 
+      {/* ── BATCH INSPECT & RAPID OPERATIONS MODAL ───────────────────────── */}
+      {activeModal === 'inspect' && selectedBatch && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                {/* Header */}
+                <div className="modal-header bg-dark text-white p-3.5">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style={{ width: 44, height: 44 }}>
+                      <i className="ri-archive-stack-fill fs-20"></i>
+                    </div>
+                    <div>
+                      <h5 className="modal-title fw-bold text-white mb-0">
+                        Batch {selectedBatch.batch_no}
+                      </h5>
+                      <span className="text-white-50 fs-12">
+                        {selectedBatch.product_name} • Location: {selectedBatch.warehouse_name || 'Central Store'}
+                      </span>
+                    </div>
+                  </div>
+                  <button className="btn-close btn-close-white" onClick={closeModal}></button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="modal-body p-4">
+                  {/* Produce Overview Card */}
+                  <div className="card bg-light border-0 rounded-3 p-3 mb-4">
+                    <div className="row g-3">
+                      <div className="col-6 col-md-3">
+                        <div className="text-muted fs-11 text-uppercase fw-semibold">Produce Item</div>
+                        <div className="fw-bold fs-14 text-dark text-truncate">{selectedBatch.product_name}</div>
+                        <div className="text-muted fs-12 font-monospace">{selectedBatch.sku}</div>
+                      </div>
+                      <div className="col-6 col-md-3">
+                        <div className="text-muted fs-11 text-uppercase fw-semibold">Available in Lot</div>
+                        <div className="fw-bold fs-15 text-success">{selectedBatch.quantity} Units</div>
+                        <div className="text-muted fs-12">Total Stock: {selectedBatch.current_stock ?? selectedBatch.quantity}</div>
+                      </div>
+                      <div className="col-6 col-md-3">
+                        <div className="text-muted fs-11 text-uppercase fw-semibold">Intake Date</div>
+                        <div className="fw-bold fs-13 text-dark">{selectedBatch.manufactured_date ? selectedBatch.manufactured_date.slice(0,10) : '—'}</div>
+                        <div className="text-muted fs-12">Received at Hub</div>
+                      </div>
+                      <div className="col-6 col-md-3">
+                        <div className="text-muted fs-11 text-uppercase fw-semibold">Expiry Date</div>
+                        <div className="fw-bold fs-13 text-danger">{selectedBatch.expiry_date ? selectedBatch.expiry_date.slice(0,10) : '—'}</div>
+                        <div className="fs-12 fw-semibold text-warning">
+                          {daysToExpiry(selectedBatch.expiry_date) !== null ? `${daysToExpiry(selectedBatch.expiry_date)} days remaining` : 'No expiry set'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Consignment Operations Tabs */}
+                  <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i className="ri-flashlight-fill text-warning"></i> Rapid Batch Consignment Operations
+                  </h6>
+
+                  <div className="row g-3">
+                    {/* Action 1: Route to Chef Bems Kitchen */}
+                    <div className="col-md-6">
+                      <div className="card h-100 border border-success-subtle rounded-3 p-3 bg-success-subtle bg-opacity-25">
+                        <div className="d-flex align-items-center gap-2 mb-2 text-success fw-bold">
+                          <i className="ri-restaurant-2-line fs-18"></i>
+                          <span>Route to Chef Bems Kitchen</span>
+                        </div>
+                        <p className="text-muted fs-12 mb-3">
+                          Dispatch farm produce to the kitchen for food preparation, daily meals, or farm culinary processing.
+                        </p>
+                        <div className="mb-2">
+                          <label className="form-label fs-12 fw-semibold mb-1">Quantity to Kitchen (Max {selectedBatch.quantity})</label>
+                          <input 
+                            type="number" 
+                            className="form-control form-control-sm" 
+                            min="1" 
+                            max={selectedBatch.quantity} 
+                            value={actionQuantity} 
+                            onChange={e => setActionQuantity(Math.max(1, Math.min(selectedBatch.quantity, parseInt(e.target.value) || 1)))} 
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <input 
+                            type="text" 
+                            className="form-control form-control-sm" 
+                            placeholder="Optional prep note (e.g. Lunch batch, soup base)" 
+                            value={actionNotes} 
+                            onChange={e => setActionNotes(e.target.value)} 
+                          />
+                        </div>
+                        <button 
+                          className="btn btn-success btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5"
+                          onClick={handleRouteKitchen}
+                          disabled={saving || selectedBatch.quantity <= 0}
+                        >
+                          <i className="ri-send-plane-fill"></i> Dispatch {actionQuantity} to Kitchen
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action 2: Inter-Warehouse Transfer */}
+                    <div className="col-md-6">
+                      <div className="card h-100 border border-primary-subtle rounded-3 p-3 bg-primary-subtle bg-opacity-25">
+                        <div className="d-flex align-items-center gap-2 mb-2 text-primary fw-bold">
+                          <i className="ri-exchange-line fs-18"></i>
+                          <span>Inter-Warehouse Transfer</span>
+                        </div>
+                        <p className="text-muted fs-12 mb-3">
+                          Relocate this consignment lot to another warehouse, cold storage, or sorting depot.
+                        </p>
+                        <div className="mb-2">
+                          <label className="form-label fs-12 fw-semibold mb-1">Destination Warehouse</label>
+                          <select 
+                            className="form-select form-select-sm" 
+                            value={actionTargetWarehouse} 
+                            onChange={e => setActionTargetWarehouse(e.target.value)}
+                          >
+                            <option value="">— Select Warehouse —</option>
+                            {warehouses.filter(w => w.id !== selectedBatch.warehouse_id).map(w => (
+                              <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label fs-12 fw-semibold mb-1">Transfer Units</label>
+                          <input 
+                            type="number" 
+                            className="form-control form-control-sm" 
+                            min="1" 
+                            max={selectedBatch.quantity} 
+                            value={actionQuantity} 
+                            onChange={e => setActionQuantity(Math.max(1, Math.min(selectedBatch.quantity, parseInt(e.target.value) || 1)))} 
+                          />
+                        </div>
+                        <button 
+                          className="btn btn-primary btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5"
+                          onClick={handleTransferWarehouse}
+                          disabled={saving || selectedBatch.quantity <= 0 || !actionTargetWarehouse}
+                        >
+                          <i className="ri-truck-line"></i> Transfer Stock
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action 3: Write-Off Damaged / Expired */}
+                    <div className="col-12">
+                      <div className="card border border-danger-subtle rounded-3 p-3 bg-danger-subtle bg-opacity-20">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                          <div className="d-flex align-items-center gap-2 text-danger fw-bold">
+                            <i className="ri-close-circle-line fs-18"></i>
+                            <span>Write-Off Damaged or Expired Stock</span>
+                          </div>
+                          <span className="fs-12 text-muted">Transfers directly into Lost &amp; Damaged Ledger</span>
+                        </div>
+                        <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                            <input 
+                              type="text" 
+                              className="form-control form-control-sm" 
+                              placeholder="Reason (e.g. Overripe, transit damage)" 
+                              value={actionReason} 
+                              onChange={e => setActionReason(e.target.value)} 
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <input 
+                              type="number" 
+                              className="form-control form-control-sm" 
+                              placeholder="Write-off Qty" 
+                              min="1" 
+                              max={selectedBatch.quantity} 
+                              value={actionQuantity} 
+                              onChange={e => setActionQuantity(Math.max(1, Math.min(selectedBatch.quantity, parseInt(e.target.value) || 1)))} 
+                            />
+                          </div>
+                          <div className="col-md-5">
+                            <button 
+                              className="btn btn-danger btn-sm w-100 fw-semibold"
+                              onClick={handleLogDamage}
+                              disabled={saving || selectedBatch.quantity <= 0}
+                            >
+                              <i className="ri-delete-bin-7-line me-1"></i> Write-Off {actionQuantity} Damaged Units
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer bg-light p-3">
+                  <button type="button" className="btn btn-light rounded-pill px-4" onClick={closeModal}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
+
+      {/* ── ADD / EDIT BATCH MODAL ────────────────────────────────────────── */}
       {activeModal === 'form' && (
         <>
           <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
             <div className="modal-dialog modal-dialog-centered modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h6 className="modal-title">{editItem ? 'Edit Batch' : 'Add New Batch'}</h6>
-                  <button className="btn-close" onClick={closeModal}></button>
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div className="modal-header bg-success text-white p-3.5">
+                  <h6 className="modal-title fw-bold text-white mb-0">
+                    <i className="ri-archive-line me-1.5"></i>
+                    {selectedBatch ? `Edit Batch: ${selectedBatch.batch_no}` : 'Register New Farm Produce Batch'}
+                  </h6>
+                  <button className="btn-close btn-close-white" onClick={closeModal}></button>
                 </div>
-                <div className="modal-body">
+                <div className="modal-body p-4">
                   <form onSubmit={saveForm}>
                     <div className="row g-3">
-                      {!editItem && (
+                      {!selectedBatch && (
                         <>
                           <div className="col-md-6">
-                            <label className="form-label fw-medium">Product <span className="text-danger">*</span></label>
+                            <label className="form-label fw-semibold fs-13">Produce / Product <span className="text-danger">*</span></label>
                             <ProductSelect
                               products={products}
                               value={form.product_id}
                               onChange={(selectedId) => setForm(f => ({ ...f, product_id: selectedId }))}
-                              placeholder="Type name, scan barcode, or select..."
+                              placeholder="Search farm produce or scan barcode..."
                               required
                             />
                           </div>
                           <div className="col-md-6">
-                            <label className="form-label fw-medium">Warehouse</label>
+                            <label className="form-label fw-semibold fs-13">Storage Warehouse</label>
                             <select className="form-select" value={form.warehouse_id} onChange={e => setForm(f=>({...f,warehouse_id:e.target.value}))}>
-                              <option value="">— Select —</option>
-                              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                              <option value="">— Select Warehouse —</option>
+                              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
                             </select>
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label fw-medium">Batch No <span className="text-danger">*</span></label>
+                            <label className="form-label fw-semibold fs-13">Batch / Lot No <span className="text-danger">*</span></label>
                             <input className="form-control" required value={form.batch_no} onChange={e => setForm(f=>({...f,batch_no:e.target.value}))} />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label fw-medium">Mfg Date</label>
+                            <label className="form-label fw-semibold fs-13">Intake / Mfg Date</label>
                             <input type="date" className="form-control" value={form.manufactured_date} onChange={e => setForm(f=>({...f,manufactured_date:e.target.value}))} />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label fw-medium">Cost Price (₦)</label>
+                            <label className="form-label fw-semibold fs-13">Cost Price (₦)</label>
                             <input type="number" className="form-control" min="0" step="0.01" value={form.cost_price} onChange={e => setForm(f=>({...f,cost_price:e.target.value}))} />
                           </div>
                         </>
                       )}
                       <div className="col-md-6">
-                        <label className="form-label fw-medium">Expiry Date</label>
+                        <label className="form-label fw-semibold fs-13">Expiry / Best Before Date</label>
                         <input type="date" className="form-control" value={form.expiry_date} onChange={e => setForm(f=>({...f,expiry_date:e.target.value}))} />
                       </div>
                       <div className="col-md-6">
-                        <label className="form-label fw-medium">Quantity</label>
+                        <label className="form-label fw-semibold fs-13">Batch Quantity</label>
                         <input type="number" className="form-control" min="0" value={form.quantity} onChange={e => setForm(f=>({...f,quantity:Number(e.target.value)}))} />
                       </div>
                       <div className="col-12">
-                        <label className="form-label fw-medium">Notes</label>
-                        <input className="form-control" value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Optional batch notes…" />
+                        <label className="form-label fw-semibold fs-13">Consignment Notes</label>
+                        <input className="form-control" value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Optional harvest source, vendor delivery note…" />
                       </div>
                     </div>
-                    <div className="d-flex gap-2 mt-4">
-                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                      <button type="submit" className="btn btn-primary w-100" disabled={saving}>
-                        {saving ? 'Saving…' : (editItem ? 'Save Changes' : 'Add Batch')}
+                    <div className="d-flex gap-2 mt-4 pt-2 border-top">
+                      <button type="button" className="btn btn-light rounded-pill w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-success rounded-pill w-100 fw-bold" disabled={saving}>
+                        {saving ? 'Saving Lot…' : (selectedBatch ? 'Save Changes' : '+ Register Batch')}
                       </button>
                     </div>
                   </form>
@@ -477,21 +941,22 @@ export default function BatchManagement() {
         </>
       )}
 
+      {/* ── RECALL BATCH MODAL ────────────────────────────────────────────── */}
       {activeModal === 'delete' && (
         <>
           <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
             <div className="modal-dialog modal-dialog-centered modal-sm">
-              <div className="modal-content p-4 text-center">
+              <div className="modal-content border-0 shadow-lg rounded-4 p-4 text-center">
                 <div className="d-flex justify-content-center mb-3">
                   <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
-                    <i className="ri-delete-bin-line text-danger fs-22"></i>
+                    <i className="ri-forbid-line text-danger fs-24"></i>
                   </div>
                 </div>
-                <h6 className="mb-1">Recall Batch?</h6>
-                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.batch_no} — {editItem?.product_name}</p>
+                <h6 className="fw-bold mb-1">Recall Batch?</h6>
+                <p className="text-muted mb-4 fs-13">{selectedBatch?.batch_no} — {selectedBatch?.product_name}</p>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Recall</button>
+                  <button className="btn btn-light rounded-pill w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger rounded-pill w-100 fw-semibold" onClick={confirmDelete}>Recall</button>
                 </div>
               </div>
             </div>
@@ -500,7 +965,7 @@ export default function BatchManagement() {
         </>
       )}
 
-      {/* Batch Import Wizard */}
+      {/* ── BATCH CSV / EXCEL IMPORT WIZARD ──────────────────────────────── */}
       {activeModal === 'import' && (
         <ImportModal
           entityName="Batches"
