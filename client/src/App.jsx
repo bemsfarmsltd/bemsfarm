@@ -2,10 +2,11 @@ import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import ProtectedRoute, { STAFF_ROLES } from "./components/ProtectedRoute";
 
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/RegisterPage"));
-const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const ProductsPage = lazy(() => import("./pages/ProductsPage"));
@@ -46,6 +47,8 @@ const ROUTE_META = {
   "/admin/login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
   "/admin-login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
   "/register": ["Create an Account | BemsFarms", "Create a BemsFarms account to order groceries, save delivery details and access Chef Bems."],
+  "/verify-email": ["Verify Your Email | BemsFarms", "Enter your 6-digit verification code to activate your BemsFarms account."],
+  "/onboarding": ["Setup Your Profile | BemsFarms", "Personalize your household size, budget target, and nutrition preferences on BemsFarms."],
   "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
   "/chef-chat": ["Chef Bems — Culinary AI Assistant | BemsFarms", "Get personalized Nigerian recipe ideas, ingredient alternatives and smart shopping lists with Chef Bems."],
 };
