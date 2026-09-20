@@ -50,7 +50,6 @@ export default function BatchManagement() {
   const [activeModal, setActiveModal]   = useState(null)
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [showExplainer, setShowExplainer] = useState(true)
 
   // Action forms state
   const [form, setForm] = useState({
@@ -88,20 +87,6 @@ export default function BatchManagement() {
       setLoading(false)
     }
   }, [])
-
-  const [autoPopulating, setAutoPopulating] = useState(false)
-  async function handleAutoPopulate() {
-    setAutoPopulating(true)
-    try {
-      const res = await api.post('/admin/inventory/batches/auto-populate')
-      toast.success(res.data.message || 'Batches initialized successfully!')
-      load()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to initialize batches')
-    } finally {
-      setAutoPopulating(false)
-    }
-  }
 
   useEffect(() => { load() }, [load])
 
@@ -312,7 +297,7 @@ export default function BatchManagement() {
             Batches &amp; Consignment Expiry Hub
           </h4>
           <p className="text-muted mb-0 fs-13">
-            Track incoming farm produce lots, monitor FIFO shelf-life countdowns, and execute rapid kitchen dispatch or warehouse transfers.
+            All uploaded items and farm harvests are automatically tracked in batches with intake dates, remaining shelf-life, and direct kitchen routing.
           </p>
         </div>
         <ul className="breadcrumb flex-shrink-0 mb-0">
@@ -320,55 +305,6 @@ export default function BatchManagement() {
           <li className="breadcrumb-item active">Batches &amp; Expiry</li>
         </ul>
       </div>
-
-      {/* Concept Explainer Banner */}
-      {showExplainer && (
-        <div className="card border-0 shadow-sm rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #0d5c3a 0%, #15803d 100%)', color: '#fff' }}>
-          <div className="card-body p-4 position-relative">
-            <button 
-              type="button" 
-              className="btn-close btn-close-white position-absolute top-0 end-0 m-3" 
-              aria-label="Close"
-              onClick={() => setShowExplainer(false)}
-            ></button>
-            <div className="row align-items-center g-3">
-              <div className="col-lg-8">
-                <div className="d-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill bg-white bg-opacity-20 text-white fs-12 fw-semibold mb-2">
-                  <i className="ri-lightbulb-flash-line"></i> How Bems Farms Batch Tracking Works
-                </div>
-                <h5 className="fw-bold text-white mb-2">Every produce shipment is a traceable Batch Lot</h5>
-                <p className="text-white-50 mb-3 fs-13" style={{ maxWidth: 700 }}>
-                  Whenever new goods or fresh harvests arrive, they are grouped under a unique <strong>Batch Number</strong>. You can inspect all items received in that consignment, watch days remaining before expiration, and trigger instant operations (dispatching to <strong>Chef Bems Kitchen</strong>, inter-warehouse relocation, or clearance pricing).
-                </p>
-                <div className="d-flex flex-wrap gap-2">
-                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
-                    <i className="ri-truck-line me-1"></i> 1. Intake / Lot Registry
-                  </span>
-                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
-                    <i className="ri-timer-flash-line me-1"></i> 2. Expiry &amp; FIFO Priority
-                  </span>
-                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
-                    <i className="ri-restaurant-2-line me-1"></i> 3. Route to Chef Bems Kitchen
-                  </span>
-                  <span className="badge bg-white bg-opacity-15 text-white fw-normal px-2.5 py-1.5 rounded-pill fs-12">
-                    <i className="ri-exchange-line me-1"></i> 4. Warehouse Transfers
-                  </span>
-                </div>
-              </div>
-              <div className="col-lg-4 text-lg-end">
-                <button 
-                  className="btn btn-warning fw-bold text-dark px-3 py-2 shadow-sm d-inline-flex align-items-center gap-2 rounded-pill"
-                  onClick={handleAutoPopulate}
-                  disabled={autoPopulating}
-                >
-                  <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-fill'}`}></i>
-                  {autoPopulating ? 'Initializing Lots...' : '⚡ Auto-Generate from Stock'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Near-Expiry Urgency Alert */}
       {stats.expiring > 0 && (
@@ -474,19 +410,17 @@ export default function BatchManagement() {
               placeholder="Search batch no, produce name, warehouse…" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              style={{ minWidth: 260, fontSize: 13 }} 
+              style={{ minWidth: 280, fontSize: 13 }} 
             />
             <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
           <div className="d-flex gap-2 ms-auto flex-wrap align-items-center">
-            <button
-              className="btn btn-outline-success d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13"
-              onClick={handleAutoPopulate}
-              disabled={autoPopulating}
-              title="Creates batch records automatically for existing products with positive stock"
+            <button 
+              className="btn btn-outline-secondary d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13"
+              onClick={load}
+              title="Refresh batches list"
             >
-              <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'}`}></i>
-              {autoPopulating ? 'Generating...' : '⚡ Auto-Generate Batches'}
+              <i className="ri-refresh-line"></i> Refresh
             </button>
             <button
               className="btn btn-outline-primary d-flex align-items-center gap-1.5 rounded-pill px-3 fs-13"
@@ -547,24 +481,9 @@ export default function BatchManagement() {
                         </div>
                         <h6 className="fw-bold mb-1">No Batches Found</h6>
                         <p className="text-muted mx-auto mb-4" style={{ maxWidth: 520, fontSize: 13 }}>
-                          Batches &amp; produce lots help you track intake dates, expiry dates, and warehouse locations for fresh farm products. 
-                          You can register a new batch, bulk upload a CSV file, or auto-generate initial batch records from current in-stock products.
+                          Whenever you add or restock items, they are automatically organized into batches.
                         </p>
                         <div className="d-flex justify-content-center gap-2 flex-wrap">
-                          <button 
-                            className="btn btn-success d-flex align-items-center gap-2 rounded-pill px-3 shadow-sm" 
-                            onClick={handleAutoPopulate}
-                            disabled={autoPopulating}
-                          >
-                            <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'} fs-16`}></i>
-                            {autoPopulating ? 'Generating Batches...' : '⚡ Auto-Generate from Stock'}
-                          </button>
-                          <button 
-                            className="btn btn-outline-success d-flex align-items-center gap-1 rounded-pill px-3"
-                            onClick={() => setActiveModal('import')}
-                          >
-                            <i className="ri-upload-2-line"></i> Bulk Import (CSV)
-                          </button>
                           <button className="btn btn-primary d-flex align-items-center gap-1 rounded-pill px-3" onClick={openAdd}>
                             <i className="ri-add-line"></i> + Add Batch
                           </button>

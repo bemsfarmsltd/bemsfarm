@@ -170,6 +170,21 @@ async function ensureInventoryTables() {
       ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
       ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+      -- Auto-map all existing and uploaded products into batch_management seamlessly
+      INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+      SELECT 
+        p.id, 
+        CONCAT('LOT-', TO_CHAR(COALESCE(p.created_at, NOW()), 'YYYYMMDD'), '-', LPAD(p.id::text, 3, '0')),
+        COALESCE(p.stock, 0),
+        p.cost_price,
+        COALESCE(p.expiry_date, (CURRENT_DATE + INTERVAL '180 days')::date),
+        'active',
+        COALESCE(p.created_at, NOW()),
+        COALESCE(p.created_at, NOW())
+      FROM products p
+      WHERE NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
+      ON CONFLICT DO NOTHING;
     `);
     inventoryTablesReady = true;
   } catch (err) {
@@ -750,6 +765,29 @@ router.post(
           ]
         );
         createdBatch = batchRes.rows[0];
+      } else {
+        // Automatically map restock to existing active batch for this product, or create an intake batch
+        const existingBatchRes = await client.query(
+          `SELECT id, quantity FROM batch_management WHERE product_id = $1 AND status = 'active' ORDER BY id DESC LIMIT 1`,
+          [parseInt(product_id)]
+        );
+        if (existingBatchRes.rows.length > 0) {
+          const bId = existingBatchRes.rows[0].id;
+          const updatedB = await client.query(
+            `UPDATE batch_management SET quantity = quantity + $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+            [qty, bId]
+          );
+          createdBatch = updatedB.rows[0];
+        } else {
+          const autoBatchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product_id}`;
+          const defaultExp = expiry_date || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const newB = await client.query(
+            `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW()) RETURNING *`,
+            [parseInt(product_id), warehouse_id ? parseInt(warehouse_id) : null, autoBatchNo, qty, cost, defaultExp]
+          );
+          createdBatch = newB.rows[0];
+        }
       }
 
       await client.query("COMMIT");

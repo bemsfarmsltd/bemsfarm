@@ -896,15 +896,15 @@ router.post(
 
       const product = result.rows[0];
 
-      // Auto-create batch entry in batch_management if expiry_date is provided
-      if (expiry_date) {
-        const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}`;
-        await client.query(
-          `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-          [product.id, batchNo, parseInt(stock_quantity) || 0, cost_price ? parseFloat(cost_price) : null, expiry_date]
-        ).catch(() => {});
-      }
+      // Always auto-register batch entry in batch_management for newly created products
+      const initialQty = parseInt(stock_quantity || stock || 0);
+      const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}`;
+      const defaultExp = expiry_date || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      await client.query(
+        `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
+        [product.id, batchNo, initialQty, cost_price ? parseFloat(cost_price) : null, defaultExp]
+      ).catch(() => {});
 
       // Save additional images
       const extraImages = [image_2_url, image_3_url, image_4_url].filter(
