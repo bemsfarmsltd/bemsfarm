@@ -127,7 +127,9 @@ export default function RegisterPage() {
         longitude: form.longitude,
       });
       sessionStorage.setItem("bemsfarms_pending_email", email);
+      localStorage.setItem("bemsfarms_pending_email", email);
       sessionStorage.setItem("bemsfarms_post_auth_destination", destination);
+      localStorage.setItem("bemsfarms_post_auth_destination", destination);
       navigate("/verify-email", { state: { email, from: destination } });
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Registration failed. Try again.");

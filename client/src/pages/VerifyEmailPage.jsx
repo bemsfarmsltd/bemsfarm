@@ -45,29 +45,31 @@ export default function VerifyEmailPage() {
   const { verifyEmail, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || sessionStorage.getItem("bemsfarms_pending_email") || "";
-  const requestedDestination = location.state?.from || sessionStorage.getItem("bemsfarms_post_auth_destination");
+  const [email, setEmail] = useState(() => {
+    return location.state?.email || sessionStorage.getItem("bemsfarms_pending_email") || localStorage.getItem("bemsfarms_pending_email") || "";
+  });
+  const [isEditingEmail, setIsEditingEmail] = useState(!email);
+  const requestedDestination = location.state?.from || sessionStorage.getItem("bemsfarms_post_auth_destination") || localStorage.getItem("bemsfarms_post_auth_destination");
   const destination = typeof requestedDestination === "string" && requestedDestination.startsWith("/") && !requestedDestination.startsWith("//")
     ? requestedDestination
     : "/home";
-
-  useEffect(() => {
-    if (!email) {
-      navigate("/register");
-    }
-  }, [email, navigate]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
     setError("");
     setSuccess("");
+    const activeEmail = email.trim().toLowerCase();
+    if (!activeEmail) {
+      return setError("Please enter your email address.");
+    }
     if (!token.trim() || token.length < 6) {
       return setError("Enter the 6-digit code from your email.");
     }
     setLoading(true);
     try {
-      await verifyEmail(email, token);
+      await verifyEmail(activeEmail, token.trim());
       sessionStorage.removeItem("bemsfarms_pending_email");
+      localStorage.removeItem("bemsfarms_pending_email");
       navigate("/onboarding", { replace: true, state: { from: destination } });
     } catch (err) {
       setError(err.response?.data?.message || "Verification failed. Invalid or expired code.");
@@ -79,9 +81,13 @@ export default function VerifyEmailPage() {
   const handleResend = async () => {
     setError("");
     setSuccess("");
+    const activeEmail = email.trim().toLowerCase();
+    if (!activeEmail) {
+      return setError("Please enter your email address to request a new code.");
+    }
     setResendLoading(true);
     try {
-      const res = await resendVerification(email);
+      const res = await resendVerification(activeEmail);
       setSuccess(res.message || "A new code has been sent to your email.");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to resend code. Please try again.");
@@ -176,19 +182,55 @@ export default function VerifyEmailPage() {
               </Link>
             </div>
             <h1 className="text-3xl font-extrabold text-gray-900 mb-2 font-display">Check your email</h1>
-            <p className="text-gray-500 text-[14px] mb-8 font-medium">
-              Sent to: <span className="font-bold text-gray-700">{email}</span>
-            </p>
+            {isEditingEmail ? (
+              <div className="mb-6">
+                <label className="block text-[12px] font-bold text-gray-600 mb-1 uppercase tracking-wider">
+                  Your Account Email
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. yourname@example.com"
+                    className="auth-input flex-1 px-4 py-2.5 border-2 border-gray-200 focus:border-emerald-700 rounded-xl text-sm font-medium outline-none"
+                    required
+                  />
+                  {email && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingEmail(false)}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                    >
+                      Done
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-[14px] mb-6 font-medium flex items-center justify-between">
+                <span>
+                  Sent to: <strong className="text-gray-800">{email}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingEmail(true)}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline ml-2"
+                >
+                  Change
+                </button>
+              </p>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3.5 text-xs font-semibold mb-6 flex items-center gap-2">
-                <span style={{fontSize:'1.35em'}}></span> {error}
+                <span style={{fontSize:'1.35em'}}>⚠️</span> {error}
               </div>
             )}
             
             {success && (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-3.5 text-xs font-semibold mb-6 flex items-center gap-2">
-                <span style={{fontSize:'1.35em'}}></span> {success}
+                <span style={{fontSize:'1.35em'}}>✅</span> {success}
               </div>
             )}
 
