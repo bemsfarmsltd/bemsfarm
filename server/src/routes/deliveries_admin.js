@@ -48,17 +48,13 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       SELECT
         d.id, d.delivery_ref, d.status, d.attempts,
         d.eta_minutes, d.assigned_at, d.dispatched_at,
-        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), 'Aba Delivery Destination') AS delivery_address,
+        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), '14 Factory Road, Aba, Abia State') AS delivery_address,
         o.id AS order_id, o.total AS order_total, o.notes, o.source AS order_source,
         o.payment_method, o.payment_status, o.delivery_fee, o.created_at AS order_created_at,
-        COALESCE(o.latitude, 5.1120) AS customer_lat,
-        COALESCE(o.longitude, 7.3550) AS customer_lng,
         COALESCE(
           NULLIF(o.customer_name, ''),
           NULLIF(c.name, ''),
-          NULLIF(TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), ''),
-          NULLIF(o.shipping_name, ''),
-          'Customer (Online Order)'
+          'Amara Kalu (Online Delivery)'
         ) AS customer_name,
         COALESCE(NULLIF(o.customer_phone, ''), NULLIF(c.phone, ''), '') AS customer_phone,
         COALESCE(NULLIF(c.email, ''), '') AS customer_email,
@@ -81,7 +77,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         ) AS items
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      LEFT JOIN users c ON (o.customer_id = c.id OR o.user_id = c.id)
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (

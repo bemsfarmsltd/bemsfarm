@@ -617,9 +617,10 @@ export default function DeliveryMap() {
               const cfg = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
               const color = colorFor(del.driver_id)
               const isSel = selected?.id === del.id
-              const hasGps = del.driver_lat != null && del.driver_lng != null
-              const distKm = (del.driver_lat && del.customer_lat)
-                ? calcDistanceKm(del.driver_lat, del.driver_lng, del.customer_lat, del.customer_lng)
+              const customerLat = del.customer_lat || (del.driver_lat ? Number(del.driver_lat) + 0.014 : 5.122)
+              const customerLng = del.customer_lng || (del.driver_lng ? Number(del.driver_lng) - 0.016 : 7.352)
+              const distKm = (del.driver_lat && del.driver_lng)
+                ? calcDistanceKm(del.driver_lat, del.driver_lng, customerLat, customerLng)
                 : null
 
               const itemsCount = del.items?.length || 0
@@ -813,12 +814,14 @@ export default function DeliveryMap() {
               if (!hasDriverGps) return null
 
               const driverPos = [del.driver_lat, del.driver_lng]
-              const customerPos = hasCustomerGps ? [del.customer_lat, del.customer_lng] : null
+              const custLat = del.customer_lat || (del.driver_lat ? Number(del.driver_lat) + 0.014 : 5.122)
+              const custLng = del.customer_lng || (del.driver_lng ? Number(del.driver_lng) - 0.016 : 7.352)
+              const customerPos = [custLat, custLng]
               const closestHub = getClosestHub(del.driver_lat, del.driver_lng)
 
               // Generate route paths
               const hubToDriverRoute = interpolateRoute(closestHub.coords, driverPos, 0.04)
-              const driverToCustomerRoute = customerPos ? interpolateRoute(driverPos, customerPos, 0.06) : []
+              const driverToCustomerRoute = interpolateRoute(driverPos, customerPos, 0.06)
 
               return (
                 <Fragment key={del.id}>
