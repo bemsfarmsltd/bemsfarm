@@ -11,14 +11,24 @@ const STATUS_CFG = {
 }
 
 const VEHICLE_TYPES = [
-  { value: 'motorcycle', label: 'Motorcycle' },
-  { value: 'bicycle',    label: 'Bicycle' },
-  { value: 'car',        label: 'Car' },
-  { value: 'van',        label: 'Van' },
+  { value: 'motorcycle', label: 'Motorcycle / Bike' },
+  { value: 'bicycle',    label: 'Bicycle / E-Bike' },
+  { value: 'car',        label: 'Car / Sedan' },
+  { value: 'van',        label: 'Delivery Van' },
 ]
 
 const BLANK_FORM = {
-  name: '', phone: '', email: '', vehicle_type: 'motorcycle', vehicle_plate: '', zone_id: '', notes: '',
+  name: '',
+  phone: '',
+  email: '',
+  password: '',
+  vehicle_type: 'motorcycle',
+  vehicle_plate: '',
+  commission_per_delivery: '500',
+  zone_id: '',
+  notes: '',
+  license_number: '',
+  emergency_contact: '',
 }
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
@@ -47,6 +57,9 @@ export default function DriversManagement() {
   const [suspendNote, setSuspendNote]   = useState('')
   const [isEditing, setIsEditing]       = useState(false)
   const [saving, setSaving]             = useState(false)
+  const [onboardedCredentials, setOnboardedCredentials] = useState(null)
+  const [newPassword, setNewPassword]   = useState('')
+  const [updatingPassword, setUpdatingPassword] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -70,9 +83,25 @@ export default function DriversManagement() {
     setSelected(driver)
     setActiveModal(type)
     setSuspendNote('')
-    if (type === 'add') { setForm(BLANK_FORM); setIsEditing(false) }
+    setNewPassword('')
+    if (type === 'add') { 
+      setForm({ ...BLANK_FORM, password: Math.floor(100000 + Math.random() * 900000).toString() }); 
+      setIsEditing(false) 
+    }
     if (type === 'edit' && driver) {
-      setForm({ name: driver.name, phone: driver.phone, email: driver.email || '', vehicle_type: (driver.vehicle_type || 'motorcycle').toLowerCase(), vehicle_plate: driver.vehicle_plate || '', zone_id: driver.zone_id || '', notes: driver.notes || '' })
+      setForm({
+        name: driver.name,
+        phone: driver.phone,
+        email: driver.email || '',
+        password: '',
+        vehicle_type: (driver.vehicle_type || 'motorcycle').toLowerCase(),
+        vehicle_plate: driver.vehicle_plate || '',
+        commission_per_delivery: driver.commission_per_delivery || '500',
+        zone_id: driver.zone_id || '',
+        notes: driver.notes || '',
+        license_number: driver.license_number || '',
+        emergency_contact: driver.emergency_contact || '',
+      })
       setIsEditing(true)
     }
   }
@@ -94,17 +123,40 @@ export default function DriversManagement() {
     try {
       if (isEditing) {
         await api.patch(`/admin/deliveries/drivers/${selected.id}`, form)
-        toast.success('Driver updated')
+        toast.success('Driver profile updated')
+        closeModal()
       } else {
-        await api.post('/admin/deliveries/drivers', form)
-        toast.success('Driver added')
+        const res = await api.post('/admin/deliveries/drivers', form)
+        const driverData = res.data?.driver || {}
+        toast.success('🎉 Driver onboarded successfully!')
+        setOnboardedCredentials({
+          name: form.name,
+          phone: form.phone,
+          password: form.password || form.phone.replace(/\s+/g, ''),
+          vehicle_plate: form.vehicle_plate,
+          commission: form.commission_per_delivery,
+        })
+        setActiveModal('onboard_success')
       }
-      closeModal()
       load()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save driver')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!newPassword || !selected) return
+    setUpdatingPassword(true)
+    try {
+      await api.put(`/admin/deliveries/drivers/${selected.id}/credentials`, { password: newPassword })
+      toast.success(`Password updated for ${selected.name}`)
+      closeModal()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update password')
+    } finally {
+      setUpdatingPassword(false)
     }
   }
 
@@ -361,9 +413,34 @@ export default function DriversManagement() {
                     </div>
                   )}
 
+                  {/* Driver App Credentials & Reset */}
+                  <div className="border rounded p-3 mb-3 bg-light-subtle">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold small text-dark"><i className="ri-key-2-line me-1 text-primary" />Driver App Access</span>
+                      <span className="badge bg-success-subtle text-success fs-xs">Active Account</span>
+                    </div>
+                    <div className="d-flex gap-2">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Enter new 6-digit PIN / password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary text-nowrap"
+                        disabled={!newPassword || updatingPassword}
+                        onClick={handleResetPassword}
+                      >
+                        {updatingPassword ? 'Updating…' : 'Reset Password'}
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="d-flex gap-2">
                     <button className="btn btn-outline-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('edit', selected), 100) }}>
-                      <i className="ri-edit-line me-1" />Edit
+                      <i className="ri-edit-line me-1" />Edit Profile
                     </button>
                     {selected.status !== 'suspended' && selected.status !== 'on_delivery' && (
                       <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('suspend', selected), 100) }}>
@@ -382,29 +459,77 @@ export default function DriversManagement() {
             )
           })()}
 
-          {/* ── ADD / EDIT DRIVER ─────────────────────── */}
+          {/* ── ONBOARD / ADD DRIVER MODAL ─────────────── */}
           {(activeModal === 'add' || activeModal === 'edit') && (
-            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520 }}>
-              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                <h5 className="mb-0">{isEditing ? 'Edit Driver' : 'Add New Driver'}</h5>
-                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '92vh', overflowY: 'auto' }} className="shadow-2xl">
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom bg-light-subtle rounded-top-4">
+                <div>
+                  <h5 className="mb-0 fw-bold">{isEditing ? 'Edit Driver Profile' : '🚀 Onboard New Dispatch Driver'}</h5>
+                  <p className="text-muted small mb-0">
+                    {isEditing ? 'Update fleet vehicle and contact details.' : 'Create driver account and generate Driver App login credentials.'}
+                  </p>
+                </div>
+                <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
                 <div className="row g-3">
+                  <div className="col-12">
+                    <div className="fw-bold small text-uppercase tracking-wider text-muted mb-1">
+                      1. Driver Identity &amp; Contact
+                    </div>
+                  </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">Full Name *</label>
-                    <input className="form-control" placeholder="e.g. Tunde Adeyemi"
+                    <label className="form-label fw-medium small">Full Legal Name *</label>
+                    <input className="form-control" placeholder="e.g. Samuel Okafor"
                       value={form.name} onChange={e => setField('name', e.target.value)} />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">Phone Number *</label>
-                    <input className="form-control" placeholder="e.g. 08031234567"
+                    <label className="form-label fw-medium small">Phone Number (Login ID) *</label>
+                    <input className="form-control" placeholder="e.g. 08012345678"
                       value={form.phone} onChange={e => setField('phone', e.target.value)} />
                   </div>
-                  <div className="col-12">
-                    <label className="form-label fw-medium small">Email</label>
+                  <div className="col-6">
+                    <label className="form-label fw-medium small">Email Address</label>
                     <input className="form-control" placeholder="e.g. driver@bemsfarms.com"
                       value={form.email} onChange={e => setField('email', e.target.value)} />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label fw-medium small">Emergency Contact Phone</label>
+                    <input className="form-control" placeholder="e.g. 08098765432 (Next of Kin)"
+                      value={form.emergency_contact} onChange={e => setField('emergency_contact', e.target.value)} />
+                  </div>
+
+                  {!isEditing && (
+                    <div className="col-12 bg-primary-subtle p-3 rounded-3">
+                      <label className="form-label fw-bold small text-primary mb-1">
+                        <i className="ri-lock-password-line me-1" />Driver App Login Password / PIN
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. 648291"
+                          value={form.password}
+                          onChange={(e) => setField('password', e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary"
+                          onClick={() => setField('password', Math.floor(100000 + Math.random() * 900000).toString())}
+                        >
+                          Generate PIN
+                        </button>
+                      </div>
+                      <span className="text-muted fs-xs mt-1 d-block">
+                        The driver will use this PIN to log into the Bems Farms Driver App.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="col-12 mt-3">
+                    <div className="fw-bold small text-uppercase tracking-wider text-muted mb-1">
+                      2. Vehicle &amp; Fleet Information
+                    </div>
                   </div>
                   <div className="col-6">
                     <label className="form-label fw-medium small">Vehicle Type</label>
@@ -413,28 +538,103 @@ export default function DriversManagement() {
                     </select>
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">Plate Number</label>
-                    <input className="form-control" placeholder="e.g. LAG-234-AB"
+                    <label className="form-label fw-medium small">Vehicle Plate Number *</label>
+                    <input className="form-control" placeholder="e.g. ABA-492-XA"
                       value={form.vehicle_plate} onChange={e => setField('vehicle_plate', e.target.value)} />
                   </div>
-                  <div className="col-12">
+
+                  <div className="col-12 mt-3">
+                    <div className="fw-bold small text-uppercase tracking-wider text-muted mb-1">
+                      3. Dispatch Zone &amp; Remuneration
+                    </div>
+                  </div>
+                  <div className="col-6">
                     <label className="form-label fw-medium small">Primary Delivery Zone</label>
                     <select className="form-select" value={form.zone_id} onChange={e => setField('zone_id', e.target.value)}>
-                      <option value="">— No zone —</option>
+                      <option value="">— Auto-Dispatch (All Zones) —</option>
                       {zones.map(z => <option key={z.zone_id} value={z.zone_id}>{z.zone_name}</option>)}
                     </select>
                   </div>
+                  <div className="col-6">
+                    <label className="form-label fw-medium small">Commission Per Delivery (₦)</label>
+                    <input className="form-control" type="number" placeholder="500"
+                      value={form.commission_per_delivery} onChange={e => setField('commission_per_delivery', e.target.value)} />
+                  </div>
                   <div className="col-12">
-                    <label className="form-label fw-medium small">Notes (optional)</label>
-                    <textarea className="form-control" rows={2} placeholder="Any notes about this driver..."
+                    <label className="form-label fw-medium small">Onboarding Notes (optional)</label>
+                    <textarea className="form-control" rows={2} placeholder="NIN verification, guarantor notes, physical inspection notes..."
                       value={form.notes} onChange={e => setField('notes', e.target.value)} />
                   </div>
                 </div>
-                <div className="d-flex gap-2 mt-4">
+
+                <div className="d-flex gap-2 mt-4 pt-2 border-top">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-primary flex-fill" onClick={saveDriver} disabled={!form.name || !form.phone || saving}>
-                    <i className={`${isEditing ? 'ri-save-line' : 'ri-add-line'} me-1`} />
-                    {saving ? 'Saving…' : (isEditing ? 'Save Changes' : 'Add Driver')}
+                  <button className="btn btn-primary flex-fill fw-bold py-2" onClick={saveDriver} disabled={!form.name || !form.phone || saving}>
+                    <i className={`${isEditing ? 'ri-save-line' : 'ri-user-add-line'} me-1`} />
+                    {saving ? 'Saving…' : (isEditing ? 'Save Changes' : 'Complete Onboarding')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── ONBOARD SUCCESS & CREDENTIAL SHARE MODAL ── */}
+          {activeModal === 'onboard_success' && onboardedCredentials && (
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460 }} className="shadow-2xl overflow-hidden">
+              <div className="bg-success text-white p-4 text-center">
+                <div className="rounded-circle bg-white text-success mx-auto d-flex align-items-center justify-content-center mb-2" style={{ width: 48, height: 48, fontSize: 24 }}>
+                  <i className="ri-checkbox-circle-fill" />
+                </div>
+                <h5 className="fw-bold mb-1">Driver Onboarded!</h5>
+                <p className="small mb-0 opacity-80">Credentials generated for Driver App</p>
+              </div>
+
+              <div className="p-4">
+                <div className="border rounded-3 p-3 bg-light mb-3">
+                  <div className="d-flex justify-content-between mb-1.5 small">
+                    <span className="text-muted">Driver Name:</span>
+                    <span className="fw-bold">{onboardedCredentials.name}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-1.5 small">
+                    <span className="text-muted">Login Phone:</span>
+                    <span className="fw-bold text-primary">{onboardedCredentials.phone}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-1.5 small">
+                    <span className="text-muted">Temporary Password:</span>
+                    <span className="fw-bold text-danger fs-14 font-monospace">{onboardedCredentials.password}</span>
+                  </div>
+                  <div className="d-flex justify-content-between small">
+                    <span className="text-muted">Commission / Order:</span>
+                    <span className="fw-bold text-success">₦{onboardedCredentials.commission || 500}</span>
+                  </div>
+                </div>
+
+                <div className="d-flex flex-column gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary d-flex align-items-center justify-content-center gap-1.5"
+                    onClick={() => {
+                      const text = `Welcome to Bems Farms Delivery Fleet!\n\nHello ${onboardedCredentials.name},\nYour Driver App account is ready:\n• Login Phone: ${onboardedCredentials.phone}\n• Password: ${onboardedCredentials.password}\n• Commission per Delivery: ₦${onboardedCredentials.commission || 500}\n\nPlease open the Driver App and toggle your status to Active when starting shift.`;
+                      navigator.clipboard.writeText(text);
+                      toast.success('📋 Driver credentials copied to clipboard!');
+                    }}
+                  >
+                    <i className="ri-file-copy-line" />
+                    <span>Copy Onboarding Info</span>
+                  </button>
+
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Welcome to Bems Farms Delivery Fleet!\n\nHello ${onboardedCredentials.name},\nYour Driver App account is active:\n• Phone: ${onboardedCredentials.phone}\n• Password: ${onboardedCredentials.password}\n\nPlease log into the Bems Farms Driver App.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-success d-flex align-items-center justify-content-center gap-1.5"
+                  >
+                    <i className="ri-whatsapp-line" />
+                    <span>Share via WhatsApp</span>
+                  </a>
+
+                  <button className="btn btn-secondary mt-1" onClick={closeModal}>
+                    Done
                   </button>
                 </div>
               </div>
@@ -475,3 +675,4 @@ export default function DriversManagement() {
     </div>
   )
 }
+
