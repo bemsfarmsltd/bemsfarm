@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
+import AdminOrderMap from '../../components/ui/AdminOrderMap'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -860,6 +861,13 @@ export default function OrdersList() {
                     <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 13 }}>
                       <i className={`${cfg.icon} me-1`} />{cfg.label}
                     </span>
+                    <Link
+                      to={`/deliveries/map?orderId=${selected.id}`}
+                      className="btn btn-sm btn-outline-primary"
+                      title="Open Full Screen Live Fleet Dispatch Map"
+                    >
+                      <i className="ri-map-pin-2-line me-1" />Live Fleet Map
+                    </Link>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal('receipt', selected)} title="Print Sales Receipt">
                       <i className="ri-printer-line me-1" />Print Receipt
                     </button>
@@ -1034,9 +1042,23 @@ export default function OrdersList() {
                       )}
                     </div>
 
-                    {/* Right Column: Timeline & Action shortcuts */}
+                    {/* Right Column: Interactive Map, Timeline & Action shortcuts */}
                     <div className="col-md-5">
-                      <div className="fw-bold mb-3 small">Status & Tracking Timeline</div>
+                      {/* Interactive Location & Telemetry Map */}
+                      <div className="mb-3">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span className="fw-bold small">📍 Order Location &amp; Dispatch Map</span>
+                          <Link
+                            to={`/deliveries/map?orderId=${selected.id}`}
+                            className="small text-primary text-decoration-none fw-semibold"
+                          >
+                            Full Screen <i className="ri-arrow-right-up-line" />
+                          </Link>
+                        </div>
+                        <AdminOrderMap order={selected} height="200px" />
+                      </div>
+
+                      <div className="fw-bold mb-3 small">Status &amp; Tracking Timeline</div>
                       <div style={{ position: 'relative' }}>
                         <div style={{ position: 'absolute', left: 15, top: 8, bottom: 8, width: 2, background: '#e5e7eb', zIndex: 0 }} />
                         {selected.timeline && selected.timeline.map((ev, i) => {
