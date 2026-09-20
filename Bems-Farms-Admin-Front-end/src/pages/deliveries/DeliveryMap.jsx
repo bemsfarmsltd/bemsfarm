@@ -97,7 +97,6 @@ function interpolateRoute(start, end, curvature = 0.08) {
 
 // ── Custom Leaflet Icons ────────────────────────────────────────────────────────
 function driverIcon(name, color, pulse, heading = 0) {
-  const initials = (name || '?').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
   const pulseHtml = pulse
     ? `<span class="driver-live-pulse" style="--pulse-color:${color};"></span>`
     : ''
@@ -198,6 +197,8 @@ export default function DeliveryMap() {
   const [selected, setSelected]   = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [hudMinimized, setHudMinimized] = useState(false)
   const [flyTarget, setFlyTarget] = useState(null)
   const [fitBoundsTarget, setFitBoundsTarget] = useState(null)
   const [refreshSec, setRefreshSec] = useState(10)
@@ -297,13 +298,26 @@ export default function DeliveryMap() {
     setFitBoundsTarget(null)
   }
 
+  const focusAba = () => setFlyTarget(HUBS[0].coords)
+  const focusUmuahia = () => setFlyTarget(HUBS[1].coords)
+  const fitAll = () => {
+    const points = deliveries
+      .filter(d => d.driver_lat != null && d.driver_lng != null)
+      .map(d => [safeNum(d.driver_lat), safeNum(d.driver_lng)])
+    if (points.length > 0) {
+      setFitBoundsTarget([...points, HUBS[0].coords])
+    } else {
+      setFlyTarget(DEFAULT_CENTER)
+    }
+  }
+
   // Active metrics
   const enRouteCount = deliveries.filter(d => d.status === 'en_route' || d.status === 'out_for_delivery').length
   const awaitingCount = deliveries.filter(d => d.status === 'assigned' || d.status === 'awaiting_pickup').length
   const attemptedCount = deliveries.filter(d => d.status === 'delivery_attempted').length
 
   return (
-    <div className="container-fluid py-3" style={{ minHeight: 'calc(100vh - 70px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="container-fluid py-2.5" style={{ display: 'flex', flexDirection: 'column' }}>
 
       {/* Embedded CSS for glowing realtime journey lines & radar pulses */}
       <style>{`
@@ -459,7 +473,7 @@ export default function DeliveryMap() {
       `}</style>
 
       {/* Top Header Row */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3 flex-shrink-0">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2.5 flex-shrink-0">
         <div>
           <div className="d-flex align-items-center gap-2">
             <h5 className="mb-0 fw-bold text-dark">
@@ -470,7 +484,7 @@ export default function DeliveryMap() {
             </span>
           </div>
           <p className="text-muted small mb-0 mt-0.5">
-            Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations
+            Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations in Abia State
           </p>
         </div>
 
@@ -506,8 +520,8 @@ export default function DeliveryMap() {
         </div>
       </div>
 
-      {/* Spacious KPI Stat Cards */}
-      <div className="row g-3 mb-3 flex-shrink-0">
+      {/* KPI Stat Cards */}
+      <div className="row g-2.5 mb-2.5 flex-shrink-0">
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #2563eb' }}>
             <div className="card-body p-3">
@@ -589,241 +603,289 @@ export default function DeliveryMap() {
         </div>
       </div>
 
-      {/* Main Map & Interactive Side Panel Layout */}
-      <div className="flex-grow-1 row g-0 border rounded-4 overflow-hidden shadow-sm bg-white" style={{ minHeight: '620px', position: 'relative' }}>
+      {/* Main Map & Interactive Side Panel Layout (Spacious, Large Viewport) */}
+      <div className="flex-grow-1 row g-0 border rounded-4 overflow-hidden shadow-sm bg-white" style={{ minHeight: '740px', height: 'calc(100vh - 200px)', position: 'relative' }}>
 
         {/* ── Left Sidebar: Active Deliveries & Recipient Filter ──────────────── */}
-        <div className="col-12 col-lg-4 d-flex flex-column border-end bg-white" style={{ minHeight: '650px', zIndex: 10 }}>
-          
-          {/* Search and Filters Bar */}
-          <div className="p-3 border-bottom bg-light-subtle">
-            <div className="input-group input-group-sm mb-2.5">
-              <span className="input-group-text bg-white border-end-0 text-muted">
-                <i className="ri-search-line" />
-              </span>
-              <input
-                type="text"
-                className="form-control form-control-sm bg-white border-start-0 ps-0"
-                placeholder="Search recipient, driver, address..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="btn btn-sm btn-white border-start-0 text-muted" onClick={() => setSearchQuery('')}>
-                  <i className="ri-close-line" />
-                </button>
-              )}
+        {sidebarOpen && (
+          <div className="col-12 col-md-5 col-lg-4 col-xl-3 d-flex flex-column border-end bg-white" style={{ height: '100%', minHeight: '740px', zIndex: 10 }}>
+            
+            {/* Search and Filters Bar */}
+            <div className="p-2.5 border-bottom bg-light-subtle">
+              <div className="input-group input-group-sm mb-2">
+                <span className="input-group-text bg-white border-end-0 text-muted">
+                  <i className="ri-search-line" />
+                </span>
+                <input
+                  type="text"
+                  className="form-control form-control-sm bg-white border-start-0 ps-0"
+                  placeholder="Search recipient, driver, address..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button className="btn btn-sm btn-white border-start-0 text-muted" onClick={() => setSearchQuery('')}>
+                    <i className="ri-close-line" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Filter Badges */}
+              <div className="d-flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                {[
+                  { key: 'all', label: 'All', count: deliveries.length },
+                  { key: 'en_route', label: 'En Route', count: enRouteCount },
+                  { key: 'awaiting', label: 'Awaiting', count: awaitingCount },
+                  { key: 'attempted', label: 'Attempted', count: attemptedCount },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    className={`btn btn-xs rounded-pill px-2 py-0.5 text-nowrap fw-medium ${
+                      statusFilter === f.key ? 'btn-primary shadow-xs' : 'btn-light text-secondary border'
+                    }`}
+                    style={{ fontSize: 11 }}
+                    onClick={() => setStatusFilter(f.key)}>
+                    {f.label} <span className="opacity-75 ms-0.5">({f.count})</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Quick Filter Badges */}
-            <div className="d-flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {[
-                { key: 'all', label: 'All', count: deliveries.length },
-                { key: 'en_route', label: 'En Route', count: enRouteCount },
-                { key: 'awaiting', label: 'Awaiting', count: awaitingCount },
-                { key: 'attempted', label: 'Attempted', count: attemptedCount },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  className={`btn btn-xs rounded-pill px-2.5 py-1 text-nowrap fw-medium ${
-                    statusFilter === f.key ? 'btn-primary shadow-xs' : 'btn-light text-secondary border'
-                  }`}
-                  style={{ fontSize: 11.5 }}
-                  onClick={() => setStatusFilter(f.key)}>
-                  {f.label} <span className="opacity-75 ms-0.5">({f.count})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Delivery Cards Scroll List */}
-          <div className="flex-grow-1 overflow-y-auto delivery-sidebar-scroll p-3">
-            {loading && (
-              <div className="p-4 text-center text-muted small">
-                <div className="spinner-border spinner-border-sm text-primary mb-2" role="status" />
-                <div>Connecting to GPS telemetry...</div>
-              </div>
-            )}
-
-            {!loading && filteredDeliveries.length === 0 && (
-              <div className="p-4 text-center text-muted">
-                <i className="ri-map-pin-user-line fs-1 text-secondary opacity-50 d-block mb-2" />
-                <div className="fw-medium">No deliveries found</div>
-                <div className="small">No active dispatch orders matching filter</div>
-              </div>
-            )}
-
-            {filteredDeliveries.map(del => {
-              const cfg = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
-              const color = colorFor(del.driver_id)
-              const isSel = selected?.id === del.id
-              const customerLat = del.customer_lat || (del.driver_lat ? Number(del.driver_lat) + 0.014 : 5.122)
-              const customerLng = del.customer_lng || (del.driver_lng ? Number(del.driver_lng) - 0.016 : 7.352)
-              const distKm = (del.driver_lat && del.driver_lng)
-                ? calcDistanceKm(del.driver_lat, del.driver_lng, customerLat, customerLng)
-                : null
-
-              const itemsCount = del.items?.length || 0
-
-              return (
-                <div
-                  key={del.id}
-                  className={`card mb-3 border rounded-3 p-3 transition-all ${
-                    isSel ? 'border-primary shadow-md' : 'border-light-subtle shadow-xs'
-                  }`}
-                  style={{
-                    cursor: 'pointer',
-                    background: isSel ? 'rgba(37, 99, 235, 0.04)' : '#ffffff',
-                    borderLeft: isSel ? `5px solid ${color}` : '4px solid transparent',
-                    transition: 'all 0.18s ease',
-                  }}
-                  onClick={() => handleSelectDelivery(del)}>
-
-                  {/* Header: Driver Info & Status Badge */}
-                  <div className="d-flex align-items-center justify-content-between mb-2.5">
-                    <div className="d-flex align-items-center gap-2 min-w-0">
-                      <div
-                        className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                        style={{ width: 32, height: 32, background: color, fontSize: 11 }}>
-                        <i className="ri-riding-line" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="fw-bold text-dark small text-truncate" style={{ fontSize: 13 }}>
-                          {del.driver_name || 'Unassigned Rider'}
-                        </div>
-                        <div className="text-muted" style={{ fontSize: 10.5 }}>
-                          {del.driver_plate ? `${del.driver_plate}` : (del.vehicle_type || 'Motorcycle Dispatch')}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span
-                      className="badge rounded-pill fw-semibold flex-shrink-0 px-2.5 py-1"
-                      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, fontSize: 10 }}>
-                      <i className={`${cfg.icon} me-1`} />{cfg.label}
-                    </span>
-                  </div>
-
-                  {/* PROMINENT RECIPIENT CARD: WHO IS HE DELIVERING TO? */}
-                  <div className="p-2.5 rounded-3 bg-light border mb-2.5">
-                    <div className="d-flex align-items-center justify-content-between">
-                      <div className="fw-bold text-dark" style={{ fontSize: 12.5 }}>
-                        <i className="ri-user-star-fill text-primary me-1.5" />
-                        {del.customer_name || 'Online Customer'}
-                      </div>
-                      <span className="badge bg-white text-muted border font-monospace" style={{ fontSize: 9.5 }}>
-                        #{del.order_id}
-                      </span>
-                    </div>
-
-                    <div className="text-secondary mt-1.5 d-flex align-items-start gap-1" style={{ fontSize: 11 }}>
-                      <i className="ri-map-pin-2-fill text-danger flex-shrink-0 mt-0.5" />
-                      <span>{del.delivery_address || 'Abia State Delivery Address'}</span>
-                    </div>
-
-                    {del.customer_phone && (
-                      <div className="mt-2 pt-1.5 border-top d-flex align-items-center justify-content-between">
-                        <span className="text-muted" style={{ fontSize: 10.5 }}>Recipient Contact:</span>
-                        <a
-                          href={`tel:${del.customer_phone}`}
-                          className="badge bg-success-subtle text-success border border-success-subtle text-decoration-none py-1 px-2"
-                          style={{ fontSize: 10.5 }}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Call Recipient">
-                          <i className="ri-phone-fill me-1" />{del.customer_phone}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Order summary & Telemetry info */}
-                  <div className="d-flex align-items-center justify-content-between small text-muted pt-1 border-top" style={{ fontSize: 11 }}>
-                    <div className="d-flex align-items-center gap-1.5">
-                      <span className="fw-bold text-dark fs-6">{fmt(del.order_total)}</span>
-                      <span className="text-muted">·</span>
-                      <span className="badge bg-light text-secondary border" style={{ fontSize: 10 }}>
-                        {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
-                      </span>
-                    </div>
-
-                    {/* ETA & Distance */}
-                    <div className="d-flex align-items-center gap-2">
-                      {distKm != null && (
-                        <span className="text-primary fw-semibold font-monospace">
-                          <i className="ri-navigation-line me-0.5" />{distKm} km
-                        </span>
-                      )}
-                      {del.eta_minutes != null && (
-                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold" style={{ fontSize: 10 }}>
-                          ~{del.eta_minutes}m ETA
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Quick Action Buttons */}
-                  <div className="mt-2.5 d-flex gap-2">
-                    <button
-                      className={`btn btn-sm w-100 fw-semibold d-inline-flex align-items-center justify-content-center gap-1.5 ${
-                        isSel ? 'btn-primary' : 'btn-light border text-dark'
-                      }`}
-                      style={{ fontSize: 11.5 }}>
-                      <i className="ri-focus-3-line" />
-                      {isSel ? 'Viewing Journey Line' : 'Track Live Journey'}
-                    </button>
-                    {del.customer_phone && (
-                      <a
-                        href={`https://wa.me/234${del.customer_phone.replace(/^0/, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center px-2.5"
-                        style={{ fontSize: 13 }}
-                        onClick={(e) => e.stopPropagation()}
-                        title="WhatsApp Recipient">
-                        <i className="ri-whatsapp-line" />
-                      </a>
-                    )}
-                  </div>
+            {/* Delivery Cards Scroll List */}
+            <div className="flex-grow-1 overflow-y-auto delivery-sidebar-scroll p-2.5">
+              {loading && (
+                <div className="p-4 text-center text-muted small">
+                  <div className="spinner-border spinner-border-sm text-primary mb-2" role="status" />
+                  <div>Connecting to GPS telemetry...</div>
                 </div>
-              )
-            })}
-          </div>
+              )}
 
-          {/* Map Legend Footer */}
-          <div className="p-3 border-top bg-light-subtle" style={{ fontSize: 11 }}>
-            <div className="fw-bold text-dark mb-2 d-flex align-items-center justify-content-between">
-              <span>Map Legend & Route Flow</span>
-              <span className="badge bg-white text-muted border font-monospace">Abia Network</span>
+              {!loading && filteredDeliveries.length === 0 && (
+                <div className="p-4 text-center text-muted">
+                  <i className="ri-map-pin-user-line fs-1 text-secondary opacity-50 d-block mb-2" />
+                  <div className="fw-medium">No deliveries found</div>
+                  <div className="small">No active dispatch orders matching filter</div>
+                </div>
+              )}
+
+              {filteredDeliveries.map(del => {
+                const cfg = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
+                const color = colorFor(del.driver_id)
+                const isSel = selected?.id === del.id
+                const dLat = safeNum(del.driver_lat, null)
+                const dLng = safeNum(del.driver_lng, null)
+                const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : (dLat ? dLat + 0.014 : 5.122)
+                const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : (dLng ? dLng - 0.016 : 7.352)
+                const distKm = (dLat && dLng) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null
+
+                const itemsCount = del.items?.length || 0
+
+                return (
+                  <div
+                    key={del.id}
+                    className={`card mb-2.5 border rounded-3 p-2.5 transition-all ${
+                      isSel ? 'border-primary shadow-md' : 'border-light-subtle shadow-xs'
+                    }`}
+                    style={{
+                      cursor: 'pointer',
+                      background: isSel ? 'rgba(37, 99, 235, 0.04)' : '#ffffff',
+                      borderLeft: isSel ? `5px solid ${color}` : '4px solid transparent',
+                      transition: 'all 0.18s ease',
+                    }}
+                    onClick={() => handleSelectDelivery(del)}>
+
+                    {/* Header: Driver Info & Status Badge */}
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2 min-w-0">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                          style={{ width: 30, height: 30, background: color, fontSize: 11 }}>
+                          <i className="ri-riding-line" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="fw-bold text-dark small text-truncate" style={{ fontSize: 12.5 }}>
+                            {del.driver_name || 'Unassigned Rider'}
+                          </div>
+                          <div className="text-muted" style={{ fontSize: 10 }}>
+                            {del.driver_plate ? `${del.driver_plate}` : (del.vehicle_type || 'Motorcycle')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        className="badge rounded-pill fw-semibold flex-shrink-0 px-2 py-0.5"
+                        style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, fontSize: 9.5 }}>
+                        <i className={`${cfg.icon} me-1`} />{cfg.label}
+                      </span>
+                    </div>
+
+                    {/* PROMINENT RECIPIENT CARD: WHO IS HE DELIVERING TO? */}
+                    <div className="p-2 rounded-3 bg-light border mb-2">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="fw-bold text-dark" style={{ fontSize: 12 }}>
+                          <i className="ri-user-star-fill text-primary me-1" />
+                          {del.customer_name || 'Online Customer'}
+                        </div>
+                        <span className="badge bg-white text-muted border font-monospace" style={{ fontSize: 9 }}>
+                          #{del.order_id}
+                        </span>
+                      </div>
+
+                      <div className="text-secondary mt-1 d-flex align-items-start gap-1" style={{ fontSize: 10.5 }}>
+                        <i className="ri-map-pin-2-fill text-danger flex-shrink-0 mt-0.5" />
+                        <span>{del.delivery_address || 'Abia State Delivery Address'}</span>
+                      </div>
+
+                      {del.customer_phone && (
+                        <div className="mt-1.5 pt-1 border-top d-flex align-items-center justify-content-between">
+                          <span className="text-muted" style={{ fontSize: 10 }}>Recipient:</span>
+                          <a
+                            href={`tel:${del.customer_phone}`}
+                            className="badge bg-success-subtle text-success border border-success-subtle text-decoration-none py-0.5 px-1.5"
+                            style={{ fontSize: 10 }}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Call Recipient">
+                            <i className="ri-phone-fill me-0.5" />{del.customer_phone}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Order summary & Telemetry info */}
+                    <div className="d-flex align-items-center justify-content-between small text-muted pt-1 border-top" style={{ fontSize: 10.5 }}>
+                      <div className="d-flex align-items-center gap-1">
+                        <span className="fw-bold text-dark">{fmt(del.order_total)}</span>
+                        <span className="text-muted">·</span>
+                        <span className="badge bg-light text-secondary border" style={{ fontSize: 9.5 }}>
+                          {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+
+                      {/* ETA & Distance */}
+                      <div className="d-flex align-items-center gap-1.5">
+                        {distKm != null && (
+                          <span className="text-primary fw-semibold font-monospace">
+                            <i className="ri-navigation-line me-0.5" />{distKm} km
+                          </span>
+                        )}
+                        {del.eta_minutes != null && (
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold" style={{ fontSize: 9.5 }}>
+                            ~{del.eta_minutes}m ETA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Action Buttons */}
+                    <div className="mt-2 d-flex gap-1.5">
+                      <button
+                        className={`btn btn-xs w-100 fw-semibold d-inline-flex align-items-center justify-content-center gap-1 ${
+                          isSel ? 'btn-primary' : 'btn-light border text-dark'
+                        }`}
+                        style={{ fontSize: 11, padding: '4px 8px' }}>
+                        <i className="ri-focus-3-line" />
+                        {isSel ? 'Viewing Route' : 'Track Route'}
+                      </button>
+                      {del.customer_phone && (
+                        <a
+                          href={`https://wa.me/234${del.customer_phone.replace(/^0/, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-xs btn-outline-success d-inline-flex align-items-center justify-content-center px-2"
+                          style={{ fontSize: 12 }}
+                          onClick={(e) => e.stopPropagation()}
+                          title="WhatsApp Recipient">
+                          <i className="ri-whatsapp-line" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="row g-2 text-muted">
-              <div className="col-6 d-flex align-items-center gap-2">
-                <span style={{ width: 12, height: 12, borderRadius: 3, background: '#1e293b', display: 'inline-block' }} />
-                <span>Bems Hub / Depot</span>
+
+            {/* Map Legend Footer */}
+            <div className="p-2.5 border-top bg-light-subtle" style={{ fontSize: 10.5 }}>
+              <div className="fw-bold text-dark mb-1.5 d-flex align-items-center justify-content-between">
+                <span>Map Legend</span>
+                <span className="badge bg-white text-muted border font-monospace">Abia Network</span>
               </div>
-              <div className="col-6 d-flex align-items-center gap-2">
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
-                <span>Driver GPS (Pulsing)</span>
-              </div>
-              <div className="col-6 d-flex align-items-center gap-2">
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffffff', border: '2.5px solid #2563eb', display: 'inline-block' }} />
-                <span>Recipient Pin</span>
-              </div>
-              <div className="col-6 d-flex align-items-center gap-2">
-                <span style={{ width: 18, height: 3, background: '#2563eb', borderTop: '2px dashed #60a5fa', display: 'inline-block' }} />
-                <span>Active Journey Line</span>
+              <div className="row g-1 text-muted">
+                <div className="col-6 d-flex align-items-center gap-1.5">
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: '#1e293b', display: 'inline-block' }} />
+                  <span>Hub / Depot</span>
+                </div>
+                <div className="col-6 d-flex align-items-center gap-1.5">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
+                  <span>Driver GPS</span>
+                </div>
+                <div className="col-6 d-flex align-items-center gap-1.5">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffffff', border: '2px solid #2563eb', display: 'inline-block' }} />
+                  <span>Recipient</span>
+                </div>
+                <div className="col-6 d-flex align-items-center gap-1.5">
+                  <span style={{ width: 16, height: 3, background: '#2563eb', borderTop: '2px dashed #60a5fa', display: 'inline-block' }} />
+                  <span>Journey Line</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* ── Right Column: Interactive Leaflet Map & Live Journey HUD ─────────── */}
-        <div className="col-12 col-lg-8 position-relative d-flex flex-column" style={{ minHeight: '650px', height: '100%', flex: 1 }}>
+        {/* ── Right Column: Large Interactive Leaflet Map & Live Journey HUD ──── */}
+        <div
+          className={`col-12 ${sidebarOpen ? 'col-md-7 col-lg-8 col-xl-9' : 'col-12'} position-relative d-flex flex-column`}
+          style={{ height: '100%', minHeight: '740px', flex: 1 }}>
+
+          {/* Quick Floating Map Toolbar (Top-Left) */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              zIndex: 999,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+            <button
+              className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-inline-flex align-items-center gap-1"
+              onClick={() => setSidebarOpen(prev => !prev)}
+              title={sidebarOpen ? 'Hide Deliveries List for Max Map' : 'Show Deliveries List'}>
+              <i className={sidebarOpen ? 'ri-layout-left-line' : 'ri-layout-left-fill text-primary'} />
+              <span>{sidebarOpen ? 'Expand Map' : 'Show Deliveries'}</span>
+            </button>
+
+            <button
+              className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-none d-sm-inline-flex align-items-center gap-1"
+              onClick={fitAll}
+              title="Fit all drivers and hubs in view">
+              <i className="ri-fullscreen-line text-primary" />
+              <span>Fit All</span>
+            </button>
+
+            <button
+              className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-none d-md-inline-flex align-items-center gap-1"
+              onClick={focusAba}
+              title="Center on Aba Commercial Depot">
+              <i className="ri-store-3-line text-dark" />
+              <span>Aba Hub</span>
+            </button>
+
+            <button
+              className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-none d-md-inline-flex align-items-center gap-1"
+              onClick={focusUmuahia}
+              title="Center on Umuahia HQ">
+              <i className="ri-plant-line text-success" />
+              <span>Umuahia HQ</span>
+            </button>
+          </div>
 
           <MapContainer
             center={DEFAULT_CENTER}
             zoom={12}
             scrollWheelZoom={true}
-            style={{ width: '100%', height: '100%', minHeight: '650px', flex: 1, zIndex: 1 }}
+            style={{ width: '100%', height: '100%', minHeight: '740px', flex: 1, zIndex: 1 }}
             zoomControl={true}>
 
             <TileLayer
@@ -1020,7 +1082,7 @@ export default function DeliveryMap() {
               background: 'rgba(255,255,255,0.95)',
               backdropFilter: 'blur(8px)',
               borderRadius: 10,
-              padding: '8px 16px',
+              padding: '7px 14px',
               boxShadow: '0 4px 15px rgba(0,0,0,0.12)',
               fontSize: 11.5,
               border: '1px solid rgba(226,232,240,0.9)',
@@ -1043,26 +1105,58 @@ export default function DeliveryMap() {
             <span className="text-muted font-monospace">{refreshSec}s loop</span>
           </div>
 
-          {/* ── Bottom Floating "Who is he delivering to?" Live Journey Card ─── */}
+          {/* ── Bottom Floating "Who is he delivering to?" Live Journey HUD ─── */}
           {selected && (() => {
             const color = colorFor(selected.driver_id)
             const cfg = STATUS_CFG[selected.status] || DEFAULT_STATUS_CFG
-            const custLat = selected.customer_lat || (selected.driver_lat ? Number(selected.driver_lat) + 0.014 : 5.122)
-            const custLng = selected.customer_lng || (selected.driver_lng ? Number(selected.driver_lng) - 0.016 : 7.352)
-            const distKm = (selected.driver_lat && selected.driver_lng)
-              ? calcDistanceKm(selected.driver_lat, selected.driver_lng, custLat, custLng)
-              : null
+            const dLat = safeNum(selected.driver_lat, null)
+            const dLng = safeNum(selected.driver_lng, null)
+            const custLat = selected.customer_lat != null ? safeNum(selected.customer_lat) : (dLat ? dLat + 0.014 : 5.122)
+            const custLng = selected.customer_lng != null ? safeNum(selected.customer_lng) : (dLng ? dLng - 0.016 : 7.352)
+            const distKm = (dLat && dLng) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null
             const items = selected.items || []
+
+            if (hudMinimized) {
+              return (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 18,
+                    right: 18,
+                    zIndex: 1000,
+                    background: '#ffffff',
+                    borderRadius: 30,
+                    boxShadow: '0 8px 24px rgba(15,23,42,0.2)',
+                    border: `2px solid ${color}`,
+                    padding: '6px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setHudMinimized(false)}>
+                  <div className="rounded-circle text-white d-flex align-items-center justify-content-center" style={{ width: 22, height: 22, background: color, fontSize: 10 }}>
+                    <i className="ri-riding-line" />
+                  </div>
+                  <span className="fw-bold small text-dark">{selected.driver_name} → {selected.customer_name}</span>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: 9.5 }}>
+                    ~{selected.eta_minutes || 15}m ETA
+                  </span>
+                  <button className="btn btn-xs btn-link p-0 text-muted" onClick={(e) => { e.stopPropagation(); setHudMinimized(false); }}>
+                    <i className="ri-fullscreen-line" />
+                  </button>
+                </div>
+              )
+            }
 
             return (
               <div
                 style={{
                   position: 'absolute',
-                  bottom: 20,
-                  right: 20,
-                  left: 20,
-                  maxWidth: 540,
-                  marginLeft: 'auto',
+                  bottom: 18,
+                  right: 18,
+                  maxWidth: 440,
+                  width: 'calc(100% - 36px)',
                   zIndex: 1000,
                   background: '#ffffff',
                   borderRadius: 14,
@@ -1072,11 +1166,11 @@ export default function DeliveryMap() {
                   animation: 'fadeInUp 0.25s ease-out',
                 }}>
 
-                {/* Card Header: In-Transit Status & Close */}
+                {/* Card Header: In-Transit Status & Actions */}
                 <div
                   style={{
                     background: `linear-gradient(135deg, ${color}, #1e293b)`,
-                    padding: '12px 18px',
+                    padding: '10px 14px',
                     color: '#fff',
                     display: 'flex',
                     alignItems: 'center',
@@ -1085,23 +1179,30 @@ export default function DeliveryMap() {
                   <div className="d-flex align-items-center gap-2">
                     <div
                       className="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center fw-bold"
-                      style={{ width: 28, height: 28, fontSize: 12 }}>
+                      style={{ width: 26, height: 26, fontSize: 11 }}>
                       <i className="ri-riding-line text-primary" />
                     </div>
                     <div>
-                      <div className="fw-bold" style={{ fontSize: 13.5 }}>
+                      <div className="fw-bold" style={{ fontSize: 12.5 }}>
                         {selected.driver_name} <span className="opacity-75 fw-normal">({selected.driver_plate || 'Dispatch Rider'})</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-white text-dark fw-bold" style={{ fontSize: 10 }}>
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="badge bg-white text-dark fw-bold" style={{ fontSize: 9.5 }}>
                       <i className={`${cfg.icon} me-1`} />{cfg.label}
                     </span>
                     <button
+                      className="btn btn-sm btn-link text-white p-0 opacity-75 hover-opacity-100"
+                      style={{ fontSize: 15, lineHeight: 1 }}
+                      onClick={() => setHudMinimized(true)}
+                      title="Minimize HUD">
+                      <i className="ri-subtract-line" />
+                    </button>
+                    <button
                       className="btn btn-sm btn-link text-white p-0"
-                      style={{ fontSize: 18, lineHeight: 1 }}
+                      style={{ fontSize: 16, lineHeight: 1 }}
                       onClick={handleClearSelection}
                       title="Close Journey HUD">
                       <i className="ri-close-circle-fill" />
@@ -1110,42 +1211,42 @@ export default function DeliveryMap() {
                 </div>
 
                 {/* Card Body: WHO HE IS DELIVERING TO */}
-                <div className="p-3.5">
+                <div className="p-3">
                   {/* Prominent Recipient Highlight */}
-                  <div className="p-3 rounded-3 bg-primary-subtle border border-primary-subtle mb-3">
+                  <div className="p-2.5 rounded-3 bg-primary-subtle border border-primary-subtle mb-2">
                     <div className="d-flex align-items-start justify-content-between">
                       <div>
-                        <div className="text-uppercase fw-bold text-primary" style={{ fontSize: 10, letterSpacing: 0.5 }}>
-                          <i className="ri-user-star-fill me-1" />Currently Delivering To (Recipient):
+                        <div className="text-uppercase fw-bold text-primary" style={{ fontSize: 9.5, letterSpacing: 0.5 }}>
+                          <i className="ri-user-star-fill me-1" />Currently Delivering To:
                         </div>
-                        <div className="fs-5 fw-bold text-dark mt-1">
+                        <div className="fs-6 fw-bold text-dark mt-0.5">
                           {selected.customer_name}
                         </div>
                       </div>
-                      <span className="badge bg-white text-primary border border-primary-subtle fw-bold font-monospace" style={{ fontSize: 10.5 }}>
+                      <span className="badge bg-white text-primary border border-primary-subtle fw-bold font-monospace" style={{ fontSize: 9.5 }}>
                         Order #{selected.order_id}
                       </span>
                     </div>
 
-                    <div className="d-flex align-items-start gap-1.5 mt-2 text-secondary" style={{ fontSize: 12 }}>
+                    <div className="d-flex align-items-start gap-1.5 mt-1.5 text-secondary" style={{ fontSize: 11 }}>
                       <i className="ri-map-pin-2-fill text-danger flex-shrink-0 mt-0.5" />
                       <span className="fw-semibold">{selected.delivery_address || 'Abia State Destination'}</span>
                     </div>
 
                     {selected.customer_phone && (
-                      <div className="mt-2.5 d-flex align-items-center gap-2">
+                      <div className="mt-2 d-flex align-items-center gap-1.5">
                         <a
                           href={`tel:${selected.customer_phone}`}
-                          className="btn btn-sm btn-success d-inline-flex align-items-center gap-1.5 py-1 px-3"
-                          style={{ fontSize: 11.5 }}>
+                          className="btn btn-xs btn-success d-inline-flex align-items-center gap-1 py-1 px-2.5"
+                          style={{ fontSize: 11 }}>
                           <i className="ri-phone-fill" /> Call Recipient ({selected.customer_phone})
                         </a>
                         <a
                           href={`https://wa.me/234${selected.customer_phone.replace(/^0/, '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5 py-1 px-3"
-                          style={{ fontSize: 11.5 }}>
+                          className="btn btn-xs btn-outline-success d-inline-flex align-items-center gap-1 py-1 px-2.5"
+                          style={{ fontSize: 11 }}>
                           <i className="ri-whatsapp-line" /> WhatsApp
                         </a>
                       </div>
@@ -1153,27 +1254,27 @@ export default function DeliveryMap() {
                   </div>
 
                   {/* Route Journey Metrics Strip */}
-                  <div className="row g-2 mb-3 text-center">
+                  <div className="row g-1.5 mb-2 text-center">
                     <div className="col-4">
-                      <div className="p-2 rounded-2 bg-light border">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Distance Left</div>
-                        <div className="fw-bold text-dark font-monospace" style={{ fontSize: 13 }}>
+                      <div className="p-1.5 rounded-2 bg-light border">
+                        <div className="text-muted" style={{ fontSize: 9.5 }}>Distance Left</div>
+                        <div className="fw-bold text-dark font-monospace" style={{ fontSize: 12 }}>
                           {distKm != null ? `${distKm} km` : '—'}
                         </div>
                       </div>
                     </div>
                     <div className="col-4">
-                      <div className="p-2 rounded-2 bg-light border">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Estimated Arrival</div>
-                        <div className="fw-bold text-primary" style={{ fontSize: 13 }}>
+                      <div className="p-1.5 rounded-2 bg-light border">
+                        <div className="text-muted" style={{ fontSize: 9.5 }}>Estimated Arrival</div>
+                        <div className="fw-bold text-primary" style={{ fontSize: 12 }}>
                           {selected.eta_minutes != null ? `~${selected.eta_minutes} mins` : '—'}
                         </div>
                       </div>
                     </div>
                     <div className="col-4">
-                      <div className="p-2 rounded-2 bg-light border">
-                        <div className="text-muted" style={{ fontSize: 10 }}>Order Value</div>
-                        <div className="fw-bold text-success font-monospace" style={{ fontSize: 13 }}>
+                      <div className="p-1.5 rounded-2 bg-light border">
+                        <div className="text-muted" style={{ fontSize: 9.5 }}>Order Value</div>
+                        <div className="fw-bold text-success font-monospace" style={{ fontSize: 12 }}>
                           {fmt(selected.order_total)}
                         </div>
                       </div>
@@ -1182,19 +1283,19 @@ export default function DeliveryMap() {
 
                   {/* Order Contents Summary */}
                   {items.length > 0 && (
-                    <div className="mb-2.5">
-                      <div className="text-muted fw-semibold mb-1" style={{ fontSize: 10.5 }}>
+                    <div className="mb-2">
+                      <div className="text-muted fw-semibold mb-1" style={{ fontSize: 10 }}>
                         <i className="ri-shopping-basket-line me-1" />Produce in transit ({items.length} items):
                       </div>
-                      <div className="d-flex flex-wrap gap-1.5">
-                        {items.slice(0, 4).map((item, idx) => (
-                          <span key={idx} className="badge bg-light text-dark border p-1.5" style={{ fontSize: 10.5 }}>
+                      <div className="d-flex flex-wrap gap-1">
+                        {items.slice(0, 3).map((item, idx) => (
+                          <span key={idx} className="badge bg-light text-dark border" style={{ fontSize: 9.5 }}>
                             {item.quantity || 1}x {item.name}
                           </span>
                         ))}
-                        {items.length > 4 && (
-                          <span className="badge bg-light text-secondary border p-1.5" style={{ fontSize: 10.5 }}>
-                            +{items.length - 4} more
+                        {items.length > 3 && (
+                          <span className="badge bg-light text-secondary border" style={{ fontSize: 9.5 }}>
+                            +{items.length - 3} more
                           </span>
                         )}
                       </div>
@@ -1202,13 +1303,13 @@ export default function DeliveryMap() {
                   )}
 
                   {/* Footer Actions */}
-                  <div className="d-flex gap-2 pt-2 border-top">
+                  <div className="d-flex gap-2 pt-1.5 border-top">
                     {selected.driver_phone && (
-                      <a href={`tel:${selected.driver_phone}`} className="btn btn-sm btn-outline-primary w-50" style={{ fontSize: 12 }}>
+                      <a href={`tel:${selected.driver_phone}`} className="btn btn-sm btn-outline-primary w-50 py-1" style={{ fontSize: 11 }}>
                         <i className="ri-phone-line me-1" />Call Driver ({selected.driver_name?.split(' ')[0]})
                       </a>
                     )}
-                    <Link to={`/orders/${selected.order_id}`} className="btn btn-sm btn-light border w-50 text-dark" style={{ fontSize: 12 }}>
+                    <Link to={`/orders/${selected.order_id}`} className="btn btn-sm btn-light border w-50 text-dark py-1" style={{ fontSize: 11 }}>
                       <i className="ri-file-list-3-line me-1" />Order Details
                     </Link>
                   </div>
