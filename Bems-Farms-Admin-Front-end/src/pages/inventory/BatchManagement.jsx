@@ -211,7 +211,7 @@ export default function BatchManagement() {
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Link to="/inventory/restock" className="btn btn-outline-success btn-sm rounded-pill px-3">
+          <Link to="/inventory/stock-in" className="btn btn-outline-success btn-sm rounded-pill px-3">
             <i className="ri-add-circle-line me-1"></i> Restock Products
           </Link>
           <button 
@@ -384,10 +384,10 @@ export default function BatchManagement() {
                           Whenever you add or restock items, they are automatically tracked as batches.
                         </p>
                         <div className="d-flex justify-content-center gap-2">
-                          <Link to="/inventory/restock" className="btn btn-success btn-sm rounded-pill px-3">
+                          <Link to="/inventory/stock-in" className="btn btn-success btn-sm rounded-pill px-3">
                             <i className="ri-add-circle-line me-1"></i> Restock Products
                           </Link>
-                          <Link to="/inventory/products" className="btn btn-outline-primary btn-sm rounded-pill px-3">
+                          <Link to="/products" className="btn btn-outline-primary btn-sm rounded-pill px-3">
                             <i className="ri-store-2-line me-1"></i> View Catalog
                           </Link>
                         </div>

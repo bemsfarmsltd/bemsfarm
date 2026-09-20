@@ -164,6 +164,8 @@ function App() {
 
                 {/* Unified Products & Stock Master */}
                 <Route path="/inventory/stock"      element={<Navigate to="/products" replace />} />
+                <Route path="/inventory/products"   element={<Navigate to="/products" replace />} />
+                <Route path="/inventory/restock"    element={<Navigate to="/inventory/stock-in" replace />} />
                 <Route path="/inventory/schedule"   element={<PurchaseScheduleCalendar />} />
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
                 <Route path="/inventory/stock-out"  element={<StockOut />} />
