@@ -912,15 +912,15 @@ router.post(
         driver_ids = [],
         notes,
         is_active = true,
+        center_lat,
+        center_lng,
+        radius_km,
+        color_hex,
       } = req.body;
 
       if (!zone_name || !delivery_fee)
         return res.status(400).json({ message: "Zone name and fee required" });
 
-      // delivery_zones' real columns are min_order_value / estimated_delivery_time
-      // (min_order_amount / estimated_eta don't exist) and its PK is a
-      // generated text zone_id, not an auto id — this INSERT previously
-      // 500'd on every call.
       const client = await pool.connect();
       let result;
       try {
@@ -930,8 +930,8 @@ router.post(
           `
         INSERT INTO delivery_zones
           (zone_id, zone_name, delivery_fee, min_order_value, estimated_delivery_time,
-           coverage_areas, notes, status, created_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+           coverage_areas, notes, status, center_lat, center_lng, radius_km, color_hex, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
         RETURNING *, zone_id AS id, min_order_value AS min_order_amount,
                   estimated_delivery_time AS estimated_eta, (status = 'active') AS is_active
       `,
@@ -944,6 +944,10 @@ router.post(
             coverage_areas ? JSON.stringify(coverage_areas) : null,
             notes || null,
             is_active ? 'active' : 'inactive',
+            center_lat !== undefined && center_lat !== null ? parseFloat(center_lat) : null,
+            center_lng !== undefined && center_lng !== null ? parseFloat(center_lng) : null,
+            radius_km !== undefined && radius_km !== null ? parseFloat(radius_km) : 25,
+            color_hex || '#1B4332',
           ],
         );
         await client.query("COMMIT");
@@ -989,6 +993,10 @@ router.patch(
         driver_ids,
         notes,
         is_active,
+        center_lat,
+        center_lng,
+        radius_km,
+        color_hex,
       } = req.body;
 
       await client.query(
@@ -1000,8 +1008,12 @@ router.patch(
         estimated_delivery_time = COALESCE($4, estimated_delivery_time),
         coverage_areas        = COALESCE($5, coverage_areas),
         notes                 = COALESCE($6, notes),
-        status                = COALESCE($7, status)
-      WHERE zone_id = $8
+        status                = COALESCE($7, status),
+        center_lat            = COALESCE($8, center_lat),
+        center_lng            = COALESCE($9, center_lng),
+        radius_km             = COALESCE($10, radius_km),
+        color_hex             = COALESCE($11, color_hex)
+      WHERE zone_id = $12
     `,
         [
           zone_name || null,
@@ -1011,6 +1023,10 @@ router.patch(
           coverage_areas ? JSON.stringify(coverage_areas) : null,
           notes || null,
           is_active !== undefined ? (is_active ? 'active' : 'inactive') : null,
+          center_lat !== undefined ? (center_lat !== null ? parseFloat(center_lat) : null) : null,
+          center_lng !== undefined ? (center_lng !== null ? parseFloat(center_lng) : null) : null,
+          radius_km !== undefined ? (radius_km !== null ? parseFloat(radius_km) : null) : null,
+          color_hex || null,
           req.params.id,
         ],
       );

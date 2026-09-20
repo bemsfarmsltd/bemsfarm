@@ -53,40 +53,66 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Coordinate centers for key Nigerian hubs for fallback zone matching
-const HUB_COORDINATES = {
-  umuahia: { lat: 5.5245, lng: 7.4912, zoneId: "ZONE001", maxRadiusKm: 25 },
-  aba:     { lat: 5.1065, lng: 7.3667, zoneId: "ZONE002", maxRadiusKm: 35 },
-};
-
-// Match location (text + coords) against delivery_zones table
+// Match location (text + coords) dynamically against delivery_zones table
 async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
   try {
     const zonesResult = await pool.query(
       "SELECT * FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC"
     );
     const zones = zonesResult.rows;
+    if (!zones.length) return null;
 
     const fullSearchText = `${addressText || ""} ${cityName || ""} ${stateName || ""}`.toLowerCase();
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    const hasCoords = !isNaN(latNum) && !isNaN(lngNum) && (latNum !== 0 || lngNum !== 0);
 
-    // 1. First priority: Check coordinate proximity to Umuahia / Aba hubs
-    if (lat && lng) {
-      const latNum = parseFloat(lat);
-      const lngNum = parseFloat(lng);
+    // 1. First priority: Dynamic Geodesic Distance / Closest Zone within Radius
+    if (hasCoords) {
+      // Find all zones that have center coordinates configured
+      const zonesWithDistances = zones
+        .filter(z => z.center_lat !== null && z.center_lng !== null)
+        .map(z => {
+          const zLat = parseFloat(z.center_lat);
+          const zLng = parseFloat(z.center_lng);
+          const distKm = calculateDistanceKm(latNum, lngNum, zLat, zLng);
+          const radiusKm = parseFloat(z.radius_km) || 50;
+          return {
+            ...z,
+            distanceKm: Math.round(distKm * 10) / 10,
+            radiusKm,
+            isWithinRadius: distKm <= radiusKm,
+          };
+        });
 
-      if (!isNaN(latNum) && !isNaN(lngNum)) {
-        // Check Umuahia (< 25km)
-        const distUmuahia = calculateDistanceKm(latNum, lngNum, HUB_COORDINATES.umuahia.lat, HUB_COORDINATES.umuahia.lng);
-        if (distUmuahia <= HUB_COORDINATES.umuahia.maxRadiusKm) {
-          const z = zones.find(z => z.zone_id === "ZONE001");
-          if (z) return { ...z, matchType: "gps_proximity", distanceKm: Math.round(distUmuahia * 10) / 10 };
-        }
+      // Filter zones where the user's GPS is inside the zone's operational radius
+      const matchingRadialZones = zonesWithDistances.filter(z => z.isWithinRadius);
 
-        // Check Aba (< 35km)
-        const distAba = calculateDistanceKm(latNum, lngNum, HUB_COORDINATES.aba.lat, HUB_COORDINATES.aba.lng);
-        if (distAba <= HUB_COORDINATES.aba.maxRadiusKm) {
-          const z = zones.find(z => z.zone_id === "ZONE002");
-          if (z) return { ...z, matchType: "gps_proximity", distanceKm: Math.round(distAba * 10) / 10 };
+      if (matchingRadialZones.length > 0) {
+        // Sort by closest distance to zone center, giving preference to more specific/smaller radius
+        matchingRadialZones.sort((a, b) => {
+          if (a.radiusKm !== b.radiusKm) return a.radiusKm - b.radiusKm;
+          return a.distanceKm - b.distanceKm;
+        });
+
+        const bestZone = matchingRadialZones[0];
+        return {
+          ...bestZone,
+          matchType: "closest_gps_zone",
+          distanceKm: bestZone.distanceKm,
+        };
+      }
+
+      // If outside all configured specific radii, check if close to any local hub
+      if (zonesWithDistances.length > 0) {
+        zonesWithDistances.sort((a, b) => a.distanceKm - b.distanceKm);
+        const closestHub = zonesWithDistances[0];
+        if (closestHub.distanceKm <= (closestHub.radiusKm * 1.5)) {
+          return {
+            ...closestHub,
+            matchType: "nearest_hub_proximity",
+            distanceKm: closestHub.distanceKm,
+          };
         }
       }
     }
@@ -98,15 +124,15 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
         : String(zone.areas_covered || "").split(/[,;]/);
 
       for (const area of areas) {
-        const cleanArea = area.trim().toLowerCase();
+        const cleanArea = String(area).trim().toLowerCase();
         if (cleanArea.length >= 3 && fullSearchText.includes(cleanArea)) {
-          return { ...zone, matchType: "keyword_match", matchedArea: area.trim() };
+          return { ...zone, matchType: "keyword_match", matchedArea: String(area).trim() };
         }
       }
     }
 
-    // 3. Fallback: If in Nigeria but outside immediate hub, return Nationwide (ZONE005)
-    const nationwideZone = zones.find(z => z.zone_id === "ZONE005");
+    // 3. Fallback: If nationwide zone configured, return it
+    const nationwideZone = zones.find(z => z.zone_id === "ZONE005" || String(z.zone_name).toLowerCase().includes("nationwide"));
     if (nationwideZone) {
       return { ...nationwideZone, matchType: "nationwide_fallback" };
     }
@@ -124,7 +150,7 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
 router.get("/zones", async (req, res, next) => {
   try {
     const result = await pool.query(
-      "SELECT zone_id, zone_name, delivery_fee, min_order_value, estimated_delivery_time, coverage_areas, areas_covered FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC"
+      "SELECT zone_id, zone_name, delivery_fee, min_order_value, estimated_delivery_time, coverage_areas, areas_covered, center_lat, center_lng, radius_km, color_hex FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC"
     );
     res.json({ zones: result.rows });
   } catch (err) {

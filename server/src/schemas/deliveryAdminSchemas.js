@@ -55,6 +55,10 @@ const createZone = z.object({
   driver_ids: z.array(z.coerce.number().int().positive()).default([]),
   notes: z.string().trim().max(2000).optional(),
   is_active: z.boolean().default(true),
+  center_lat: z.coerce.number().nullable().optional(),
+  center_lng: z.coerce.number().nullable().optional(),
+  radius_km: z.coerce.number().min(0.5).max(5000).nullable().optional(),
+  color_hex: z.string().trim().max(20).optional(),
 });
 
 const updateZone = z.object({
@@ -66,6 +70,10 @@ const updateZone = z.object({
   driver_ids: z.array(z.coerce.number().int().positive()).optional(),
   notes: z.string().trim().max(2000).optional(),
   is_active: z.boolean().optional(),
+  center_lat: z.coerce.number().nullable().optional(),
+  center_lng: z.coerce.number().nullable().optional(),
+  radius_km: z.coerce.number().min(0.5).max(5000).nullable().optional(),
+  color_hex: z.string().trim().max(20).optional(),
 });
 
 module.exports = { updateStatus, reassign, attempt, createDriver, updateDriver, createZone, updateZone };
