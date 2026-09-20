@@ -242,9 +242,118 @@ const toggleAvailability = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/auth/forgot-password ────────────────────────────
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { emailOrPhone, email, phone } = req.body;
+    const identifier = (emailOrPhone || email || phone || "").trim();
+
+    if (!identifier) {
+      return res.status(400).json({ message: "Phone number or email is required" });
+    }
+
+    const driverResult = await pool.query(
+      "SELECT id, name, email, phone FROM drivers WHERE LOWER(email) = LOWER($1) OR phone = $1 OR phone = $2 LIMIT 1",
+      [identifier, identifier.replace(/\s+/g, "")]
+    );
+
+    if (driverResult.rows.length === 0) {
+      // Return 200 generic message for security
+      return res.json({ message: "If a matching driver account exists, a password reset link has been sent." });
+    }
+
+    const driver = driverResult.rows[0];
+    if (!driver.email) {
+      return res.status(400).json({ message: "Driver account has no registered email. Please contact your dispatch manager." });
+    }
+
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 3600 * 1000);
+
+    await pool.query(
+      `
+      INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (driver_id)
+      DO UPDATE SET reset_token = $2, reset_token_expires = $3
+      `,
+      [driver.id, resetToken, expiresAt]
+    );
+
+    const emailService = require("../services/emailService");
+    await emailService.sendDriverPasswordResetEmail(driver, resetToken);
+
+    res.json({
+      success: true,
+      message: `Password reset instructions have been sent to ${driver.email}`,
+    });
+  } catch (err) {
+    console.error("Driver forgotPassword error:", err.message);
+    next(err);
+  }
+};
+
+// ── POST /api/driver/auth/reset-password ─────────────────────────────
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword, password } = req.body;
+    const finalPassword = newPassword || password;
+
+    if (!token || !finalPassword) {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+
+    if (String(finalPassword).length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long" });
+    }
+
+    const authCheck = await pool.query(
+      `
+      SELECT da.*, d.name, d.email, d.phone 
+      FROM driver_auth da
+      JOIN drivers d ON da.driver_id = d.id
+      WHERE da.reset_token = $1 AND da.reset_token_expires > NOW()
+      LIMIT 1
+      `,
+      [String(token).trim()]
+    );
+
+    if (authCheck.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired password reset token" });
+    }
+
+    const record = authCheck.rows[0];
+    const hashedPassword = await bcrypt.hash(finalPassword, 10);
+
+    await pool.query(
+      `
+      UPDATE driver_auth 
+      SET 
+        password_hash = $1,
+        reset_token = NULL,
+        reset_token_expires = NULL,
+        failed_attempts = 0,
+        locked_until = NULL
+      WHERE driver_id = $2
+      `,
+      [hashedPassword, record.driver_id]
+    );
+
+    res.json({
+      success: true,
+      message: "Password reset successfully! You can now log in with your new password.",
+    });
+  } catch (err) {
+    console.error("Driver resetPassword error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   login,
   getMe,
   updateProfile,
   toggleAvailability,
+  forgotPassword,
+  resetPassword,
 };

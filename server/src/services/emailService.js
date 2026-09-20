@@ -553,6 +553,36 @@ async function sendDriverRejectionEmail({ email, name, reasonNotes, reuploadUrl 
   });
 }
 
+async function sendDriverPasswordResetEmail(driver, resetToken) {
+  const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
+  const resetUrl = `${domain}/driver/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  return sendMail({
+    to: driver.email,
+    subject: "🔐 Reset Your BemsFarms Driver Password",
+    html: `<div style="${emailStyles}">
+      ${header("Password Reset Request 🔐")}
+      <p style="color: #4B5563; font-size: 15px; line-height: 1.6;">Hello <strong>${driver.name}</strong>,</p>
+      <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">
+        A request has been made to reset the password for your <strong>BemsFarms Driver Courier Account</strong> (${driver.phone || driver.email}).
+      </p>
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+        <p style="font-size: 13px; color: #166534; font-weight: 700; margin: 0 0 10px; text-transform: uppercase;">Your Password Reset Token / Code:</p>
+        <p style="font-size: 32px; font-weight: 900; color: #14532D; margin: 0; letter-spacing: 4px;">${resetToken}</p>
+      </div>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${resetUrl}" style="background: #143C2D; color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 14px; font-weight: 700; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(20,60,45,0.25);">
+          Set New Password Securely →
+        </a>
+      </div>
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
+        This password reset link and code will expire in <strong>1 hour</strong>. If you did not request this, you can safely ignore this email.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendMail,
   sendWelcomeEmail,
@@ -566,6 +596,5 @@ module.exports = {
   sendDriverInvitationEmail,
   sendDriverApprovedEmail,
   sendDriverRejectionEmail,
+  sendDriverPasswordResetEmail,
 };
-
-

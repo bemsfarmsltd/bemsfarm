@@ -43,6 +43,8 @@ router.post("/onboarding/submit", driverOnboardingController.submitOnboarding);
 
 // ── 1. Driver Authentication & Availability ─────────────────────────
 router.post("/auth/login", driverAuthController.login);
+router.post("/auth/forgot-password", driverAuthController.forgotPassword);
+router.post("/auth/reset-password", driverAuthController.resetPassword);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
 router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/availability", driverProtect, driverAuthController.toggleAvailability);

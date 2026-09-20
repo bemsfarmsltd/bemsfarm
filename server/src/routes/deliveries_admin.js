@@ -1133,37 +1133,47 @@ router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin
   }
 });
 
-// ── PUT /api/admin/deliveries/drivers/:id/credentials ──────────────
-router.put(
-  "/drivers/:id/credentials",
-  requireRole("superadmin", "manager", "admin"),
+// ── POST /api/admin/deliveries/drivers/:id/send-reset-link ──────────────
+// Trigger secure password reset link to driver's email (Admin cannot see or set password)
+router.post(
+  "/drivers/:id/send-reset-link",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const { password } = req.body;
-
-      if (!password || password.length < 4) {
-        return res.status(400).json({ message: "Password must be at least 4 characters" });
-      }
-
-      const driverCheck = await pool.query("SELECT id, name FROM drivers WHERE id = $1", [id]);
-      if (driverCheck.rows.length === 0) {
+      const driverRes = await pool.query(
+        "SELECT id, name, email, phone FROM drivers WHERE id = $1",
+        [id]
+      );
+      if (driverRes.rows.length === 0) {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const driver = driverRes.rows[0];
+      if (!driver.email) {
+        return res.status(400).json({ message: "Driver has no email address configured to receive a reset link." });
+      }
+
+      const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour
 
       await pool.query(
         `
-        INSERT INTO driver_auth (driver_id, password_hash, created_at)
-        VALUES ($1, $2, NOW())
+        INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
+        VALUES ($1, $2, $3, NOW())
         ON CONFLICT (driver_id)
-        DO UPDATE SET password_hash = $2, failed_attempts = 0, locked_until = NULL
+        DO UPDATE SET reset_token = $2, reset_token_expires = $3
         `,
-        [id, hashedPassword]
+        [id, resetToken, expiresAt]
       );
 
-      res.json({ message: `Credentials updated successfully for driver ${driverCheck.rows[0].name}` });
+      const emailService = require("../services/emailService");
+      await emailService.sendDriverPasswordResetEmail(driver, resetToken);
+
+      res.json({
+        success: true,
+        message: `Password reset link & code successfully sent to ${driver.email}`,
+      });
     } catch (err) {
       next(err);
     }

@@ -268,15 +268,14 @@ export default function DriversManagement() {
     }
   }
 
-  async function handleResetPassword() {
-    if (!newPassword || !selected) return
+  async function handleSendPasswordResetLink() {
+    if (!selected) return
     setUpdatingPassword(true)
     try {
-      await api.put(`/admin/deliveries/drivers/${selected.id}/credentials`, { password: newPassword })
-      toast.success(`Password updated for ${selected.name}`)
-      closeModal()
+      await api.post(`/admin/deliveries/drivers/${selected.id}/send-reset-link`)
+      toast.success(`Password reset link sent to ${selected.email || selected.name}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update password')
+      toast.error(err.response?.data?.message || 'Failed to send password reset link')
     } finally {
       setUpdatingPassword(false)
     }
@@ -977,32 +976,27 @@ export default function DriversManagement() {
                     </button>
                   </div>
 
-                  {/* Driver App Credentials & Reset */}
+                  {/* Driver App Credentials & Reset Link */}
                   <div className="border rounded-3 p-3 mb-3 bg-light-subtle">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center justify-content-between mb-1.5">
                       <span className="fw-bold small text-dark">
-                        <i className="ri-key-2-line me-1 text-primary" />
-                        Driver App Mobile Access PIN
+                        <i className="ri-shield-keyhole-line me-1 text-primary" />
+                        Driver Password &amp; Account Security
                       </span>
-                      <span className="badge bg-success-subtle text-success fs-xs">Active Dispatch ID</span>
+                      <span className="badge bg-success-subtle text-success fs-xs">Self-Service Protected</span>
                     </div>
-                    <div className="d-flex gap-2">
-                      <input
-                        type="text"
-                        className="form-control form-control-sm font-monospace"
-                        placeholder="Enter new 6-digit PIN / password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary text-nowrap fw-bold"
-                        disabled={!newPassword || updatingPassword}
-                        onClick={handleResetPassword}
-                      >
-                        {updatingPassword ? 'Updating…' : 'Reset PIN'}
-                      </button>
-                    </div>
+                    <p className="text-muted mb-2.5" style={{ fontSize: 11, lineHeight: 1.5 }}>
+                      For privacy and security, driver passwords cannot be viewed or typed by administrators. You can trigger an official password reset link directly to the driver's email.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                      disabled={!selected.email || updatingPassword}
+                      onClick={handleSendPasswordResetLink}
+                    >
+                      <i className="ri-mail-send-line" />
+                      <span>{updatingPassword ? 'Sending Reset Link…' : `Send Password Reset Email to ${selected.email || 'Driver'}`}</span>
+                    </button>
                   </div>
 
                   <div className="d-flex gap-2 pt-2">
