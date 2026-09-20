@@ -29,9 +29,12 @@ const STATUS_CFG = {
 
 export default function BatchManagement() {
   const [batches, setBatches] = useState([])
+  const [rawItems, setRawItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [warehouses, setWarehouses] = useState([])
   const [search, setSearch]   = useState('')
+  const [viewMode, setViewMode] = useState('consignments') // 'consignments' (Def 2) | 'items' (Def 1)
+  const [filterStatus, setFilterStatus] = useState('all')
   const [activeBatch, setActiveBatch] = useState(null)
   const [activeItemModal, setActiveItemModal] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
@@ -61,8 +64,9 @@ export default function BatchManagement() {
     try {
       const res = await api.get('/admin/inventory/batches')
       const batchData = res.data.batches || []
+      const itemsData = res.data.raw_items || []
       setBatches(batchData)
-      // If we are currently viewing an active batch, refresh its reference
+      setRawItems(itemsData)
       if (activeBatch) {
         const updatedActive = batchData.find(b => b.batch_no === activeBatch.batch_no)
         if (updatedActive) setActiveBatch(updatedActive)
@@ -76,7 +80,7 @@ export default function BatchManagement() {
 
   useEffect(() => { load() }, [])
 
-  // Filter batches for top-level view
+  // Filter batches for Consignment View (Definition 2)
   const filteredBatches = useMemo(() => {
     const q = search.toLowerCase().trim()
     if (!q) return batches
@@ -87,7 +91,25 @@ export default function BatchManagement() {
     )
   }, [batches, search])
 
-  // Filter items within the active batch
+  // Filter items in flat FIFO Item View (Definition 1)
+  const enrichedRawItems = useMemo(() => {
+    return rawItems.map(i => ({
+      ...i,
+      computedStatus: getBatchStatus(i.status, i.expiry_date, i.quantity),
+      daysLeft: daysToExpiry(i.expiry_date),
+    }))
+  }, [rawItems])
+
+  const filteredRawItems = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return enrichedRawItems.filter(i => {
+      const matchSearch = !q || (i.product_name || '').toLowerCase().includes(q) || (i.batch_no || '').toLowerCase().includes(q) || (i.sku || '').toLowerCase().includes(q)
+      const matchStatus = filterStatus === 'all' || i.computedStatus === filterStatus
+      return matchSearch && matchStatus
+    })
+  }, [enrichedRawItems, search, filterStatus])
+
+  // Filter items within the active batch drilldown
   const filteredItemsInActiveBatch = useMemo(() => {
     if (!activeBatch) return []
     const q = search.toLowerCase().trim()
@@ -99,24 +121,22 @@ export default function BatchManagement() {
   }, [activeBatch, search])
 
   // Overall system KPI stats
-  const totalStats = useMemo(() => {
-    let totalBatches = batches.length
-    let totalItems = 0
+  const stats = useMemo(() => {
+    const totalBatches = batches.length
+    const totalItems = rawItems.length
+    const activeLots = enrichedRawItems.filter(i => i.computedStatus === 'active').length
+    const expiringLots = enrichedRawItems.filter(i => i.computedStatus === 'expiring_soon').length
+    const exhaustedLots = enrichedRawItems.filter(i => i.computedStatus === 'expired' || i.computedStatus === 'exhausted').length
+
     let totalUnits = 0
     let totalValuation = 0
-    let nearExpiryBatches = 0
-
-    batches.forEach(b => {
-      totalItems += b.item_count || 0
-      totalUnits += b.total_units || 0
-      totalValuation += b.total_valuation || 0
-      if (b.min_days_until_expiry !== null && b.min_days_until_expiry <= 7 && b.min_days_until_expiry >= 0) {
-        nearExpiryBatches++
-      }
+    rawItems.forEach(i => {
+      totalUnits += parseInt(i.quantity) || 0
+      totalValuation += (parseFloat(i.product_price) || 0) * (parseInt(i.quantity) || 0)
     })
 
-    return { totalBatches, totalItems, totalUnits, totalValuation, nearExpiryBatches }
-  }, [batches])
+    return { totalBatches, totalItems, activeLots, expiringLots, exhaustedLots, totalUnits, totalValuation }
+  }, [batches, rawItems, enrichedRawItems])
 
   function openItemAction(item) {
     setSelectedItem(item)
@@ -233,23 +253,23 @@ export default function BatchManagement() {
   return (
     <div className="container-fluid py-3">
       {/* Page Header */}
-      <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-4">
+      <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
         <div>
           <h4 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
             <i className="ri-archive-stack-fill text-success"></i>
             {activeBatch ? (
               <span>
-                <span className="text-muted fw-normal">Batch:</span> {activeBatch.batch_no}
+                <span className="text-muted fw-normal">Batch Manifest:</span> {activeBatch.batch_no}
               </span>
             ) : (
-              'Produce Consignments & Batches'
+              'Produce Batches & Expiry Hub'
             )}
           </h4>
           <p className="text-muted mb-0 fs-13">
             {activeBatch ? (
-              <span>Viewing all produce goods registered in this intake consignment. Click any item to dispatch to kitchen or transfer.</span>
+              <span>Viewing all produce items received in this intake session. Click any item for kitchen dispatch or warehouse transfer.</span>
             ) : (
-              'All uploaded produce lots and restock intakes grouped by batch consignment. Click any batch to view its items manifest.'
+              'Track incoming farm shipment consignments, monitor FIFO shelf-life countdowns, and manage individual produce lots.'
             )}
           </p>
         </div>
@@ -259,7 +279,7 @@ export default function BatchManagement() {
               className="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm"
               onClick={() => { setActiveBatch(null); setSearch(''); }}
             >
-              <i className="ri-arrow-left-line me-1"></i> Back to All Batches
+              <i className="ri-arrow-left-line me-1"></i> Back to Consignments
             </button>
           ) : (
             <Link to="/inventory/stock-in" className="btn btn-success btn-sm rounded-pill px-3 shadow-sm">
@@ -269,56 +289,56 @@ export default function BatchManagement() {
           <button 
             className="btn btn-light btn-sm rounded-pill px-3 border shadow-sm"
             onClick={load}
-            title="Refresh batches"
+            title="Refresh"
           >
             <i className="ri-refresh-line me-1"></i> Refresh
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Row (Visible on top-level batches view) */}
+      {/* KPI Cards Row */}
       {!activeBatch && (
         <div className="row g-3 mb-4">
           {[
             {
-              label: 'Total Batch Consignments',
-              value: totalStats.totalBatches,
+              label: 'Intake Consignments',
+              value: stats.totalBatches,
               glow: 'bg-card-glow-indigo',
               iconBg: '#EEF2FF',
               iconColor: '#4F46E5',
               icon: 'ri-archive-stack-line',
-              subLeft: 'Intake Sessions',
-              subRight: `${totalStats.totalBatches} Lots`
+              subLeft: 'Upload Sessions',
+              subRight: `${stats.totalBatches} Batches`
             },
             {
               label: 'Total Produce Goods',
-              value: totalStats.totalItems,
+              value: stats.totalItems,
               glow: 'bg-card-glow-green',
               iconBg: '#ECFDF5',
               iconColor: '#059669',
               icon: 'ri-plant-line',
-              subLeft: 'Distinct Products',
-              subRight: `${totalStats.totalItems} Items`
+              subLeft: 'Active In-Stock',
+              subRight: `${stats.activeLots} Fresh Lots`
             },
             {
-              label: 'Total Stock Volume',
-              value: totalStats.totalUnits.toLocaleString(),
-              glow: 'bg-card-glow-teal',
-              iconBg: '#F0FDFA',
-              iconColor: '#0D9488',
-              icon: 'ri-inbox-archive-line',
-              subLeft: 'Units In-Storage',
-              subRight: 'Fresh Stock'
+              label: 'Expiring Soon (≤ 7d)',
+              value: stats.expiringLots,
+              glow: stats.expiringLots > 0 ? 'bg-card-glow-amber' : 'bg-card-glow-teal',
+              iconBg: stats.expiringLots > 0 ? '#FEF3C7' : '#F0FDFA',
+              iconColor: stats.expiringLots > 0 ? '#D97706' : '#0D9488',
+              icon: 'ri-alarm-warning-line',
+              subLeft: 'FIFO Priority',
+              subRight: stats.expiringLots > 0 ? `${stats.expiringLots} Urgent` : 'Fresh Produce'
             },
             {
-              label: 'Batch Inventory Value',
-              value: `₦${totalStats.totalValuation.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+              label: 'Total Batch Valuation',
+              value: `₦${stats.totalValuation.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
               glow: 'bg-card-glow-amber',
               iconBg: '#FEF3C7',
               iconColor: '#D97706',
               icon: 'ri-money-dollar-circle-line',
-              subLeft: 'Consignment Value',
-              subRight: 'Active Valuation'
+              subLeft: 'Units In Storage',
+              subRight: `${stats.totalUnits.toLocaleString()} units`
             },
           ].map(c => (
             <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
@@ -346,23 +366,61 @@ export default function BatchManagement() {
         </div>
       )}
 
-      {/* ── VIEW 1: BATCH CONSIGNMENTS LIST ──────────────────────────────── */}
+      {/* ── DUAL VIEW TABS (Consignments vs FIFO Expiry Register) ────────── */}
       {!activeBatch && (
+        <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+          <div className="nav nav-pills bg-light p-1 rounded-pill border shadow-sm">
+            <button 
+              className={`nav-link rounded-pill px-3 py-1.5 fs-13 fw-semibold ${viewMode === 'consignments' ? 'active bg-success text-white shadow-sm' : 'text-muted'}`}
+              onClick={() => { setViewMode('consignments'); setSearch(''); }}
+            >
+              <i className="ri-archive-stack-line me-1.5"></i>
+              1. Intake Consignments ({batches.length})
+            </button>
+            <button 
+              className={`nav-link rounded-pill px-3 py-1.5 fs-13 fw-semibold ${viewMode === 'items' ? 'active bg-success text-white shadow-sm' : 'text-muted'}`}
+              onClick={() => { setViewMode('items'); setSearch(''); }}
+            >
+              <i className="ri-timer-flash-line me-1.5"></i>
+              2. FIFO Expiry &amp; Lot Register ({rawItems.length})
+            </button>
+          </div>
+
+          <div className="d-flex gap-2 align-items-center">
+            {viewMode === 'items' && (
+              <select 
+                className="form-select form-select-sm rounded-pill fs-12" 
+                style={{ width: 'auto' }}
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All Lots ({rawItems.length})</option>
+                <option value="active">Active Fresh ({stats.activeLots})</option>
+                <option value="expiring_soon">Expiring Soon ({stats.expiringLots})</option>
+                <option value="expired">Exhausted ({stats.exhaustedLots})</option>
+              </select>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW A: INTAKE CONSIGNMENT BATCHES (Definition 2) ────────────── */}
+      {!activeBatch && viewMode === 'consignments' && (
         <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
           <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap gap-3 justify-content-between align-items-center">
             <div className="position-relative">
               <input 
                 className="form-control ps-5 rounded-pill" 
-                placeholder="Search batch no, warehouse, or produce inside…" 
+                placeholder="Search batch consignment, warehouse, produce…" 
                 value={search} 
                 onChange={e => setSearch(e.target.value)} 
                 style={{ minWidth: 320, fontSize: 13 }} 
               />
               <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
             </div>
-            <div className="text-muted fs-13">
-              Click any batch to inspect all goods inside
-            </div>
+            <span className="text-muted fs-13">
+              Click any consignment to see all goods uploaded in that session
+            </span>
           </div>
 
           <div className="card-body p-0">
@@ -370,14 +428,14 @@ export default function BatchManagement() {
               <table className="table align-middle text-nowrap mb-0 table-hover">
                 <thead className="bg-light">
                   <tr className="text-uppercase fs-11 text-muted border-bottom">
-                    <th className="ps-4">Batch Consignment ID</th>
+                    <th className="ps-4">Consignment ID</th>
                     <th>Intake Date</th>
                     <th>Produce Diversity</th>
-                    <th>Total Batch Volume</th>
+                    <th>Total Volume</th>
                     <th>Consignment Value</th>
                     <th>Warehouse Location</th>
                     <th>Earliest Expiry</th>
-                    <th className="text-end pe-4">Batch Goods Manifest</th>
+                    <th className="text-end pe-4">Batch Manifest</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -385,7 +443,7 @@ export default function BatchManagement() {
                     <tr>
                       <td colSpan={8} className="text-center py-5 text-muted">
                         <div className="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-                        Loading produce batches…
+                        Loading consignment batches…
                       </td>
                     </tr>
                   )}
@@ -396,9 +454,9 @@ export default function BatchManagement() {
                           <div className="avatar-lg mx-auto mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: 64, height: 64 }}>
                             <i className="ri-archive-stack-line fs-1 text-muted"></i>
                           </div>
-                          <h6 className="fw-bold mb-1">No Batches Found</h6>
-                          <p className="text-muted mx-auto mb-4" style={{ maxWidth: 480, fontSize: 13 }}>
-                            Whenever products are uploaded or restocked, they are automatically organized into batch consignments.
+                          <h6 className="fw-bold mb-1">No Consignments Found</h6>
+                          <p className="text-muted mx-auto mb-4 fs-13" style={{ maxWidth: 480 }}>
+                            Whenever goods are uploaded or restocked, they are automatically grouped into intake consignments.
                           </p>
                           <Link to="/inventory/stock-in" className="btn btn-success btn-sm rounded-pill px-3 shadow-sm">
                             <i className="ri-add-circle-line me-1"></i> Restock Products
@@ -410,7 +468,7 @@ export default function BatchManagement() {
                   {!loading && filteredBatches.map(b => {
                     const days = b.min_days_until_expiry
                     const daysColor = days === null ? '#adb5bd' : days < 0 ? '#f06548' : days <= 7 ? '#f7b84b' : '#0ab39c'
-                    
+
                     return (
                       <tr 
                         key={b.batch_no} 
@@ -418,11 +476,9 @@ export default function BatchManagement() {
                         onClick={() => { setActiveBatch(b); setSearch(''); }}
                       >
                         <td className="ps-4">
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="badge bg-success-subtle text-success font-monospace fs-13 border border-success-subtle px-2.5 py-1.5 rounded">
-                              <i className="ri-archive-line me-1"></i> {b.batch_no}
-                            </span>
-                          </div>
+                          <span className="badge bg-success-subtle text-success font-monospace fs-13 border border-success-subtle px-2.5 py-1.5 rounded">
+                            <i className="ri-archive-line me-1"></i> {b.batch_no}
+                          </span>
                         </td>
                         <td className="text-dark fs-13 fw-semibold">
                           {b.intake_date ? new Date(b.intake_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
@@ -458,7 +514,7 @@ export default function BatchManagement() {
                             className="btn btn-sm btn-primary rounded-pill px-3 fs-12 d-inline-flex align-items-center gap-1.5 shadow-sm"
                             onClick={() => { setActiveBatch(b); setSearch(''); }}
                           >
-                            <span>View All Goods ({b.item_count})</span>
+                            <span>Inspect Goods ({b.item_count})</span>
                             <i className="ri-arrow-right-line"></i>
                           </button>
                         </td>
@@ -472,7 +528,131 @@ export default function BatchManagement() {
         </div>
       )}
 
-      {/* ── VIEW 2: DRILLDOWN INTO ALL GOODS IN ACTIVE BATCH ─────────────── */}
+      {/* ── VIEW B: FLAT FIFO EXPIRY REGISTER (Definition 1) ─────────────── */}
+      {!activeBatch && viewMode === 'items' && (
+        <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+          <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap gap-3 justify-content-between align-items-center">
+            <div className="position-relative">
+              <input 
+                className="form-control ps-5 rounded-pill" 
+                placeholder="Search produce name, batch lot, SKU…" 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                style={{ minWidth: 320, fontSize: 13 }} 
+              />
+              <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
+            </div>
+            <div className="text-muted fs-13">
+              Sorted by FIFO shelf-life urgency
+            </div>
+          </div>
+
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table align-middle text-nowrap mb-0 table-hover">
+                <thead className="bg-light">
+                  <tr className="text-uppercase fs-11 text-muted border-bottom">
+                    <th className="ps-4">Produce &amp; Goods Item</th>
+                    <th>Batch Lot</th>
+                    <th>Intake Date</th>
+                    <th>Expiry Date</th>
+                    <th>Shelf Life Countdown</th>
+                    <th>Available Qty</th>
+                    <th>Warehouse Location</th>
+                    <th>Status</th>
+                    <th className="text-end pe-4">Item Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td colSpan={9} className="text-center py-5 text-muted">
+                        Loading produce lots…
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && filteredRawItems.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="text-center py-5 text-muted">
+                        No produce lots match the filter criteria.
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && filteredRawItems.map(item => {
+                    const sc = STATUS_CFG[item.computedStatus] || STATUS_CFG.active
+                    const days = item.daysLeft
+                    const daysColor = days === null ? '#adb5bd' : days < 0 ? '#f06548' : days <= 7 ? '#f7b84b' : '#0ab39c'
+
+                    return (
+                      <tr key={item.id || item.batch_item_id}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-2.5">
+                            {item.product_image ? (
+                              <img src={item.product_image} alt="" className="rounded-circle object-fit-cover border shadow-sm" style={{ width: 34, height: 34 }} />
+                            ) : (
+                              <div className="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center border" style={{ width: 34, height: 34 }}>
+                                <i className="ri-plant-line"></i>
+                              </div>
+                            )}
+                            <div>
+                              <div className="fw-bold text-dark fs-13">{item.product_name}</div>
+                              <div className="text-muted fs-11">{item.sku}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-primary font-monospace fs-12 border">
+                            {item.batch_no}
+                          </span>
+                        </td>
+                        <td className="text-muted fs-12">
+                          {item.received_at || item.created_at ? new Date(item.received_at || item.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="text-dark fs-12 fw-medium">
+                          {item.expiry_date ? item.expiry_date.slice(0, 10) : '—'}
+                        </td>
+                        <td>
+                          <span className="fw-bold fs-12 px-2.5 py-1 rounded" style={{ color: daysColor, background: `${daysColor}15` }}>
+                            {days === null ? '—' : days < 0 ? `${Math.abs(days)}d expired` : days === 0 ? 'Expires Today!' : `${days} days left`}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="fw-bold text-dark fs-13">{item.quantity}</span> <span className="text-muted fs-11">units</span>
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-muted border px-2.5 py-1 fs-12">
+                            <i className="ri-store-2-line me-1"></i> {item.warehouse_name || 'Main Coldroom'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`badge ${sc.cls} px-2.5 py-1 fs-12`}>
+                            <i className={`${sc.icon} me-1`}></i>{sc.label}
+                          </span>
+                        </td>
+                        <td className="text-end pe-4">
+                          <button 
+                            className="btn btn-sm btn-soft-success d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill fs-12"
+                            onClick={() => openItemAction(item)}
+                            title="Route to kitchen, transfer, or write off"
+                          >
+                            <i className="ri-flashlight-line"></i> Actions
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-3 bg-light border-top text-muted fs-13">
+              Showing <strong>{filteredRawItems.length}</strong> of <strong>{rawItems.length}</strong> produce lots
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW C: DRILLDOWN INTO A SPECIFIC CONSIGNMENT BATCH ──────────── */}
       {activeBatch && (
         <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
           {/* Active Batch Summary Banner */}
@@ -483,7 +663,7 @@ export default function BatchManagement() {
               </div>
               <div>
                 <h5 className="fw-bold text-white mb-0 d-flex align-items-center gap-2">
-                  <span>Batch: {activeBatch.batch_no}</span>
+                  <span>Consignment: {activeBatch.batch_no}</span>
                   <span className="badge bg-success text-white fs-11 fw-normal px-2 py-0.5 rounded-pill">
                     {activeBatch.item_count} Produce Items
                   </span>
@@ -606,7 +786,7 @@ export default function BatchManagement() {
             </div>
 
             <div className="p-3 bg-light border-top d-flex justify-content-between align-items-center text-muted fs-13">
-              <span>Showing <strong>{filteredItemsInActiveBatch.length}</strong> of <strong>{activeBatch.items?.length || 0}</strong> goods in Batch <strong>{activeBatch.batch_no}</strong></span>
+              <span>Showing <strong>{filteredItemsInActiveBatch.length}</strong> of <strong>{activeBatch.items?.length || 0}</strong> goods in Consignment <strong>{activeBatch.batch_no}</strong></span>
               <button 
                 className="btn btn-link btn-sm text-decoration-none text-muted p-0"
                 onClick={() => { setActiveBatch(null); setSearch(''); }}
