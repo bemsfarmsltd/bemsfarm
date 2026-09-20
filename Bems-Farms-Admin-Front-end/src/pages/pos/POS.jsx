@@ -1804,10 +1804,10 @@ export default function POS() {
         const scTotal = scSub + scVat
 
         return (
-          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 760 }}>
+          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 760 }} onClick={e => e.stopPropagation()}>
               <div className="modal-content pos-modal-card">
-                <div className="modal-header pos-modal-header bg-emerald-solid">
+                <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff' }}>
                   <div className="d-flex align-items-center gap-3">
                     <div className="pos-modal-ico-box">🛒</div>
                     <div>
@@ -1910,15 +1910,15 @@ export default function POS() {
 
       {/* ─── Online Orders Modal ────────────────────────────────────────── */}
       {activeModal === 'online' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 840 }}>
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 840 }} onClick={e => e.stopPropagation()}>
             <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-sapphire-solid">
+              <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)', color: '#ffffff' }}>
                 <div className="d-flex align-items-center gap-3">
-                  <div className="pos-modal-ico-box">📥</div>
+                  <div className="pos-modal-ico-box" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#fff' }}>📥</div>
                   <div>
                     <h5 className="modal-title mb-0 text-white fw-bold">Online & WhatsApp Orders</h5>
-                    <div className="pos-modal-sub-title">
+                    <div className="pos-modal-sub-title" style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 11, marginTop: 2 }}>
                       {onlineOrders.filter(o => o.status === 'new').length} New Incoming Orders · {onlineOrders.length} Total
                     </div>
                   </div>
@@ -2022,8 +2022,8 @@ export default function POS() {
 
       {/* ─── Unified Checkout & Payment Modal ────────────────────────────── */}
       {(activeModal === 'checkout' || activeModal === 'cash' || activeModal === 'card' || activeModal === 'transfer' || activeModal === 'qr' || activeModal === 'split') && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 580 }}>
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 580 }} onClick={e => e.stopPropagation()}>
             <div className="modal-content pos-checkout-modal-card">
               {/* Header */}
               <div className="pos-checkout-modal-header">
@@ -2649,10 +2649,10 @@ export default function POS() {
 
       {/* ─── Hold Order Modal ───────────────────────────────────────────── */}
       {activeModal === 'hold' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
             <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-emerald-solid">
+              <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff' }}>
                 <h6 className="modal-title text-white fw-bold">Hold Bill [F4]</h6>
                 <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
@@ -2698,10 +2698,10 @@ export default function POS() {
 
       {/* ─── Invoice Preview Modal ──────────────────────────────────────── */}
       {activeModal === 'invoice' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 660 }}>
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 660 }} onClick={e => e.stopPropagation()}>
             <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-sapphire-solid">
+              <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)', color: '#fff' }}>
                 <div className="d-flex align-items-center gap-2">
                   <i className="ri-file-text-line fs-22 text-white"></i>
                   <h6 className="modal-title mb-0 text-white fw-bold">Receipt & Invoice · {orderId}</h6>
@@ -2778,10 +2778,10 @@ export default function POS() {
 
       {/* ─── Pay Later Modal ────────────────────────────────────────────── */}
       {activeModal === 'paylater' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
             <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-amber-solid">
+              <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', color: '#fff' }}>
                 <h6 className="modal-title text-dark fw-bold">Store Credit / Pay Later</h6>
                 <button className="btn-close" onClick={closeModal}></button>
               </div>
@@ -2839,10 +2839,10 @@ export default function POS() {
         })
 
         return (
-          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 880 }}>
+          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 880 }} onClick={e => e.stopPropagation()}>
               <div className="modal-content pos-modal-card">
-                <div className="modal-header pos-modal-header bg-sapphire-solid d-flex justify-content-between align-items-center">
+                <div className="modal-header pos-modal-header d-flex justify-content-between align-items-center" style={{ background: 'linear-gradient(135deg, #1d4ed8, #2563eb)', color: '#fff' }}>
                   <div>
                     <h6 className="modal-title text-white fw-bold mb-0">Recent POS Receipts &amp; Sales</h6>
                     <small className="text-white-50 fs-xs">Search by Receipt #, Customer, Product Name, or Amount</small>
@@ -2990,7 +2990,7 @@ export default function POS() {
 
       {/* ─── Manual Receipt Reprint Modal (Only when explicitly clicked from History) ─── */}
       {activeModal === 'receipt' && successData && (
-        <div className="pos-success-screen-overlay">
+        <div className="pos-success-screen-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
           <div className="pos-success-hero-card pos-success-hero-card--receipt">
             <h5 className="pos-success-headline">Receipt Details</h5>
             <div className="pos-success-bill-ref">Receipt ID: {successData.orderId}</div>
@@ -3090,10 +3090,10 @@ export default function POS() {
         }
 
         return (
-          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 580 }}>
+          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 580 }} onClick={e => e.stopPropagation()}>
               <div className="modal-content pos-modal-card">
-                <div className="modal-header pos-modal-header bg-rose-solid">
+                <div className="modal-header pos-modal-header" style={{ background: 'linear-gradient(135deg, #e11d48, #f43f5e)', color: '#fff' }}>
                   <div className="d-flex align-items-center gap-2">
                     <i className="ri-arrow-go-back-line fs-22 text-white"></i>
                     <div>
@@ -3270,11 +3270,11 @@ export default function POS() {
         })
 
         return (
-          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered modal-xl pos-analytics-dialog" style={{ maxWidth: 'min(1400px, 95vw)', width: '95vw' }}>
+          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
+            <div className="modal-dialog modal-dialog-centered modal-xl pos-analytics-dialog" style={{ maxWidth: 'min(1400px, 95vw)', width: '95vw' }} onClick={e => e.stopPropagation()}>
               <div className="modal-content pos-modal-card pos-analytics-card">
                 {/* Header */}
-                <div className="modal-header pos-modal-header bg-emerald-solid px-4 py-3">
+                <div className="modal-header pos-modal-header px-4 py-3" style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff' }}>
                   <div className="d-flex align-items-center gap-3">
                     <div className="pos-modal-ico-box pos-analytics-ico-box">📊</div>
                     <div>
