@@ -195,9 +195,11 @@ const telemetryRoutes = require("./routes/telemetry");
 const customerChatRoutes = require("./routes/customer_chat");
 const broadcastsRoutes = require("./routes/broadcasts");
 const driverRoutes = require("./routes/driver");
+const locationRoutes = require("./routes/locations");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/driver", driverRoutes);
+app.use("/api/locations", locationRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
 app.use("/api/issues", issuesRoutes);
 app.use("/api/products", productsRoutes);

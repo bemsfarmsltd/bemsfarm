@@ -49,6 +49,8 @@ const ROUTE_META = {
   "/chef-chat": ["Chef Bems — Culinary AI Assistant | BemsFarms", "Get personalized Nigerian recipe ideas, ingredient alternatives and smart shopping lists with Chef Bems."],
 };
 
+import LocationPromptBanner from "./components/ui/LocationPromptBanner";
+
 function RouteMetadata() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -70,6 +72,7 @@ function App() {
   return (
     <BrowserRouter>
       <RouteMetadata />
+      <LocationPromptBanner />
       <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#faf8f2] px-6 text-center font-bold text-[#17352a]" role="status">Loading BemsFarms…</div>}>
         <Routes>
         {/* Public */}
