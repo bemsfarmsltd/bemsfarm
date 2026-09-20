@@ -311,11 +311,15 @@ export default function ProfilePage() {
   };
 
   const deleteAddress = async (id) => {
+    if (addresses.length <= 1) {
+      setAddressError("You must keep at least one default delivery address in your profile.");
+      return;
+    }
     try {
       await api.delete(`/addresses/${id}`);
       loadAddresses();
-    } catch {
-      // ignore
+    } catch (err) {
+      setAddressError(err?.response?.data?.message || "Failed to delete address");
     }
   };
 
@@ -981,12 +985,18 @@ export default function ProfilePage() {
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => deleteAddress(addr.id)}
-                              className="text-red-600 hover:text-red-700 font-semibold text-xs cursor-pointer p-0 bg-transparent border-none"
-                            >
-                              Delete
-                            </button>
+                            {addresses.length > 1 ? (
+                              <button
+                                onClick={() => deleteAddress(addr.id)}
+                                className="text-red-600 hover:text-red-700 font-semibold text-xs cursor-pointer p-0 bg-transparent border-none"
+                              >
+                                Delete
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-[11px] font-medium italic" title="Profile must always maintain at least one default delivery address">
+                                Minimum 1 Required
+                              </span>
+                            )}
                           </div>
 
                           {!addr.is_default && (

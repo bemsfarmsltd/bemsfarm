@@ -109,15 +109,35 @@ export default function VerifiedLocationModal({
     }
   }, [searchQuery]);
 
-  // Initial verification on open
+  // Initial verification on open: align by coordinates or search query
   useEffect(() => {
     if (isOpen) {
       if (initialLat && initialLng) {
-        setPosition([parseFloat(initialLat), parseFloat(initialLng)]);
-        verifyCoordinates(parseFloat(initialLat), parseFloat(initialLng), initialAddress);
+        const lat = parseFloat(initialLat);
+        const lng = parseFloat(initialLng);
+        setPosition([lat, lng]);
+        verifyCoordinates(lat, lng, initialAddress);
+      } else if (initialAddress && initialAddress.trim().length >= 3) {
+        // Automatically geocode the typed address to center map on the target place
+        setSearchQuery(initialAddress);
+        api.get("/locations/search", { params: { q: initialAddress } })
+          .then((res) => {
+            const results = res.data?.results || [];
+            if (results.length > 0) {
+              const first = results[0];
+              const pos = [first.latitude, first.longitude];
+              setPosition(pos);
+              verifyCoordinates(first.latitude, first.longitude, first.display_name);
+            } else {
+              verifyCoordinates(defaultCenter[0], defaultCenter[1], initialAddress);
+            }
+          })
+          .catch(() => {
+            verifyCoordinates(defaultCenter[0], defaultCenter[1], initialAddress);
+          });
       } else {
-        // Try auto-detecting current GPS
-        detectCurrentLocation();
+        // Default center (Umuahia / Abia) — let user search or optionally use GPS
+        verifyCoordinates(defaultCenter[0], defaultCenter[1]);
       }
     }
   }, [isOpen]);

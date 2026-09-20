@@ -118,17 +118,56 @@ router.patch("/:id", async (req, res, next) => {
 });
 
 router.delete("/:id", async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
-      "DELETE FROM user_addresses WHERE id=$1 AND user_id=$2 RETURNING id",
-      [req.params.id, req.user.id],
+    await client.query("BEGIN");
+
+    // Total addresses count for this user
+    const totalRes = await client.query(
+      "SELECT id, is_default FROM user_addresses WHERE user_id=$1",
+      [req.user.id]
     );
-    if (!result.rows.length) {
+
+    // Profile can NEVER be without an address
+    if (totalRes.rows.length <= 1) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "You must keep at least one default delivery address in your profile.",
+      });
+    }
+
+    const targetAddr = totalRes.rows.find((a) => String(a.id) === String(req.params.id));
+    if (!targetAddr) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "Address not found" });
     }
-    res.json({ message: "Address deleted" });
+
+    // Delete the specified address
+    await client.query("DELETE FROM user_addresses WHERE id=$1 AND user_id=$2", [
+      req.params.id,
+      req.user.id,
+    ]);
+
+    // If the deleted address was default, automatically promote another address
+    if (targetAddr.is_default) {
+      const remaining = await client.query(
+        "SELECT id FROM user_addresses WHERE user_id=$1 ORDER BY is_default DESC, updated_at DESC, created_at DESC LIMIT 1",
+        [req.user.id]
+      );
+      if (remaining.rows.length > 0) {
+        await client.query("UPDATE user_addresses SET is_default=true WHERE id=$1", [
+          remaining.rows[0].id,
+        ]);
+      }
+    }
+
+    await client.query("COMMIT");
+    res.json({ message: "Address deleted successfully" });
   } catch (err) {
+    await client.query("ROLLBACK");
     next(err);
+  } finally {
+    client.release();
   }
 });
 
