@@ -1047,11 +1047,36 @@ router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res, nex
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 50, product_id = "", status = "", expiring = "" } = req.query;
-    const limit = clampLimit(limitRaw, 50);
+    const { page = 1, limit: limitRaw = 100, product_id = "", status = "", expiring = "" } = req.query;
+    const limit = clampLimit(limitRaw, 100);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
+
+    // Automatically ensure all products in catalog are populated as batches
+    try {
+      const whRes = await pool.query("SELECT id FROM warehouses WHERE status = 'active' ORDER BY id ASC LIMIT 1");
+      const defaultWh = whRes.rows[0]?.id || null;
+      await pool.query(`
+        INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, status, notes, received_at, created_at)
+        SELECT 
+          p.id,
+          COALESCE(p.warehouse_id, $1),
+          CONCAT('LOT-', TO_CHAR(COALESCE(p.created_at, NOW()), 'YYYYMMDD'), '-', LPAD(p.id::text, 3, '0')),
+          COALESCE(p.stock, 0),
+          p.cost_price,
+          COALESCE(p.expiry_date, (CURRENT_DATE + INTERVAL '180 days')::date),
+          COALESCE(p.created_at::date, CURRENT_DATE),
+          CASE WHEN COALESCE(p.stock, 0) = 0 THEN 'exhausted' ELSE 'active' END,
+          'Produce batch lot',
+          COALESCE(p.created_at, NOW()),
+          COALESCE(p.created_at, NOW())
+        FROM products p
+        WHERE NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
+      `, [defaultWh]);
+    } catch (syncErr) {
+      console.error("Batch sync in GET /batches error:", syncErr.message);
+    }
 
     if (product_id) { params.push(parseInt(product_id)); where.push(`b.product_id = $${params.length}`); }
     if (status)     { params.push(status);               where.push(`b.status = $${params.length}`); }
