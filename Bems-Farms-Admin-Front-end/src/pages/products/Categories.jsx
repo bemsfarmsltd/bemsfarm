@@ -196,22 +196,64 @@ export default function Categories() {
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Categories', value: stats.total, icon: 'ri-folder-line', color: '#405189' },
-          { label: 'Active Categories', value: stats.active, icon: 'ri-checkbox-circle-line', color: '#0ab39c' },
-          { label: 'Inactive Categories', value: stats.inactive, icon: 'ri-close-circle-line', color: '#f06548' },
-          { label: 'Total Products Assigned', value: stats.products, icon: 'ri-box-3-line', color: '#299cdb' },
+          {
+            label: 'Total Categories',
+            value: stats.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-folder-line',
+            subLeft: 'Taxonomy Groups',
+            subRight: `${stats.total} Total`
+          },
+          {
+            label: 'Active Categories',
+            value: stats.active,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Live in Storefront',
+            subRight: `${stats.active} Published`
+          },
+          {
+            label: 'Inactive Categories',
+            value: stats.inactive,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-close-circle-line',
+            subLeft: 'Hidden / Drafts',
+            subRight: `${stats.inactive} Hidden`
+          },
+          {
+            label: 'Total Products Assigned',
+            value: stats.products,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-box-3-line',
+            subLeft: 'Catalog Linked',
+            subRight: `${stats.products} SKUs`
+          },
         ].map((c) => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0 shadow-sm border-0" style={{ borderLeft: `3px solid ${c.color}` }}>
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 44, height: 44, background: `${c.color}1a` }}>
-                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}></i>
+          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="fs-20 fw-bold" style={{ color: c.color }}>{c.value}</div>
-                  <div className="text-muted fs-12">{c.label}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>

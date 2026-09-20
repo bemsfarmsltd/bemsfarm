@@ -178,24 +178,64 @@ export default function Warehouses() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Warehouses', value: totals.total, sub: `${totals.active} Active`, icon: 'ri-building-2-line', color: '#405189' },
-          { label: 'Total Products Stored', value: totals.products, sub: 'In master catalog', icon: 'ri-box-3-line', color: '#299cdb' },
-          { label: 'Total Stored Units', value: totals.units.toLocaleString(), sub: `Of ${totals.capacity.toLocaleString()} Max Capacity`, icon: 'ri-stack-line', color: '#0ab39c' },
-          { label: 'Total Inventory Value', value: formatNaira(totals.value), sub: 'Across all facilities', icon: 'ri-money-dollar-circle-line', color: '#f7b84b' },
+          {
+            label: 'Total Facilities',
+            value: totals.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-building-2-line',
+            subLeft: 'Storage Locations',
+            subRight: `${totals.active} Active`
+          },
+          {
+            label: 'Catalog Stored',
+            value: totals.products,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-box-3-line',
+            subLeft: 'Distinct Products',
+            subRight: 'In Inventory'
+          },
+          {
+            label: 'Total Physical Units',
+            value: totals.units.toLocaleString(),
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-stack-line',
+            subLeft: 'Capacity Utilization',
+            subRight: `${totals.capacity.toLocaleString()} Max Cap`
+          },
+          {
+            label: 'Total Facility Value',
+            value: formatNaira(totals.value),
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-money-dollar-circle-line',
+            subLeft: 'Asset Valuation',
+            subRight: 'Across All Hubs'
+          },
         ].map((c) => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0 shadow-sm border-0" style={{ borderLeft: `4px solid ${c.color}` }}>
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 44, height: 44, background: `${c.color}18` }}
-                >
-                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}></i>
+          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="fs-18 fw-bold" style={{ color: c.color }}>{c.value}</div>
-                  <div className="text-muted fs-12 fw-medium">{c.label}</div>
-                  <div className="text-muted fs-11">{c.sub}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>

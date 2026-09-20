@@ -134,22 +134,72 @@ export default function SubCategories() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Sub-Categories', value:stats.total,    icon:'ri-price-tag-2-line',     color:'#405189', filter:'all'      },
-          { label:'Active',               value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
-          { label:'Inactive',             value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
-          { label:'Shown on POS',         value:stats.onPOS,    icon:'ri-store-2-line',         color:'#299cdb', filter:'all'      },
+          {
+            label: 'Total Sub-Categories',
+            value: stats.total,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-price-tag-2-line',
+            filter: 'all',
+            subLeft: 'Taxonomy Breakdown',
+            subRight: `${stats.total} Total`
+          },
+          {
+            label: 'Active Groups',
+            value: stats.active,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            filter: 'active',
+            subLeft: 'Live Online & Store',
+            subRight: `${stats.active} Active`
+          },
+          {
+            label: 'Inactive Groups',
+            value: stats.inactive,
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-close-circle-line',
+            filter: 'inactive',
+            subLeft: 'Hidden from Buyers',
+            subRight: `${stats.inactive} Paused`
+          },
+          {
+            label: 'Shown on POS',
+            value: stats.onPOS,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-store-2-line',
+            filter: 'all',
+            subLeft: 'Terminal Quick Grid',
+            subRight: `${stats.onPOS} Synced`
+          },
         ].map(c => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }}
-              onClick={() => setFilterStatus(c.filter)}>
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width:44, height:44, background:`${c.color}1a` }}>
-                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+            <div
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setFilterStatus(c.filter)}
+            >
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div>
-                  <div className="fw-bold fs-18" style={{ color:c.color }}>{c.value}</div>
-                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
             </div>

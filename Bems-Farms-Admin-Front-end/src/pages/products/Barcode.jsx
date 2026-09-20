@@ -625,15 +625,22 @@ export default function Barcode() {
       <div className="no-print row g-3 mb-4">
         {/* Total Catalog */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <span className="text-muted fs-xs fw-semibold text-uppercase">Total Catalog Products</span>
-                <h3 className="fw-bold mb-0 text-dark mt-1">{totalProducts}</h3>
-                <small className="text-muted">In master catalog</small>
+          <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-indigo">
+            <div className="card-body p-3.5">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                  Total Catalog Products
+                </span>
+                <span className="kpi-icon-pill" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+                  <i className="ri-box-3-line fs-18"></i>
+                </span>
               </div>
-              <div className="avatar size-10 rounded-3 bg-light text-primary d-flex align-items-center justify-content-center">
-                <i className="ri-box-3-line fs-4"></i>
+              <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                {totalProducts}
+              </div>
+              <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                <span>Master Catalog</span>
+                <strong className="text-dark font-monospace">{totalProducts} SKUs</strong>
               </div>
             </div>
           </div>
@@ -641,24 +648,24 @@ export default function Barcode() {
 
         {/* Assigned Barcodes */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <span className="text-muted fs-xs fw-semibold text-uppercase">Universal Code Assigned</span>
-                <h3 className="fw-bold mb-0 text-success mt-1">{productsWithBarcode.length}</h3>
-                <div className="d-flex align-items-center gap-2 mt-1">
-                  <div className="progress flex-grow-1" style={{ height: 6, width: 80 }}>
-                    <div
-                      className="progress-bar bg-success"
-                      role="progressbar"
-                      style={{ width: `${barcodeCoveragePct}%` }}
-                    ></div>
-                  </div>
-                  <small className="fw-bold text-success">{barcodeCoveragePct}%</small>
-                </div>
+          <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-green">
+            <div className="card-body p-3.5">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                  Universal Code Assigned
+                </span>
+                <span className="kpi-icon-pill" style={{ background: '#ECFDF5', color: '#059669' }}>
+                  <i className="ri-checkbox-circle-line fs-18"></i>
+                </span>
               </div>
-              <div className="avatar size-10 rounded-3 bg-success-subtle text-success d-flex align-items-center justify-content-center">
-                <i className="ri-checkbox-circle-line fs-4"></i>
+              <div className="fs-24 fw-bolder text-emerald mb-1 font-display">
+                {productsWithBarcode.length}
+              </div>
+              <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                <span>Catalog Coverage</span>
+                <span className="badge bg-success-subtle text-success font-monospace text-xs px-2">
+                  {barcodeCoveragePct}%
+                </span>
               </div>
             </div>
           </div>
@@ -666,19 +673,24 @@ export default function Barcode() {
 
         {/* Missing Barcode Action Alert */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className={`card border-0 shadow-sm rounded-4 h-100 p-3 ${productsMissingBarcode.length > 0 ? 'bg-warning bg-opacity-10 border-warning' : 'bg-white'}`}>
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <span className="text-muted fs-xs fw-semibold text-uppercase">Missing Barcodes</span>
-                <h3 className={`fw-bold mb-0 mt-1 ${productsMissingBarcode.length > 0 ? 'text-warning' : 'text-dark'}`}>
-                  {productsMissingBarcode.length}
-                </h3>
-                <small className={productsMissingBarcode.length > 0 ? 'text-warning fw-semibold' : 'text-muted'}>
-                  {productsMissingBarcode.length > 0 ? 'Action required for POS' : 'All items encoded'}
-                </small>
+          <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${productsMissingBarcode.length > 0 ? 'bg-card-glow-amber' : 'bg-card-glow-teal'}`}>
+            <div className="card-body p-3.5">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                  Missing Barcodes
+                </span>
+                <span className="kpi-icon-pill" style={{ background: productsMissingBarcode.length > 0 ? '#FEF3C7' : '#F0FDFA', color: productsMissingBarcode.length > 0 ? '#D97706' : '#0D9488' }}>
+                  <i className={productsMissingBarcode.length > 0 ? 'ri-alert-line fs-18' : 'ri-shield-check-line fs-18'}></i>
+                </span>
               </div>
-              <div className="avatar size-10 rounded-3 bg-warning-subtle text-warning d-flex align-items-center justify-content-center">
-                <i className="ri-alert-line fs-4"></i>
+              <div className={`fs-24 fw-bolder mb-1 font-display ${productsMissingBarcode.length > 0 ? 'text-amber' : 'text-dark'}`}>
+                {productsMissingBarcode.length}
+              </div>
+              <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                <span>POS Readiness</span>
+                <strong className={productsMissingBarcode.length > 0 ? 'text-amber font-monospace' : 'text-dark font-monospace'}>
+                  {productsMissingBarcode.length > 0 ? 'Action Needed' : 'All Encoded'}
+                </strong>
               </div>
             </div>
           </div>
@@ -686,15 +698,22 @@ export default function Barcode() {
 
         {/* Print Queue */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-            <div className="d-flex justify-content-between align-items-start">
-              <div>
-                <span className="text-muted fs-xs fw-semibold text-uppercase">Print Batch Queue</span>
-                <h3 className="fw-bold mb-0 text-primary mt-1">{totalLabelsInQueue}</h3>
-                <small className="text-muted">{Object.keys(printQueue).length} unique items</small>
+          <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-blue">
+            <div className="card-body p-3.5">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
+                  Print Batch Queue
+                </span>
+                <span className="kpi-icon-pill" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+                  <i className="ri-printer-cloud-line fs-18"></i>
+                </span>
               </div>
-              <div className="avatar size-10 rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center">
-                <i className="ri-printer-cloud-line fs-4"></i>
+              <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                {totalLabelsInQueue}
+              </div>
+              <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                <span>Batch Queue</span>
+                <strong className="text-dark font-monospace">{Object.keys(printQueue).length} SKUs</strong>
               </div>
             </div>
           </div>

@@ -99,32 +99,61 @@ export default function StockAlerts() {
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { key: 'out', label: 'Out of Stock', count: summary.out_of_stock_count, icon: 'ri-close-circle-line', color: '#f06548' },
-          { key: 'low', label: 'Low Stock Threshold', count: summary.low_stock_count, icon: 'ri-alert-line', color: '#f7b84b' },
-          { key: 'expiring', label: 'Expiring Soon (7 Days)', count: summary.expiring_product_count, icon: 'ri-time-line', color: '#299cdb' },
+          {
+            key: 'out',
+            label: 'Zero Stock / Depleted',
+            count: summary.out_of_stock_count,
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-close-circle-line',
+            subLeft: 'Sales Halted',
+            subRight: `${summary.out_of_stock_count} SKUs Out`
+          },
+          {
+            key: 'low',
+            label: 'Low Stock Threshold',
+            count: summary.low_stock_count,
+            glow: 'bg-card-glow-amber',
+            iconBg: '#FEF3C7',
+            iconColor: '#D97706',
+            icon: 'ri-alert-line',
+            subLeft: 'Under Reorder Level',
+            subRight: `${summary.low_stock_count} Need Restock`
+          },
+          {
+            key: 'expiring',
+            label: 'Expiring Soon (≤ 7 Days)',
+            count: summary.expiring_product_count,
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-time-line',
+            subLeft: 'FIFO Rotation Due',
+            subRight: `${summary.expiring_product_count} Batches`
+          },
         ].map((c) => (
           <div className="col-12 col-md-4" key={c.key}>
             <div
-              className="card mb-0 cursor-pointer shadow-sm border-0"
-              style={{
-                borderLeft: `4px solid ${c.color}`,
-                cursor: 'pointer',
-                background: activeTab === c.key ? '#f8f9fa' : '#ffffff',
-              }}
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer ${activeTab === c.key ? 'ring-2 ring-primary' : ''}`}
+              style={{ cursor: 'pointer', outline: activeTab === c.key ? '2px solid #143C2D' : 'none' }}
               onClick={() => setActiveTab(c.key)}>
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 44, height: 44, background: `${c.color}1a` }}>
-                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}></i>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
                 </div>
-                <div className="flex-grow-1">
-                  <div className="fs-22 fw-bold" style={{ color: c.color }}>{c.count}</div>
-                  <div className="text-muted fs-13">{c.label}</div>
+                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                  {c.count}
                 </div>
-                {activeTab === c.key && (
-                  <span className="badge bg-primary">Active View</span>
-                )}
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
               </div>
             </div>
           </div>

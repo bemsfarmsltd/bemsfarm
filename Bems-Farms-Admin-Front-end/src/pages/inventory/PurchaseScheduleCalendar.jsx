@@ -383,48 +383,81 @@ export default function PurchaseScheduleCalendar() {
       </div>
 
       {/* KPI Metrics Row */}
-      <div className="row g-2.5 mb-3">
-        <div className="col-6 col-sm-4 col-xl-2">
-          <div className="card border-0 shadow-xs rounded-3 p-2.5 bg-white">
-            <span className="text-muted fs-xs text-uppercase fw-semibold">Upcoming</span>
-            <h4 className="fw-bold font-display text-dark mb-0">{stats.totalScheduledCount}</h4>
-            <small className="text-muted fs-xs">Active schedules</small>
+      <div className="row g-3 mb-4">
+        {[
+          {
+            label: 'Upcoming Schedules',
+            value: stats.totalScheduledCount,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-calendar-todo-line',
+            subLeft: 'Active Schedules',
+            subRight: 'Planned Restock'
+          },
+          {
+            label: 'Incoming Units',
+            value: stats.totalUnits.toLocaleString(),
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-truck-line',
+            subLeft: 'Produce & SKUs',
+            subRight: `${stats.totalUnits} Units`
+          },
+          {
+            label: 'Est. Procurement Cost',
+            value: formatNaira(stats.totalEstimatedCost),
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-money-cny-box-line',
+            subLeft: 'Current Month Outlay',
+            subRight: 'Budget Value'
+          },
+          {
+            label: 'Overdue Deliveries',
+            value: stats.overdueCount,
+            glow: stats.overdueCount > 0 ? 'bg-card-glow-red' : 'bg-card-glow-slate',
+            iconBg: stats.overdueCount > 0 ? '#FFF1F2' : '#F8FAFC',
+            iconColor: stats.overdueCount > 0 ? '#E11D48' : '#64748B',
+            icon: 'ri-alarm-warning-line',
+            subLeft: 'Supplier Delay',
+            subRight: stats.overdueCount > 0 ? `${stats.overdueCount} Critical` : 'On Schedule'
+          },
+          {
+            label: 'Received & Stocked',
+            value: stats.receivedCount,
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Warehouse Intake',
+            subRight: `${stats.receivedCount} Batches`
+          },
+        ].map((c) => (
+          <div className="col-12 col-sm-6 col-xl" key={c.label}>
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div className="col-6 col-sm-4 col-xl-2">
-          <div className="card border-0 shadow-xs rounded-3 p-2.5 bg-white">
-            <span className="text-muted fs-xs text-uppercase fw-semibold">Incoming Units</span>
-            <h4 className="fw-bold font-display text-primary mb-0">{stats.totalUnits.toLocaleString()}</h4>
-            <small className="text-muted fs-xs">Produce / items</small>
-          </div>
-        </div>
-
-        <div className="col-6 col-sm-4 col-xl-3">
-          <div className="card border-0 shadow-xs rounded-3 p-2.5 bg-white">
-            <span className="text-muted fs-xs text-uppercase fw-semibold">Est. Cost / Value</span>
-            <h4 className="fw-bold font-display text-dark mb-0">{formatNaira(stats.totalEstimatedCost)}</h4>
-            <small className="text-muted fs-xs">For current month</small>
-          </div>
-        </div>
-
-        <div className="col-6 col-sm-4 col-xl-2">
-          <div className="card border-0 shadow-xs rounded-3 p-2.5 bg-white">
-            <span className="text-muted fs-xs text-uppercase fw-semibold">Overdue</span>
-            <h4 className={`fw-bold font-display mb-0 ${stats.overdueCount > 0 ? 'text-danger' : 'text-muted'}`}>
-              {stats.overdueCount}
-            </h4>
-            <small className="text-muted fs-xs">Awaiting delivery</small>
-          </div>
-        </div>
-
-        <div className="col-6 col-sm-4 col-xl-3">
-          <div className="card border-0 shadow-xs rounded-3 p-2.5 bg-white">
-            <span className="text-muted fs-xs text-uppercase fw-semibold">Received &amp; Stocked</span>
-            <h4 className="fw-bold font-display text-success mb-0">{stats.receivedCount}</h4>
-            <small className="text-muted fs-xs">Added to inventory</small>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Main Container Card */}
