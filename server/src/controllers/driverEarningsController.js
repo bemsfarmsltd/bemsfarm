@@ -91,26 +91,53 @@ const getEarnings = async (req, res, next) => {
       [driverId]
     );
 
+    // Zone rates table so driver can see their earnings per zone
+    const zoneRatesResult = await pool.query(
+      `
+      SELECT 
+        zone_id,
+        zone_name,
+        delivery_fee,
+        driver_earning_fee,
+        driver_commission_percent,
+        estimated_delivery_time,
+        areas_covered
+      FROM delivery_zones
+      WHERE status = 'active'
+      ORDER BY delivery_fee ASC
+      `
+    );
+
     res.json({
       wallet: {
         total_earned: totalEarned,
         total_paid: totalPaid,
         pending_payouts: pendingPayouts,
         available_balance: availableBalance,
-        commission_per_delivery: parseFloat(driver.commission_per_delivery) || 500,
+        commission_per_delivery: parseFloat(driver.commission_per_delivery) || 700,
         dedicated_virtual_account: {
-          account_number: driver.wallet_account_number || ('855' + String(driverId).padStart(7, '0')),
+          account_number: driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0')),
           bank_name: driver.wallet_bank_name || 'Monnify / Wema Bank',
-          account_name: driver.wallet_account_name || ('BEMS - ' + (driver.name || 'DRIVER').toUpperCase()),
+          account_name: driver.wallet_account_name || (`BEMS - ${driver.name.toUpperCase()}`),
+          note: 'Direct Inflow DVA for Commissions & Direct Deposits'
         },
         withdrawal_bank: {
           bank_name: driver.bank_name || null,
           account_number: driver.account_number || null,
-          account_name: driver.account_name || null,
-        },
+          account_name: driver.account_name || null
+        }
       },
-      commissions: commissionsResult.rows,
-      payouts: payoutsResult.rows,
+      zone_rates: zoneRatesResult.rows.map(z => ({
+        zone_id: z.zone_id,
+        zone_name: z.zone_name,
+        customer_delivery_fee: parseFloat(z.delivery_fee) || 0,
+        driver_earning_fee: parseFloat(z.driver_earning_fee) || Math.round((parseFloat(z.delivery_fee) || 0) * 0.70),
+        driver_commission_percent: parseFloat(z.driver_commission_percent) || 70,
+        estimated_eta: z.estimated_delivery_time,
+        areas_covered: z.areas_covered
+      })),
+      recent_commissions: commissionsResult.rows,
+      recent_payouts: payoutsResult.rows
     });
   } catch (err) {
     console.error("Driver getEarnings error:", err.message);

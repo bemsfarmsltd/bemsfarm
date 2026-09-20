@@ -378,8 +378,42 @@ const updateDeliveryStatus = async (req, res, next) => {
       orderStatus = "delivered";
       trackingStatus = "delivered";
 
+      // ── Calculate Driver Earnings According to Zone ──
+      let zoneId = delivery.zone_id;
+      if (!zoneId) {
+        const ordZoneRes = await client.query("SELECT zone_id, delivery_fee FROM orders WHERE id = $1", [actualOrderId]);
+        if (ordZoneRes.rows.length > 0) {
+          zoneId = ordZoneRes.rows[0].zone_id;
+        }
+      }
+
+      let commission = 0;
+      let zoneName = "Standard Delivery Drop";
+      let customerDeliveryFee = 1000;
+
+      if (zoneId) {
+        const zoneRes = await client.query(
+          "SELECT zone_name, delivery_fee, driver_earning_fee, driver_commission_percent FROM delivery_zones WHERE zone_id = $1",
+          [zoneId]
+        );
+        if (zoneRes.rows.length > 0) {
+          const z = zoneRes.rows[0];
+          zoneName = z.zone_name || zoneName;
+          customerDeliveryFee = parseFloat(z.delivery_fee) || 1000;
+          if (parseFloat(z.driver_earning_fee) > 0) {
+            commission = parseFloat(z.driver_earning_fee);
+          } else if (parseFloat(z.driver_commission_percent) > 0) {
+            commission = Math.round(customerDeliveryFee * (parseFloat(z.driver_commission_percent) / 100));
+          }
+        }
+      }
+
+      // Fallback if zone not configured or 0
+      if (!commission || commission <= 0) {
+        commission = parseFloat(req.driver.commission_per_delivery) || 700;
+      }
+
       // Increment driver stats & earnings
-      const commission = parseFloat(req.driver.commission_per_delivery) || 500;
       await client.query(
         `
         UPDATE drivers 
@@ -393,8 +427,7 @@ const updateDeliveryStatus = async (req, res, next) => {
         [commission, driverId]
       );
 
-      // Record commission entry if not already present for this order
-      const commissionPerDelivery = parseFloat(req.driver.commission_per_delivery) || 500;
+      // Record commission entry for this delivery drop
       await client.query(
         `
         INSERT INTO driver_commissions (
@@ -403,7 +436,31 @@ const updateDeliveryStatus = async (req, res, next) => {
         )
         VALUES ($1, $2, $2, $2, 'pending', 1, $2, $2, NOW())
         `,
-        [driverId, commissionPerDelivery]
+        [driverId, commission]
+      );
+
+      // Record in driver_wallet_ledger
+      const delRef = delivery.delivery_ref || `DEL-${delivery.id}`;
+      await client.query(
+        `
+        INSERT INTO driver_wallet_ledger (
+          driver_id, type, category, amount, reference, description, performed_by, created_at
+        )
+        VALUES ($1, 'credit', 'delivery_commission', $2, $3, $4, $5, NOW())
+        `,
+        [
+          driverId,
+          commission,
+          delRef,
+          `Zone Delivery Drop: ${zoneName} (Customer Fee: ₦${customerDeliveryFee.toLocaleString()} → Driver Earning: ₦${commission.toLocaleString()})`,
+          null,
+        ]
+      );
+
+      // Store driver_commission_amount on delivery record
+      await client.query(
+        "UPDATE deliveries SET driver_commission_amount = $1 WHERE id = $2",
+        [commission, delivery.id]
       );
 
       // Driver is free from active delivery

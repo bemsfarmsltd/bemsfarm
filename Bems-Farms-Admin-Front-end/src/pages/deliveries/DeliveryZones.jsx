@@ -26,6 +26,7 @@ const HUB_PRESETS = [
 const BLANK_FORM = {
   name: '', eta: ETA_OPTIONS[1], fee: '', minOrder: '', active: true,
   driverIds: [], areas: '', notes: '',
+  driver_earning_fee: '', driver_commission_percent: 70,
   center_lat: 5.5245, center_lng: 7.4912, radius_km: 25, color_hex: '#1B4332',
 }
 
@@ -70,6 +71,8 @@ export default function DeliveryZones() {
           eta: z.estimated_eta || ETA_OPTIONS[1],
           fee: Number(z.delivery_fee || 0),
           minOrder: Number(z.min_order_amount || 0),
+          driver_earning_fee: Number(z.driver_earning_fee || Math.round(Number(z.delivery_fee || 0) * 0.70)),
+          driver_commission_percent: Number(z.driver_commission_percent || 70),
           active: !!z.is_active,
           driverIds: z.driver_ids || [],
           areas,
@@ -206,6 +209,8 @@ export default function DeliveryZones() {
         zone_name: form.name,
         delivery_fee: Number(form.fee),
         min_order_amount: Number(form.minOrder),
+        driver_earning_fee: Number(form.driver_earning_fee || Math.round(Number(form.fee || 0) * 0.70)),
+        driver_commission_percent: Number(form.driver_commission_percent || 70),
         estimated_eta: form.eta,
         coverage_areas: areas,
         driver_ids: form.driverIds,
@@ -787,9 +792,27 @@ export default function DeliveryZones() {
                       value={form.name} onChange={e => setField('name', e.target.value)} />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">Delivery Fee (₦) *</label>
+                    <label className="form-label fw-medium small">Customer Delivery Fee (₦) *</label>
                     <input className="form-control" type="number" placeholder="e.g. 2500"
-                      value={form.fee} onChange={e => setField('fee', e.target.value)} />
+                      value={form.fee} onChange={e => {
+                        const fee = e.target.value
+                        const pct = form.driver_commission_percent || 70
+                        const drvFee = fee ? Math.round(Number(fee) * (Number(pct) / 100)) : ''
+                        setForm(p => ({ ...p, fee, driver_earning_fee: drvFee }))
+                      }} />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label fw-medium small">Driver Payout Earning (₦) *</label>
+                    <input className="form-control" type="number" placeholder="e.g. 1750"
+                      value={form.driver_earning_fee ?? ''} onChange={e => {
+                        const drvFee = e.target.value
+                        const fee = Number(form.fee) || 1
+                        const pct = drvFee ? Math.round((Number(drvFee) / fee) * 100) : 70
+                        setForm(p => ({ ...p, driver_earning_fee: drvFee, driver_commission_percent: pct }))
+                      }} />
+                    <div className="text-muted small mt-0.5" style={{ fontSize: 10 }}>
+                      Automatic driver drop commission ({form.driver_commission_percent || 70}% share)
+                    </div>
                   </div>
                   <div className="col-6">
                     <label className="form-label fw-medium small">Minimum Order Amount (₦) *</label>

@@ -942,7 +942,62 @@ router.get("/ledger", async (req, res, next) => {
       [parseInt(limit) || 100]
     );
 
-    res.json({ ledger: result.rows });
+// ── GET /api/admin/wallets/zone-earnings ───────────────────────────
+// Return all delivery zones with customer delivery fees & driver payout rates
+router.get("/zone-earnings", async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        dz.zone_id,
+        dz.zone_name,
+        dz.areas_covered,
+        dz.delivery_fee,
+        COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2)) AS driver_earning_fee,
+        COALESCE(dz.driver_commission_percent, 70.00) AS driver_commission_percent,
+        ROUND(dz.delivery_fee - COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2)), 2) AS company_margin,
+        dz.estimated_delivery_time,
+        dz.status,
+        (SELECT COUNT(*) FROM deliveries WHERE zone_id = dz.zone_id AND status = 'delivered') AS total_deliveries
+      FROM delivery_zones dz
+      ORDER BY dz.delivery_fee ASC
+    `);
+
+    res.json({ zones: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /api/admin/wallets/zone-earnings/:zoneId ─────────────────
+// Update driver payout rate for a specific delivery zone
+router.patch("/zone-earnings/:zoneId", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    const { zoneId } = req.params;
+    const { driver_earning_fee, driver_commission_percent } = req.body;
+
+    const earningFee = parseFloat(driver_earning_fee);
+    const commPercent = parseFloat(driver_commission_percent) || 70.0;
+
+    const result = await pool.query(
+      `
+      UPDATE delivery_zones
+      SET 
+        driver_earning_fee = $1,
+        driver_commission_percent = $2
+      WHERE zone_id = $3
+      RETURNING *
+      `,
+      [earningFee, commPercent, zoneId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Zone not found" });
+    }
+
+    res.json({
+      message: `Zone payout updated: ₦${earningFee.toLocaleString()} / delivery for ${result.rows[0].zone_name}`,
+      zone: result.rows[0],
+    });
   } catch (err) {
     next(err);
   }

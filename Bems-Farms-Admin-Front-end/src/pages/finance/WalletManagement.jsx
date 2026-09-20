@@ -8,7 +8,6 @@ export default function WalletManagement() {
   const initialTab = searchParams.get('tab') || 'wallets'
   const [activeTab, setActiveTab] = useState(initialTab)
 
-  // Sync tab with URL search param
   useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab && tab !== activeTab) {
@@ -28,6 +27,7 @@ export default function WalletManagement() {
   const [gatewayData, setGatewayData] = useState({ gateway: {}, metrics: {} })
   const [gatewayTxns, setGatewayTxns] = useState([])
   const [webhooks, setWebhooks] = useState([])
+  const [zoneEarnings, setZoneEarnings] = useState([])
   const [payoutRules, setPayoutRules] = useState({
     min_payout_amount: 2000,
     max_daily_limit: 100000,
@@ -44,7 +44,6 @@ export default function WalletManagement() {
   const [selectedPayoutIds, setSelectedPayoutIds] = useState([])
 
   // Modals & Drawers
-  const [selectedDriver, setSelectedDriver] = useState(null)
   const [statementDriver, setStatementDriver] = useState(null)
   const [statementData, setStatementData] = useState(null)
   const [loadingStatement, setLoadingStatement] = useState(false)
@@ -80,6 +79,14 @@ export default function WalletManagement() {
 
   const [voucherPayout, setVoucherPayout] = useState(null)
 
+  // Edit Zone Payout Modal
+  const [editZoneModal, setEditZoneModal] = useState(null)
+  const [zoneForm, setZoneForm] = useState({
+    driver_earning_fee: '',
+    driver_commission_percent: 70,
+  })
+  const [savingZone, setSavingZone] = useState(false)
+
   // Live Bank Resolution tool modal
   const [bankValidatorModal, setBankValidatorModal] = useState(false)
   const [valAccNum, setValAccNum] = useState('')
@@ -94,12 +101,13 @@ export default function WalletManagement() {
   const fetchAllData = async () => {
     setLoading(true)
     try {
-      const [sumRes, payRes, gwRes, txRes, whRes, rulesRes, ledRes] = await Promise.all([
+      const [sumRes, payRes, gwRes, txRes, whRes, zoneRes, rulesRes, ledRes] = await Promise.all([
         api.get(`/admin/wallets/summary?search=${encodeURIComponent(searchDriver)}&status=${statusFilter}`),
         api.get(`/admin/wallets/payouts/all?status=${payoutStatusFilter}`),
         api.get('/admin/wallets/gateway/overview'),
         api.get('/admin/wallets/gateway/transactions'),
         api.get('/admin/wallets/gateway/webhooks'),
+        api.get('/admin/wallets/zone-earnings'),
         api.get('/admin/wallets/payout-rules'),
         api.get('/admin/wallets/ledger?limit=100'),
       ])
@@ -109,11 +117,12 @@ export default function WalletManagement() {
       setGatewayData(gwRes.data || { gateway: {}, metrics: {} })
       setGatewayTxns(txRes.data?.transactions || [])
       setWebhooks(whRes.data?.webhooks || [])
+      setZoneEarnings(zoneRes.data?.zones || [])
       if (rulesRes.data?.rules) setPayoutRules(rulesRes.data.rules)
       setLedgerLogs(ledRes.data?.ledger || [])
     } catch (err) {
       console.error('Wallet fetch error:', err)
-      toast.error('Failed to load wallet and gateway records')
+      toast.error('Failed to load wallet, gateway, and zone records')
     } finally {
       setLoading(false)
     }
@@ -273,7 +282,30 @@ export default function WalletManagement() {
     }
   }
 
-  // 8. Save Payout Governance Rules
+  // 8. Update Zone-Based Driver Earning
+  const handleSaveZoneEarning = async (e) => {
+    e.preventDefault()
+    if (!zoneForm.driver_earning_fee || parseFloat(zoneForm.driver_earning_fee) <= 0) {
+      return toast.error('Please enter a valid driver earning amount')
+    }
+
+    setSavingZone(true)
+    try {
+      const res = await api.patch(`/admin/wallets/zone-earnings/${editZoneModal.zone_id}`, {
+        driver_earning_fee: parseFloat(zoneForm.driver_earning_fee),
+        driver_commission_percent: parseFloat(zoneForm.driver_commission_percent) || 70,
+      })
+      toast.success(res.data?.message || 'Zone payout rate updated successfully!')
+      setEditZoneModal(null)
+      fetchAllData()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update zone rate')
+    } finally {
+      setSavingZone(false)
+    }
+  }
+
+  // 9. Save Payout Governance Rules
   const handleSaveRules = async (e) => {
     e.preventDefault()
     try {
@@ -285,7 +317,7 @@ export default function WalletManagement() {
     }
   }
 
-  // 9. Bank Name Validation Lookup
+  // 10. Bank Name Validation Lookup
   const handleValidateBank = async (e) => {
     e.preventDefault()
     if (!valAccNum || valAccNum.length !== 10) {
@@ -358,14 +390,14 @@ export default function WalletManagement() {
               FINANCIAL COMMAND CENTER
             </span>
             <span className="badge px-2 py-1" style={{ background: '#EFF6FF', color: '#2563EB', fontWeight: 600, fontSize: 11 }}>
-              MONNIFY ENGINE LIVE
+              ZONE-BASED EARNINGS &amp; MONNIFY LIVE
             </span>
           </div>
           <h2 className="mb-0 font-weight-bold" style={{ color: '#0F172A', fontSize: 24, letterSpacing: '-0.02em' }}>
             Enterprise Wallet &amp; Payment Gateway Hub
           </h2>
           <p className="text-muted small mb-0 mt-1">
-            Institutional liquidity monitoring, driver dedicated virtual accounts (DVA), live Monnify gateway analytics, automated batch disbursements, and governance rules.
+            Zone-based driver commissions, dedicated inflow virtual accounts (DVA), Monnify merchant liquidity, batch payouts, and financial governance.
           </p>
         </div>
 
@@ -481,7 +513,7 @@ export default function WalletManagement() {
           </div>
         </div>
 
-        {/* Card 4: Disbursed & DVA Allocation */}
+        {/* Card 4: Disbursed & Zone Matrix */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 14, background: '#FFFFFF', borderLeft: '4px solid #10B981' }}>
             <div className="card-body p-3 d-flex flex-column justify-content-between">
@@ -499,8 +531,15 @@ export default function WalletManagement() {
                 </div>
               </div>
               <div className="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-10" style={{ fontSize: 11 }}>
-                <span className="text-muted">DVA Provisioned: <b>{metrics.total_virtual_accounts || 0} drivers</b></span>
-                <span className="badge" style={{ background: '#DCFCE7', color: '#166534' }}>100% Monnify</span>
+                <span className="text-muted">Active Coverage Zones: <b>{zoneEarnings.length}</b></span>
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0 text-success font-weight-bold"
+                  style={{ textDecoration: 'none', fontSize: 11 }}
+                  onClick={() => handleTabChange('zones')}
+                >
+                  Zone Rates &rarr;
+                </button>
               </div>
             </div>
           </div>
@@ -522,6 +561,20 @@ export default function WalletManagement() {
                 <span>Dedicated DVA Wallets</span>
                 <span className="badge ms-1" style={{ background: activeTab === 'wallets' ? 'rgba(255,255,255,0.25)' : '#E2E8F0', color: activeTab === 'wallets' ? '#FFFFFF' : '#334155' }}>
                   {summaryData.drivers.length}
+                </span>
+              </button>
+            </li>
+            <li className="nav-item">
+              <button
+                type="button"
+                className={`nav-link d-flex align-items-center gap-2 py-2 px-3 ${activeTab === 'zones' ? 'active' : ''}`}
+                style={activeTab === 'zones' ? { background: '#0F766E', color: '#FFFFFF', borderRadius: 8 } : { color: '#475569', borderRadius: 8 }}
+                onClick={() => handleTabChange('zones')}
+              >
+                <i className="ri-map-pin-range-line"></i>
+                <span>Zone-Based Payout Rates</span>
+                <span className="badge ms-1" style={{ background: '#10B981', color: '#FFFFFF' }}>
+                  {zoneEarnings.length} Zones
                 </span>
               </button>
             </li>
@@ -633,7 +686,7 @@ export default function WalletManagement() {
                   <th>Disbursed</th>
                   <th>Pending Hold</th>
                   <th>Withdrawable Balance</th>
-                  <th>Per-Drop Rate</th>
+                  <th>Default Base Rate</th>
                   <th>Status</th>
                   <th className="text-end pe-3">Wallet Actions</th>
                 </tr>
@@ -736,7 +789,7 @@ export default function WalletManagement() {
                           <button
                             type="button"
                             className="btn btn-sm btn-link p-0 text-muted"
-                            title="Edit Commission Rate"
+                            title="Edit Base Rate"
                             onClick={() => {
                               setRateModalDriver(driver)
                               setNewRate(driver.commission_per_delivery || '0')
@@ -794,11 +847,127 @@ export default function WalletManagement() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          TAB 2: PAYOUT & DISBURSEMENT ENGINE
+          TAB 2: ZONE-BASED DRIVER EARNING RATES MATRIX
+      ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'zones' && (
+        <div className="card border-0 shadow-sm" style={{ borderRadius: 14 }}>
+          <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <h5 className="mb-0 font-weight-bold text-dark d-flex align-items-center gap-2">
+                <i className="ri-map-pin-range-fill text-success"></i> Zone-Based Driver Earning &amp; Settlement Matrix
+              </h5>
+              <p className="text-muted small mb-0 mt-1">
+                Drivers automatically earn commissions per delivery drop corresponding to the customer's delivery coverage zone.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+              onClick={fetchAllData}
+            >
+              <i className="ri-refresh-line"></i> Refresh Rates
+            </button>
+          </div>
+
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+              <thead className="table-light text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.6 }}>
+                <tr>
+                  <th className="ps-3 py-3">Zone Identifier &amp; Hub</th>
+                  <th>Areas Covered</th>
+                  <th>Customer Delivery Fee</th>
+                  <th>Driver Payout Rate</th>
+                  <th>Driver Share (%)</th>
+                  <th>Bems Farms Logistics Margin</th>
+                  <th>Total Drops</th>
+                  <th className="text-end pe-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zoneEarnings.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-5 text-muted">
+                      No delivery zones found.
+                    </td>
+                  </tr>
+                ) : (
+                  zoneEarnings.map((z) => {
+                    const custFee = parseFloat(z.delivery_fee) || 0
+                    const driverFee = parseFloat(z.driver_earning_fee) || Math.round(custFee * 0.70)
+                    const sharePct = custFee > 0 ? Math.round((driverFee / custFee) * 100) : 70
+                    const margin = custFee - driverFee
+
+                    return (
+                      <tr key={z.zone_id}>
+                        <td className="ps-3 py-3">
+                          <span className="badge bg-light text-dark font-monospace mb-1">{z.zone_id}</span>
+                          <div className="font-weight-bold text-dark">{z.zone_name}</div>
+                          <div className="text-muted small">ETA: {z.estimated_delivery_time || '30-60 mins'}</div>
+                        </td>
+                        <td>
+                          <div className="text-muted small" style={{ maxWidth: 260 }}>
+                            {z.areas_covered}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="h6 font-weight-bold text-dark mb-0">
+                            ₦{custFee.toLocaleString()}
+                          </div>
+                          <span className="badge bg-light text-secondary" style={{ fontSize: 10 }}>Paid by Customer</span>
+                        </td>
+                        <td>
+                          <div className="h6 font-weight-bold text-success mb-0">
+                            ₦{driverFee.toLocaleString()}
+                          </div>
+                          <span className="badge bg-success bg-opacity-10 text-success" style={{ fontSize: 10 }}>
+                            Driver Drop Payout
+                          </span>
+                        </td>
+                        <td>
+                          <span className="badge bg-primary bg-opacity-10 text-primary font-weight-bold">
+                            {sharePct}% of Fee
+                          </span>
+                        </td>
+                        <td>
+                          <div className="font-weight-bold text-dark mb-0">
+                            ₦{margin.toLocaleString()}
+                          </div>
+                          <span className="text-muted small" style={{ fontSize: 10 }}>Logistics Buffer</span>
+                        </td>
+                        <td className="font-weight-bold text-dark">
+                          {z.total_deliveries || 0}
+                        </td>
+                        <td className="text-end pe-3">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 ms-auto"
+                            style={{ borderRadius: 8, fontWeight: 600 }}
+                            onClick={() => {
+                              setEditZoneModal(z)
+                              setZoneForm({
+                                driver_earning_fee: driverFee,
+                                driver_commission_percent: sharePct,
+                              })
+                            }}
+                          >
+                            <i className="ri-settings-3-line"></i> Configure Rate
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          TAB 3: PAYOUT & DISBURSEMENT ENGINE
       ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'payouts' && (
         <div className="card border-0 shadow-sm" style={{ borderRadius: 14 }}>
-          {/* Header & Sub-filters */}
           <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3">
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
               <div className="d-flex flex-wrap gap-2">
@@ -1029,11 +1198,10 @@ export default function WalletManagement() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          TAB 3: PAYMENT GATEWAY & MONNIFY COMMAND HUB
+          TAB 4: PAYMENT GATEWAY & MONNIFY COMMAND HUB
       ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'gateway' && (
         <div>
-          {/* Gateway Status Cards */}
           <div className="row g-3 mb-4">
             <div className="col-12 col-md-6 col-lg-3">
               <div className="card border-0 shadow-sm p-3 h-100" style={{ borderRadius: 12, background: '#FFFFFF' }}>
@@ -1075,7 +1243,6 @@ export default function WalletManagement() {
             </div>
           </div>
 
-          {/* Gateway Credentials & Config Panel */}
           <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 14, background: '#FFFFFF' }}>
             <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3">
               <div className="d-flex justify-content-between align-items-center">
@@ -1111,9 +1278,7 @@ export default function WalletManagement() {
             </div>
           </div>
 
-          {/* Customer Transactions vs Webhooks Layout */}
           <div className="row g-4">
-            {/* Real Checkout Transactions */}
             <div className="col-12 col-xl-7">
               <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 14 }}>
                 <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3 d-flex justify-content-between align-items-center">
@@ -1168,7 +1333,6 @@ export default function WalletManagement() {
               </div>
             </div>
 
-            {/* Live Webhook Event Logs */}
             <div className="col-12 col-xl-5">
               <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 14 }}>
                 <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3 d-flex justify-content-between align-items-center">
@@ -1226,7 +1390,7 @@ export default function WalletManagement() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          TAB 4: CENTRAL FINANCIAL AUDIT LEDGER
+          TAB 5: CENTRAL FINANCIAL AUDIT LEDGER
       ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'ledger' && (
         <div className="card border-0 shadow-sm" style={{ borderRadius: 14 }}>
@@ -1298,7 +1462,7 @@ export default function WalletManagement() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          TAB 5: PAYOUT GOVERNANCE & POLICY RULES
+          TAB 6: PAYOUT GOVERNANCE & POLICY RULES
       ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'rules' && (
         <div className="row justify-content-center">
@@ -1399,7 +1563,92 @@ export default function WalletManagement() {
           MODALS & DRAWERS
       ════════════════════════════════════════════════════════════════════ */}
 
-      {/* 1. Manual Adjust Modal */}
+      {/* 1. Edit Zone Payout Rate Modal */}
+      {editZoneModal && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow" style={{ borderRadius: 14 }}>
+              <div className="modal-header border-bottom border-secondary border-opacity-10">
+                <h5 className="modal-title font-weight-bold">
+                  Configure Zone Payout Rate &bull; {editZoneModal.zone_name}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setEditZoneModal(null)}></button>
+              </div>
+              <form onSubmit={handleSaveZoneEarning}>
+                <div className="modal-body p-4">
+                  <div className="alert alert-light border mb-3">
+                    <div className="d-flex justify-content-between">
+                      <span className="text-muted small">Zone Code:</span>
+                      <span className="font-monospace font-weight-bold">{editZoneModal.zone_id}</span>
+                    </div>
+                    <div className="d-flex justify-content-between mt-1">
+                      <span className="text-muted small">Customer Delivery Fee:</span>
+                      <b className="text-dark">₦{parseFloat(editZoneModal.delivery_fee).toLocaleString()}</b>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small font-weight-bold">Driver Payout Amount per Delivery (₦)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={zoneForm.driver_earning_fee}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        const custFee = parseFloat(editZoneModal.delivery_fee) || 1
+                        const pct = val ? Math.round((parseFloat(val) / custFee) * 100) : 0
+                        setZoneForm({
+                          driver_earning_fee: val,
+                          driver_commission_percent: pct,
+                        })
+                      }}
+                      required
+                    />
+                    <div className="form-text">Amount automatically credited to the driver wallet upon drop completion.</div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small font-weight-bold">Calculated Driver Share (%)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={zoneForm.driver_commission_percent}
+                      onChange={(e) => {
+                        const pct = e.target.value
+                        const custFee = parseFloat(editZoneModal.delivery_fee) || 1
+                        const val = pct ? Math.round(custFee * (parseFloat(pct) / 100)) : 0
+                        setZoneForm({
+                          driver_earning_fee: val,
+                          driver_commission_percent: pct,
+                        })
+                      }}
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-3 bg-light border">
+                    <div className="d-flex justify-content-between text-muted small">
+                      <span>Bems Farms Net Logistics Margin:</span>
+                      <b className="text-success">
+                        ₦{(parseFloat(editZoneModal.delivery_fee) - (parseFloat(zoneForm.driver_earning_fee) || 0)).toLocaleString()}
+                      </b>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer border-top border-secondary border-opacity-10">
+                  <button type="button" className="btn btn-light" onClick={() => setEditZoneModal(null)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={savingZone}>
+                    {savingZone ? 'Updating...' : 'Save Zone Rate'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Manual Adjust Modal */}
       {adjustModalDriver && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1500,7 +1749,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 2. Itemized Statement Drawer */}
+      {/* 3. Itemized Statement Drawer */}
       {statementDriver && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -1565,7 +1814,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 3. Single Disburse Modal */}
+      {/* 4. Single Disburse Modal */}
       {disburseModalPayout && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1630,7 +1879,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 4. Single Reject Modal */}
+      {/* 5. Single Reject Modal */}
       {rejectModalPayout && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1670,7 +1919,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 5. Bulk Disburse Modal */}
+      {/* 6. Bulk Disburse Modal */}
       {bulkDisburseModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1715,21 +1964,21 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 6. Commission Rate Modal */}
+      {/* 7. Base Rate Modal */}
       {rateModalDriver && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow" style={{ borderRadius: 14 }}>
               <div className="modal-header border-bottom border-secondary border-opacity-10">
                 <h5 className="modal-title font-weight-bold">
-                  Update Commission Rate &bull; {rateModalDriver.name}
+                  Update Default Rate &bull; {rateModalDriver.name}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setRateModalDriver(null)}></button>
               </div>
               <form onSubmit={handleRateSubmit}>
                 <div className="modal-body p-4">
                   <div className="mb-3">
-                    <label className="form-label small font-weight-bold">Per-Delivery Commission (₦)</label>
+                    <label className="form-label small font-weight-bold">Base Commission (₦)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1737,7 +1986,7 @@ export default function WalletManagement() {
                       onChange={(e) => setNewRate(e.target.value)}
                       required
                     />
-                    <div className="form-text">Driver will automatically earn this fixed amount per delivered order.</div>
+                    <div className="form-text">Used as fallback when a delivery does not specify a zone rate.</div>
                   </div>
                 </div>
                 <div className="modal-footer border-top border-secondary border-opacity-10">
@@ -1745,7 +1994,7 @@ export default function WalletManagement() {
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={savingRate}>
-                    {savingRate ? 'Saving...' : 'Update Rate'}
+                    {savingRate ? 'Saving...' : 'Update Base Rate'}
                   </button>
                 </div>
               </form>
@@ -1754,7 +2003,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 7. Live NUBAN Validator Modal */}
+      {/* 8. Live NUBAN Validator Modal */}
       {bankValidatorModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1826,7 +2075,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 8. Webhook Payload Viewer Modal */}
+      {/* 9. Webhook Payload Viewer Modal */}
       {activeWebhook && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -1850,7 +2099,7 @@ export default function WalletManagement() {
         </div>
       )}
 
-      {/* 9. Payment Slip / Voucher Modal */}
+      {/* 10. Payment Slip / Voucher Modal */}
       {voucherPayout && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
