@@ -130,24 +130,44 @@ export default function LoyaltyPoints() {
       {/* Tier breakdown cards */}
       <div className="row g-3 mb-4">
         {Object.entries(TIER_CFG).reverse().map(([tier, cfg]) => {
-          const count = data.filter(c=>c.tier===tier).length
-          const totalInTier = data.filter(c=>c.tier===tier).reduce((s,c)=>s+Number(c.points||0),0)
+          const count = data.filter(c => c.tier === tier).length
+          const totalInTier = data.filter(c => c.tier === tier).reduce((s, c) => s + Number(c.points || 0), 0)
+          const isSelected = filterTier === tier
+
+          const tierGlow =
+            tier === 'Platinum' ? 'bg-card-glow-purple' :
+            tier === 'Gold'     ? 'bg-card-glow-amber' :
+            tier === 'Silver'   ? 'bg-card-glow-slate' :
+                                  'bg-card-glow-indigo'
+
           return (
-            <div key={tier} className="col-6 col-md-3">
-              <div className="card border-0 shadow-sm h-100" style={{cursor:'pointer',border:`2px solid ${filterTier===tier?cfg.color:'transparent'} !important`}}
-                onClick={()=>setTier(filterTier===tier?'all':tier)}>
-                <div className="card-body p-3">
-                  <div className="d-flex align-items-center gap-2 mb-2">
-                    <div className="rounded-2 d-flex align-items-center justify-content-center"
-                      style={{width:36,height:36,background:cfg.bg}}>
-                      <i className={`${cfg.icon} fs-18`} style={{color:cfg.color}}/>
-                    </div>
-                    <span className="fw-medium" style={{fontSize:14,color:cfg.color}}>{tier}</span>
+            <div key={tier} className="col-12 col-sm-6 col-xl-3">
+              <div
+                className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${tierGlow} cursor-pointer`}
+                style={{
+                  cursor: 'pointer',
+                  outline: isSelected ? `2px solid ${cfg.color}` : 'none',
+                  outlineOffset: '2px',
+                }}
+                onClick={() => setTier(filterTier === tier ? 'all' : tier)}
+              >
+                <div className="card-body p-3.5">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder tracking-wider text-truncate me-2" style={{ color: cfg.color }}>
+                      {tier} Tier
+                    </span>
+                    <span className="kpi-icon-pill" style={{ background: cfg.bg, color: cfg.color }}>
+                      <i className={`${cfg.icon} fs-18`}></i>
+                    </span>
                   </div>
-                  <div className="fw-bold" style={{fontSize:22}}>{count}</div>
-                  <div className="text-muted" style={{fontSize:11}}>customers · {fmtPts(totalInTier)} total</div>
-                  <div className="text-muted" style={{fontSize:10,marginTop:4}}>
-                    Min: {fmtPts(cfg.min)}{cfg.next ? ` → ${cfg.next} at ${fmtPts(TIER_CFG[cfg.next].min)}` : ' (max tier)'}
+                  <div className="fs-24 fw-bolder mb-1 font-display text-dark text-truncate">
+                    {count} <span className="fs-13 fw-normal text-muted font-sans">members</span>
+                  </div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                    <span className="text-truncate me-2">{fmtPts(totalInTier)} held</span>
+                    <strong className="text-dark font-monospace flex-shrink-0" style={{ fontSize: 11 }}>
+                      {cfg.next ? `Min: ${Number(cfg.min).toLocaleString()} pts` : 'Max Tier'}
+                    </strong>
                   </div>
                 </div>
               </div>

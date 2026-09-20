@@ -147,25 +147,87 @@ export default function CustomersList() {
       {/* KPIs */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Customers',       val:stats?.total ?? customers.length,                 icon:'ri-group-line',             color:'#3b82f6', bg:'#eff6ff' },
-          { label:'Active (Verified)',     val:stats?.active_verified ?? '—',                    icon:'ri-user-follow-line',       color:'#22c55e', bg:'#f0fdf4' },
-          { label:'Pending Verification',  val:stats?.pending_verification ?? '—',               icon:'ri-mail-unread-line',       color:'#f59e0b', bg:'#fffbeb' },
-          { label:'New This Month',        val:stats?.new_this_month ?? '—',                     icon:'ri-user-add-line',          color:'#0ea5e9', bg:'#f0f9ff' },
-          { label:'Total Revenue',         val:fmt(stats?.total_revenue ?? totalRevenue),         icon:'ri-money-naira-circle-line',color:'#22c55e', bg:'#f0fdf4' },
-          { label:'Avg Spend/Customer',    val:fmt(stats?.avg_spent ?? 0),                       icon:'ri-shopping-cart-2-line',   color:'#8b5cf6', bg:'#f5f3ff' },
-        ].map((k,i) => (
-          <div key={i} className="col-6 col-md-4 col-xl-2">
-            <div className="card border-0 shadow-sm h-100">
+          {
+            label: 'Total Customers',
+            val: stats?.total ?? customers.length,
+            icon: 'ri-group-line',
+            glow: 'bg-card-glow-blue',
+            iconBg: 'rgba(59, 130, 246, 0.12)',
+            iconColor: '#2563eb',
+            subLeft: 'Registered',
+            subRight: 'All channels',
+          },
+          {
+            label: 'Active (Verified)',
+            val: stats?.active_verified ?? '—',
+            icon: 'ri-user-follow-line',
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(34, 197, 94, 0.14)',
+            iconColor: '#16a34a',
+            valColor: 'text-success',
+            subLeft: 'Email verified',
+            subRight: 'Active accounts',
+          },
+          {
+            label: 'Pending Verification',
+            val: stats?.pending_verification ?? '—',
+            icon: 'ri-mail-unread-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(245, 158, 11, 0.14)',
+            iconColor: '#d97706',
+            valColor: stats?.pending_verification > 0 ? 'text-warning-emphasis' : 'text-dark',
+            subLeft: 'Unverified email',
+            subRight: 'Needs confirm',
+          },
+          {
+            label: 'New This Month',
+            val: stats?.new_this_month ?? '—',
+            icon: 'ri-user-add-line',
+            glow: 'bg-card-glow-cyan',
+            iconBg: 'rgba(14, 165, 233, 0.14)',
+            iconColor: '#0284c7',
+            subLeft: 'Current period',
+            subRight: 'New signups',
+          },
+          {
+            label: 'Total Revenue',
+            val: fmt(stats?.total_revenue ?? totalRevenue),
+            icon: 'ri-money-naira-circle-line',
+            glow: 'bg-card-glow-teal',
+            iconBg: 'rgba(16, 185, 129, 0.14)',
+            iconColor: '#059669',
+            valColor: 'text-success',
+            subLeft: 'Customer lifetime',
+            subRight: 'Gross volume',
+          },
+          {
+            label: 'Avg Spend/Customer',
+            val: fmt(stats?.avg_spent ?? 0),
+            icon: 'ri-shopping-cart-2-line',
+            glow: 'bg-card-glow-purple',
+            iconBg: 'rgba(139, 92, 246, 0.14)',
+            iconColor: '#7c3aed',
+            subLeft: 'Mean basket/LTV',
+            subRight: 'Per active user',
+          },
+        ].map((k, i) => (
+          <div key={i} className="col-12 col-sm-6 col-md-4 col-xl-2">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${k.glow}`}>
               <div className="card-body p-3">
-                <div className="d-flex align-items-start justify-content-between">
-                  <div>
-                    <div className="text-muted mb-1" style={{fontSize:11}}>{k.label}</div>
-                    <div className="fw-bold" style={{fontSize:18}}>{k.val}</div>
-                  </div>
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{width:38,height:38,background:k.bg}}>
-                    <i className={`${k.icon} fs-18`} style={{color:k.color}}/>
-                  </div>
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={k.label}>
+                    {k.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: k.iconBg, color: k.iconColor }}>
+                    <i className={`${k.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-20 fw-bolder mb-1 font-display text-truncate ${k.valColor || 'text-dark'}`}>
+                  {k.val}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-1.5 pt-1.5 border-top">
+                  <span className="text-truncate me-2">{k.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{k.subRight}</strong>
                 </div>
               </div>
             </div>

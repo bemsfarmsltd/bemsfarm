@@ -456,89 +456,85 @@ export default function TeamOnboarding({ initialTab }) {
 
       {/* 3. KPI Stats Row */}
       <div className="row g-3 mb-4">
-        <div className="col-6 col-md-3">
-          <div
-            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setView('staff')}
-            title="View Staff Directory"
-          >
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-bold fs-xs">Total Staff</small>
-                <div className="fs-3 fw-bold text-dark mt-1">{staffStats.total || staff.length}</div>
-              </div>
-              <div className="p-2.5 rounded-3 bg-primary-subtle text-primary">
-                <i className="ri-team-line fs-4"></i>
-              </div>
-            </div>
-            <small className="text-muted fs-xs mt-2 d-block">
-              {staffStats.active || staff.filter((s) => s.status === 'active').length} active credentials
-            </small>
-          </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div
-            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setView('staff')}
-            title="View Active Staff"
-          >
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-bold fs-xs">Active Accounts</small>
-                <div className="fs-3 fw-bold text-success mt-1">
-                  {staffStats.active || staff.filter((s) => s.status === 'active').length}
+        {[
+          {
+            label: 'Total Staff',
+            val: staffStats.total || staff.length,
+            icon: 'ri-team-line',
+            glow: 'bg-card-glow-indigo',
+            iconBg: 'rgba(64, 81, 137, 0.12)',
+            iconColor: '#405189',
+            subLeft: 'Active credentials',
+            subRight: `${staffStats.active || staff.filter((s) => s.status === 'active').length} active`,
+            onClick: () => setView('staff'),
+            title: 'View Staff Directory',
+          },
+          {
+            label: 'Active Accounts',
+            val: staffStats.active || staff.filter((s) => s.status === 'active').length,
+            icon: 'ri-user-follow-line',
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(34, 197, 94, 0.14)',
+            iconColor: '#16a34a',
+            valColor: 'text-success',
+            subLeft: 'Ready to access',
+            subRight: 'Verified access',
+            onClick: () => setView('staff'),
+            title: 'View Active Staff',
+          },
+          {
+            label: 'Pending Invites',
+            val: pendingInvitesCount,
+            icon: 'ri-mail-open-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(245, 158, 11, 0.14)',
+            iconColor: '#d97706',
+            valColor: pendingInvitesCount > 0 ? 'text-warning-emphasis' : 'text-dark',
+            subLeft: 'Total sent',
+            subRight: `${invitations.length} total`,
+            onClick: () => setView('onboarding'),
+            title: 'View Onboarding Invitations',
+          },
+          {
+            label: 'System Roles',
+            val: roles.length,
+            icon: 'ri-shield-user-line',
+            glow: 'bg-card-glow-purple',
+            iconBg: 'rgba(139, 92, 246, 0.14)',
+            iconColor: '#7c3aed',
+            subLeft: 'Permission profiles',
+            subRight: 'Configured',
+            onClick: () => setView('roles'),
+            title: 'View Roles & Permissions',
+          },
+        ].map((c, i) => (
+          <div key={i} className="col-12 col-sm-6 col-xl-3">
+            <div
+              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+              style={{ cursor: 'pointer' }}
+              onClick={c.onClick}
+              title={c.title}
+            >
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${c.valColor || 'text-dark'}`}>
+                  {c.val}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
                 </div>
               </div>
-              <div className="p-2.5 rounded-3 bg-success-subtle text-success">
-                <i className="ri-user-follow-line fs-4"></i>
-              </div>
             </div>
-            <small className="text-muted fs-xs mt-2 d-block">Ready to access system</small>
           </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div
-            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setView('onboarding')}
-            title="View Onboarding Invitations"
-          >
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-bold fs-xs">Pending Invites</small>
-                <div className="fs-3 fw-bold text-warning-emphasis mt-1">{pendingInvitesCount}</div>
-              </div>
-              <div className="p-2.5 rounded-3 bg-warning-subtle text-warning-emphasis">
-                <i className="ri-mail-open-line fs-4"></i>
-              </div>
-            </div>
-            <small className="text-muted fs-xs mt-2 d-block">{invitations.length} total invitations</small>
-          </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div
-            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setView('roles')}
-            title="View Roles & Permissions"
-          >
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-bold fs-xs">System Roles</small>
-                <div className="fs-3 fw-bold text-dark mt-1">{roles.length}</div>
-              </div>
-              <div className="p-2.5 rounded-3 bg-purple-subtle text-purple">
-                <i className="ri-shield-user-line fs-4"></i>
-              </div>
-            </div>
-            <small className="text-muted fs-xs mt-2 d-block">Configured permission profiles</small>
-          </div>
-        </div>
+        ))}
       </div>
 
 

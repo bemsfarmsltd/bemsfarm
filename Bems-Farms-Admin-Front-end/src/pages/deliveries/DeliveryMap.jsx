@@ -169,22 +169,69 @@ export default function DeliveryMap() {
       </div>
 
       {/* Stat strip */}
-      <div className="row g-2 mb-3 flex-shrink-0">
+      <div className="row g-3 mb-3 flex-shrink-0">
         {[
-          { label: 'En Route',        count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'En Route').length,            color: '#3b82f6', icon: 'ri-truck-line'         },
-          { label: 'Awaiting Pickup', count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'Awaiting Pickup').length,      color: '#06b6d4', icon: 'ri-user-location-line' },
-          { label: 'Attempted',       count: deliveries.filter(d => d.status === 'delivery_attempted').length,                      color: '#f97316', icon: 'ri-route-line'          },
-          { label: 'Total Active',    count: deliveries.length,                                                                     color: '#6366f1', icon: 'ri-map-pin-line'        },
+          {
+            label: 'En Route',
+            count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'En Route').length,
+            icon: 'ri-truck-line',
+            glow: 'bg-card-glow-blue',
+            iconBg: 'rgba(59, 130, 246, 0.12)',
+            iconColor: '#2563eb',
+            valColor: 'text-primary',
+            subLeft: 'Live Tracking',
+            subRight: 'Active transit',
+          },
+          {
+            label: 'Awaiting Pickup',
+            count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'Awaiting Pickup').length,
+            icon: 'ri-user-location-line',
+            glow: 'bg-card-glow-cyan',
+            iconBg: 'rgba(6, 182, 212, 0.14)',
+            iconColor: '#0891b2',
+            subLeft: 'Hub / Store',
+            subRight: 'Ready for rider',
+          },
+          {
+            label: 'Attempted',
+            count: deliveries.filter(d => d.status === 'delivery_attempted').length,
+            icon: 'ri-route-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(249, 115, 22, 0.14)',
+            iconColor: '#ea580c',
+            valColor: deliveries.some(d => d.status === 'delivery_attempted') ? 'text-warning-emphasis' : 'text-dark',
+            subLeft: 'Customer Unavailable',
+            subRight: 'Follow-up required',
+          },
+          {
+            label: 'Total Active',
+            count: deliveries.length,
+            icon: 'ri-map-pin-line',
+            glow: 'bg-card-glow-indigo',
+            iconBg: 'rgba(99, 102, 241, 0.14)',
+            iconColor: '#4f46e5',
+            subLeft: 'Geofence Active',
+            subRight: `${refreshSec}s refresh`,
+          },
         ].map(s => (
-          <div key={s.label} className="col-6 col-md-3">
-            <div className="card p-2 d-flex flex-row align-items-center gap-2" style={{ borderLeft: `3px solid ${s.color}` }}>
-              <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                style={{ width: 32, height: 32, background: s.color + '20' }}>
-                <i className={`${s.icon}`} style={{ color: s.color, fontSize: 14 }} />
-              </div>
-              <div>
-                <div className="text-muted" style={{ fontSize: 10 }}>{s.label}</div>
-                <div className="fw-bold fs-16">{s.count}</div>
+          <div key={s.label} className="col-12 col-sm-6 col-xl-3">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${s.glow}`}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-start mb-1.5">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={s.label}>
+                    {s.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: s.iconBg, color: s.iconColor }}>
+                    <i className={`${s.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-22 fw-bolder mb-1 font-display text-truncate ${s.valColor || 'text-dark'}`}>
+                  {s.count}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-1.5 pt-1.5 border-top">
+                  <span className="text-truncate me-2">{s.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{s.subRight}</strong>
+                </div>
               </div>
             </div>
           </div>

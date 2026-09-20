@@ -149,24 +149,75 @@ export default function WalletBalance() {
       {/* KPIs */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Funds in System', val:fmt(totalFunds),   icon:'ri-safe-line',          color:'#22c55e', bg:'#f0fdf4' },
-          { label:'Wallets with Balance',  val:withBalance,        icon:'ri-wallet-3-line',       color:'#3b82f6', bg:'#eff6ff' },
-          { label:"Today's Top-ups",       val:fmt(todayTopups),  icon:'ri-arrow-up-circle-line', color:'#8b5cf6', bg:'#f5f3ff' },
-          { label:'Total Customers',       val:customers.length,   icon:'ri-group-line',          color:'#f59e0b', bg:'#fffbeb' },
-          { label:'Zero Balance',          val:customers.filter(c=>Number(c.wallet_balance||0)===0).length, icon:'ri-wallet-line', color:'#94a3b8', bg:'#f8fafc' },
-        ].map((k,i) => (
-          <div key={i} className="col-6 col-md-4 col-xl">
-            <div className="card border-0 shadow-sm h-100">
+          {
+            label: 'Total Funds in System',
+            val: fmt(totalFunds),
+            icon: 'ri-safe-line',
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(34, 197, 94, 0.14)',
+            iconColor: '#16a34a',
+            valColor: 'text-success',
+            subLeft: 'Liability reserve',
+            subRight: 'Active credits',
+          },
+          {
+            label: 'Wallets with Balance',
+            val: withBalance,
+            icon: 'ri-wallet-3-line',
+            glow: 'bg-card-glow-blue',
+            iconBg: 'rgba(59, 130, 246, 0.12)',
+            iconColor: '#2563eb',
+            subLeft: 'Funded accounts',
+            subRight: `${customers.length ? Math.round((withBalance / customers.length) * 100) : 0}% of users`,
+          },
+          {
+            label: "Today's Top-ups",
+            val: fmt(todayTopups),
+            icon: 'ri-arrow-up-circle-line',
+            glow: 'bg-card-glow-purple',
+            iconBg: 'rgba(139, 92, 246, 0.14)',
+            iconColor: '#7c3aed',
+            subLeft: '24h Inflow',
+            subRight: 'Credit additions',
+          },
+          {
+            label: 'Total Customers',
+            val: customers.length,
+            icon: 'ri-group-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(245, 158, 11, 0.14)',
+            iconColor: '#d97706',
+            subLeft: 'Registered',
+            subRight: 'All accounts',
+          },
+          {
+            label: 'Zero Balance',
+            val: customers.filter(c => Number(c.wallet_balance || 0) === 0).length,
+            icon: 'ri-wallet-line',
+            glow: 'bg-card-glow-slate',
+            iconBg: 'rgba(148, 163, 184, 0.14)',
+            iconColor: '#64748b',
+            subLeft: 'Unfunded wallets',
+            subRight: 'Zero credit',
+          },
+        ].map((k, i) => (
+          <div key={i} className="col-12 col-sm-6 col-md-4 col-xl">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${k.glow}`}>
               <div className="card-body p-3">
-                <div className="d-flex align-items-start justify-content-between">
-                  <div>
-                    <div className="text-muted mb-1" style={{fontSize:11}}>{k.label}</div>
-                    <div className="fw-bold" style={{fontSize:18}}>{k.val}</div>
-                  </div>
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{width:38,height:38,background:k.bg}}>
-                    <i className={`${k.icon} fs-18`} style={{color:k.color}}/>
-                  </div>
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={k.label}>
+                    {k.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: k.iconBg, color: k.iconColor }}>
+                    <i className={`${k.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className={`fs-20 fw-bolder mb-1 font-display text-truncate ${k.valColor || 'text-dark'}`}>
+                  {k.val}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-1.5 pt-1.5 border-top">
+                  <span className="text-truncate me-2">{k.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{k.subRight}</strong>
                 </div>
               </div>
             </div>

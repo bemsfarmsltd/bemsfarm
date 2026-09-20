@@ -383,32 +383,87 @@ export default function Refunds() {
       {/* Stat cards */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Total Returns',        value: stats.total,                           icon: 'ri-arrow-go-back-line',    color: '#405189', filter: 'all'      },
-          { label: 'Pending / Inspecting', value: stats.pending,                         icon: 'ri-time-line',             color: '#f7b84b', filter: 'pending'  },
-          { label: 'Awaiting Refund',      value: stats.approved,                        icon: 'ri-checkbox-circle-line',  color: '#299cdb', filter: 'approved' },
-          { label: 'Total Refunded',       value: `₦${Number(stats.refunded).toLocaleString()}`, icon: 'ri-refund-2-line', color: '#0ab39c', filter: 'refunded' },
-        ].map(c => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div
-              className="card mb-0 shadow-sm border-0"
-              style={{ borderLeft: `3px solid ${c.color}`, cursor: 'pointer' }}
-              onClick={() => setFilterStatus(c.filter)}
-            >
-              <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 44, height: 44, background: `${c.color}1a` }}
-                >
-                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}/>
-                </div>
-                <div>
-                  <div className="fs-18 fw-bold" style={{ color: c.color }}>{c.value}</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{c.label}</div>
+          {
+            label: 'Total Returns',
+            value: stats.total,
+            icon: 'ri-arrow-go-back-line',
+            glow: 'bg-card-glow-indigo',
+            iconBg: 'rgba(64, 81, 137, 0.12)',
+            iconColor: '#405189',
+            subLeft: 'All Return Logs',
+            subRight: '100% audited',
+            filter: 'all',
+          },
+          {
+            label: 'Pending / Inspecting',
+            value: stats.pending,
+            icon: 'ri-time-line',
+            glow: 'bg-card-glow-amber',
+            iconBg: 'rgba(247, 184, 75, 0.14)',
+            iconColor: '#d97706',
+            valColor: stats.pending > 0 ? 'text-warning-emphasis' : 'text-dark',
+            subLeft: 'Awaiting review',
+            subRight: `${stats.pending} cases`,
+            filter: 'pending',
+          },
+          {
+            label: 'Awaiting Refund',
+            value: stats.approved,
+            icon: 'ri-checkbox-circle-line',
+            glow: 'bg-card-glow-cyan',
+            iconBg: 'rgba(41, 156, 219, 0.14)',
+            iconColor: '#0284c7',
+            valColor: stats.approved > 0 ? 'text-info' : 'text-dark',
+            subLeft: 'Approved items',
+            subRight: 'Pending payout',
+            filter: 'approved',
+          },
+          {
+            label: 'Total Refunded',
+            value: `₦${Number(stats.refunded).toLocaleString()}`,
+            icon: 'ri-refund-2-line',
+            glow: 'bg-card-glow-green',
+            iconBg: 'rgba(10, 179, 156, 0.14)',
+            iconColor: '#059669',
+            valColor: 'text-success',
+            subLeft: 'Disbursed to date',
+            subRight: 'Completed',
+            filter: 'refunded',
+          },
+        ].map(c => {
+          const isSelected = filterStatus === c.filter
+          return (
+            <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+              <div
+                className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow} cursor-pointer`}
+                style={{
+                  outline: isSelected ? '2px solid var(--vz-primary, #405189)' : 'none',
+                  outlineOffset: '2px',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setFilterStatus(c.filter)}
+              >
+                <div className="card-body p-3.5">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                      {c.label}
+                    </span>
+                    <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                      <i className={`${c.icon} fs-18`}></i>
+                    </span>
+                  </div>
+                  <div className={`fs-24 fw-bolder mb-1 font-display text-truncate ${c.valColor || 'text-dark'}`}>
+                    {c.value}
+                  </div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                    <span className="text-truncate me-2">{c.subLeft}</span>
+                    <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Table Card */}
