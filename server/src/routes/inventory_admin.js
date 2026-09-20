@@ -88,7 +88,93 @@ const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
+let inventoryTablesReady = false;
+async function ensureInventoryTables() {
+  if (inventoryTablesReady) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS warehouses (
+        id          SERIAL PRIMARY KEY,
+        name        VARCHAR(100) NOT NULL,
+        code        VARCHAR(20) UNIQUE NOT NULL,
+        location    VARCHAR(255),
+        manager     VARCHAR(100),
+        capacity    INT,
+        status      VARCHAR(20) DEFAULT 'active',
+        created_at  TIMESTAMP DEFAULT NOW(),
+        updated_at  TIMESTAMP DEFAULT NOW()
+      );
+
+      INSERT INTO warehouses (name, code, location, status) VALUES
+        ('Main Central Coldroom', 'WH-COLD-01', 'Abia Hub 1', 'active'),
+        ('Vegetable Packhouse',   'WH-VEG-01',  'Greenhouse Bay 2', 'active'),
+        ('Dry Goods Store',       'WH-DRY-01',  'Warehouse B', 'active'),
+        ('Dispatch Sorting Bay',  'WH-DISP-01', 'Main Facility Gate', 'active')
+      ON CONFLICT (code) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS batch_management (
+        id                SERIAL PRIMARY KEY,
+        product_id        INT REFERENCES products(id) ON DELETE CASCADE,
+        warehouse_id      INT REFERENCES warehouses(id) ON DELETE SET NULL,
+        batch_no          VARCHAR(100) NOT NULL,
+        quantity          INT DEFAULT 0,
+        cost_price        DECIMAL(10,2),
+        expiry_date       DATE,
+        manufactured_date DATE,
+        supplier_id       INT,
+        notes             TEXT,
+        status            VARCHAR(20) DEFAULT 'active',
+        received_at       TIMESTAMP DEFAULT NOW(),
+        created_at        TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_batch_expiry ON batch_management(expiry_date);
+      CREATE INDEX IF NOT EXISTS idx_batch_product ON batch_management(product_id);
+
+      CREATE TABLE IF NOT EXISTS stock_movements (
+        id           SERIAL PRIMARY KEY,
+        product_id   INT REFERENCES products(id) ON DELETE CASCADE,
+        warehouse_id INT REFERENCES warehouses(id) ON DELETE SET NULL,
+        type         VARCHAR(30) NOT NULL,
+        quantity     INT NOT NULL,
+        before_qty   INT,
+        after_qty    INT,
+        reference    VARCHAR(100),
+        reason       VARCHAR(255),
+        notes        TEXT,
+        unit_cost    DECIMAL(10,2),
+        created_by   INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at   TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_product ON stock_movements(product_id);
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS lost_items (
+        id               SERIAL PRIMARY KEY,
+        product_id       INT REFERENCES products(id) ON DELETE SET NULL,
+        warehouse_id     INT REFERENCES warehouses(id) ON DELETE SET NULL,
+        quantity         INT NOT NULL,
+        reason           VARCHAR(100),
+        estimated_value  DECIMAL(10,2),
+        notes            TEXT,
+        reported_by      INT REFERENCES users(id) ON DELETE SET NULL,
+        approved_by      INT REFERENCES users(id) ON DELETE SET NULL,
+        status           VARCHAR(20) DEFAULT 'pending',
+        created_at       TIMESTAMP DEFAULT NOW()
+      );
+
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS warehouse_id INT REFERENCES warehouses(id) ON DELETE SET NULL;
+    `);
+    inventoryTablesReady = true;
+  } catch (err) {
+    console.error("Error creating inventory tables:", err.message);
+  }
+}
+
 router.use(protect);
+router.use(async (req, res, next) => {
+  await ensureInventoryTables();
+  next();
+});
 
 // ── HELPER: log a stock movement and update product.stock atomically ────────
 async function applyStockChange(client, { productId, warehouseId, type, delta, reference, reason, notes, unitCost, userId }) {
