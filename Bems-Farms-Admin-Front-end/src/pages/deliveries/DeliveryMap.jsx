@@ -35,15 +35,25 @@ const colorFor = (id) => DRIVER_COLORS[Math.abs(Number(id) || 0) % DRIVER_COLORS
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
 
+function safeNum(val, fallback = 0) {
+  if (val == null) return fallback
+  const n = typeof val === 'number' ? val : parseFloat(val)
+  return isNaN(n) ? fallback : n
+}
+
 // Haversine distance in KM
 function calcDistanceKm(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return null
+  const l1 = safeNum(lat1, null)
+  const ln1 = safeNum(lon1, null)
+  const l2 = safeNum(lat2, null)
+  const ln2 = safeNum(lon2, null)
+  if (l1 == null || ln1 == null || l2 == null || ln2 == null) return null
   const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLon = (lon2 - lon1) * Math.PI / 180
+  const dLat = (l2 - l1) * Math.PI / 180
+  const dLon = (ln2 - ln1) * Math.PI / 180
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.cos(l1 * Math.PI / 180) * Math.cos(l2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return Number((R * c).toFixed(1))
@@ -51,12 +61,14 @@ function calcDistanceKm(lat1, lon1, lat2, lon2) {
 
 // Find closest hub
 function getClosestHub(lat, lng) {
-  if (!lat || !lng) return HUBS[0]
+  const nLat = safeNum(lat, null)
+  const nLng = safeNum(lng, null)
+  if (nLat == null || nLng == null) return HUBS[0]
   let closest = HUBS[0]
   let minD = Infinity
   for (const h of HUBS) {
-    const d = calcDistanceKm(lat, lng, h.coords[0], h.coords[1])
-    if (d < minD) {
+    const d = calcDistanceKm(nLat, nLng, h.coords[0], h.coords[1])
+    if (d != null && d < minD) {
       minD = d
       closest = h
     }
@@ -66,17 +78,21 @@ function getClosestHub(lat, lng) {
 
 // Generate realistic curved / dog-leg road waypoints for authentic GPS journey rendering
 function interpolateRoute(start, end, curvature = 0.08) {
-  if (!start || !end) return []
-  const [lat1, lng1] = start
-  const [lat2, lng2] = end
+  if (!start || !end || !Array.isArray(start) || !Array.isArray(end)) return []
+  const lat1 = safeNum(start[0], null)
+  const lng1 = safeNum(start[1], null)
+  const lat2 = safeNum(end[0], null)
+  const lng2 = safeNum(end[1], null)
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return []
+  
   const dLat = lat2 - lat1
   const dLng = lng2 - lng1
   // Perpendicular offset for realistic road path curvature
   const perpLat = -dLng * curvature
   const perpLng = dLat * curvature
-  const ctrl1 = [lat1 + dLat * 0.33 + perpLat * 0.8, lng1 + dLng * 0.33 + perpLng * 0.8]
-  const ctrl2 = [lat1 + dLat * 0.66 - perpLat * 0.5, lng1 + dLng * 0.66 - perpLng * 0.5]
-  return [start, ctrl1, ctrl2, end]
+  const ctrl1 = [Number((lat1 + dLat * 0.33 + perpLat * 0.8).toFixed(6)), Number((lng1 + dLng * 0.33 + perpLng * 0.8).toFixed(6))]
+  const ctrl2 = [Number((lat1 + dLat * 0.66 - perpLat * 0.5).toFixed(6)), Number((lng1 + dLng * 0.66 - perpLng * 0.5).toFixed(6))]
+  return [[lat1, lng1], ctrl1, ctrl2, [lat2, lng2]]
 }
 
 // ── Custom Leaflet Icons ────────────────────────────────────────────────────────
@@ -144,14 +160,24 @@ function storeIcon(title, subtitle, type = 'depot') {
 function MapCameraController({ target, bounds }) {
   const map = useMap()
   useEffect(() => {
-    if (bounds && bounds.length >= 2) {
+    if (bounds && Array.isArray(bounds) && bounds.length >= 2) {
       try {
-        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, duration: 1.2 })
+        const cleanBounds = bounds
+          .filter(b => b && Array.isArray(b))
+          .map(b => [safeNum(b[0], null), safeNum(b[1], null)])
+          .filter(([lat, lng]) => lat != null && lng != null)
+        if (cleanBounds.length >= 2) {
+          map.fitBounds(cleanBounds, { padding: [60, 60], maxZoom: 15, duration: 1.2 })
+        }
       } catch (err) {
         console.error('fitBounds failed:', err)
       }
-    } else if (target) {
-      map.flyTo(target, 15, { duration: 1.2 })
+    } else if (target && Array.isArray(target)) {
+      const lat = safeNum(target[0], null)
+      const lng = safeNum(target[1], null)
+      if (lat != null && lng != null) {
+        map.flyTo([lat, lng], 15, { duration: 1.2 })
+      }
     }
   }, [target, bounds, map])
   return null
@@ -186,11 +212,13 @@ export default function DeliveryMap() {
         if (list.length > 0) {
           const defaultDel = list.find(d => d.status === 'en_route' || d.status === 'out_for_delivery') || list[0]
           if (defaultDel && defaultDel.driver_lat != null) {
-            const custLat = defaultDel.customer_lat || Number(defaultDel.driver_lat) + 0.014
-            const custLng = defaultDel.customer_lng || Number(defaultDel.driver_lng) - 0.016
-            const hub = getClosestHub(defaultDel.driver_lat, defaultDel.driver_lng)
+            const dLat = safeNum(defaultDel.driver_lat)
+            const dLng = safeNum(defaultDel.driver_lng)
+            const custLat = defaultDel.customer_lat != null ? safeNum(defaultDel.customer_lat) : dLat + 0.014
+            const custLng = defaultDel.customer_lng != null ? safeNum(defaultDel.customer_lng) : dLng - 0.016
+            const hub = getClosestHub(dLat, dLng)
             setFitBoundsTarget([
-              [defaultDel.driver_lat, defaultDel.driver_lng],
+              [dLat, dLng],
               [custLat, custLng],
               hub.coords,
             ])
@@ -240,11 +268,13 @@ export default function DeliveryMap() {
   const handleSelectDelivery = (del) => {
     setSelected(del)
     if (del.driver_lat != null && del.driver_lng != null) {
-      const custLat = del.customer_lat || Number(del.driver_lat) + 0.014
-      const custLng = del.customer_lng || Number(del.driver_lng) - 0.016
-      const hub = getClosestHub(del.driver_lat, del.driver_lng)
+      const dLat = safeNum(del.driver_lat)
+      const dLng = safeNum(del.driver_lng)
+      const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : dLat + 0.014
+      const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : dLng - 0.016
+      const hub = getClosestHub(dLat, dLng)
       setFitBoundsTarget([
-        [del.driver_lat, del.driver_lng],
+        [dLat, dLng],
         [custLat, custLng],
         hub.coords,
       ])
@@ -816,15 +846,15 @@ export default function DeliveryMap() {
               const cfg = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
               const color = colorFor(del.driver_id)
               const isSelectedDelivery = selected?.id === del.id
-              const hasDriverGps = del.driver_lat != null && del.driver_lng != null
+              const dLat = safeNum(del.driver_lat, null)
+              const dLng = safeNum(del.driver_lng, null)
+              if (dLat == null || dLng == null) return null
 
-              if (!hasDriverGps) return null
-
-              const driverPos = [del.driver_lat, del.driver_lng]
-              const custLat = del.customer_lat || (del.driver_lat ? Number(del.driver_lat) + 0.014 : 5.122)
-              const custLng = del.customer_lng || (del.driver_lng ? Number(del.driver_lng) - 0.016 : 7.352)
+              const driverPos = [dLat, dLng]
+              const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : dLat + 0.014
+              const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : dLng - 0.016
               const customerPos = [custLat, custLng]
-              const closestHub = getClosestHub(del.driver_lat, del.driver_lng)
+              const closestHub = getClosestHub(dLat, dLng)
 
               // Generate route paths
               const hubToDriverRoute = interpolateRoute(closestHub.coords, driverPos, 0.04)
