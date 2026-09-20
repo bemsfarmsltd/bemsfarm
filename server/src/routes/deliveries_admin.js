@@ -1255,9 +1255,19 @@ router.patch("/payouts/:id", requireRole("superadmin", "manager", "admin"), asyn
       return res.status(404).json({ message: "Payout request not found" });
     }
 
+    const payout = result.rows[0];
+
+    // If marked as paid, reconcile corresponding pending commissions
+    if (status === "paid") {
+      await pool.query(
+        `UPDATE driver_commissions SET status = 'paid', updated_at = NOW() WHERE driver_id = $1 AND status = 'pending'`,
+        [payout.driver_id]
+      );
+    }
+
     res.json({
       message: `Payout request marked as ${status}`,
-      payout: result.rows[0],
+      payout,
     });
   } catch (err) {
     next(err);

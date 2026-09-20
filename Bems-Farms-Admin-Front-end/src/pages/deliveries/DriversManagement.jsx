@@ -37,6 +37,33 @@ const ONBOARDING_STATUS_CFG = {
   },
 }
 
+const PAYOUT_STATUS_CFG = {
+  pending: {
+    label: 'Pending Review',
+    color: '#d97706',
+    bg: '#fef3c7',
+    icon: 'ri-time-line',
+  },
+  approved: {
+    label: 'Approved (Queued)',
+    color: '#2563eb',
+    bg: '#dbeafe',
+    icon: 'ri-checkbox-circle-line',
+  },
+  paid: {
+    label: 'Disbursed / Paid',
+    color: '#16a34a',
+    bg: '#dcfce7',
+    icon: 'ri-money-dollar-circle-line',
+  },
+  rejected: {
+    label: 'Rejected',
+    color: '#dc2626',
+    bg: '#fee2e2',
+    icon: 'ri-close-circle-line',
+  },
+}
+
 const VEHICLE_TYPES = [
   { value: 'motorcycle', label: 'Motorcycle / Delivery Bike' },
   { value: 'tricycle',   label: 'Tricycle (Keke)' },
@@ -79,6 +106,7 @@ function StarRating({ rating }) {
 }
 
 export default function DriversManagement() {
+  const [tabMode, setTabMode] = useState('fleet') // 'fleet' | 'payouts'
   const [drivers, setDrivers] = useState([])
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -93,8 +121,17 @@ export default function DriversManagement() {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [onboardedCredentials, setOnboardedCredentials] = useState(null)
-  const [newPassword, setNewPassword] = useState('')
   const [updatingPassword, setUpdatingPassword] = useState(false)
+
+  // Driver Payouts & Wallets State
+  const [payouts, setPayouts] = useState([])
+  const [payoutLoading, setPayoutLoading] = useState(false)
+  const [payoutFilter, setPayoutFilter] = useState('all')
+  const [payoutSearch, setPayoutSearch] = useState('')
+  const [payoutActionModal, setPayoutActionModal] = useState(null) // 'approve' | 'reject'
+  const [targetPayout, setTargetPayout] = useState(null)
+  const [payoutDisburseNote, setPayoutDisburseNote] = useState('')
+  const [payoutRejectReason, setPayoutRejectReason] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -123,17 +160,38 @@ export default function DriversManagement() {
     }
   }, [search, filterStatus])
 
+  const loadPayouts = useCallback(async () => {
+    setPayoutLoading(true)
+    try {
+      const res = await api.get('/admin/deliveries/payouts', {
+        params: {
+          status: payoutFilter !== 'all' ? payoutFilter : undefined,
+        },
+      })
+      setPayouts(res.data.payouts || [])
+    } catch {
+      toast.error('Failed to load driver payout requests')
+    } finally {
+      setPayoutLoading(false)
+    }
+  }, [payoutFilter])
+
   useEffect(() => {
     const t = setTimeout(load, 250)
     return () => clearTimeout(t)
   }, [load])
+
+  useEffect(() => {
+    if (tabMode === 'payouts') {
+      loadPayouts()
+    }
+  }, [tabMode, loadPayouts])
 
   const openModal = (type, driver = null) => {
     setSelected(driver)
     setActiveModal(type)
     setSuspendNote('')
     setComplianceRejectNotes('')
-    setNewPassword('')
     setViewingDocument(null)
 
     if (type === 'add') {
@@ -167,6 +225,10 @@ export default function DriversManagement() {
     setActiveModal(null)
     setSelected(null)
     setViewingDocument(null)
+    setPayoutActionModal(null)
+    setTargetPayout(null)
+    setPayoutDisburseNote('')
+    setPayoutRejectReason('')
   }
 
   const setField = (f, v) => setForm((p) => ({ ...p, [f]: v }))
@@ -181,9 +243,36 @@ export default function DriversManagement() {
       pendingCompliance: drivers.filter((d) => d.onboarding_status === 'documents_submitted').length,
       invited: drivers.filter((d) => d.onboarding_status === 'invited').length,
       totalDeliveries: drivers.reduce((s, d) => s + Number(d.total_deliveries || 0), 0),
+      totalEarnings: drivers.reduce((s, d) => s + Number(d.earnings || d.total_earnings || 0), 0),
     }),
     [drivers]
   )
+
+  const payoutStats = useMemo(() => {
+    const totalAmount = payouts.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    const pendingAmount = payouts
+      .filter((p) => p.status === 'pending')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    const paidAmount = payouts
+      .filter((p) => p.status === 'paid' || p.status === 'approved')
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    const pendingCount = payouts.filter((p) => p.status === 'pending').length
+    const paidCount = payouts.filter((p) => p.status === 'paid').length
+    return { totalAmount, pendingAmount, paidAmount, pendingCount, paidCount, count: payouts.length }
+  }, [payouts])
+
+  const filteredPayouts = useMemo(() => {
+    if (!payoutSearch.trim()) return payouts
+    const q = payoutSearch.toLowerCase().trim()
+    return payouts.filter(
+      (p) =>
+        (p.driver_name || '').toLowerCase().includes(q) ||
+        (p.driver_phone || '').toLowerCase().includes(q) ||
+        (p.payout_ref || '').toLowerCase().includes(q) ||
+        (p.bank_name || '').toLowerCase().includes(q) ||
+        (p.account_number || '').toLowerCase().includes(q)
+    )
+  }, [payouts, payoutSearch])
 
   async function saveDriver() {
     if (!form.name || !form.phone) return
@@ -302,14 +391,38 @@ export default function DriversManagement() {
     }
   }
 
+  async function handleProcessPayout(status) {
+    if (!targetPayout) return
+    if (status === 'rejected' && !payoutRejectReason.trim()) {
+      toast.error('Please enter a rejection reason')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.patch(`/admin/deliveries/payouts/${targetPayout.id}`, {
+        status,
+        rejection_reason: status === 'rejected' ? payoutRejectReason.trim() : undefined,
+        notes: status === 'paid' ? payoutDisburseNote.trim() : undefined,
+      })
+      toast.success(status === 'paid' ? '💰 Payout marked as Paid & Disbursed!' : '⚠️ Payout request rejected')
+      closeModal()
+      loadPayouts()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update payout')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="container-fluid pb-5">
       {/* Page Header */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
         <div>
-          <h5 className="mb-1 fw-bold text-dark font-display fs-20">Dispatch Drivers Management</h5>
+          <h5 className="mb-1 fw-bold text-dark font-display fs-20">Dispatch Fleet &amp; Driver Wallets</h5>
           <p className="text-muted mb-0 fs-13">
-            Fleet operations, automated driver invitation emails, compliance verification, and dispatch controls.
+            Fleet operations, courier compliance verification, driver commission wallets, and bank payout requests.
           </p>
         </div>
         <div className="d-flex align-items-center gap-2.5">
@@ -317,414 +430,851 @@ export default function DriversManagement() {
             <li className="breadcrumb-item">
               <Link to="/deliveries/active">Deliveries</Link>
             </li>
-            <li className="breadcrumb-item active">Drivers &amp; Compliance</li>
+            <li className="breadcrumb-item active">
+              {tabMode === 'fleet' ? 'Drivers & Compliance' : 'Wallets & Payouts'}
+            </li>
           </ul>
-          <button
-            type="button"
-            className="btn btn-success fw-bold px-3.5 py-2 d-flex align-items-center gap-2 shadow-sm text-white rounded-3"
-            style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 13 }}
-            onClick={() => openModal('add')}
-          >
-            <i className="ri-user-add-line fs-16" />
-            <span>+ Onboard New Driver</span>
-          </button>
+          {tabMode === 'fleet' && (
+            <button
+              type="button"
+              className="btn btn-success fw-bold px-3.5 py-2 d-flex align-items-center gap-2 shadow-sm text-white rounded-3"
+              style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 13 }}
+              onClick={() => openModal('add')}
+            >
+              <i className="ri-user-add-line fs-16" />
+              <span>+ Onboard New Driver</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stat KPI Cards */}
-      <div className="row g-3 mb-4">
-        {[
-          {
-            label: 'Total Fleet',
-            value: stats.total,
-            color: '#3b82f6',
-            icon: 'ri-group-line',
-            filter: 'all',
-            subLeft: 'Fleet Registry',
-            subRight: `${stats.total} Drivers`,
-            glowClass: 'bg-card-glow-blue',
-          },
-          {
-            label: 'Compliance Review',
-            value: stats.pendingCompliance,
-            color: '#d97706',
-            icon: 'ri-file-shield-line',
-            filter: 'onboarding_review',
-            subLeft: 'Pending Documents',
-            subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
-            badgeBg: stats.pendingCompliance > 0 ? '#FEF3C7' : '#DCFCE7',
-            badgeColor: stats.pendingCompliance > 0 ? '#D97706' : '#16A34A',
-            glowClass: 'bg-card-glow-amber',
-          },
-          {
-            label: 'Invited Couriers',
-            value: stats.invited,
-            color: '#2563eb',
-            icon: 'ri-mail-send-line',
-            filter: 'onboarding_invited',
-            subLeft: 'Pending Sign-ups',
-            subRight: 'Link Sent',
-            glowClass: 'bg-card-glow-blue',
-          },
-          {
-            label: 'Active Standby',
-            value: stats.active,
-            color: '#10b981',
-            icon: 'ri-checkbox-circle-line',
-            filter: 'active',
-            subLeft: 'Online & Available',
-            subRight: 'Ready for Orders',
-            badgeBg: '#ECFDF5',
-            badgeColor: '#059669',
-            glowClass: 'bg-card-glow-green',
-          },
-          {
-            label: 'On Delivery',
-            value: stats.onDelivery,
-            color: '#0ea5e9',
-            icon: 'ri-truck-line',
-            filter: 'on_delivery',
-            subLeft: 'Live En Route',
-            subRight: 'Active Dropoffs',
-            badgeBg: '#E0F2FE',
-            badgeColor: '#0284C7',
-            glowClass: 'bg-card-glow-teal',
-          },
-          {
-            label: 'Suspended',
-            value: stats.suspended,
-            color: '#ef4444',
-            icon: 'ri-forbid-line',
-            filter: 'suspended',
-            subLeft: 'Restricted Couriers',
-            subRight: stats.suspended > 0 ? 'Action Taken' : '0 Restricted',
-            badgeBg: stats.suspended > 0 ? '#FEE2E2' : '#F3F4F6',
-            badgeColor: stats.suspended > 0 ? '#DC2626' : '#6B7280',
-            glowClass: 'bg-card-glow-amber',
-          },
-        ].map((c) => (
-          <div key={c.label} className="col-12 col-sm-6 col-xl-2">
-            <div
-              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glowClass}`}
-              style={{
-                borderLeft: `4px solid ${c.color}`,
-                cursor: c.filter ? 'pointer' : 'default',
-                transform: filterStatus === c.filter ? 'translateY(-2px)' : 'none',
-                boxShadow: filterStatus === c.filter ? `0 8px 20px ${c.color}25` : undefined,
-              }}
-              onClick={() => c.filter && setFilterStatus(c.filter)}
-            >
-              <div className="card-body p-3">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider" style={{ fontSize: 10 }}>
-                    {c.label}
-                  </span>
-                  <span
-                    className="kpi-icon-pill"
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      background: c.color + '18',
-                      color: c.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <i className={`${c.icon} fs-16`} />
-                  </span>
+      {/* Primary Mode Tabs (Fleet vs Payouts) */}
+      <div className="d-flex align-items-center gap-2 mb-4 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 460 }}>
+        <button
+          type="button"
+          className={`btn btn-sm flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+            tabMode === 'fleet' ? 'btn-white shadow-sm text-emerald' : 'text-muted'
+          }`}
+          onClick={() => setTabMode('fleet')}
+        >
+          <i className="ri-truck-line fs-16" />
+          <span>🚚 Fleet Directory ({drivers.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`btn btn-sm flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+            tabMode === 'payouts' ? 'btn-white shadow-sm text-primary' : 'text-muted'
+          }`}
+          onClick={() => setTabMode('payouts')}
+        >
+          <i className="ri-wallet-3-line fs-16" />
+          <span>💳 Driver Wallets &amp; Payouts</span>
+          {payoutStats.pendingCount > 0 && (
+            <span className="badge bg-danger rounded-pill px-2 py-0.5 fs-10">{payoutStats.pendingCount}</span>
+          )}
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          VIEW 1: DRIVER FLEET DIRECTORY
+      ══════════════════════════════════════════════════════════════ */}
+      {tabMode === 'fleet' && (
+        <>
+          {/* Stat KPI Cards */}
+          <div className="row g-3 mb-4">
+            {[
+              {
+                label: 'Total Fleet',
+                value: stats.total,
+                color: '#3b82f6',
+                icon: 'ri-group-line',
+                filter: 'all',
+                subLeft: 'Fleet Registry',
+                subRight: `${stats.total} Drivers`,
+                glowClass: 'bg-card-glow-blue',
+              },
+              {
+                label: 'Compliance Review',
+                value: stats.pendingCompliance,
+                color: '#d97706',
+                icon: 'ri-file-shield-line',
+                filter: 'onboarding_review',
+                subLeft: 'Pending Documents',
+                subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
+                badgeBg: stats.pendingCompliance > 0 ? '#FEF3C7' : '#DCFCE7',
+                badgeColor: stats.pendingCompliance > 0 ? '#D97706' : '#16A34A',
+                glowClass: 'bg-card-glow-amber',
+              },
+              {
+                label: 'Invited Couriers',
+                value: stats.invited,
+                color: '#2563eb',
+                icon: 'ri-mail-send-line',
+                filter: 'onboarding_invited',
+                subLeft: 'Pending Sign-ups',
+                subRight: 'Link Sent',
+                glowClass: 'bg-card-glow-blue',
+              },
+              {
+                label: 'Active Standby',
+                value: stats.active,
+                color: '#10b981',
+                icon: 'ri-checkbox-circle-line',
+                filter: 'active',
+                subLeft: 'Online & Available',
+                subRight: 'Ready for Orders',
+                badgeBg: '#ECFDF5',
+                badgeColor: '#059669',
+                glowClass: 'bg-card-glow-green',
+              },
+              {
+                label: 'On Delivery',
+                value: stats.onDelivery,
+                color: '#0ea5e9',
+                icon: 'ri-truck-line',
+                filter: 'on_delivery',
+                subLeft: 'Live En Route',
+                subRight: 'Active Dropoffs',
+                badgeBg: '#E0F2FE',
+                badgeColor: '#0284C7',
+                glowClass: 'bg-card-glow-teal',
+              },
+              {
+                label: 'Suspended',
+                value: stats.suspended,
+                color: '#ef4444',
+                icon: 'ri-forbid-line',
+                filter: 'suspended',
+                subLeft: 'Restricted Couriers',
+                subRight: stats.suspended > 0 ? 'Action Taken' : '0 Restricted',
+                badgeBg: stats.suspended > 0 ? '#FEE2E2' : '#F3F4F6',
+                badgeColor: stats.suspended > 0 ? '#DC2626' : '#6B7280',
+                glowClass: 'bg-card-glow-amber',
+              },
+            ].map((c) => (
+              <div key={c.label} className="col-12 col-sm-6 col-xl-2">
+                <div
+                  className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glowClass}`}
+                  style={{
+                    borderLeft: `4px solid ${c.color}`,
+                    cursor: c.filter ? 'pointer' : 'default',
+                    transform: filterStatus === c.filter ? 'translateY(-2px)' : 'none',
+                    boxShadow: filterStatus === c.filter ? `0 8px 20px ${c.color}25` : undefined,
+                  }}
+                  onClick={() => c.filter && setFilterStatus(c.filter)}
+                >
+                  <div className="card-body p-3">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider" style={{ fontSize: 10 }}>
+                        {c.label}
+                      </span>
+                      <span
+                        className="kpi-icon-pill"
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          background: c.color + '18',
+                          color: c.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <i className={`${c.icon} fs-16`} />
+                      </span>
+                    </div>
+                    <div className="fs-22 fw-bolder text-dark mb-1 font-display">{c.value}</div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                      <span style={{ fontSize: 10 }}>{c.subLeft}</span>
+                      {c.badgeBg ? (
+                        <span
+                          className="badge font-monospace text-xs px-1.5 py-0.5 rounded"
+                          style={{ background: c.badgeBg, color: c.badgeColor, fontSize: 9 }}
+                        >
+                          {c.subRight}
+                        </span>
+                      ) : (
+                        <strong className="text-dark font-monospace" style={{ fontSize: 10 }}>
+                          {c.subRight}
+                        </strong>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="fs-22 fw-bolder text-dark mb-1 font-display">{c.value}</div>
-                <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
-                  <span style={{ fontSize: 10 }}>{c.subLeft}</span>
-                  {c.badgeBg ? (
-                    <span
-                      className="badge font-monospace text-xs px-1.5 py-0.5 rounded"
-                      style={{ background: c.badgeBg, color: c.badgeColor, fontSize: 9 }}
-                    >
-                      {c.subRight}
-                    </span>
-                  ) : (
-                    <strong className="text-dark font-monospace" style={{ fontSize: 10 }}>
-                      {c.subRight}
-                    </strong>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter + Search */}
+          <div className="card mb-3 border-0 shadow-sm">
+            <div className="card-body d-flex flex-wrap gap-2 align-items-center p-3">
+              <div className="input-group" style={{ maxWidth: 300 }}>
+                <span className="input-group-text bg-light text-muted">
+                  <i className="ri-search-line" />
+                </span>
+                <input
+                  className="form-control bg-light fs-13"
+                  placeholder="Search driver name, phone, zone..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              {filterStatus !== 'all' && (
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterStatus('all')}>
+                  <i className="ri-close-line me-1" />
+                  Clear Filter
+                </button>
+              )}
+
+              <div className="ms-auto d-flex gap-2 align-items-center">
+                <span className="text-muted small">
+                  {drivers.length} driver{drivers.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-success px-3 py-2 fw-bold text-white fs-13 d-flex align-items-center gap-1.5 shadow-sm rounded-2"
+                  style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                  onClick={() => openModal('add')}
+                >
+                  <i className="ri-user-add-line fs-15" />
+                  <span>Onboard New Driver</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Status tabs */}
+            <div className="border-top px-3" style={{ overflowX: 'auto' }}>
+              <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
+                {[
+                  { key: 'all', label: 'All Drivers' },
+                  { key: 'onboarding_review', label: `⚠️ Review Compliance (${stats.pendingCompliance})` },
+                  { key: 'onboarding_invited', label: `📨 Invited (${stats.invited})` },
+                  { key: 'active', label: 'Active' },
+                  { key: 'on_delivery', label: 'On Delivery' },
+                  { key: 'off_duty', label: 'Off Duty' },
+                  { key: 'suspended', label: 'Suspended' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    className="btn btn-sm border-0 rounded-0 py-2.5 px-3 fs-13"
+                    style={{
+                      borderBottom: filterStatus === t.key ? '3px solid #059669' : '3px solid transparent',
+                      color: filterStatus === t.key ? '#059669' : '#6b7280',
+                      fontWeight: filterStatus === t.key ? 700 : 500,
+                      background: 'transparent',
+                    }}
+                    onClick={() => setFilterStatus(t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Drivers Table */}
+          <div className="card border-0 shadow-sm overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light">
+                  <tr className="text-muted fs-11 text-uppercase fw-bold">
+                    <th className="ps-4">Driver Profile</th>
+                    <th>Contact</th>
+                    <th>Compliance Status</th>
+                    <th>Vehicle &amp; Zone</th>
+                    <th>Deliveries</th>
+                    <th>Rating</th>
+                    <th>Earnings</th>
+                    <th>Status</th>
+                    <th className="text-end pe-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td colSpan={9} className="text-center text-muted py-5">
+                        <div className="spinner-border spinner-border-sm text-emerald me-2"></div>
+                        Loading driver fleet &amp; compliance…
+                      </td>
+                    </tr>
                   )}
+                  {!loading && drivers.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="text-center text-muted py-5">
+                        <div className="fs-24 mb-1">🛵</div>
+                        <div className="fw-bold text-dark">No drivers found</div>
+                        <small>Try adjusting your search query or filter tab.</small>
+                      </td>
+                    </tr>
+                  )}
+                  {!loading &&
+                    drivers.map((driver) => {
+                      const cfg = STATUS_CFG[driver.status] || STATUS_CFG.active
+                      const onbCfg =
+                        ONBOARDING_STATUS_CFG[driver.onboarding_status] || ONBOARDING_STATUS_CFG.approved
+                      const isPendingReview = driver.onboarding_status === 'documents_submitted'
+                      const isInvited = driver.onboarding_status === 'invited'
+
+                      return (
+                        <tr key={driver.id} className={isPendingReview ? 'table-warning' : ''}>
+                          {/* Driver Name & Joined */}
+                          <td className="ps-4">
+                            <div className="d-flex align-items-center gap-3">
+                              <div
+                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  background: cfg.color + '20',
+                                  color: cfg.color,
+                                  fontSize: 13,
+                                }}
+                              >
+                                {driver.name
+                                  ? driver.name
+                                      .split(' ')
+                                      .map((n) => n[0])
+                                      .join('')
+                                  : 'DR'}
+                              </div>
+                              <div>
+                                <div className="fw-bold text-dark fs-13">{driver.name}</div>
+                                <div className="text-muted fs-11">
+                                  {driver.joined_date ? `Joined ${driver.joined_date.slice(0, 10)}` : 'Invited Candidate'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contact */}
+                          <td>
+                            <div className="fs-13 fw-semibold font-monospace">{driver.phone}</div>
+                            <div className="text-muted fs-11">{driver.email || '—'}</div>
+                          </td>
+
+                          {/* Compliance Status */}
+                          <td>
+                            <div className="d-flex flex-column gap-1 align-items-start">
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 text-xs fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: onbCfg.bg, color: onbCfg.color }}
+                              >
+                                <i className={onbCfg.icon} />
+                                {onbCfg.label}
+                              </span>
+
+                              {isPendingReview && (
+                                <button
+                                  className="btn btn-warning btn-sm py-0.5 px-2 text-xs fw-bold rounded-pill mt-0.5 shadow-sm"
+                                  onClick={() => openModal('compliance', driver)}
+                                >
+                                  <i className="ri-shield-check-line me-1"></i> Verify Docs Now
+                                </button>
+                              )}
+                              {isInvited && (
+                                <button
+                                  className="btn btn-outline-primary btn-sm py-0.5 px-2 text-xs fw-semibold rounded-pill mt-0.5"
+                                  onClick={() => handleResendInvite(driver)}
+                                  title="Resend onboarding email"
+                                >
+                                  <i className="ri-mail-send-line me-1"></i> Resend Email
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Vehicle & Zone */}
+                          <td>
+                            <div className="fs-13 text-dark fw-medium">
+                              {driver.vehicle_type ? driver.vehicle_type.replace(/_/g, ' ') : 'Motorcycle'} ·{' '}
+                              <span className="font-monospace text-muted">{driver.vehicle_plate || 'No Plate'}</span>
+                            </div>
+                            <div className="text-muted fs-11">
+                              <i className="ri-map-pin-2-line text-emerald me-1"></i>
+                              {driver.zone || 'All Zones (Auto-Dispatch)'}
+                            </div>
+                          </td>
+
+                          {/* Deliveries */}
+                          <td className="fw-bold font-monospace fs-13">{driver.total_deliveries || 0}</td>
+
+                          {/* Rating */}
+                          <td>
+                            <StarRating rating={driver.rating} />
+                          </td>
+
+                          {/* Earnings */}
+                          <td className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</td>
+
+                          {/* Status */}
+                          <td>
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 text-xs fw-bold"
+                              style={{ background: cfg.bg, color: cfg.color }}
+                            >
+                              <i className={`${cfg.icon} me-1`} />
+                              {cfg.label}
+                            </span>
+                            {driver.current_order && (
+                              <div className="text-primary fw-semibold fs-10 mt-1">Order #{driver.current_order}</div>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="text-end pe-4">
+                            <div className="d-flex gap-1.5 justify-content-end">
+                              <button
+                                className="btn btn-sm btn-outline-secondary"
+                                title="View Full Profile & Compliance"
+                                onClick={() => openModal('profile', driver)}
+                              >
+                                <i className="ri-eye-line" />
+                              </button>
+
+                              <button
+                                className="btn btn-sm btn-outline-primary"
+                                title="Edit Driver Details"
+                                onClick={() => openModal('edit', driver)}
+                              >
+                                <i className="ri-edit-line" />
+                              </button>
+
+                              {driver.status === 'suspended' ? (
+                                <button
+                                  className="btn btn-sm btn-outline-success"
+                                  title="Reinstate Driver"
+                                  onClick={() => activateDriver(driver)}
+                                >
+                                  <i className="ri-checkbox-circle-line" />
+                                </button>
+                              ) : (
+                                driver.status !== 'on_delivery' && (
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    title="Suspend Driver"
+                                    onClick={() => openModal('suspend', driver)}
+                                  >
+                                    <i className="ri-forbid-line" />
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          VIEW 2: DRIVER WALLETS & PAYOUT REQUESTS
+      ══════════════════════════════════════════════════════════════ */}
+      {tabMode === 'payouts' && (
+        <>
+          {/* Payouts Stat KPI Cards */}
+          <div className="row g-3 mb-4">
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card h-100 border-0 shadow-sm rounded-4 bg-card-glow-amber" style={{ borderLeft: '4px solid #d97706' }}>
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider">Pending Payouts</span>
+                    <span className="kpi-icon-pill" style={{ width: 34, height: 34, borderRadius: 10, background: '#d9770618', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-time-line fs-16" />
+                    </span>
+                  </div>
+                  <div className="fs-22 fw-bolder text-dark mb-1 font-display">{fmt(payoutStats.pendingAmount)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                    <span>{payoutStats.pendingCount} Requests Awaiting Action</span>
+                    <span className="badge bg-warning-subtle text-warning px-2 py-0.5 rounded font-monospace">Needs Review</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card h-100 border-0 shadow-sm rounded-4 bg-card-glow-green" style={{ borderLeft: '4px solid #16a34a' }}>
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider">Total Disbursed</span>
+                    <span className="kpi-icon-pill" style={{ width: 34, height: 34, borderRadius: 10, background: '#16a34a18', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-checkbox-circle-line fs-16" />
+                    </span>
+                  </div>
+                  <div className="fs-22 fw-bolder text-dark mb-1 font-display">{fmt(payoutStats.paidAmount)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                    <span>{payoutStats.paidCount} Completed Settlements</span>
+                    <span className="badge bg-success-subtle text-success px-2 py-0.5 rounded font-monospace">Paid Out</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card h-100 border-0 shadow-sm rounded-4 bg-card-glow-blue" style={{ borderLeft: '4px solid #2563eb' }}>
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider">Fleet Accrued Earnings</span>
+                    <span className="kpi-icon-pill" style={{ width: 34, height: 34, borderRadius: 10, background: '#2563eb18', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-money-dollar-circle-line fs-16" />
+                    </span>
+                  </div>
+                  <div className="fs-22 fw-bolder text-dark mb-1 font-display">{fmt(stats.totalEarnings)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                    <span>From {stats.totalDeliveries} Completed Drops</span>
+                    <span className="badge bg-primary-subtle text-primary px-2 py-0.5 rounded font-monospace">Total Gross</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card h-100 border-0 shadow-sm rounded-4 bg-card-glow-teal" style={{ borderLeft: '4px solid #0d9488' }}>
+                <div className="card-body p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider">Withdrawal Requests</span>
+                    <span className="kpi-icon-pill" style={{ width: 34, height: 34, borderRadius: 10, background: '#0d948818', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-file-list-3-line fs-16" />
+                    </span>
+                  </div>
+                  <div className="fs-22 fw-bolder text-dark mb-1 font-display">{payoutStats.count} Total</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-11 mt-2 pt-2 border-top">
+                    <span>Active Bank Settlements</span>
+                    <span className="text-muted">Monnify Transfer</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Filter + Actions */}
-      <div className="card mb-3 border-0 shadow-sm">
-        <div className="card-body d-flex flex-wrap gap-2 align-items-center p-3">
-          <div className="input-group" style={{ maxWidth: 300 }}>
-            <span className="input-group-text bg-light text-muted">
-              <i className="ri-search-line" />
-            </span>
-            <input
-              className="form-control bg-light fs-13"
-              placeholder="Search driver name, phone, zone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          {/* Payout Filters & Search */}
+          <div className="card mb-3 border-0 shadow-sm">
+            <div className="card-body d-flex flex-wrap gap-2 align-items-center p-3">
+              <div className="input-group" style={{ maxWidth: 320 }}>
+                <span className="input-group-text bg-light text-muted">
+                  <i className="ri-search-line" />
+                </span>
+                <input
+                  className="form-control bg-light fs-13"
+                  placeholder="Search driver, phone, ref, bank..."
+                  value={payoutSearch}
+                  onChange={(e) => setPayoutSearch(e.target.value)}
+                />
+              </div>
 
-          {filterStatus !== 'all' && (
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterStatus('all')}>
-              <i className="ri-close-line me-1" />
-              Clear Filter
-            </button>
-          )}
-
-          <div className="ms-auto d-flex gap-2 align-items-center">
-            <span className="text-muted small">
-              {drivers.length} driver{drivers.length !== 1 ? 's' : ''}
-            </span>
-            <button
-              type="button"
-              className="btn btn-success px-3 py-2 fw-bold text-white fs-13 d-flex align-items-center gap-1.5 shadow-sm rounded-2"
-              style={{ background: '#16a34a', borderColor: '#16a34a' }}
-              onClick={() => openModal('add')}
-            >
-              <i className="ri-user-add-line fs-15" />
-              <span>Onboard New Driver</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Status tabs */}
-        <div className="border-top px-3" style={{ overflowX: 'auto' }}>
-          <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
-            {[
-              { key: 'all', label: 'All Drivers' },
-              { key: 'onboarding_review', label: `⚠️ Review Compliance (${stats.pendingCompliance})` },
-              { key: 'onboarding_invited', label: `📨 Invited (${stats.invited})` },
-              { key: 'active', label: 'Active' },
-              { key: 'on_delivery', label: 'On Delivery' },
-              { key: 'off_duty', label: 'Off Duty' },
-              { key: 'suspended', label: 'Suspended' },
-            ].map((t) => (
-              <button
-                key={t.key}
-                className="btn btn-sm border-0 rounded-0 py-2.5 px-3 fs-13"
-                style={{
-                  borderBottom: filterStatus === t.key ? '3px solid #059669' : '3px solid transparent',
-                  color: filterStatus === t.key ? '#059669' : '#6b7280',
-                  fontWeight: filterStatus === t.key ? 700 : 500,
-                  background: 'transparent',
-                }}
-                onClick={() => setFilterStatus(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Drivers Table */}
-      <div className="card border-0 shadow-sm overflow-hidden">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="bg-light">
-              <tr className="text-muted fs-11 text-uppercase fw-bold">
-                <th className="ps-4">Driver Profile</th>
-                <th>Contact</th>
-                <th>Compliance Status</th>
-                <th>Vehicle &amp; Zone</th>
-                <th>Deliveries</th>
-                <th>Rating</th>
-                <th>Earnings</th>
-                <th>Status</th>
-                <th className="text-end pe-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={9} className="text-center text-muted py-5">
-                    <div className="spinner-border spinner-border-sm text-emerald me-2"></div>
-                    Loading driver fleet &amp; compliance…
-                  </td>
-                </tr>
+              {payoutFilter !== 'all' && (
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setPayoutFilter('all')}>
+                  <i className="ri-close-line me-1" />
+                  Clear Filter
+                </button>
               )}
-              {!loading && drivers.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="text-center text-muted py-5">
-                    <div className="fs-24 mb-1">🛵</div>
-                    <div className="fw-bold text-dark">No drivers found</div>
-                    <small>Try adjusting your search query or filter tab.</small>
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                drivers.map((driver) => {
-                  const cfg = STATUS_CFG[driver.status] || STATUS_CFG.active
-                  const onbCfg =
-                    ONBOARDING_STATUS_CFG[driver.onboarding_status] || ONBOARDING_STATUS_CFG.approved
-                  const isPendingReview = driver.onboarding_status === 'documents_submitted'
-                  const isInvited = driver.onboarding_status === 'invited'
 
-                  return (
-                    <tr key={driver.id} className={isPendingReview ? 'table-warning' : ''}>
-                      {/* Driver Name & Joined */}
-                      <td className="ps-4">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold"
-                            style={{
-                              width: 40,
-                              height: 40,
-                              background: cfg.color + '20',
-                              color: cfg.color,
-                              fontSize: 13,
-                            }}
-                          >
-                            {driver.name
-                              ? driver.name
-                                  .split(' ')
-                                  .map((n) => n[0])
-                                  .join('')
-                              : 'DR'}
-                          </div>
-                          <div>
-                            <div className="fw-bold text-dark fs-13">{driver.name}</div>
-                            <div className="text-muted fs-11">
-                              {driver.joined_date ? `Joined ${driver.joined_date.slice(0, 10)}` : 'Invited Candidate'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+              <div className="ms-auto d-flex gap-2 align-items-center">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 px-3"
+                  onClick={loadPayouts}
+                  disabled={payoutLoading}
+                >
+                  <i className={`ri-refresh-line ${payoutLoading ? 'ri-spin' : ''}`} />
+                  <span>Refresh Requests</span>
+                </button>
+              </div>
+            </div>
 
-                      {/* Contact */}
-                      <td>
-                        <div className="fs-13 fw-semibold font-monospace">{driver.phone}</div>
-                        <div className="text-muted fs-11">{driver.email || '—'}</div>
-                      </td>
+            {/* Payout status tabs */}
+            <div className="border-top px-3" style={{ overflowX: 'auto' }}>
+              <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
+                {[
+                  { key: 'all', label: 'All Payout Requests' },
+                  { key: 'pending', label: `⏳ Pending Review (${payoutStats.pendingCount})` },
+                  { key: 'approved', label: '🔵 Approved (Queued)' },
+                  { key: 'paid', label: `✅ Disbursed / Paid (${payoutStats.paidCount})` },
+                  { key: 'rejected', label: '❌ Rejected' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    className="btn btn-sm border-0 rounded-0 py-2.5 px-3 fs-13"
+                    style={{
+                      borderBottom: payoutFilter === t.key ? '3px solid #2563eb' : '3px solid transparent',
+                      color: payoutFilter === t.key ? '#2563eb' : '#6b7280',
+                      fontWeight: payoutFilter === t.key ? 700 : 500,
+                      background: 'transparent',
+                    }}
+                    onClick={() => setPayoutFilter(t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
-                      {/* Compliance Status */}
-                      <td>
-                        <div className="d-flex flex-column gap-1 align-items-start">
-                          <span
-                            className="badge rounded-pill px-2.5 py-1 text-xs fw-bold d-inline-flex align-items-center gap-1"
-                            style={{ background: onbCfg.bg, color: onbCfg.color }}
-                          >
-                            <i className={onbCfg.icon} />
-                            {onbCfg.label}
-                          </span>
-
-                          {isPendingReview && (
-                            <button
-                              className="btn btn-warning btn-sm py-0.5 px-2 text-xs fw-bold rounded-pill mt-0.5 shadow-sm"
-                              onClick={() => openModal('compliance', driver)}
-                            >
-                              <i className="ri-shield-check-line me-1"></i> Verify Docs Now
-                            </button>
-                          )}
-                          {isInvited && (
-                            <button
-                              className="btn btn-outline-primary btn-sm py-0.5 px-2 text-xs fw-semibold rounded-pill mt-0.5"
-                              onClick={() => handleResendInvite(driver)}
-                              title="Resend onboarding email"
-                            >
-                              <i className="ri-mail-send-line me-1"></i> Resend Email
-                            </button>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Vehicle & Zone */}
-                      <td>
-                        <div className="fs-13 text-dark fw-medium">
-                          {driver.vehicle_type ? driver.vehicle_type.replace(/_/g, ' ') : 'Motorcycle'} ·{' '}
-                          <span className="font-monospace text-muted">{driver.vehicle_plate || 'No Plate'}</span>
-                        </div>
-                        <div className="text-muted fs-11">
-                          <i className="ri-map-pin-2-line text-emerald me-1"></i>
-                          {driver.zone || 'All Zones (Auto-Dispatch)'}
-                        </div>
-                      </td>
-
-                      {/* Deliveries */}
-                      <td className="fw-bold font-monospace fs-13">{driver.total_deliveries || 0}</td>
-
-                      {/* Rating */}
-                      <td>
-                        <StarRating rating={driver.rating} />
-                      </td>
-
-                      {/* Earnings */}
-                      <td className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings)}</td>
-
-                      {/* Status */}
-                      <td>
-                        <span
-                          className="badge rounded-pill px-2.5 py-1 text-xs fw-bold"
-                          style={{ background: cfg.bg, color: cfg.color }}
-                        >
-                          <i className={`${cfg.icon} me-1`} />
-                          {cfg.label}
-                        </span>
-                        {driver.current_order && (
-                          <div className="text-primary fw-semibold fs-10 mt-1">Order #{driver.current_order}</div>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="text-end pe-4">
-                        <div className="d-flex gap-1.5 justify-content-end">
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            title="View Full Profile & Compliance"
-                            onClick={() => openModal('profile', driver)}
-                          >
-                            <i className="ri-eye-line" />
-                          </button>
-
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            title="Edit Driver Details"
-                            onClick={() => openModal('edit', driver)}
-                          >
-                            <i className="ri-edit-line" />
-                          </button>
-
-                          {driver.status === 'suspended' ? (
-                            <button
-                              className="btn btn-sm btn-outline-success"
-                              title="Reinstate Driver"
-                              onClick={() => activateDriver(driver)}
-                            >
-                              <i className="ri-checkbox-circle-line" />
-                            </button>
-                          ) : (
-                            driver.status !== 'on_delivery' && (
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                title="Suspend Driver"
-                                onClick={() => openModal('suspend', driver)}
-                              >
-                                <i className="ri-forbid-line" />
-                              </button>
-                            )
-                          )}
-                        </div>
+          {/* Payouts Table */}
+          <div className="card border-0 shadow-sm overflow-hidden">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="bg-light">
+                  <tr className="text-muted fs-11 text-uppercase fw-bold">
+                    <th className="ps-4">Payout Ref / Date</th>
+                    <th>Driver &amp; Contact</th>
+                    <th>Withdrawal Amount</th>
+                    <th>Destination Bank Account</th>
+                    <th>Status</th>
+                    <th>Processed By / Remarks</th>
+                    <th className="text-end pe-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payoutLoading && (
+                    <tr>
+                      <td colSpan={7} className="text-center text-muted py-5">
+                        <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                        Loading driver withdrawal ledger…
                       </td>
                     </tr>
-                  )
-                })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  )}
+                  {!payoutLoading && filteredPayouts.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center text-muted py-5">
+                        <div className="fs-24 mb-1">💳</div>
+                        <div className="fw-bold text-dark">No payout requests found</div>
+                        <small>When drivers request balance withdrawals from the Driver App, they will appear here.</small>
+                      </td>
+                    </tr>
+                  )}
+                  {!payoutLoading &&
+                    filteredPayouts.map((p) => {
+                      const cfg = PAYOUT_STATUS_CFG[p.status] || PAYOUT_STATUS_CFG.pending
+                      const isPending = p.status === 'pending'
+                      const isApproved = p.status === 'approved'
+
+                      return (
+                        <tr key={p.id}>
+                          {/* Ref & Date */}
+                          <td className="ps-4">
+                            <div className="fw-bold text-dark font-monospace fs-13">{p.payout_ref}</div>
+                            <div className="text-muted fs-11">
+                              {p.requested_at ? new Date(p.requested_at).toLocaleString() : '—'}
+                            </div>
+                          </td>
+
+                          {/* Driver Info */}
+                          <td>
+                            <div className="fw-bold text-dark fs-13">{p.driver_name}</div>
+                            <div className="text-muted font-monospace fs-11">{p.driver_phone}</div>
+                          </td>
+
+                          {/* Amount */}
+                          <td>
+                            <div className="fw-bold text-dark fs-14 font-monospace">{fmt(p.amount)}</div>
+                            <span className="badge bg-light text-muted border fs-10">Commission Payout</span>
+                          </td>
+
+                          {/* Bank Details */}
+                          <td>
+                            <div className="d-flex align-items-center gap-1.5">
+                              <span className="fw-bold text-dark fs-13">{p.bank_name || 'Bank'}</span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-link p-0 text-muted"
+                                title="Copy Account Number"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(p.account_number)
+                                  toast.success(`Copied: ${p.account_number}`)
+                                }}
+                              >
+                                <i className="ri-file-copy-line" />
+                              </button>
+                            </div>
+                            <div className="font-monospace text-primary fs-12 fw-semibold">{p.account_number}</div>
+                            <div className="text-muted fs-11">{p.account_name || '—'}</div>
+                          </td>
+
+                          {/* Status */}
+                          <td>
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 text-xs fw-bold d-inline-flex align-items-center gap-1"
+                              style={{ background: cfg.bg, color: cfg.color }}
+                            >
+                              <i className={cfg.icon} />
+                              {cfg.label}
+                            </span>
+                          </td>
+
+                          {/* Audit Info */}
+                          <td>
+                            {p.processed_at ? (
+                              <div>
+                                <div className="text-dark fs-12 fw-medium">
+                                  {p.status === 'paid' ? 'Paid by' : p.status === 'rejected' ? 'Rejected by' : 'Updated by'}{' '}
+                                  {p.processed_by_name || 'Admin'}
+                                </div>
+                                <div className="text-muted fs-10">{new Date(p.processed_at).toLocaleDateString()}</div>
+                                {p.rejection_reason && (
+                                  <div className="text-danger fs-11 mt-1">Reason: {p.rejection_reason}</div>
+                                )}
+                                {p.notes && <div className="text-muted fs-11 mt-1">Note: {p.notes}</div>}
+                              </div>
+                            ) : (
+                              <span className="text-muted fs-12 italic">Awaiting Admin Review</span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="text-end pe-4">
+                            <div className="d-flex gap-1.5 justify-content-end">
+                              {(isPending || isApproved) && (
+                                <>
+                                  <button
+                                    className="btn btn-sm btn-success fw-bold px-2.5 py-1 text-xs d-flex align-items-center gap-1 shadow-sm"
+                                    onClick={() => {
+                                      setTargetPayout(p)
+                                      setPayoutActionModal('approve')
+                                    }}
+                                  >
+                                    <i className="ri-check-line" />
+                                    <span>Mark Paid</span>
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-danger fw-semibold px-2 py-1 text-xs"
+                                    onClick={() => {
+                                      setTargetPayout(p)
+                                      setPayoutActionModal('reject')
+                                    }}
+                                  >
+                                    <i className="ri-close-line" />
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
+                              {!isPending && !isApproved && (
+                                <span className="text-muted fs-12">Settled</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ════════════════════════════════════════════════
-          MODALS
+          MODALS & LIGHTBOXES
       ════════════════════════════════════════════════ */}
 
+      {/* Payout Approve Modal */}
+      {payoutActionModal === 'approve' && targetPayout && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460 }} className="shadow-2xl overflow-hidden p-4">
+            <div className="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+              <div className="d-flex align-items-center gap-2 text-success">
+                <i className="ri-money-dollar-circle-fill fs-22" />
+                <h6 className="fw-bold mb-0 text-dark">Disburse / Mark Payout as Paid</h6>
+              </div>
+              <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}>
+                <i className="ri-close-line" />
+              </button>
+            </div>
+
+            <div className="bg-light p-3 rounded-3 mb-3 border">
+              <div className="d-flex justify-content-between mb-1 small">
+                <span className="text-muted">Driver Name:</span>
+                <strong className="text-dark">{targetPayout.driver_name}</strong>
+              </div>
+              <div className="d-flex justify-content-between mb-1 small">
+                <span className="text-muted">Payout Amount:</span>
+                <strong className="text-success font-monospace fs-14">{fmt(targetPayout.amount)}</strong>
+              </div>
+              <div className="d-flex justify-content-between mb-1 small">
+                <span className="text-muted">Destination:</span>
+                <span className="text-dark font-monospace">{targetPayout.bank_name} - {targetPayout.account_number}</span>
+              </div>
+              <div className="d-flex justify-content-between small">
+                <span className="text-muted">Account Name:</span>
+                <span className="text-dark">{targetPayout.account_name || '—'}</span>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-bold text-dark fs-12">Disbursement Reference / Note (Optional)</label>
+              <input
+                className="form-control fs-13"
+                placeholder="e.g. Monnify Ref: MNFY-TRF-9824 / Bank Transfer Ref"
+                value={payoutDisburseNote}
+                onChange={(e) => setPayoutDisburseNote(e.target.value)}
+              />
+            </div>
+
+            <div className="d-flex gap-2">
+              <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={saving}>
+                Cancel
+              </button>
+              <button className="btn btn-success flex-fill fw-bold text-white shadow-sm" onClick={() => handleProcessPayout('paid')} disabled={saving}>
+                {saving ? 'Processing…' : 'Confirm & Mark Paid'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payout Reject Modal */}
+      {payoutActionModal === 'reject' && targetPayout && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440 }} className="shadow-2xl overflow-hidden p-4">
+            <div className="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+              <div className="d-flex align-items-center gap-2 text-danger">
+                <i className="ri-close-circle-fill fs-22" />
+                <h6 className="fw-bold mb-0 text-dark">Reject Payout Request</h6>
+              </div>
+              <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}>
+                <i className="ri-close-line" />
+              </button>
+            </div>
+
+            <div className="alert alert-warning small mb-3">
+              Rejecting this payout will release the pending funds back to <strong>{targetPayout.driver_name}</strong>'s available wallet balance.
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-bold text-dark fs-12">Rejection Reason *</label>
+              <textarea
+                className="form-control fs-13"
+                rows={3}
+                placeholder="e.g. Incorrect bank account name, discrepancy in delivery records..."
+                value={payoutRejectReason}
+                onChange={(e) => setPayoutRejectReason(e.target.value)}
+              />
+            </div>
+
+            <div className="d-flex gap-2">
+              <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={saving}>
+                Cancel
+              </button>
+              <button className="btn btn-danger flex-fill fw-bold text-white" onClick={() => handleProcessPayout('rejected')} disabled={saving || !payoutRejectReason.trim()}>
+                {saving ? 'Rejecting…' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Modals (Compliance, Profile, Onboarding, Suspend) */}
       {activeModal && (
         <div
           style={{
@@ -968,7 +1518,7 @@ export default function DriversManagement() {
                   background: '#fff',
                   borderRadius: 20,
                   width: '100%',
-                  maxWidth: 600,
+                  maxWidth: 640,
                   maxHeight: '90vh',
                   overflowY: 'auto',
                 }}
@@ -1029,7 +1579,7 @@ export default function DriversManagement() {
                         value: `${successRate}%`,
                         color: successRate >= 95 ? '#22c55e' : successRate >= 85 ? '#f59e0b' : '#ef4444',
                       },
-                      { label: 'Total Earnings', value: fmt(selected.earnings), color: '#10b981' },
+                      { label: 'Accrued Earnings', value: fmt(selected.earnings || selected.total_earnings), color: '#10b981' },
                     ].map((k) => (
                       <div key={k.label} className="col-4">
                         <div className="border rounded-3 p-3 text-center bg-light">
@@ -1040,6 +1590,35 @@ export default function DriversManagement() {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Driver Wallet & Payout Account Summary */}
+                  <div className="border rounded-3 p-3.5 mb-4 bg-light-subtle">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
+                        <i className="ri-wallet-3-line text-emerald fs-16" />
+                        Driver Wallet &amp; Payout Account
+                      </span>
+                      <span className="badge bg-emerald-subtle text-emerald fs-11">Active Wallet</span>
+                    </div>
+                    <div className="row g-2 fs-12 mb-2">
+                      <div className="col-6">
+                        <span className="text-muted d-block fs-11">Commission Rate</span>
+                        <strong className="text-dark font-monospace">{fmt(selected.commission_per_delivery || 500)} / drop</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted d-block fs-11">Payout Bank</span>
+                        <strong className="text-dark">{selected.bank_name || 'Not Configured'}</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted d-block fs-11">Account Number</span>
+                        <strong className="text-primary font-monospace">{selected.account_number || '—'}</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted d-block fs-11">Account Name</span>
+                        <span className="text-dark">{selected.account_name || selected.name}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Rating */}
