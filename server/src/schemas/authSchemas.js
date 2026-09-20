@@ -8,6 +8,8 @@ const register = z.object({
   address: z.string().trim().max(1000).optional(),
   city: z.string().trim().max(100).optional(),
   state: z.string().trim().max(100).optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   preferences: z.array(z.string().trim().max(50)).max(20).optional(),
 });
 

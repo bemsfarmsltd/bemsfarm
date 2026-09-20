@@ -107,6 +107,9 @@ export default function RegisterPage() {
 
     if (!form.address.trim()) return setError("Please enter your delivery street address");
     if (!form.city.trim()) return setError("Please enter your city or area");
+    if (!form.latitude || !form.longitude) {
+      return setError("Please select your delivery address from the autocomplete suggestions or click '📍 Pin Map' to verify your doorstep coordinates.");
+    }
 
     if (passStrength < 4)
       return setError("Password is not strong enough. See requirements below.");

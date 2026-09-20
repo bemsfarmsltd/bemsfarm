@@ -198,7 +198,7 @@ export default function CheckoutPage() {
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const validateForm = () => {
-    const { fullName, email, phone, address, city } = form;
+    const { fullName, email, phone, address, city, latitude, longitude } = form;
     if (!fullName.trim()) return "Full recipient name is required";
     if (!email.trim()) return "Email address is required";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Please enter a valid email address";
@@ -207,6 +207,9 @@ export default function CheckoutPage() {
     if (phoneDigits.length < 10 || phoneDigits.length > 14) return "Please enter a valid Nigerian phone number";
     if (!address.trim()) return "Street address is required for delivery";
     if (!city.trim()) return "City or area is required";
+    if (!latitude || !longitude) {
+      return "Please select a verified delivery address from the suggestions or pin your exact location on the map (📍 Pin Map).";
+    }
     return null;
   };
 

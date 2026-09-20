@@ -78,6 +78,9 @@ api.interceptors.response.use(
         window.location.pathname.startsWith("/admin"));
 
     if (error.response?.status === 401 && !isAuthRequest && !originalRequest?._retry) {
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+      const isPublicPage = /^\/(login|register|verify-email|forgot-password|reset-password)/.test(currentPath);
+
       if (isAdminRequest) {
         // Clear only admin session when an admin route fails authentication
         localStorage.removeItem("admin_token");
@@ -85,6 +88,11 @@ api.interceptors.response.use(
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/login")) {
           window.location.href = "/admin/login";
         }
+        return Promise.reject(error);
+      }
+
+      if (isPublicPage) {
+        // On public pages (like /register), do not trigger a refresh token flow or login redirect
         return Promise.reject(error);
       }
 
@@ -122,7 +130,7 @@ api.interceptors.response.use(
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        if (typeof window !== "undefined" && !isPublicPage && !window.location.pathname.startsWith("/login")) {
           window.location.href = "/login";
         }
 

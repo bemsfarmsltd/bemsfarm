@@ -217,8 +217,9 @@ export default function VerifiedLocationModal({
       verified: true,
     };
 
-    // Save to user address book if requested
-    if (saveToAccount) {
+    // Save to user address book only if user is logged in
+    const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
+    if (saveToAccount && token) {
       try {
         await api.post("/addresses", {
           label: "Home / Office",
@@ -230,7 +231,7 @@ export default function VerifiedLocationModal({
           is_default: true,
         }).catch(() => {});
       } catch (e) {
-        // silent catch if guest
+        // silent catch
       }
     }
 
@@ -260,6 +261,7 @@ export default function VerifiedLocationModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
           >
