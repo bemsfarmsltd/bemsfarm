@@ -343,9 +343,9 @@ export default function BatchManagement() {
                           <i className="ri-archive-stack-line fs-1 text-muted"></i>
                         </div>
                         <h6 className="fw-bold mb-1">No Batches Registered Yet</h6>
-                        <p className="text-muted mx-auto mb-4" style={{ maxWidth: 480, fontSize: 13 }}>
-                          Batches track specific production lots, expiry dates, and intake quantities. 
-                          You can generate initial batch records for all your uploaded in-stock products in one click, bulk upload a CSV file, or add custom batches manually.
+                        <p className="text-muted mx-auto mb-4" style={{ maxWidth: 520, fontSize: 13 }}>
+                          Batches &amp; produce lots help you track intake dates, expiry dates, and warehouse locations for fresh farm products. 
+                          You can register a new batch, bulk upload a CSV file, or auto-generate initial batch records from current in-stock products.
                         </p>
                         <div className="d-flex justify-content-center gap-2 flex-wrap">
                           <button 
@@ -354,16 +354,16 @@ export default function BatchManagement() {
                             disabled={autoPopulating}
                           >
                             <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'} fs-16`}></i>
-                            {autoPopulating ? 'Generating Batches...' : '⚡ Generate Initial Batches from Current Stock'}
+                            {autoPopulating ? 'Generating Batches...' : '⚡ Auto-Generate from Stock'}
                           </button>
                           <button 
                             className="btn btn-outline-success d-flex align-items-center gap-1"
                             onClick={() => setActiveModal('import')}
                           >
-                            <i className="ri-upload-2-line"></i> Bulk Upload Batches (CSV)
+                            <i className="ri-upload-2-line"></i> Bulk Import (CSV)
                           </button>
-                          <button className="btn btn-outline-primary d-flex align-items-center gap-1" onClick={openAdd}>
-                            <i className="ri-add-line"></i> Manual Batch
+                          <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+                            <i className="ri-add-line"></i> + Add Batch
                           </button>
                         </div>
                       </div>
