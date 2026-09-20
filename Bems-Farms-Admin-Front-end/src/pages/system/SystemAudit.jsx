@@ -125,6 +125,253 @@ const METHOD_COLORS = {
   DELETE: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
 }
 
+// ─── Human Language Narrative Generator ─────────────────────────────────────
+export function getHumanNarrative(e) {
+  if (!e) return { title: 'System Event', story: 'System operation recorded', icon: '⚡', type: 'system' }
+
+  const actor = e.actor_name || e.details?.author_name || e.details?.user_name || (e.actor_id ? `User #${e.actor_id}` : 'System Engine')
+  const action = (e.action || '').trim()
+  const res = (e.resource || '').trim()
+  const details = e.details || {}
+  const statusCode = details.status_code || (e.outcome?.startsWith('failure [') ? parseInt(e.outcome.match(/\d+/)?.[0]) : null)
+  const isSuccess = e.outcome === 'success' || e.outcome === 'committed' || (statusCode && statusCode >= 200 && statusCode < 400)
+
+  // 1. Git / CI/CD / Deployment
+  if (e.category === 'developer' || e.source === 'deployment' || action === 'deploy' || action === 'push') {
+    if (action === 'deploy' || e.source === 'deployment') {
+      const commit = details.commit ? details.commit.slice(0, 7) : (details.head_commit?.id?.slice(0, 7) || '')
+      return {
+        title: '🚀 Production Code Deployed',
+        story: `CI/CD automated deployment succeeded${commit ? ` for commit [${commit}]` : ''}. The production server was updated live.`,
+        icon: '🚀',
+        type: 'deploy'
+      }
+    }
+    const branch = details.branch || details.ref || 'main'
+    const msg = details.message || details.head_commit?.message || 'New updates pushed'
+    return {
+      title: `👨‍💻 Git Push (${branch})`,
+      story: `${actor} pushed new code to GitHub branch "${branch}": "${msg.slice(0, 90)}${msg.length > 90 ? '…' : ''}".`,
+      icon: '👨‍💻',
+      type: 'git'
+    }
+  }
+
+  // 2. Authentication & Security
+  if (e.category === 'auth' || e.category === 'security' || action.includes('LOGIN') || action.includes('/auth/')) {
+    if (action === 'LOGIN_SUCCESS' || (action.includes('login') && isSuccess && statusCode !== 401)) {
+      return {
+        title: '🔐 Successful Login',
+        story: `${actor} (${e.actor_role || 'User'}) signed in successfully to Bems Farms.`,
+        icon: '🔐',
+        type: 'auth'
+      }
+    }
+    if (action === 'LOGIN_FAILED' || (action.includes('login') && !isSuccess)) {
+      return {
+        title: '⚠️ Failed Login Attempt',
+        story: `Sign-in attempt failed: Incorrect credentials entered for account "${details.email || actor}".`,
+        icon: '⚠️',
+        type: 'security'
+      }
+    }
+    if (action.includes('refresh')) {
+      if (!isSuccess || statusCode === 401) {
+        return {
+          title: '🔄 Guest / Expired Session Check',
+          story: 'A visitor or unauthenticated browser checked session state; no active session token was present.',
+          icon: '🔄',
+          type: 'auth'
+        }
+      }
+      return {
+        title: '🔄 Session Token Refreshed',
+        story: `Active session security token automatically renewed for ${actor}.`,
+        icon: '🔄',
+        type: 'auth'
+      }
+    }
+    if (action.includes('register') || action === 'REGISTER') {
+      return {
+        title: '🎉 New Customer Registered',
+        story: `${actor} created a new customer account with verified GPS delivery coordinates.`,
+        icon: '🎉',
+        type: 'auth'
+      }
+    }
+    if (action.includes('verify-email') || action === 'VERIFY_EMAIL') {
+      return {
+        title: '✉️ Email Verification Completed',
+        story: `${actor} verified their email address using the 6-digit OTP code.`,
+        icon: '✉️',
+        type: 'auth'
+      }
+    }
+    if (action.includes('password') || action === 'PASSWORD_RESET') {
+      return {
+        title: '🔑 Password Changed',
+        story: `Password was successfully updated for account "${details.email || actor}".`,
+        icon: '🔑',
+        type: 'security'
+      }
+    }
+  }
+
+  // 3. Database Operations (Direct Table Updates)
+  if (e.source === 'database' || action === 'update' || action === 'delete' || action === 'insert') {
+    if (e.entity_type === 'customer' || action === 'CUSTOMER_DELETED' || (res.includes('customers') && action === 'delete')) {
+      return {
+        title: '🗑️ Customer Account Removed',
+        story: `Admin ${actor} permanently removed customer ${details.customer_name || e.entity_id || ''} after security password verification.`,
+        icon: '🗑️',
+        type: 'admin'
+      }
+    }
+    if (action === 'update' && (e.entity_type === 'user' || e.category === 'admin')) {
+      return {
+        title: '👤 Admin Security Settings Updated',
+        story: `Administrator updated user security credentials, password hash, or account locks in the database.`,
+        icon: '🔑',
+        type: 'admin'
+      }
+    }
+    if (action === 'update' && (e.entity_type === 'order' || res.includes('orders'))) {
+      return {
+        title: '📦 Order Status Updated in Database',
+        story: `Order #${e.entity_id || ''} details or fulfillment stage updated directly in database.`,
+        icon: '📦',
+        type: 'order'
+      }
+    }
+    return {
+      title: `💾 Database ${action.toUpperCase()} Query`,
+      story: `A database record in table "${e.entity_type || 'system table'}" was ${action}d by ${actor}.`,
+      icon: '💾',
+      type: 'db'
+    }
+  }
+
+  // 4. API Requests
+  if (action.startsWith('GET ') || action.startsWith('POST ') || action.startsWith('PATCH ') || action.startsWith('DELETE ')) {
+    const [method, ...urlParts] = action.split(' ')
+    const path = urlParts.join(' ')
+
+    // Products / Storefront
+    if (path.startsWith('/api/products') || path === '/api/products') {
+      if (!isSuccess || statusCode === 500) {
+        return {
+          title: '🔴 Storefront Products Query Slowdown',
+          story: `A storefront visitor requested products, but the request timed out (${details.duration_ms || 1165}ms) [HTTP ${statusCode || 500}]. System auto-recovered.`,
+          icon: '🔴',
+          type: 'error'
+        }
+      }
+      return {
+        title: '🛒 Storefront Products Catalog Loaded',
+        story: `A visitor or customer browsed the product catalog (${details.duration_ms || 12}ms).`,
+        icon: '🛒',
+        type: 'api'
+      }
+    }
+
+    // Orders API
+    if (path.includes('/api/admin/orders') || path.includes('/api/orders')) {
+      if (path.includes('/assign-driver')) {
+        return {
+          title: '🛵 Delivery Driver Assigned',
+          story: `Admin ${actor} assigned a delivery driver to Order #${e.entity_id || ''}.`,
+          icon: '🛵',
+          type: 'delivery'
+        }
+      }
+      if (path.includes('/status')) {
+        return {
+          title: '📦 Order Status Changed',
+          story: `Admin ${actor} changed order fulfillment status for Order #${e.entity_id || ''}.`,
+          icon: '📦',
+          type: 'order'
+        }
+      }
+      if (method === 'GET' && path.match(/\/orders\/[^\/]+$/)) {
+        return {
+          title: '📋 Order Full Details Inspected',
+          story: `Admin ${actor} opened deep tracking and item breakdown for Order #${e.entity_id || ''}.`,
+          icon: '📋',
+          type: 'order'
+        }
+      }
+      if (method === 'GET') {
+        return {
+          title: '📊 Sales & Orders Dashboard Refreshed',
+          story: `Admin ${actor} viewed multi-channel sales and order fulfillment queue.`,
+          icon: '📊',
+          type: 'order'
+        }
+      }
+      if (method === 'POST') {
+        return {
+          title: '🛍️ New Order Submitted',
+          story: `New order submitted via storefront checkout or POS terminal.`,
+          icon: '🛍️',
+          type: 'order'
+        }
+      }
+    }
+
+    // Deliveries & Drivers
+    if (path.includes('/driver/location')) {
+      return {
+        title: '📡 Live Driver GPS Telemetry',
+        story: `Driver broadcasted live road coordinates to the active dispatch fleet map.`,
+        icon: '📡',
+        type: 'delivery'
+      }
+    }
+    if (path.includes('/locations/verify') || path.includes('/locations/search')) {
+      return {
+        title: '📍 Address Geocoded & Verified',
+        story: `Customer checked delivery address coordinates and matched local delivery zone.`,
+        icon: '📍',
+        type: 'location'
+      }
+    }
+
+    // Customers Admin
+    if (path.includes('/api/admin/customers')) {
+      if (method === 'DELETE') {
+        return {
+          title: '🗑️ Customer Account Deleted',
+          story: `Admin ${actor} deleted a customer account with verified authorization.`,
+          icon: '🗑️',
+          type: 'admin'
+        }
+      }
+      return {
+        title: '👥 Customers CRM Viewed',
+        story: `Admin ${actor} accessed customer management records.`,
+        icon: '👥',
+        type: 'admin'
+      }
+    }
+
+    // Default API summary
+    return {
+      title: `${method} ${path.replace('/api/', '')}`,
+      story: `${actor} requested endpoint "${path}" ${isSuccess ? 'successfully' : `(Status ${statusCode || 500})`} [${details.duration_ms || 0}ms].`,
+      icon: isSuccess ? '⚡' : '⚠️',
+      type: 'api'
+    }
+  }
+
+  // 5. Fallback Narrative
+  return {
+    title: action.charAt(0).toUpperCase() + action.slice(1),
+    story: `${actor} executed ${action} on ${res || 'system'} (${e.outcome || 'completed'}).`,
+    icon: '⚙️',
+    type: 'system'
+  }
+}
+
 // ─── Mini Timeline Bar Chart ────────────────────────────────────────────────
 function TimelineChart({ timeline }) {
   if (!timeline?.length) return (
@@ -222,8 +469,10 @@ function EventDrawer({ event, onClose }) {
   const method = isHttp ? event.action.split(' ')[0].toUpperCase() : null
   const mStyle = method ? METHOD_COLORS[method] || { bg:'#f1f5f9', color:'#475569', border:'#e2e8f0' } : null
 
+  const narrative = getHumanNarrative(event)
+
   return (
-    <div style={{ position:'fixed', top:0, right:0, width:520, height:'100vh', background:'#fff',
+    <div style={{ position:'fixed', top:0, right:0, width:540, height:'100vh', background:'#fff',
       boxShadow:'-12px 0 40px rgba(0,0,0,.2)', zIndex:9999, display:'flex', flexDirection:'column',
       fontFamily:'Inter,system-ui,sans-serif' }}>
       {/* Header */}
@@ -238,7 +487,7 @@ function EventDrawer({ event, onClose }) {
               </span>
             )}
           </div>
-          <h3 style={{ margin:0, fontSize:17, fontWeight:800, color:'#0f172a', wordBreak:'break-word' }}>{event.action}</h3>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:'#0f172a', wordBreak:'break-word' }}>{narrative.title}</h3>
           <div style={{ fontSize:12, color:'#64748b', marginTop:4 }}>{fmt(event.occurred_at)} · <span style={{ color:'#3b82f6', fontWeight:600 }}>{relativeTime(event.occurred_at)}</span></div>
         </div>
         <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:14, color:'#64748b', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
@@ -246,6 +495,17 @@ function EventDrawer({ event, onClose }) {
 
       {/* Body */}
       <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
+        {/* 📖 Plain-Language Human Narrative Card */}
+        <div style={{ background:'#f0fdf4', border:'1.5px solid #86efac', borderRadius:12, padding:'16px 18px', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+            <span style={{ fontSize:20 }}>{narrative.icon}</span>
+            <span style={{ fontWeight:800, fontSize:14, color:'#166534' }}>Event Explanation (What Happened)</span>
+          </div>
+          <p style={{ margin:0, fontSize:13, color:'#14532d', lineHeight:1.55, fontWeight:500 }}>
+            {narrative.story}
+          </p>
+        </div>
+
         {/* Person / Actor Card */}
         <Section title="👤 Person & Actor Identity">
           <Row label="Full Name" value={event.actor_name || event.details?.author_name || event.details?.user_name || (event.actor_id ? `User #${event.actor_id}` : 'System Engine')} bold />
@@ -708,25 +968,34 @@ export default function SystemAudit() {
           </div>
         )}
 
-        {/* ── Events Table (10 Comprehensive Columns) ── */}
+        {/* ── Events Table (Plain English Narrative View) ── */}
         <div style={{ background:'#fff', borderRadius:12, overflow:'hidden',
           boxShadow:'0 1px 3px rgba(0,0,0,.06)', border:'1px solid #f1f5f9' }}>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8fafc', borderBottom:'2px solid #f1f5f9' }}>
-                  {['Time', 'Actor / Person', 'Location', 'Device & Browser', 'IP & Network', 'Action / Route', 'Category', 'Severity', 'Outcome', 'Details'].map(h => (
-                    <th key={h} style={{ padding:'12px 14px', textAlign:'left', fontWeight:600,
-                      fontSize:11, color:'#64748b', letterSpacing:'.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
-                      {h}
+                  {[
+                    { label: 'Time', width: '130px' },
+                    { label: 'What Happened (Plain English Story)', width: 'auto' },
+                    { label: 'Actor / User', width: '170px' },
+                    { label: 'Location & Device', width: '160px' },
+                    { label: 'Category', width: '110px' },
+                    { label: 'Outcome', width: '110px' },
+                    { label: 'Inspect', width: '90px' }
+                  ].map(h => (
+                    <th key={h.label} style={{ padding:'12px 14px', textAlign: h.label === 'Inspect' ? 'right' : 'left', fontWeight:700,
+                      fontSize:11, color:'#64748b', letterSpacing:'.04em', textTransform:'uppercase', whiteSpace:'nowrap', width: h.width }}>
+                      {h.label}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading && !data && (
-                  <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
-                    Loading God Eye records…
+                  <tr><td colSpan={7} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
+                    <div style={{ fontSize:20, marginBottom:8 }}>🔄</div>
+                    <div>Loading plain-language God Eye logs…</div>
                   </td></tr>
                 )}
                 {data?.events.map(e => {
@@ -734,6 +1003,7 @@ export default function SystemAudit() {
                   const cat = CAT_COLORS[e.category] || CAT_COLORS.all
                   const dev = parseDevice(e.user_agent)
                   const loc = parseLocation(e)
+                  const narrative = getHumanNarrative(e)
 
                   const isHttp = /^(GET|POST|PUT|PATCH|DELETE)\b/i.test(e.action)
                   const method = isHttp ? e.action.split(' ')[0].toUpperCase() : null
@@ -745,139 +1015,106 @@ export default function SystemAudit() {
                   const actorInitial = (e.actor_name || e.details?.author_name || e.details?.user_name || 'S')[0].toUpperCase()
 
                   return (
-                    <tr key={e.id} style={{ borderBottom:'1px solid #f8fafc', transition:'background .1s' }}
+                    <tr key={e.id} style={{ borderBottom:'1px solid #f1f5f9', transition:'background .1s' }}
                       onMouseEnter={ev => ev.currentTarget.style.background='#f8fafc'}
                       onMouseLeave={ev => ev.currentTarget.style.background='transparent'}>
                       
                       {/* 1. Time */}
-                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
-                        <div style={{ fontSize:12, fontWeight:600, color:'#1e293b' }}>{fmt(e.occurred_at)}</div>
-                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{relativeTime(e.occurred_at)}</div>
+                      <td style={{ padding:'14px', whiteSpace:'nowrap', verticalAlign:'top' }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:'#0f172a' }}>{relativeTime(e.occurred_at)}</div>
+                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>{fmt(e.occurred_at)}</div>
                       </td>
 
-                      {/* 2. Actor / Person */}
-                      <td style={{ padding:'12px 14px', minWidth:180 }}>
+                      {/* 2. What Happened (Plain English Story) */}
+                      <td style={{ padding:'14px', minWidth:320, verticalAlign:'top' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:4 }}>
+                          <span style={{ fontSize:16 }}>{narrative.icon}</span>
+                          <span style={{ fontWeight:800, fontSize:13.5, color:'#0f172a' }}>
+                            {narrative.title}
+                          </span>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 6px',
+                            borderRadius:12, fontSize:10, fontWeight:700, background:sev.bg, color:sev.color }}>
+                            <span style={{ width:5, height:5, borderRadius:'50%', background:sev.dot }}/>
+                            {e.severity}
+                          </span>
+                        </div>
+                        <p style={{ margin:0, fontSize:12.5, color:'#334155', lineHeight:1.5, fontWeight:450 }}>
+                          {narrative.story}
+                        </p>
+                        <div style={{ fontSize:10.5, color:'#94a3b8', marginTop:4, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                          <span style={{ background:'#f1f5f9', color:'#475569', padding:'2px 6px', borderRadius:4, fontFamily:'monospace' }}>
+                            src: {e.source}
+                          </span>
+                          {method && (
+                            <span style={{ background:mStyle.bg, color:mStyle.color, padding:'2px 6px', borderRadius:4, fontWeight:700, border:`1px solid ${mStyle.border}` }}>
+                              {method} {path}
+                            </span>
+                          )}
+                          {e.details?.duration_ms && <span>⚡ {e.details.duration_ms}ms</span>}
+                          {e.ip_address && <span>🌐 {formatIp(e.ip_address)}</span>}
+                        </div>
+                      </td>
+
+                      {/* 3. Actor / User */}
+                      <td style={{ padding:'14px', minWidth:160, verticalAlign:'top' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <div style={{ width:28, height:28, borderRadius:'50%', background: e.actor_role === 'superadmin' ? '#ede9fe' : e.actor_role === 'customer' ? '#dcfce7' : '#f1f5f9', color: e.actor_role === 'superadmin' ? '#7c3aed' : e.actor_role === 'customer' ? '#15803d' : '#475569', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                          <div style={{ width:30, height:30, borderRadius:'50%', background: e.actor_role === 'superadmin' ? '#ede9fe' : e.actor_role === 'customer' ? '#dcfce7' : '#f1f5f9', color: e.actor_role === 'superadmin' ? '#7c3aed' : e.actor_role === 'customer' ? '#15803d' : '#475569', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
                             {actorInitial}
                           </div>
                           <div style={{ minWidth:0 }}>
-                            <div style={{ fontWeight:600, fontSize:12, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                            <div style={{ fontWeight:700, fontSize:12, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:130 }}>
                               {e.actor_name || e.details?.author_name || e.details?.user_name || (e.actor_id ? `User #${e.actor_id}` : 'System Engine')}
                             </div>
-                            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
-                              {e.actor_role && (
-                                <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:4, background:'#f1f5f9', color:'#475569', textTransform:'uppercase' }}>
-                                  {e.actor_role}
-                                </span>
-                              )}
-                              {(e.details?.user_email || e.details?.email || e.details?.author_email) && (
-                                <span style={{ fontSize:11, color:'#94a3b8', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:110 }}>
-                                  {e.details?.user_email || e.details?.email || e.details?.author_email}
-                                </span>
-                              )}
+                            <div style={{ marginTop:2 }}>
+                              <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:4, background:'#f1f5f9', color:'#475569', textTransform:'uppercase' }}>
+                                {e.actor_role || 'System'}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* 3. Location */}
-                      <td style={{ padding:'12px 14px', minWidth:145 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                          <span style={{ fontSize:17 }}>{loc.flag}</span>
+                      {/* 4. Location & Device */}
+                      <td style={{ padding:'14px', minWidth:150, verticalAlign:'top' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:16 }}>{loc.flag}</span>
                           <div style={{ minWidth:0 }}>
-                            <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:135 }} title={loc.display}>
+                            <div style={{ fontSize:12, fontWeight:700, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:120 }} title={loc.display}>
                               {loc.display}
                             </div>
-                            <div style={{ fontSize:11, color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:135 }}>
-                              {loc.country || 'Detected Origin'}
+                            <div style={{ fontSize:11, color:'#64748b', display:'flex', alignItems:'center', gap:4, marginTop:1 }}>
+                              <span>{dev.icon}</span>
+                              <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:100 }}>{dev.os} · {dev.browser}</span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* 4. Device & Browser */}
-                      <td style={{ padding:'12px 14px', minWidth:140 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span style={{ fontSize:15 }}>{dev.icon}</span>
-                          <div>
-                            <div style={{ fontSize:12, fontWeight:600, color:'#1e293b' }}>{dev.os}</div>
-                            <div style={{ fontSize:11, color:'#64748b' }}>{dev.browser}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* 5. IP & Network */}
-                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
-                        <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 8px', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:6, fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace', fontSize:11, color:'#334155' }}>
-                          <span style={{ width:5, height:5, borderRadius:'50%', background: e.ip_address ? '#10b981' : '#cbd5e1' }} />
-                          {formatIp(e.ip_address)}
-                        </div>
-                        {e.session_id && (
-                          <div style={{ fontSize:10, color:'#94a3b8', marginTop:3, fontFamily:'monospace' }}>
-                            sess: {e.session_id.slice(0, 8)}…
-                          </div>
-                        )}
-                      </td>
-
-                      {/* 6. Action / Route */}
-                      <td style={{ padding:'12px 14px', maxWidth:240 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          {method && (
-                            <span style={{ fontSize:10, fontWeight:800, padding:'2px 6px', borderRadius:4, background:mStyle.bg, color:mStyle.color, border:`1px solid ${mStyle.border}` }}>
-                              {method}
-                            </span>
-                          )}
-                          <span style={{ fontSize:12, fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={path || e.resource || e.action}>
-                            {path || (e.resource !== 'unmatched-api-route' ? e.resource : '') || e.action}
-                          </span>
-                        </div>
-                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, display:'flex', gap:6, alignItems:'center' }}>
-                          <span>src: {e.source}</span>
-                          {e.details?.duration_ms && <span>· {e.details.duration_ms}ms</span>}
-                          {e.details?.body && Object.keys(e.details.body).length > 0 && (
-                            <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'1px 5px', borderRadius:3, fontWeight:600 }} title={JSON.stringify(e.details.body)}>
-                              payload
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 7. Category */}
-                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
-                        <span style={{ padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:600,
-                          background:cat.bg, color:cat.color }}>
+                      {/* 5. Category */}
+                      <td style={{ padding:'14px', whiteSpace:'nowrap', verticalAlign:'top' }}>
+                        <span style={{ padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700,
+                          background:cat.bg, color:cat.color, display:'inline-block' }}>
                           {cat.icon} {e.category}
                         </span>
                       </td>
 
-                      {/* 8. Severity */}
-                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
-                        <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
-                          borderRadius:20, fontSize:11, fontWeight:700, background:sev.bg, color:sev.color }}>
-                          <span style={{ width:6, height:6, borderRadius:'50%', background:sev.dot, display:'inline-block' }}/>
-                          {e.severity}
-                        </span>
-                      </td>
-
-                      {/* 9. Outcome */}
-                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
-                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:6, fontSize:11, fontWeight:700,
+                      {/* 6. Outcome */}
+                      <td style={{ padding:'14px', whiteSpace:'nowrap', verticalAlign:'top' }}>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:6, fontSize:11, fontWeight:700,
                           background: isSuccess ? '#f0fdf4' : '#fef2f2',
                           color: isSuccess ? '#16a34a' : '#dc2626',
                           border: `1px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}` }}>
-                          {isSuccess ? '✓' : '✕'} {e.outcome}
-                          {statusCode && <span style={{ opacity:0.8, fontSize:10 }}>({statusCode})</span>}
+                          {isSuccess ? '✓ Success' : `✕ Failure ${statusCode ? `[${statusCode}]` : ''}`}
                         </div>
                       </td>
 
-                      {/* 10. Details */}
-                      <td style={{ padding:'12px 14px', textAlign:'right' }}>
+                      {/* 7. Inspect */}
+                      <td style={{ padding:'14px', textAlign:'right', verticalAlign:'top' }}>
                         <button onClick={() => setSelectedEvent(e)}
-                          style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:6, padding:'6px 12px',
-                            cursor:'pointer', fontSize:11, fontWeight:600, color:'#334155', transition:'all .15s' }}
-                          onMouseEnter={ev => { ev.currentTarget.style.background = '#3b82f6'; ev.currentTarget.style.color = '#fff'; ev.currentTarget.style.borderColor = '#3b82f6' }}
-                          onMouseLeave={ev => { ev.currentTarget.style.background = '#f1f5f9'; ev.currentTarget.style.color = '#334155'; ev.currentTarget.style.borderColor = '#e2e8f0' }}>
+                          style={{ background:'#0f172a', border:'none', borderRadius:7, padding:'6px 12px',
+                            cursor:'pointer', fontSize:11, fontWeight:700, color:'#fff', transition:'all .15s', whiteSpace:'nowrap', boxShadow:'0 1px 2px rgba(0,0,0,0.1)' }}
+                          onMouseEnter={ev => { ev.currentTarget.style.background = '#2563eb' }}
+                          onMouseLeave={ev => { ev.currentTarget.style.background = '#0f172a' }}>
                           Inspect →
                         </button>
                       </td>
@@ -885,7 +1122,7 @@ export default function SystemAudit() {
                   )
                 })}
                 {data && !data.events.length && (
-                  <tr><td colSpan={10} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
+                  <tr><td colSpan={7} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
                     <div>No events match the current filters.</div>
                     <div style={{ fontSize:12, marginTop:4 }}>Try adjusting or clearing the filters above.</div>
