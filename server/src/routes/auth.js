@@ -195,7 +195,7 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (!user.email_verified && user.password !== 'GOOGLE_AUTH' && user.role !== 'superadmin' && user.role !== 'admin') {
+    if (!user.email_verified && user.password !== 'GOOGLE_AUTH' && !STAFF_ROLES.includes(user.role)) {
        const otp = Math.floor(100000 + Math.random() * 900000).toString();
        await pool.query("UPDATE users SET verification_token = $1 WHERE id = $2", [otp, user.id]);
        sendWelcomeEmail(user, otp).catch(console.error);

@@ -7,7 +7,7 @@ import axios from "axios";
 // different backends depending on which call site made the request.
 // ─────────────────────────────────────────────
 export const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "https://api.bemsfarms.com/api";
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "/api" : "https://api.bemsfarms.com/api");
 
 // ─────────────────────────────────────────────
 // BASE AXIOS INSTANCE
