@@ -31,6 +31,15 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ message: "Street address is required" });
     }
 
+    const latNum = parseFloat(latitude);
+    const lngNum = parseFloat(longitude);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Verified GPS delivery coordinates (latitude and longitude) are mandatory. Please select from search suggestions or pin your location on the map.",
+      });
+    }
+
     const existing = await client.query("SELECT COUNT(*) FROM user_addresses WHERE user_id=$1", [req.user.id]);
     const makeDefault = is_default || parseInt(existing.rows[0].count) === 0;
 
@@ -41,7 +50,7 @@ router.post("/", async (req, res, next) => {
     const result = await client.query(
       `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING *`,
-      [req.user.id, label || "Home", receiver_name || null, receiver_phone || null, street_address.trim(), city || null, state || null, latitude || null, longitude || null, makeDefault],
+      [req.user.id, label || "Home", receiver_name || null, receiver_phone || null, street_address.trim(), city || null, state || null, latNum, lngNum, makeDefault],
     );
 
     await client.query("COMMIT");

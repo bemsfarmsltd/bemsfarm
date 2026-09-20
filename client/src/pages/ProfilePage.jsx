@@ -281,6 +281,10 @@ export default function ProfilePage() {
       setAddressError("Street address is required");
       return;
     }
+    if (!addressForm.latitude || !addressForm.longitude) {
+      setAddressError("Verified GPS coordinates are required. Please select your address from suggestions or pin your location on the map.");
+      return;
+    }
     setSavingAddress(true);
     try {
       if (editingAddressId) {

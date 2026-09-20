@@ -47,6 +47,18 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
   try {
     const { name, email, password, phone, address, city, state, latitude, longitude, preferences } = req.body;
 
+    if (!address || !address.trim()) {
+      return res.status(400).json({ message: "Delivery street address is required." });
+    }
+
+    const latNum = parseFloat(latitude);
+    const lngNum = parseFloat(longitude);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      return res.status(400).json({
+        message: "Verified GPS delivery coordinates (latitude & longitude) are required. Please select your address from the autocomplete suggestions or pin your location on the map.",
+      });
+    }
+
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
       [email],
@@ -67,17 +79,15 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     const user = result.rows[0];
     if (user) req.auditActor = {id:user.id,role:user.role};
 
-    // If permanent delivery address is provided, persist to addresses table
-    if (address && address.trim()) {
-      try {
-        await pool.query(
-          `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, created_at)
-           VALUES ($1, 'Home', $2, $3, $4, $5, $6, $7, $8, true, NOW())`,
-          [user.id, user.name, user.phone, address.trim(), (city || "Abia State").trim(), (state || "Abia State").trim(), latitude || null, longitude || null],
-        );
-      } catch (addrErr) {
-        console.warn("Failed to seed initial address for user:", addrErr.message);
-      }
+    // Save verified delivery address to addresses table
+    try {
+      await pool.query(
+        `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, created_at)
+         VALUES ($1, 'Home', $2, $3, $4, $5, $6, $7, $8, true, NOW())`,
+        [user.id, user.name, user.phone, address.trim(), (city || "Abia State").trim(), (state || "Abia State").trim(), latNum, lngNum],
+      );
+    } catch (addrErr) {
+      console.warn("Failed to seed initial address for user:", addrErr.message);
     }
 
     // Seed AI context record for new user (fire-and-forget)

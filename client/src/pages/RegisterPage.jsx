@@ -326,11 +326,19 @@ export default function RegisterPage() {
               {/* Delivery Address Field */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                  Delivery Street Address
+                  Delivery Street Address &amp; Map Pin
                 </label>
                 <AddressAutocomplete
                   value={form.address}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  onChange={(e) => {
+                    // Reset verified coordinates if user manually types arbitrary text
+                    setForm((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                      latitude: null,
+                      longitude: null,
+                    }));
+                  }}
                   onPlaceSelected={(place) => {
                     setForm((prev) => ({
                       ...prev,
@@ -341,10 +349,29 @@ export default function RegisterPage() {
                       longitude: place.longitude,
                     }));
                   }}
-                  placeholder="e.g. Plot 14 Admiralty Way, Lekki Phase 1"
+                  initialLat={form.latitude}
+                  initialLng={form.longitude}
+                  placeholder="Type street or click '📍 Pin Map'"
                   className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                   required
                 />
+                
+                {/* Live GPS Verification Indicator */}
+                {form.latitude && form.longitude ? (
+                  <div className="mt-1.5 px-2.5 py-1 bg-green-50 border border-green-200 text-green-800 rounded-lg text-[11px] font-semibold flex items-center justify-between animate-fadeIn">
+                    <span className="flex items-center gap-1">
+                      <span>✓</span> <span>Location Verified</span>
+                    </span>
+                    <span className="text-[10px] text-green-700 font-mono">
+                      GPS: {Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)}
+                    </span>
+                  </div>
+                ) : form.address.trim().length > 0 ? (
+                  <div className="mt-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[10.5px] font-medium flex items-center gap-1.5 animate-fadeIn">
+                    <span>⚠️</span>
+                    <span>Please select from search suggestions or click <strong>📍 Pin Map</strong> to verify coordinates.</span>
+                  </div>
+                ) : null}
               </div>
 
               {/* City and State Row */}
