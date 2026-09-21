@@ -88,6 +88,7 @@ import WalletManagement  from './pages/finance/WalletManagement'
 // Chef Bems AI
 import Conversations    from './pages/chef-bems/Conversations'
 import MealsRecipes     from './pages/chef-bems/MealsRecipes'
+import RecipeStockGaps  from './pages/chef-bems/RecipeStockGaps'
 import Substitutions    from './pages/chef-bems/Substitutions'
 import DietaryRules     from './pages/chef-bems/DietaryRules'
 import AllergyRules     from './pages/chef-bems/AllergyRules'
@@ -251,6 +252,7 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={AI_ROLES} />}>
                 <Route path="/chef-bems/conversations"     element={<Conversations />} />
                 <Route path="/chef-bems/meals"             element={<MealsRecipes />} />
+                <Route path="/chef-bems/stock-gaps"        element={<RecipeStockGaps />} />
                 <Route path="/chef-bems/substitutions"     element={<Substitutions />} />
                 <Route path="/chef-bems/dietary-rules"     element={<DietaryRules />} />
                 <Route path="/chef-bems/allergy-rules"     element={<AllergyRules />} />

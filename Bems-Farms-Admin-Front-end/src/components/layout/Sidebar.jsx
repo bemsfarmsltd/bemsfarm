@@ -897,6 +897,10 @@ export default function Sidebar() {
                 <NavLink to="/chef-bems/meals" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Meals &amp; Recipe Bundles</span>
                 </NavLink>
+                <NavLink to="/chef-bems/stock-gaps" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Recipe Stock Gaps</span>
+                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#991B1B' }}>Stock</span>
+                </NavLink>
                 <NavLink to="/chef-bems/substitutions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Ingredient Substitutions</span>
                 </NavLink>

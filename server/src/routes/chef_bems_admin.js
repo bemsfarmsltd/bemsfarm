@@ -838,5 +838,103 @@ router.delete("/allergy-rules/:id", requireRole("superadmin"), async (req, res, 
   } catch (err) { next(err); }
 });
 
+// ─── RECIPE INGREDIENT INVENTORY & STOCK GAPS ANALYSIS ─────────────────────
+router.get("/out-of-stock-ingredients", AI_ROLES, async (req, res, next) => {
+  try {
+    const [ingredientsRes, productsRes, substitutionsRes, mealsRes] = await Promise.all([
+      pool.query(`
+        SELECT mi.*, m.meal_name, m.meal_category
+        FROM meal_ingredients mi
+        JOIN meals m ON m.meal_id = mi.meal_id
+        ORDER BY mi.importance_score DESC
+      `),
+      pool.query(`SELECT id, name, stock, price, unit FROM products WHERE status != 'archived'`),
+      pool.query(`SELECT original_item, substitute_item FROM admin_substitutions WHERE is_active = true`),
+      pool.query(`SELECT meal_id, meal_name, meal_category FROM meals ORDER BY meal_name ASC`)
+    ]);
+
+    const allIngredients = ingredientsRes.rows;
+    const allProducts = productsRes.rows;
+    const allSubs = substitutionsRes.rows;
+
+    const outOfStock = [];
+    const lowStock = [];
+    const unlisted = [];
+    const affectedMealsMap = new Map();
+
+    for (const ing of allIngredients) {
+      const ingNameClean = ing.ingredient_name.toLowerCase().trim();
+      
+      // Find matching catalog product
+      const matched = allProducts.find(p => {
+        const pName = p.name.toLowerCase();
+        // Check contains or keyword overlap
+        return pName.includes(ingNameClean) || ingNameClean.includes(pName) ||
+          ingNameClean.split(" ").some(w => w.length > 3 && pName.includes(w));
+      });
+
+      // Find configured substitute if any
+      const subMatch = allSubs.find(s => 
+        s.original_item.toLowerCase().includes(ingNameClean) || ingNameClean.includes(s.original_item.toLowerCase())
+      );
+
+      const itemReport = {
+        ingredient_name: ing.ingredient_name,
+        meal_name: ing.meal_name,
+        meal_id: ing.meal_id,
+        role_in_meal: ing.role_in_meal || "Essential",
+        matched_product_name: matched ? matched.name : null,
+        product_id: matched ? matched.id : null,
+        current_stock: matched ? (matched.stock ?? 0) : 0,
+        suggested_substitute: subMatch ? subMatch.substitute_item : null,
+      };
+
+      if (!matched) {
+        unlisted.push(itemReport);
+        itemReport.status = "UNLISTED";
+      } else if (matched.stock <= 0) {
+        outOfStock.push(itemReport);
+        itemReport.status = "OUT_OF_STOCK";
+      } else if (matched.stock <= 5) {
+        lowStock.push(itemReport);
+        itemReport.status = "LOW_STOCK";
+      }
+
+      if (!matched || matched.stock <= 5) {
+        if (!affectedMealsMap.has(ing.meal_id)) {
+          affectedMealsMap.set(ing.meal_id, {
+            meal_id: ing.meal_id,
+            meal_name: ing.meal_name,
+            meal_category: ing.meal_category,
+            ingredients: [],
+            missing_count: 0
+          });
+        }
+        const mealRecord = affectedMealsMap.get(ing.meal_id);
+        mealRecord.ingredients.push({
+          ingredient_name: ing.ingredient_name,
+          status: !matched ? "UNLISTED" : matched.stock <= 0 ? "OUT_OF_STOCK" : "LOW_STOCK",
+          stock: matched ? matched.stock : 0
+        });
+        mealRecord.missing_count += 1;
+      }
+    }
+
+    res.json({
+      summary: {
+        total_out: outOfStock.length,
+        total_low: lowStock.length,
+        total_unlisted: unlisted.length,
+        total_meals_affected: affectedMealsMap.size
+      },
+      out_of_stock: outOfStock,
+      low_stock: lowStock,
+      unlisted: unlisted,
+      affected_meals: Array.from(affectedMealsMap.values())
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
+
 
