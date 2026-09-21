@@ -764,5 +764,91 @@ router.get("/cart/pending", async (req, res, next) => {
   }
 });
 
+// ─── PUBLIC CULINARY API ENDPOINTS FOR N8N AI AGENTS ───────────────────────
+
+// GET /api/ai/meals ── Browse meals and recipe bundles
+router.get("/meals", async (req, res, next) => {
+  try {
+    const { search = "", category = "" } = req.query;
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(m.meal_name ILIKE $${params.length} OR m.description ILIKE $${params.length})`);
+    }
+    if (category) {
+      params.push(category);
+      where.push(`m.meal_category = $${params.length}`);
+    }
+
+    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const result = await pool.query(`
+      SELECT m.*,
+             COALESCE(
+               JSON_AGG(JSON_BUILD_OBJECT(
+                 'ingredient_name', mi.ingredient_name,
+                 'requirement_type', mi.requirement_type,
+                 'qty_per_person', mi.qty_per_person,
+                 'recipe_unit', mi.recipe_unit,
+                 'role_in_meal', mi.role_in_meal
+               ) ORDER BY mi.importance_score DESC) FILTER (WHERE mi.id IS NOT NULL),
+               '[]'::JSON
+             ) AS ingredients
+      FROM meals m
+      LEFT JOIN meal_ingredients mi ON mi.meal_id = m.meal_id
+      ${clause}
+      GROUP BY m.meal_id
+      ORDER BY m.meal_name ASC
+      LIMIT 50
+    `, params);
+
+    res.json({ status: "success", count: result.rows.length, meals: result.rows });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ai/substitutions ── Search ingredient substitutions
+router.get("/substitutions", async (req, res, next) => {
+  try {
+    const { ingredient = "", search = "" } = req.query;
+    const q = ingredient || search;
+    let queryText = "SELECT * FROM substitutions ORDER BY original_ingredient ASC LIMIT 50";
+    const params = [];
+
+    if (q) {
+      params.push(`%${q}%`);
+      queryText = `SELECT * FROM substitutions WHERE original_ingredient ILIKE $1 OR substitute_ingredient ILIKE $1 ORDER BY original_ingredient ASC LIMIT 50`;
+    }
+
+    const result = await pool.query(queryText, params);
+    res.json({ status: "success", count: result.rows.length, substitutions: result.rows });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ai/dietary-rules ── Fetch health/dietary guidelines
+router.get("/dietary-rules", async (req, res, next) => {
+  try {
+    const result = await pool.query("SELECT * FROM dietary_rules ORDER BY diet_name ASC");
+    res.json({ status: "success", count: result.rows.length, rules: result.rows });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ai/allergy-rules ── Fetch allergy guidelines and hard filters
+router.get("/allergy-rules", async (req, res, next) => {
+  try {
+    const result = await pool.query("SELECT * FROM allergy_rules ORDER BY allergy_name ASC");
+    res.json({ status: "success", count: result.rows.length, rules: result.rows });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ai/recommendations ── Fetch smart pairings & cross-sell rules
+router.get("/recommendations", async (req, res, next) => {
+  try {
+    const result = await pool.query("SELECT * FROM admin_recommendations WHERE is_active = true ORDER BY priority DESC LIMIT 50");
+    res.json({ status: "success", count: result.rows.length, recommendations: result.rows });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
+
 

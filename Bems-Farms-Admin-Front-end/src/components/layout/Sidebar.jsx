@@ -894,9 +894,20 @@ export default function Sidebar() {
                   <span>Live Conversations</span>
                   <span className="sub-badge" style={{ background: '#EDE9FE', color: '#7C3AED' }}>AI</span>
                 </NavLink>
+                <NavLink to="/chef-bems/meals" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Meals &amp; Recipe Bundles</span>
+                </NavLink>
+                <NavLink to="/chef-bems/substitutions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Ingredient Substitutions</span>
+                </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/chef-bems/dietary-rules" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Dietary &amp; Nutrition Rules</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/chef-bems/allergy-rules" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Allergy &amp; Safety Rules</span>
                   </NavLink>
                 )}
                 <NavLink to="/chef-bems/meal-associations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>

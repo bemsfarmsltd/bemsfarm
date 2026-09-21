@@ -576,11 +576,267 @@ router.put("/recommendations/:id", requireRole("superadmin","manager"), async (r
   } catch (err) { next(err); }
 });
 
-router.delete("/recommendations/:id", requireRole("superadmin"), async (req, res, next) => {
+// ─── MEALS & RECIPES CRUD ──────────────────────────────────────────────────
+router.get("/meals", AI_ROLES, async (req, res, next) => {
   try {
-    await pool.query("DELETE FROM admin_recommendations WHERE id=$1", [req.params.id]);
-    res.json({ message: "Recommendation deleted" });
+    const { search = "", category = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(m.meal_name ILIKE $${params.length} OR m.description ILIKE $${params.length} OR m.regional_context ILIKE $${params.length})`);
+    }
+    if (category) {
+      params.push(category);
+      where.push(`m.meal_category = $${params.length}`);
+    }
+
+    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const [rows, cnt] = await Promise.all([
+      pool.query(`
+        SELECT m.*,
+               COALESCE(
+                 JSON_AGG(JSON_BUILD_OBJECT(
+                   'id', mi.id,
+                   'ingredient_name', mi.ingredient_name,
+                   'requirement_type', mi.requirement_type,
+                   'qty_per_person', mi.qty_per_person,
+                   'recipe_unit', mi.recipe_unit,
+                   'role_in_meal', mi.role_in_meal,
+                   'importance_score', mi.importance_score
+                 ) ORDER BY mi.importance_score DESC) FILTER (WHERE mi.id IS NOT NULL),
+                 '[]'::JSON
+               ) AS ingredients
+        FROM meals m
+        LEFT JOIN meal_ingredients mi ON mi.meal_id = m.meal_id
+        ${clause}
+        GROUP BY m.meal_id
+        ORDER BY m.meal_name ASC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      `, [...params, parseInt(limit), offset]),
+      pool.query(`SELECT COUNT(*) FROM meals m ${clause}`, params),
+    ]);
+
+    res.json({ meals: rows.rows, total: parseInt(cnt.rows[0].count) });
+  } catch (err) { next(err); }
+});
+
+router.get("/meals/:id", AI_ROLES, async (req, res, next) => {
+  try {
+    const mealRes = await pool.query("SELECT * FROM meals WHERE meal_id = $1", [req.params.id]);
+    if (!mealRes.rows.length) return res.status(404).json({ message: "Meal not found" });
+
+    const ingRes = await pool.query("SELECT * FROM meal_ingredients WHERE meal_id = $1 ORDER BY importance_score DESC", [req.params.id]);
+    res.json({ meal: mealRes.rows[0], ingredients: ingRes.rows });
+  } catch (err) { next(err); }
+});
+
+router.post("/meals", requireRole("superadmin", "manager", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const {
+      meal_name,
+      meal_category = "Soups & Stews",
+      cuisine_origin = "Nigerian",
+      regional_context = "National",
+      description = "",
+      default_serving_size = 4,
+      complexity = "Medium",
+      supports_budget_mode = true,
+      best_for = "",
+      meal_time = "Lunch & Dinner",
+      ingredients = []
+    } = req.body;
+
+    if (!meal_name?.trim()) return res.status(400).json({ message: "Meal name is required" });
+
+    const meal_id = `meal-${meal_name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-")}-${Date.now().toString().slice(-4)}`;
+
+    const result = await pool.query(`
+      INSERT INTO meals (
+        meal_id, meal_name, meal_category, cuisine_origin, regional_context,
+        description, default_serving_size, complexity, supports_budget_mode, best_for, meal_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `, [
+      meal_id, meal_name.trim(), meal_category, cuisine_origin, regional_context,
+      description.trim(), parseInt(default_serving_size) || 4, complexity,
+      supports_budget_mode !== false, best_for.trim(), meal_time
+    ]);
+
+    if (Array.isArray(ingredients) && ingredients.length > 0) {
+      for (const ing of ingredients) {
+        if (ing.ingredient_name?.trim()) {
+          await pool.query(`
+            INSERT INTO meal_ingredients (
+              meal_id, meal_name, ingredient_name, requirement_type,
+              qty_per_person, recipe_unit, role_in_meal, importance_score
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [
+            meal_id,
+            meal_name.trim(),
+            ing.ingredient_name.trim(),
+            ing.requirement_type || "Essential",
+            parseFloat(ing.qty_per_person) || 1,
+            ing.recipe_unit || "unit",
+            ing.role_in_meal || "Ingredient",
+            parseInt(ing.importance_score) || 5
+          ]);
+        }
+      }
+    }
+
+    res.status(201).json({ meal: result.rows[0], message: "Meal and ingredients created successfully" });
+  } catch (err) { next(err); }
+});
+
+router.put("/meals/:id", requireRole("superadmin", "manager", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const {
+      meal_name,
+      meal_category,
+      cuisine_origin,
+      regional_context,
+      description,
+      default_serving_size,
+      complexity,
+      supports_budget_mode,
+      best_for,
+      meal_time,
+      ingredients
+    } = req.body;
+
+    const result = await pool.query(`
+      UPDATE meals SET
+        meal_name = COALESCE($1, meal_name),
+        meal_category = COALESCE($2, meal_category),
+        cuisine_origin = COALESCE($3, cuisine_origin),
+        regional_context = COALESCE($4, regional_context),
+        description = COALESCE($5, description),
+        default_serving_size = COALESCE($6, default_serving_size),
+        complexity = COALESCE($7, complexity),
+        supports_budget_mode = COALESCE($8, supports_budget_mode),
+        best_for = COALESCE($9, best_for),
+        meal_time = COALESCE($10, meal_time)
+      WHERE meal_id = $11
+      RETURNING *
+    `, [
+      meal_name?.trim(), meal_category, cuisine_origin, regional_context,
+      description?.trim(), default_serving_size ? parseInt(default_serving_size) : null,
+      complexity, supports_budget_mode, best_for?.trim(), meal_time,
+      req.params.id
+    ]);
+
+    if (!result.rows.length) return res.status(404).json({ message: "Meal not found" });
+
+    if (Array.isArray(ingredients)) {
+      await pool.query("DELETE FROM meal_ingredients WHERE meal_id = $1", [req.params.id]);
+      for (const ing of ingredients) {
+        if (ing.ingredient_name?.trim()) {
+          await pool.query(`
+            INSERT INTO meal_ingredients (
+              meal_id, meal_name, ingredient_name, requirement_type,
+              qty_per_person, recipe_unit, role_in_meal, importance_score
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [
+            req.params.id,
+            result.rows[0].meal_name,
+            ing.ingredient_name.trim(),
+            ing.requirement_type || "Essential",
+            parseFloat(ing.qty_per_person) || 1,
+            ing.recipe_unit || "unit",
+            ing.role_in_meal || "Ingredient",
+            parseInt(ing.importance_score) || 5
+          ]);
+        }
+      }
+    }
+
+    res.json({ meal: result.rows[0], message: "Meal updated successfully" });
+  } catch (err) { next(err); }
+});
+
+router.delete("/meals/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+  try {
+    await pool.query("DELETE FROM meal_ingredients WHERE meal_id = $1", [req.params.id]);
+    const result = await pool.query("DELETE FROM meals WHERE meal_id = $1 RETURNING meal_id", [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ message: "Meal not found" });
+    res.json({ message: "Meal deleted successfully" });
+  } catch (err) { next(err); }
+});
+
+// ─── ALLERGY RULES CRUD ───────────────────────────────────────────────────
+router.get("/allergy-rules", AI_ROLES, async (req, res, next) => {
+  try {
+    const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(allergy_name ILIKE $${params.length} OR excluded_item ILIKE $${params.length} OR substitution_guidance ILIKE $${params.length})`);
+    }
+
+    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const [rows, cnt] = await Promise.all([
+      pool.query(`SELECT * FROM allergy_rules ${clause} ORDER BY allergy_name ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, parseInt(limit), offset]),
+      pool.query(`SELECT COUNT(*) FROM allergy_rules ${clause}`, params),
+    ]);
+
+    res.json({ rules: rows.rows, total: parseInt(cnt.rows[0].count) });
+  } catch (err) { next(err); }
+});
+
+router.post("/allergy-rules", requireRole("superadmin", "manager"), async (req, res, next) => {
+  try {
+    const { allergy_name, excluded_item, action_type = "Hard Filter", substitution_guidance = "", safety_note = "" } = req.body;
+    if (!allergy_name?.trim()) return res.status(400).json({ message: "Allergy name is required" });
+    if (!excluded_item?.trim()) return res.status(400).json({ message: "Excluded item is required" });
+
+    const allergy_id = `all-${allergy_name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString().slice(-4)}`;
+
+    const result = await pool.query(`
+      INSERT INTO allergy_rules (allergy_id, allergy_name, excluded_item, action_type, substitution_guidance, safety_note)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [allergy_id, allergy_name.trim(), excluded_item.trim(), action_type, substitution_guidance.trim(), safety_note.trim()]);
+
+    res.status(201).json({ rule: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
+router.put("/allergy-rules/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+  try {
+    const { allergy_name, excluded_item, action_type, substitution_guidance, safety_note } = req.body;
+    const result = await pool.query(`
+      UPDATE allergy_rules SET
+        allergy_name = COALESCE($1, allergy_name),
+        excluded_item = COALESCE($2, excluded_item),
+        action_type = COALESCE($3, action_type),
+        substitution_guidance = COALESCE($4, substitution_guidance),
+        safety_note = COALESCE($5, safety_note)
+      WHERE allergy_id = $6
+      RETURNING *
+    `, [allergy_name?.trim(), excluded_item?.trim(), action_type, substitution_guidance?.trim(), safety_note?.trim(), req.params.id]);
+
+    if (!result.rows.length) return res.status(404).json({ message: "Allergy rule not found" });
+    res.json({ rule: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
+router.delete("/allergy-rules/:id", requireRole("superadmin"), async (req, res, next) => {
+  try {
+    const result = await pool.query("DELETE FROM allergy_rules WHERE allergy_id = $1 RETURNING allergy_id", [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ message: "Allergy rule not found" });
+    res.json({ message: "Allergy rule deleted" });
   } catch (err) { next(err); }
 });
 
 module.exports = router;
+
