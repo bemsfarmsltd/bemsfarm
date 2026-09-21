@@ -192,9 +192,11 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         [Paragraph("History", body_style), Paragraph("<code>GET /deliveries/history</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Fetch paginated past delivery drops and completed trips", body_style)],
         [Paragraph("Telemetry", body_style), Paragraph("<code>POST /location</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Background GPS coordinate stream ping (every 10–15s)", body_style)],
         [Paragraph("Wallet", body_style), Paragraph("<code>GET /earnings</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Live wallet balance, Monnify DVA NUBAN, zone rate card & history", body_style)],
+        [Paragraph("Wallet / Bank", body_style), Paragraph("<code>GET /banks</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Directory of Nigerian commercial banks & fintechs with codes", body_style)],
+        [Paragraph("Wallet / Bank", body_style), Paragraph("<code>POST /bank/resolve</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Verify 10-digit NUBAN account number & resolve legal account name", body_style)],
         [Paragraph("Wallet", body_style), Paragraph("<code>POST /withdraw</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Request payout of unwithdrawn earnings to personal bank account", body_style)],
     ]
-    t_d = Table(d_rows, colWidths=[65, 185, 45, 245])
+    t_d = Table(d_rows, colWidths=[70, 180, 45, 245])
     t_d.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#E2E8F0")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
@@ -212,7 +214,7 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     story.append(Paragraph("Authenticates driver by phone number or email and password. Returns JWT token and driver profile with Dedicated Virtual Account (DVA).", body_style))
     
     login_req = '{\n  "emailOrPhone": "08123456789",\n  "password": "Password123!"\n}'
-    login_res = '{\n  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",\n  "message": "Login successful",\n  "driver": {\n    "id": 6,\n    "name": "Victor Kalu",\n    "phone": "08123456789",\n    "email": "victor.kalu@bemsfarms.com",\n    "wallet_account_number": "3397202109",\n    "wallet_bank_name": "Monnify / Wema Bank",\n    "wallet_account_name": "BEM - Victor Kalu",\n    "bank_name": "GTBank",\n    "account_number": "0123456789",\n    "wallet_balance": 16500.00,\n    "is_available": true\n  }\n}'
+    login_res = '{\n  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",\n  "message": "Login successful",\n  "driver": {\n    "id": 6,\n    "name": "Victor Kalu",\n    "phone": "08123456789",\n    "email": "victor.kalu@bemsfarms.com",\n    "wallet_account_number": "3397202109",\n    "wallet_bank_name": "Monnify / Wema Bank",\n    "wallet_account_name": "BEMS - VICTOR KALU",\n    "bank_name": "GTBank",\n    "account_number": "0123456789",\n    "wallet_balance": 16500.00,\n    "is_available": true\n  }\n}'
     
     t_login = Table([
         [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
@@ -284,9 +286,12 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     story.append(Spacer(1, 8))
 
     # SECTION 4: DRIVER WALLET & EARNINGS SYSTEM
-    story.append(Paragraph("4. Driver Wallet, Dedicated Virtual Account (DVA) & Withdrawals", h1_style))
+    story.append(Paragraph("4. Driver Wallet, Bank Verification & Withdrawal System", h1_style))
+    story.append(Paragraph("The driver wallet architecture provides real-time balances, Dedicated Virtual Accounts (Monnify DVA NUBAN), Nigerian bank directory lookup, instant NIP account name verification, and on-demand withdrawal requests.", body_style))
+    story.append(Spacer(1, 4))
+
     story.append(Paragraph("<b>4.1 Get Driver Wallet & Earnings (`GET /api/driver/earnings`)</b>", h2_style))
-    story.append(Paragraph("Returns live wallet balance, unwithdrawn earnings, pending payout amounts, Monnify Dedicated Virtual Account (DVA), zone rate card, and recent transaction history.", body_style))
+    story.append(Paragraph("Returns live wallet balance, unwithdrawn earnings, pending payout amounts, Monnify Dedicated Virtual Account (DVA), saved withdrawal bank, zone rate card, and recent transaction history.", body_style))
     
     earnings_res = """{
   "wallet": {
@@ -298,10 +303,9 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     "dedicated_virtual_account": {
       "account_number": "8559127267",
       "bank_name": "Monnify / Wema Bank",
-      "account_name": "BEMS - VICTOR KALU",
-      "is_frozen": false
+      "account_name": "BEMS - VICTOR KALU"
     },
-    "settlement_bank": {
+    "withdrawal_bank": {
       "bank_name": "GTBank",
       "account_number": "0123456789",
       "account_name": "Victor Kalu"
@@ -314,22 +318,57 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     { "zone_id": "ZONE004", "zone_name": "Zone 4 - Gwarinpa, Kubwa", "driver_earning_fee": 3500.00, "commission_percent": 70, "estimated_eta": "40 - 65 mins" },
     { "zone_id": "ZONE005", "zone_name": "Zone 5 - Lugbe, Airport Road", "driver_earning_fee": 5600.00, "commission_percent": 70, "estimated_eta": "45 - 75 mins" },
     { "zone_id": "ZONE006", "zone_name": "Zone 6 - Interstate Express", "driver_earning_fee": 24500.00, "commission_percent": 70, "estimated_eta": "Same Day" }
-  ],
-  "recent_commissions": [
-    { "id": 104, "total_earned": 1750.00, "deliveries": 1, "status": "pending", "created_at": "2026-09-21T09:10:00Z" }
-  ],
-  "recent_payouts": [
-    { "payout_ref": "PAY-MNFY-8819", "amount": 12000.00, "status": "paid", "processed_at": "2026-09-20T14:30:00Z" }
   ]
 }"""
     story.append(Paragraph(earnings_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
     story.append(Spacer(1, 4))
 
-    story.append(Paragraph("<b>4.2 Request Withdrawal (`POST /api/driver/withdraw`)</b>", h2_style))
-    with_req = '{\n  "amount": 10000.00,\n  "bank_name": "GTBank",\n  "account_number": "0123456789",\n  "account_name": "Victor Kalu",\n  "notes": "Weekly earnings payout"\n}'
-    with_res = '{\n  "message": "Withdrawal request of ₦10,000.00 submitted successfully!",\n  "payout_ref": "PAY-MNFY-99201",\n  "available_balance": 6500.00,\n  "status": "pending"\n}'
-    t_with = Table([
+    story.append(Paragraph("<b>4.2 List Nigerian Commercial Banks & Fintechs (`GET /api/driver/banks`)</b>", h2_style))
+    story.append(Paragraph("Provides the mobile app with the complete directory of Nigerian banks and fintech institutions (Access, GTBank, Zenith, OPay, PalmPay, Kuda, Moniepoint, Wema, etc.) for populating bank picker modals.", body_style))
+    
+    banks_res = """{
+  "status": "success",
+  "count": 33,
+  "banks": [
+    { "name": "Access Bank", "code": "044", "ussd": "*901#" },
+    { "name": "Guaranty Trust Bank (GTBank)", "code": "058", "ussd": "*737#" },
+    { "name": "Kuda Bank", "code": "50211", "ussd": "" },
+    { "name": "Moniepoint MFB", "code": "50515", "ussd": "" },
+    { "name": "OPay Digital Services", "code": "999992", "ussd": "" },
+    { "name": "PalmPay", "code": "999991", "ussd": "" },
+    { "name": "United Bank for Africa (UBA)", "code": "033", "ussd": "*919#" },
+    { "name": "Wema Bank / ALAT", "code": "035", "ussd": "*945#" },
+    { "name": "Zenith Bank", "code": "057", "ussd": "*966#" }
+  ]
+}"""
+    story.append(Paragraph(banks_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph("<b>4.3 Resolve & Verify Bank Account Name (`POST /api/driver/bank/resolve`)</b>", h2_style))
+    story.append(Paragraph("Validates a 10-digit NUBAN account number against the selected bank code using NIP name enquiry. The mobile app calls this as soon as the driver enters 10 digits to display the verified account holder name.", body_style))
+    
+    resolve_req = '{\n  "account_number": "0123456789",\n  "bank_code": "058",\n  "bank_name": "Guaranty Trust Bank (GTBank)"\n}'
+    resolve_res = '{\n  "status": "success",\n  "account_number": "0123456789",\n  "bank_code": "058",\n  "bank_name": "Guaranty Trust Bank (GTBank)",\n  "account_name": "VICTOR KALU",\n  "is_valid": true,\n  "message": "Account name successfully resolved: VICTOR KALU"\n}'
+    t_resolve = Table([
         [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
+        [Paragraph(resolve_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(resolve_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_resolve.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_resolve)
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph("<b>4.4 Request Withdrawal (`POST /api/driver/withdraw`)</b>", h2_style))
+    story.append(Paragraph("Submits a withdrawal request of earnings directly to the driver's verified commercial bank account. Automatically updates the driver's default saved settlement account.", body_style))
+    
+    with_req = '{\n  "amount": 10000.00,\n  "bank_name": "Guaranty Trust Bank (GTBank)",\n  "bank_code": "058",\n  "account_number": "0123456789",\n  "account_name": "VICTOR KALU",\n  "notes": "Weekly earnings withdrawal"\n}'
+    with_res = '{\n  "message": "Withdrawal request submitted successfully.",\n  "payout": {\n    "payout_ref": "PAY-MNFY-99201",\n    "amount": 10000.00,\n    "bank_name": "Guaranty Trust Bank (GTBank)",\n    "account_number": "0123456789",\n    "account_name": "VICTOR KALU",\n    "status": "pending"\n  },\n  "remaining_available_balance": 6500.00\n}'
+    t_with = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (201 Created)</b>", bold_body_style)],
         [Paragraph(with_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(with_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
     ], colWidths=[240, 300])
     t_with.setStyle(TableStyle([
@@ -340,6 +379,7 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     ]))
     story.append(t_with)
     story.append(Spacer(1, 8))
+
 
     # SECTION 5: ZONE RATE CARD SPECIFICATION
     story.append(Paragraph("5. Zone-Based Compensation Rate Schedule (Zones 1–6)", h1_style))

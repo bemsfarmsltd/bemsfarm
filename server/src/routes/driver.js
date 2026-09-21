@@ -58,8 +58,11 @@ router.patch("/deliveries/:orderId/status", driverProtect, driverDeliveryControl
 // ── 3. Location Tracking ─────────────────────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);
 
-// ── 4. Wallet / Earnings ─────────────────────────────────────────────
+// ── 4. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
+router.get("/banks", driverProtect, driverEarningsController.getBanks);
+router.post("/bank/resolve", driverProtect, driverEarningsController.resolveBankAccount);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
 
 module.exports = router;
+
