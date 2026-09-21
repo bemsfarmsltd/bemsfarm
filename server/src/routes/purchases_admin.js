@@ -72,6 +72,7 @@ const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { clampLimit } = require("../utils/pagination");
+const { COA, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
 router.use(protect);
 
@@ -328,6 +329,27 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
            VALUES ($1,$2,'stock_in',$3,$4,'Purchase order received',$5,$6,NOW())`,
           [poi.product_id, warehouse_id?parseInt(warehouse_id):null, qty, po.rows[0].reference, poi.unit_cost, req.user.id]
         );
+
+        // ── DOUBLE-ENTRY POSTING FOR PURCHASE ORDER GOODS RECEIPT ───
+        // Dr: Inventory Asset Account (1210)
+        // Cr: Accounts Payable / Supplier Liability (2110)
+        try {
+          await postInventoryDoubleEntry(client, {
+            event_type: "po_receipt",
+            product_id: poi.product_id,
+            product_name: poi.product_name,
+            warehouse_id: warehouse_id ? parseInt(warehouse_id) : null,
+            quantity: qty,
+            unit_cost: poi.unit_cost,
+            debit_account: COA.INVENTORY_FINISHED_GOODS,
+            credit_account: COA.ACCOUNTS_PAYABLE_SUPPLIERS,
+            reference: po.rows[0].reference,
+            narration: `PO Goods Receipt (${po.rows[0].reference}): ${poi.product_name} (Qty: ${qty} @ ₦${parseFloat(poi.unit_cost || 0).toLocaleString()})`,
+            user_id: req.user.id,
+          });
+        } catch (finErr) {
+          console.warn("PO receipt double-entry non-fatal warning:", finErr.message);
+        }
       }
 
       if (newReceived < poi.quantity_ordered) allReceived = false;

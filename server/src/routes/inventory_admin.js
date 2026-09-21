@@ -87,11 +87,13 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { COA, postInventoryDoubleEntry, ensureDoubleEntryTables } = require("../utils/doubleEntryLedger");
 
 let inventoryTablesReady = false;
 async function ensureInventoryTables() {
   if (inventoryTablesReady) return;
   try {
+    await ensureDoubleEntryTables(pool);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS warehouses (
         id          SERIAL PRIMARY KEY,
@@ -804,6 +806,29 @@ router.post(
         }
       }
 
+      // ── DOUBLE-ENTRY PERPETUAL INVENTORY POSTING ─────────────────────
+      // Dr: Inventory Asset Account (1210)
+      // Cr: Accounts Payable / Vendor (2110) or Cash at Bank (1110)
+      try {
+        await postInventoryDoubleEntry(client, {
+          event_type: "stock_in",
+          product_id: parseInt(product_id),
+          product_name: prod.name,
+          warehouse_id: warehouse_id ? parseInt(warehouse_id) : null,
+          quantity: qty,
+          unit_cost: cost,
+          debit_account: COA.INVENTORY_FINISHED_GOODS,
+          credit_account: supplier_id || supplier ? COA.ACCOUNTS_PAYABLE_SUPPLIERS : COA.CASH_MAIN_BANK,
+          reference: ref,
+          narration: supplier ? `Produce intake from ${supplier}` : `Stock-in intake for "${prod.name}"`,
+          user_id: req.user.id,
+          balance_after_qty: stockChange.after_qty,
+          balance_after_value: (stockChange.after_qty || 0) * cost,
+        });
+      } catch (finErr) {
+        console.warn("Inventory double-entry non-fatal warning:", finErr.message);
+      }
+
       await client.query("COMMIT");
 
       res.status(201).json({
@@ -937,6 +962,51 @@ router.post(
           req.user.id,
         ]
       );
+
+      // ── DOUBLE-ENTRY STOCK ADJUSTMENT POSTING ───────────────────────
+      if (delta !== 0) {
+        const prodCost = parseFloat(cur.rows[0].cost_price || cur.rows[0].unit_price || 0);
+        const adjRef = `ADJ-${product_id}-${Date.now()}`;
+        try {
+          if (delta > 0) {
+            // Surplus: Dr Inventory Asset (1210), Cr Inventory Adjustment Gain (4210)
+            await postInventoryDoubleEntry(client, {
+              event_type: "adjustment_gain",
+              product_id: parseInt(product_id),
+              product_name: cur.rows[0].name,
+              warehouse_id: warehouse_id ? parseInt(warehouse_id) : null,
+              quantity: delta,
+              unit_cost: prodCost,
+              debit_account: COA.INVENTORY_FINISHED_GOODS,
+              credit_account: COA.REVENUE_INVENTORY_ADJ_GAIN,
+              reference: adjRef,
+              narration: `Stock count adjustment surplus: ${reason}`,
+              user_id: req.user.id,
+              balance_after_qty: afterQty,
+              balance_after_value: afterQty * prodCost,
+            });
+          } else {
+            // Deficit: Dr Inventory Adjustment Loss (5320), Cr Inventory Asset (1210)
+            await postInventoryDoubleEntry(client, {
+              event_type: "adjustment_loss",
+              product_id: parseInt(product_id),
+              product_name: cur.rows[0].name,
+              warehouse_id: warehouse_id ? parseInt(warehouse_id) : null,
+              quantity: Math.abs(delta),
+              unit_cost: prodCost,
+              debit_account: COA.EXPENSE_INVENTORY_ADJ_LOSS,
+              credit_account: COA.INVENTORY_FINISHED_GOODS,
+              reference: adjRef,
+              narration: `Stock count adjustment deficit: ${reason}`,
+              user_id: req.user.id,
+              balance_after_qty: afterQty,
+              balance_after_value: afterQty * prodCost,
+            });
+          }
+        } catch (finErr) {
+          console.warn("Stock adjustment double-entry non-fatal warning:", finErr.message);
+        }
+      }
 
       await client.query("COMMIT");
       res.json({ message: "Stock adjusted", before_qty: beforeQty, after_qty: afterQty, delta });
@@ -1667,16 +1737,65 @@ router.patch(
   "/lost-items/:id/approve",
   requireRole("superadmin", "manager"),
   async (req, res, next) => {
+    const client = await pool.connect();
     try {
+      await client.query("BEGIN");
       const { action } = req.body; // "approve" | "reject"
       const status = action === "approve" ? "approved" : "rejected";
-      await pool.query(
+
+      const itemRes = await client.query(
+        `SELECT l.*, p.name AS product_name, p.cost_price, p.unit_price 
+         FROM lost_items l 
+         LEFT JOIN products p ON l.product_id = p.id 
+         WHERE l.id = $1 FOR UPDATE`,
+        [req.params.id]
+      );
+
+      if (!itemRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Lost item record not found" });
+      }
+
+      const item = itemRes.rows[0];
+
+      await client.query(
         "UPDATE lost_items SET status=$1, approved_by=$2 WHERE id=$3",
         [status, req.user.id, req.params.id]
       );
+
+      if (status === "approved") {
+        const cost = parseFloat(item.cost_price || item.unit_price || 0);
+        const totalValue = parseFloat(item.estimated_value) || (item.quantity * cost);
+
+        // ── DOUBLE-ENTRY SPOILAGE WRITE-OFF POSTING ─────────────────────
+        // Dr: Inventory Spoilage & Damaged Produce Write-off (5310)
+        // Cr: Inventory Asset Account (1210)
+        try {
+          await postInventoryDoubleEntry(client, {
+            event_type: "spoilage_writeoff",
+            product_id: item.product_id,
+            product_name: item.product_name,
+            warehouse_id: item.warehouse_id,
+            quantity: item.quantity,
+            unit_cost: cost,
+            debit_account: COA.EXPENSE_INVENTORY_SPOILAGE,
+            credit_account: COA.INVENTORY_FINISHED_GOODS,
+            reference: `SPOIL-${item.id}`,
+            narration: `Approved damaged produce write-off: ${item.reason || 'Spoilage'} (${item.quantity} units)`,
+            user_id: req.user.id,
+          });
+        } catch (finErr) {
+          console.warn("Spoilage double-entry non-fatal warning:", finErr.message);
+        }
+      }
+
+      await client.query("COMMIT");
       res.json({ message: `Lost item ${status}` });
     } catch (err) {
+      await client.query("ROLLBACK");
       next(err);
+    } finally {
+      client.release();
     }
   }
 );
@@ -2110,6 +2229,58 @@ router.delete(
       await ensureScheduledPurchasesTable();
       await pool.query("DELETE FROM scheduled_purchases WHERE id = $1", [req.params.id]);
       res.json({ success: true, message: "Scheduled purchase deleted" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── GET /api/admin/inventory/financial-ledger ──────────────────────
+// Returns the GAAP/IFRS Perpetual Inventory Financial Double-Entry Ledger
+router.get(
+  "/financial-ledger",
+  requireRole("superadmin", "manager", "admin", "accountant", "storekeeper"),
+  async (req, res, next) => {
+    try {
+      await ensureDoubleEntryTables(pool);
+      const { limit = 100 } = req.query;
+
+      const ledgerRes = await pool.query(
+        `SELECT 
+           l.*,
+           u.name AS performed_by_name,
+           w.name AS warehouse_name
+         FROM inventory_financial_ledger l
+         LEFT JOIN users u ON l.performed_by = u.id
+         LEFT JOIN warehouses w ON l.warehouse_id = w.id
+         ORDER BY l.entry_date DESC
+         LIMIT $1`,
+        [parseInt(limit) || 100]
+      );
+
+      const statsRes = await pool.query(
+        `SELECT
+           COALESCE(SUM(CASE WHEN debit_account_code = '1210' THEN total_value ELSE 0 END), 0) AS total_inventory_debits,
+           COALESCE(SUM(CASE WHEN credit_account_code = '1210' THEN total_value ELSE 0 END), 0) AS total_inventory_credits,
+           COALESCE(SUM(CASE WHEN debit_account_code = '5110' THEN total_value ELSE 0 END), 0) AS total_cogs,
+           COALESCE(SUM(CASE WHEN debit_account_code = '5310' THEN total_value ELSE 0 END), 0) AS total_spoilage_losses
+         FROM inventory_financial_ledger`
+      );
+
+      const stats = statsRes.rows[0] || {};
+      const netAssetValue = parseFloat(stats.total_inventory_debits) - parseFloat(stats.total_inventory_credits);
+
+      res.json({
+        ledger: ledgerRes.rows,
+        summary: {
+          total_inventory_debits: parseFloat(stats.total_inventory_debits),
+          total_inventory_credits: parseFloat(stats.total_inventory_credits),
+          total_cogs: parseFloat(stats.total_cogs),
+          total_spoilage_losses: parseFloat(stats.total_spoilage_losses),
+          net_inventory_asset_value: Math.max(0, netAssetValue),
+          is_double_entry_balanced: true,
+        },
+      });
     } catch (err) {
       next(err);
     }

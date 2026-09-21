@@ -11,6 +11,7 @@ const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
 const { restoreOrderStock } = require("../utils/orderStock");
 const { initiateMonnifyRefund } = require("../utils/monnify");
+const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
 router.use(protect);
 
@@ -886,6 +887,72 @@ router.patch(
       // Only restore on the transition INTO cancelled
       if (nextStatus === "cancelled" && fromStatus !== "cancelled") {
         await restoreOrderStock(client, req.params.id);
+      }
+
+      // ── DOUBLE-ENTRY POSTING ON ORDER DELIVERED ────────────────────
+      if (nextStatus === "delivered" && fromStatus !== "delivered") {
+        try {
+          const ord = current.rows[0];
+          const totalAmt = parseFloat(ord.total) || 0;
+          const delFee = parseFloat(ord.delivery_fee) || 0;
+          const subtotalAmt = Math.max(0, totalAmt - delFee);
+
+          // 1. Post Revenue Double-Entry Journal
+          await postGeneralJournal(client, {
+            source_module: "orders",
+            source_ref: ord.order_ref || req.params.id,
+            journal_ref: `JRN-ORD-REV-${req.params.id}`,
+            debit_account: COA.CASH_MONNIFY_VAULT,
+            credit_account: COA.REVENUE_PRODUCT_SALES,
+            amount: subtotalAmt,
+            narration: `Product Sales Revenue for Order #${ord.order_ref || req.params.id}`,
+            user_id: req.user.id,
+          });
+
+          if (delFee > 0) {
+            await postGeneralJournal(client, {
+              source_module: "orders",
+              source_ref: ord.order_ref || req.params.id,
+              journal_ref: `JRN-ORD-DELREV-${req.params.id}`,
+              debit_account: COA.CASH_MONNIFY_VAULT,
+              credit_account: COA.REVENUE_DELIVERY_FEES,
+              amount: delFee,
+              narration: `Delivery Logistics Revenue for Order #${ord.order_ref || req.params.id}`,
+              user_id: req.user.id,
+            });
+          }
+
+          // 2. Post COGS Perpetual Inventory Double-Entry
+          const itemsRes = await client.query(
+            `SELECT oi.product_id, oi.product_name, oi.quantity, COALESCE(p.cost_price, p.unit_price, 0) AS cost_price 
+             FROM order_items oi 
+             LEFT JOIN products p ON oi.product_id = p.id 
+             WHERE oi.order_id = $1`,
+            [req.params.id]
+          );
+
+          for (const item of itemsRes.rows) {
+            const qty = parseInt(item.quantity) || 1;
+            const unitCost = parseFloat(item.cost_price) || 0;
+            if (qty > 0 && unitCost > 0) {
+              await postInventoryDoubleEntry(client, {
+                event_type: "cogs",
+                product_id: item.product_id,
+                product_name: item.product_name,
+                warehouse_id: null,
+                quantity: qty,
+                unit_cost: unitCost,
+                debit_account: COA.COGS_PRODUCE,
+                credit_account: COA.INVENTORY_FINISHED_GOODS,
+                reference: `ORD-${req.params.id}`,
+                narration: `Delivered Order COGS: ${item.product_name} (Qty: ${qty})`,
+                user_id: req.user.id,
+              });
+            }
+          }
+        } catch (finErr) {
+          console.warn("Order delivery double-entry non-fatal warning:", finErr.message);
+        }
       }
 
       await logStatusChange(

@@ -1,4 +1,5 @@
 const pool = require("../db/pool");
+const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
 // Normalize driver status string input
 function normalizeStatus(status) {
@@ -456,6 +457,52 @@ const updateDeliveryStatus = async (req, res, next) => {
           null,
         ]
       );
+
+      // ── DOUBLE-ENTRY POSTINGS FOR ORDER DELIVERY & COGS ───────────
+      try {
+        // 1. Double-Entry Delivery Commission: Dr Delivery Expense (5210), Cr Driver Wallet Payable (2120)
+        await postGeneralJournal(client, {
+          source_module: "driver_wallet",
+          source_ref: delRef,
+          journal_ref: `JRN-COMM-${delRef}`,
+          debit_account: COA.EXPENSE_DELIVERY_COMMISSION,
+          credit_account: COA.DRIVER_WALLET_PAYABLE,
+          amount: commission,
+          narration: `Driver Commission Drop for ${req.driver.name || 'Driver'} - ${zoneName}`,
+          user_id: null,
+        });
+
+        // 2. Compute COGS from order items
+        const itemsRes = await client.query(
+          `SELECT oi.product_id, oi.product_name, oi.quantity, COALESCE(p.cost_price, p.unit_price, 0) AS cost_price 
+           FROM order_items oi 
+           LEFT JOIN products p ON oi.product_id = p.id 
+           WHERE oi.order_id = $1`,
+          [actualOrderId]
+        );
+
+        for (const item of itemsRes.rows) {
+          const qty = parseInt(item.quantity) || 1;
+          const unitCost = parseFloat(item.cost_price) || 0;
+          if (qty > 0 && unitCost > 0) {
+            await postInventoryDoubleEntry(client, {
+              event_type: "cogs",
+              product_id: item.product_id,
+              product_name: item.product_name,
+              warehouse_id: null,
+              quantity: qty,
+              unit_cost: unitCost,
+              debit_account: COA.COGS_PRODUCE,
+              credit_account: COA.INVENTORY_FINISHED_GOODS,
+              reference: `ORD-${actualOrderId}`,
+              narration: `Delivered Order COGS: ${item.product_name} (Qty: ${qty})`,
+              user_id: null,
+            });
+          }
+        }
+      } catch (finErr) {
+        console.warn("Delivery completion double-entry non-fatal warning:", finErr.message);
+      }
 
       // Store driver_commission_amount on delivery record
       await client.query(

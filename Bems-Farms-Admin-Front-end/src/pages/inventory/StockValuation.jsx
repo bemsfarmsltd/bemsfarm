@@ -23,6 +23,23 @@ export default function StockValuation() {
   const [sortBy, setSortBy] = useState('retail_desc') // 'retail_desc', 'cost_desc', 'profit_desc', 'margin_desc', 'stock_desc'
   const [pageSize, setPageSize] = useState(25)
   const [currentPage, setCurrentPage] = useState(1)
+  const [activeTab, setActiveTab] = useState('valuation') // 'valuation' | 'financial_ledger'
+  const [finLedger, setFinLedger] = useState([])
+  const [finSummary, setFinSummary] = useState(null)
+  const [loadingFin, setLoadingFin] = useState(false)
+
+  const loadFinancialLedger = useCallback(async () => {
+    setLoadingFin(true)
+    try {
+      const res = await api.get('/admin/inventory/financial-ledger')
+      setFinLedger(res.data?.ledger || [])
+      setFinSummary(res.data?.summary || null)
+    } catch {
+      // ignore
+    } finally {
+      setLoadingFin(false)
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,7 +56,8 @@ export default function StockValuation() {
 
   useEffect(() => {
     load()
-  }, [load])
+    loadFinancialLedger()
+  }, [load, loadFinancialLedger])
 
   // Summary calculations
   const summary = data?.summary || {}
@@ -242,6 +260,35 @@ export default function StockValuation() {
         </div>
       </div>
 
+      {/* ── Tab Switcher: Valuation vs Perpetual Double-Entry Ledger ── */}
+      <div className="d-flex align-items-center gap-2 mb-4 border-bottom border-light-subtle pb-2">
+        <button
+          type="button"
+          className={`btn btn-sm px-3.5 py-2 fw-bold d-flex align-items-center gap-1.5 rounded-pill ${
+            activeTab === 'valuation' ? 'btn-dark text-white' : 'btn-light text-muted'
+          }`}
+          onClick={() => setActiveTab('valuation')}
+        >
+          <i className="ri-pie-chart-2-line" />
+          <span>Stock Valuation &amp; Margins</span>
+        </button>
+
+        <button
+          type="button"
+          className={`btn btn-sm px-3.5 py-2 fw-bold d-flex align-items-center gap-1.5 rounded-pill ${
+            activeTab === 'financial_ledger' ? 'btn-emerald-solid text-white' : 'btn-light text-muted'
+          }`}
+          onClick={() => {
+            setActiveTab('financial_ledger')
+            loadFinancialLedger()
+          }}
+        >
+          <i className="ri-book-read-line" />
+          <span>Perpetual Double-Entry Financial Ledger (GAAP/IFRS)</span>
+          <span className="badge bg-white text-dark ms-1" style={{ fontSize: 10 }}>Live Dr/Cr</span>
+        </button>
+      </div>
+
       {error && (
         <div className="alert alert-danger d-flex justify-content-between align-items-center shadow-sm" role="alert">
           <div>
@@ -262,7 +309,7 @@ export default function StockValuation() {
         </div>
       )}
 
-      {!loading && data && (
+      {!loading && data && activeTab === 'valuation' && (
         <>
           {/* ── 1. Hero KPI Cards ────────────────────────────────── */}
           <div className="row g-3 mb-4">
@@ -771,6 +818,131 @@ export default function StockValuation() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── PERPETUAL INVENTORY DOUBLE-ENTRY FINANCIAL LEDGER TAB ── */}
+      {activeTab === 'financial_ledger' && (
+        <div>
+          {/* Double-Entry Inventory Summary Cards */}
+          <div className="row g-3 mb-4">
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3.5 rounded-4" style={{ borderLeft: '4px solid #16A34A', background: '#F7FDF9' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Total Inventory Debits (Dr)</div>
+                <div className="h4 font-weight-bold text-success mt-1 mb-0">
+                  +₦{(finSummary?.total_inventory_debits || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>PO Intake &amp; Restock Asset Value</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3.5 rounded-4" style={{ borderLeft: '4px solid #DC2626', background: '#FEF2F2' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Total Cost of Goods Sold (COGS)</div>
+                <div className="h4 font-weight-bold text-danger mt-1 mb-0">
+                  -₦{(finSummary?.total_cogs || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Direct Product Fulfillment Cost (P&amp;L)</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3.5 rounded-4" style={{ borderLeft: '4px solid #D97706', background: '#FFFBEB' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Spoilage &amp; Damage Write-offs</div>
+                <div className="h4 font-weight-bold text-warning mt-1 mb-0">
+                  -₦{(finSummary?.total_spoilage_losses || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Expired / Discarded Stock Loss</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3.5 rounded-4" style={{ borderLeft: '4px solid #2563EB', background: '#EFF6FF' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Net Book Asset Value (1210)</div>
+                <div className="h4 font-weight-bold text-primary mt-1 mb-0">
+                  ₦{(finSummary?.net_inventory_asset_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Balanced Perpetual Inventory Asset</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div className="card-header bg-white border-bottom border-light-subtle p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                  <i className="ri-shield-check-line text-success fs-18"></i>
+                  <span>Perpetual Double-Entry Financial Valuation Ledger</span>
+                </h6>
+                <small className="text-muted" style={{ fontSize: 11 }}>
+                  Statutory GAAP / IFRS journal records linking every warehouse physical movement to general ledger debit and credit accounts
+                </small>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                onClick={loadFinancialLedger}
+              >
+                <i className={`ri-refresh-line ${loadingFin ? 'ri-spin' : ''}`}></i>
+                <span>Refresh Ledger</span>
+              </button>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: 12 }}>
+                <thead className="table-light text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.6 }}>
+                  <tr>
+                    <th className="ps-3 py-3">Timestamp</th>
+                    <th>Product / Item</th>
+                    <th>Event Type</th>
+                    <th>Accounting Entry (Dr / Cr)</th>
+                    <th>Quantity</th>
+                    <th>Unit Cost</th>
+                    <th>Total Value</th>
+                    <th>Reference</th>
+                    <th>Narration</th>
+                    <th className="pe-3">Authorized By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finLedger.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="text-center py-5 text-muted">
+                        No financial double-entry records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    finLedger.map((row) => (
+                      <tr key={row.id}>
+                        <td className="ps-3 text-muted">{new Date(row.entry_date).toLocaleString()}</td>
+                        <td className="fw-bold text-dark">{row.product_name || `Product #${row.product_id}`}</td>
+                        <td>
+                          <span className="badge bg-light text-dark border text-capitalize" style={{ fontSize: 10 }}>
+                            {row.event_type?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="text-danger font-monospace" style={{ fontSize: 11 }}>
+                            <strong>Dr:</strong> {row.debit_account_name} ({row.debit_account_code})
+                          </div>
+                          <div className="text-success font-monospace" style={{ fontSize: 11 }}>
+                            <strong>Cr:</strong> {row.credit_account_name} ({row.credit_account_code})
+                          </div>
+                        </td>
+                        <td className="fw-bold">{row.quantity}</td>
+                        <td className="text-muted">{money(row.unit_cost)}</td>
+                        <td className="fw-bold text-dark">{money(row.total_value)}</td>
+                        <td className="font-monospace text-primary small">{row.reference}</td>
+                        <td className="text-muted small" style={{ maxWidth: 220 }}>{row.narration}</td>
+                        <td className="pe-3 text-muted">{row.performed_by_name || 'System'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Scoped Styling ────────────────────────────────────── */}

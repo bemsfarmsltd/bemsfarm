@@ -40,6 +40,7 @@ const { clampLimit } = require("../utils/pagination");
 const validate = require("../middleware/validate");
 const posSchemas = require("../schemas/posSchemas");
 const { notifyAdmin } = require("../services/notificationService");
+const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
 router.use(protect);
 
@@ -434,7 +435,8 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
       }
     }
 
-    // Insert order items and deduct stock
+    // Insert order items, calculate COGS, and deduct stock
+    let totalCogsAmount = 0;
     for (const item of lineItems) {
       const multiplier = parseFloat(item.multiplier || item.packaging_multiplier || 1) || 1;
       const effectiveDeduction = parseFloat(item.quantity) * multiplier;
@@ -447,14 +449,59 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
          VALUES ($1,$2,$3,$4,$5,$5,$6)`,
         [orderId, item.product_id, displayName, item.quantity, item.unit_price, item.line_total]
       );
-      await client.query(
+
+      const prodRes = await client.query(
         `UPDATE products
          SET stock = GREATEST(0, COALESCE(stock,0) - $1),
              stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
              updated_at = NOW()
-         WHERE id=$2`,
+         WHERE id=$2
+         RETURNING cost_price, unit_price, name`,
         [effectiveDeduction, item.product_id]
       );
+
+      const itemCost = prodRes.rows[0]
+        ? parseFloat(prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0)
+        : 0;
+      const lineCogs = effectiveDeduction * itemCost;
+      totalCogsAmount += lineCogs;
+
+      // Post perpetual inventory reduction for this line item
+      try {
+        await postInventoryDoubleEntry(client, {
+          event_type: "cogs",
+          product_id: item.product_id,
+          product_name: displayName,
+          warehouse_id: null,
+          quantity: effectiveDeduction,
+          unit_cost: itemCost,
+          debit_account: COA.COGS_PRODUCE,
+          credit_account: COA.INVENTORY_FINISHED_GOODS,
+          reference: reference,
+          narration: `POS Counter Sale fulfillment: ${displayName} (Qty: ${effectiveDeduction})`,
+          user_id: req.user.id,
+        });
+      } catch (finErr) {
+        console.warn("POS line COGS double-entry non-fatal warning:", finErr.message);
+      }
+    }
+
+    // ── POST REVENUE DOUBLE-ENTRY JOURNAL ──────────────────────────
+    // Dr: Cash POS Drawer (1130) or Accounts Receivable (1140)
+    // Cr: Product Sales Revenue (4110)
+    try {
+      await postGeneralJournal(client, {
+        source_module: "pos",
+        source_ref: reference,
+        journal_ref: `JRN-POS-REV-${reference}`,
+        debit_account: isPayLater ? COA.ACCOUNTS_RECEIVABLE : COA.CASH_POS_DRAWER,
+        credit_account: COA.REVENUE_PRODUCT_SALES,
+        amount: total,
+        narration: `POS Retail Sale (${reference}) for ${customer_name} (${payment_method})`,
+        user_id: req.user.id,
+      });
+    } catch (finErr) {
+      console.warn("POS revenue double-entry non-fatal warning:", finErr.message);
     }
 
     if (appliedCoupon) {

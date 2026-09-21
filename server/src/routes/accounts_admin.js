@@ -132,6 +132,7 @@ const accountsController = require("../controllers/accountsController");
 const validate = require("../middleware/validate");
 const accountsAdminSchemas = require("../schemas/accountsAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
+const { ensureDoubleEntryTables, COA } = require("../utils/doubleEntryLedger");
 
 router.use(protect);
 
@@ -786,6 +787,146 @@ router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (re
     next(err);
   } finally {
     client.release();
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// GENERAL JOURNAL (DOUBLE-ENTRY)  ──  GET /api/admin/accounts/general-journal
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/general-journal", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    await ensureDoubleEntryTables(pool);
+    const { module, limit = 100, date_from, date_to } = req.query;
+
+    let query = `
+      SELECT 
+        g.*,
+        u.name AS created_by_name
+      FROM general_journal_entries g
+      LEFT JOIN users u ON g.created_by = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (module) {
+      params.push(module);
+      query += ` AND g.source_module = $${params.length}`;
+    }
+    if (date_from) {
+      params.push(date_from);
+      query += ` AND g.entry_date >= $${params.length}`;
+    }
+    if (date_to) {
+      params.push(date_to);
+      query += ` AND g.entry_date <= $${params.length}`;
+    }
+
+    query += ` ORDER BY g.entry_date DESC, g.id DESC LIMIT $${params.length + 1}`;
+    params.push(parseInt(limit) || 100);
+
+    const result = await pool.query(query, params);
+
+    const totalsRes = await pool.query(`
+      SELECT 
+        COALESCE(SUM(debit_amount), 0) AS total_debits,
+        COALESCE(SUM(credit_amount), 0) AS total_credits,
+        COUNT(*) AS total_entries
+      FROM general_journal_entries
+    `);
+
+    const totals = totalsRes.rows[0] || {};
+    const totalDebits = parseFloat(totals.total_debits || 0);
+    const totalCredits = parseFloat(totals.total_credits || 0);
+
+    res.json({
+      entries: result.rows,
+      summary: {
+        total_debits: totalDebits,
+        total_credits: totalCredits,
+        variance: Math.abs(totalDebits - totalCredits),
+        is_balanced: Math.abs(totalDebits - totalCredits) < 0.01,
+        total_entries: parseInt(totals.total_entries || 0),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// TRIAL BALANCE (STATUTORY GAAP/IFRS)  ──  GET /api/admin/accounts/trial-balance
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/trial-balance", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    await ensureDoubleEntryTables(pool);
+
+    // Aggregate debits and credits per account code from general_journal_entries
+    const rawRes = await pool.query(`
+      WITH debits AS (
+        SELECT debit_account_code AS code, debit_account_name AS name, SUM(debit_amount) AS total_dr
+        FROM general_journal_entries
+        GROUP BY debit_account_code, debit_account_name
+      ),
+      credits AS (
+        SELECT credit_account_code AS code, credit_account_name AS name, SUM(credit_amount) AS total_cr
+        FROM general_journal_entries
+        GROUP BY credit_account_code, credit_account_name
+      ),
+      all_accounts AS (
+        SELECT code, name FROM debits
+        UNION
+        SELECT code, name FROM credits
+      )
+      SELECT 
+        a.code,
+        a.name,
+        COALESCE(d.total_dr, 0) AS total_debit,
+        COALESCE(c.total_cr, 0) AS total_credit
+      FROM all_accounts a
+      LEFT JOIN debits d ON a.code = d.code
+      LEFT JOIN credits c ON a.code = c.code
+      ORDER BY a.code ASC
+    `);
+
+    // Standard COA defaults to always present a comprehensive balance sheet & P&L trial balance
+    const accounts = rawRes.rows.map((row) => {
+      const code = row.code;
+      const dr = parseFloat(row.total_debit || 0);
+      const cr = parseFloat(row.total_credit || 0);
+      let accountType = "asset";
+
+      if (code.startsWith("1")) accountType = "asset";
+      else if (code.startsWith("2")) accountType = "liability";
+      else if (code.startsWith("3")) accountType = "equity";
+      else if (code.startsWith("4")) accountType = "revenue";
+      else if (code.startsWith("5")) accountType = "expense";
+
+      return {
+        code,
+        name: row.name,
+        account_type: accountType,
+        total_debit: dr,
+        total_credit: cr,
+        net_balance: accountType === "asset" || accountType === "expense" ? dr - cr : cr - dr,
+      };
+    });
+
+    const sumDebits = accounts.reduce((acc, a) => acc + a.total_debit, 0);
+    const sumCredits = accounts.reduce((acc, a) => acc + a.total_credit, 0);
+    const variance = Math.abs(sumDebits - sumCredits);
+
+    res.json({
+      trial_balance: accounts,
+      summary: {
+        total_debits: sumDebits,
+        total_credits: sumCredits,
+        variance: variance,
+        is_balanced: variance < 0.01,
+        as_of_date: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    next(err);
   }
 });
 
