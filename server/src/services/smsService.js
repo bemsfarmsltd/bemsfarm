@@ -71,7 +71,7 @@ const SMS = {
   customerUnavailable: (phone, name, orderId) =>
     sendSMS(
       phone,
-      `Hi ${name}, our driver attempted delivery of order #${orderId} but couldn't reach you. Please call us back or visit bemsfarm.vercel.app to reschedule. We'll try again!`,
+      `Hi ${name}, our driver attempted delivery of order #${orderId} but couldn't reach you. Please call us back or visit bemsfarms.com to reschedule. We'll try again!`,
     ),
 
   // Customer: order delivered
@@ -85,7 +85,7 @@ const SMS = {
   orderCancelled: (phone, name, orderId, reason) =>
     sendSMS(
       phone,
-      `Hi ${name}, your BemsFarms order #${orderId} has been cancelled. Reason: ${reason}. Any payment will be refunded in 3-5 business days. Questions? Visit bemsfarm.vercel.app`,
+      `Hi ${name}, your BemsFarms order #${orderId} has been cancelled. Reason: ${reason}. Any payment will be refunded in 3-5 business days. Questions? Visit bemsfarms.com`,
     ),
 
   // Customer: refund processed
