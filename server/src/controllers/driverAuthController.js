@@ -109,11 +109,52 @@ const login = async (req, res, next) => {
       [authRecord.id]
     );
 
+    // Auto-provision Monnify Dedicated Virtual Account if not yet created
+    let walletAccountNumber = driver.wallet_account_number;
+    let walletBankName = driver.wallet_bank_name || "Wema Bank / Monnify";
+    let walletAccountName = driver.wallet_account_name || `BEM - ${driver.name.toUpperCase()}`;
+
+    if (!walletAccountNumber) {
+      try {
+        const { createMonnifyReservedAccount } = require("../utils/monnify");
+        const monnifyRes = await createMonnifyReservedAccount({
+          accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
+          accountName: `BEMS - ${driver.name.toUpperCase()}`,
+          customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
+          customerName: driver.name,
+        });
+
+        if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
+          const primary = monnifyRes.accounts[0];
+          walletAccountNumber = primary.accountNumber;
+          walletBankName = primary.bankName || walletBankName;
+          walletAccountName = primary.accountName || walletAccountName;
+
+          await pool.query(
+            `UPDATE drivers 
+             SET wallet_account_number = $1, 
+                 wallet_bank_name = $2, 
+                 wallet_account_name = $3, 
+                 updated_at = NOW() 
+             WHERE id = $4`,
+            [walletAccountNumber, walletBankName, walletAccountName, driver.id]
+          );
+        }
+      } catch (monErr) {
+        console.warn("Auto Monnify provisioning notice on login:", monErr.message);
+      }
+    }
+
     const token = generateDriverToken(driver);
 
     res.json({
       token,
-      driver,
+      driver: {
+        ...driver,
+        wallet_account_number: walletAccountNumber,
+        wallet_bank_name: walletBankName,
+        wallet_account_name: walletAccountName,
+      },
       message: "Login successful",
     });
   } catch (err) {
@@ -126,6 +167,39 @@ const login = async (req, res, next) => {
 const getMe = async (req, res, next) => {
   try {
     const driver = req.driver;
+
+    // Ensure wallet account exists
+    if (!driver.wallet_account_number) {
+      try {
+        const { createMonnifyReservedAccount } = require("../utils/monnify");
+        const monnifyRes = await createMonnifyReservedAccount({
+          accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
+          accountName: `BEMS - ${driver.name.toUpperCase()}`,
+          customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
+          customerName: driver.name,
+        });
+
+        if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
+          const primary = monnifyRes.accounts[0];
+          driver.wallet_account_number = primary.accountNumber;
+          driver.wallet_bank_name = primary.bankName || "Wema Bank / Monnify";
+          driver.wallet_account_name = primary.accountName || `BEM - ${driver.name.toUpperCase()}`;
+
+          await pool.query(
+            `UPDATE drivers 
+             SET wallet_account_number = $1, 
+                 wallet_bank_name = $2, 
+                 wallet_account_name = $3, 
+                 updated_at = NOW() 
+             WHERE id = $4`,
+            [driver.wallet_account_number, driver.wallet_bank_name, driver.wallet_account_name, driver.id]
+          );
+        }
+      } catch (monErr) {
+        console.warn("Auto Monnify provisioning notice on getMe:", monErr.message);
+      }
+    }
+
     res.json({
       driver,
     });

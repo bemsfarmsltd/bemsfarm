@@ -604,6 +604,34 @@ router.patch(
 
         await client.query("COMMIT");
 
+        // Auto-provision Monnify Dedicated Virtual Account upon approval
+        if (!driver.wallet_account_number) {
+          try {
+            const { createMonnifyReservedAccount } = require("../utils/monnify");
+            createMonnifyReservedAccount({
+              accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
+              accountName: `BEMS - ${driver.name.toUpperCase()}`,
+              customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
+              customerName: driver.name,
+            }).then(async (monnifyRes) => {
+              if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
+                const primary = monnifyRes.accounts[0];
+                await pool.query(
+                  `UPDATE drivers 
+                   SET wallet_account_number = $1, 
+                       wallet_bank_name = $2, 
+                       wallet_account_name = $3, 
+                       updated_at = NOW() 
+                   WHERE id = $4`,
+                  [primary.accountNumber, primary.bankName, primary.accountName, driver.id]
+                );
+              }
+            }).catch((err) => console.warn("Background Monnify provisioning notice:", err.message));
+          } catch (e) {
+            console.warn("Monnify init error:", e.message);
+          }
+        }
+
         // Send approval congratulations email to driver
         const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
         const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");

@@ -21,8 +21,8 @@ async function getMonnifyToken() {
     return cachedToken;
   }
 
-  const apiKey = process.env.MONNIFY_API_KEY || "MK_TEST_CG14F4X6S6";
-  const secretKey = process.env.MONNIFY_SECRET_KEY || "HGKOPJ3OV49T5QA1JHX5M09CE74VGC22";
+  const apiKey = process.env.MONNIFY_API_KEY || "MK_TEST_CG14E4X8S6";
+  const secretKey = process.env.MONNIFY_SECRET_KEY || "HGK0PJ30V49T5QA1JHX5M09CE74VGC22";
   if (!apiKey || !secretKey) {
     throw new Error("Monnify credentials are not configured (MONNIFY_API_KEY / MONNIFY_SECRET_KEY)");
   }
@@ -56,7 +56,7 @@ async function createMonnifyReservedAccount({
   bvn,
   nin,
 }) {
-  const contractCode = process.env.MONNIFY_CONTRACT_CODE || "E1T6K8YE0X9G";
+  const contractCode = process.env.MONNIFY_CONTRACT_CODE || "4711340709";
   const token = await getMonnifyToken();
 
   const payload = {
@@ -87,10 +87,10 @@ async function createMonnifyReservedAccount({
 
 /**
  * 3. Fetch Master Merchant Wallet Balance API
- * GET /api/v2/disbursements/wallet-balance?accountNumber=8558127267
+ * GET /api/v2/disbursements/wallet-balance?accountNumber=8559127267
  */
 async function getMonnifyWalletBalance(accountNumber) {
-  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT || "8558127267";
+  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8559127267";
   const token = await getMonnifyToken();
 
   const { data } = await axios.get(
@@ -119,7 +119,7 @@ async function initiateMonnifyDisbursement({
   sourceAccountNumber,
 }) {
   const token = await getMonnifyToken();
-  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT || "8558127267";
+  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8559127267";
 
   const payload = {
     amount: parseFloat(amount),

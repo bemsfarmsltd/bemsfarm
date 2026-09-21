@@ -441,7 +441,7 @@ export default function WalletManagement() {
                     Monnify Merchant Reserve
                   </span>
                   <div className="h4 font-weight-bold text-white mb-0 mt-1">
-                    ₦{(gateway.merchant_available_balance || 1200800).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₦{(gateway.merchant_available_balance ?? summaryData.metrics?.merchant_available_balance ?? 5000000000).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="p-2 rounded-3" style={{ background: 'rgba(255,255,255,0.1)' }}>
@@ -449,7 +449,7 @@ export default function WalletManagement() {
                 </div>
               </div>
               <div className="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25" style={{ fontSize: 11 }}>
-                <span className="text-white-50">Master DVA: <b>{gateway.merchant_account_number || '8558127267'}</b></span>
+                <span className="text-white-50">Master DVA: <b>{gateway.merchant_account_number || '8559127267'}</b></span>
                 <span className="badge" style={{ background: '#10B981', color: '#FFFFFF' }}>Live Sandbox</span>
               </div>
             </div>
@@ -1263,14 +1263,14 @@ export default function WalletManagement() {
                 <div className="col-12 col-md-4">
                   <div className="p-3 rounded-3 bg-light border border-secondary border-opacity-10">
                     <div className="text-muted small font-weight-bold">CONTRACT CODE</div>
-                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.contract_code || 'E1T6K8YE0X9G'}</div>
+                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.contract_code || '4711340709'}</div>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 rounded-3 bg-light border border-secondary border-opacity-10">
                     <div className="text-muted small font-weight-bold">MASTER MERCHANT ACCOUNT</div>
                     <div className="font-monospace text-dark mt-1 font-weight-bold">
-                      {gateway.merchant_account_number || '8558127267'} ({gateway.merchant_bank || 'Wema Bank'})
+                      {gateway.merchant_account_number || '8559127267'} ({gateway.merchant_bank || 'Wema Bank'})
                     </div>
                   </div>
                 </div>

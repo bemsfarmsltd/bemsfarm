@@ -847,10 +847,6 @@ export default function Sidebar() {
             {/* 8. FINANCE */}
             {activeTab === 'finance' && (
               <>
-                <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Wallet &amp; Gateway Hub</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>DVA</span>
-                </NavLink>
                 <NavLink to="/accounts/transactions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>All Transactions</span>
                 </NavLink>
@@ -862,6 +858,10 @@ export default function Sidebar() {
                     <span>Driver Commissions</span>
                   </NavLink>
                 )}
+                <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Wallet &amp; Gateway Hub</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>DVA</span>
+                </NavLink>
               </>
             )}
 
