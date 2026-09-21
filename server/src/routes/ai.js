@@ -649,4 +649,120 @@ router.post("/visual-scan", async (req, res, next) => {
   }
 });
 
+// ── POST /api/ai/cart/webhook ────────────────────────────────────────
+// Dedicated Cart Webhook Endpoint for n8n AI Workflow to push/stage items directly to user cart
+router.post("/cart/webhook", async (req, res, next) => {
+  try {
+    const {
+      customerId,
+      userId,
+      customerEmail,
+      email,
+      sessionId,
+      session_id,
+      action = "AUTO_ADD_TO_CART",
+      recipeName,
+      recipe_name,
+      items = [],
+      recipeBundle,
+    } = req.body;
+
+    const targetCustomerId = customerId || userId || null;
+    const targetEmail = customerEmail || email || null;
+    const targetSessionId = sessionId || session_id || null;
+    const targetRecipeName = recipeName || recipe_name || recipeBundle?.recipe_name || "Chef Bems Recipe Bundle";
+
+    let finalItems = Array.isArray(items) && items.length > 0 ? items : (recipeBundle?.items || []);
+
+    if (!finalItems || finalItems.length === 0) {
+      return res.status(400).json({
+        status: "error",
+        message: "No items array or recipeBundle.items provided in request payload"
+      });
+    }
+
+    // Insert into customer_ai_staged_carts
+    const insertRes = await pool.query(
+      `
+      INSERT INTO customer_ai_staged_carts (
+        customer_id, customer_email, session_id, recipe_name, items, action, is_claimed, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())
+      RETURNING *
+      `,
+      [
+        targetCustomerId,
+        targetEmail,
+        targetSessionId,
+        targetRecipeName,
+        JSON.stringify(finalItems),
+        action
+      ]
+    );
+
+    res.status(201).json({
+      status: "success",
+      message: `Successfully received and staged ${finalItems.length} items for customer cart`,
+      staged_cart_id: insertRes.rows[0].id,
+      recipe_name: targetRecipeName,
+      item_count: finalItems.length,
+      action: action
+    });
+  } catch (err) {
+    console.error("❌ Cart webhook error:", err.message);
+    next(err);
+  }
+});
+
+// ── GET /api/ai/cart/pending ─────────────────────────────────────────
+// Fetch and claim pending cart items staged by n8n for active customer
+router.get("/cart/pending", async (req, res, next) => {
+  try {
+    const user = await resolveUser(req);
+    const { session_id, email } = req.query;
+
+    const customerId = user?.id || null;
+    const customerEmail = user?.email || email || null;
+    const sessionId = session_id || null;
+
+    if (!customerId && !customerEmail && !sessionId) {
+      return res.json({ status: "success", count: 0, staged_items: [] });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id, recipe_name, items, action, created_at
+      FROM customer_ai_staged_carts
+      WHERE is_claimed = FALSE
+        AND (
+          (customer_id IS NOT NULL AND customer_id = $1)
+          OR (customer_email IS NOT NULL AND LOWER(customer_email) = LOWER($2))
+          OR (session_id IS NOT NULL AND session_id = $3)
+        )
+      ORDER BY created_at DESC
+      LIMIT 10
+      `,
+      [customerId, customerEmail, sessionId]
+    );
+
+    if (result.rows.length > 0) {
+      const ids = result.rows.map(r => r.id);
+      await pool.query(
+        `UPDATE customer_ai_staged_carts SET is_claimed = TRUE, claimed_at = NOW() WHERE id = ANY($1)`,
+        [ids]
+      );
+    }
+
+    res.json({
+      status: "success",
+      count: result.rows.length,
+      staged_bundles: result.rows
+    });
+  } catch (err) {
+    console.error("❌ Cart pending fetch error:", err.message);
+    next(err);
+  }
+});
+
 module.exports = router;
+
