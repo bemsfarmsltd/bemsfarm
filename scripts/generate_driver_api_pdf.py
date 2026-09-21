@@ -32,28 +32,28 @@ class NumberedCanvas(canvas.Canvas):
         
         # Header (pages > 1)
         if self._pageNumber > 1:
-            self.drawString(40, 760, "Bems Farms — Driver Mobile Application & Dispatch API Specification")
-            self.setStrokeColor(colors.HexColor("#E2E8F0"))
+            self.drawString(40, 762, "Bems Farms — Driver Mobile App & Enterprise Wallet Platform API Specification")
+            self.setStrokeColor(colors.HexColor("#CBD5E1"))
             self.setLineWidth(0.5)
-            self.line(40, 752, 572, 752)
+            self.line(40, 754, 572, 754)
         
         # Footer
         page_str = f"Page {self._pageNumber} of {page_count}"
-        self.drawRightString(572, 28, page_str)
-        self.drawString(40, 28, "CONFIDENTIAL & PROPRIETARY — BEMS FARMS LOGISTICS & FINTECH PLATFORM")
-        self.setStrokeColor(colors.HexColor("#E2E8F0"))
+        self.drawRightString(572, 25, page_str)
+        self.drawString(40, 25, "CONFIDENTIAL — BEMS FARMS LOGISTICS, DRIVER DVA & DOUBLE-ENTRY WALLET SPECIFICATION")
+        self.setStrokeColor(colors.HexColor("#CBD5E1"))
         self.setLineWidth(0.5)
-        self.line(40, 38, 572, 38)
+        self.line(40, 35, 572, 35)
         self.restoreState()
 
-def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
+def build_pdf(filename="BEMS_FARMS_DRIVER_AND_WALLET_API_SPECIFICATION.pdf"):
     doc = SimpleDocTemplate(
         filename,
         pagesize=letter,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=45,
-        bottomMargin=45
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=42,
+        bottomMargin=42
     )
 
     styles = getSampleStyleSheet()
@@ -62,41 +62,38 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     SECONDARY = colors.HexColor("#0F172A") # Slate 900
     ACCENT = colors.HexColor("#2563EB")    # Blue 600
     MUTED = colors.HexColor("#64748B")     # Slate 500
-    LIGHT_BG = colors.HexColor("#F8FAFC")  # Slate 50
-    CARD_BG = colors.HexColor("#FFFFFF")
     BORDER_COL = colors.HexColor("#CBD5E1")
     SUCCESS = colors.HexColor("#166534")
 
-    # Custom styles
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
+        fontSize=17,
+        leading=21,
         textColor=SECONDARY,
-        spaceAfter=4
+        spaceAfter=3
     )
     
     subtitle_style = ParagraphStyle(
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=10,
-        leading=14,
+        fontSize=9,
+        leading=13,
         textColor=MUTED,
-        spaceAfter=12
+        spaceAfter=8
     )
 
     h1_style = ParagraphStyle(
         'Header1',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=17,
+        fontSize=11.5,
+        leading=15,
         textColor=PRIMARY,
-        spaceBefore=14,
-        spaceAfter=6,
+        spaceBefore=10,
+        spaceAfter=4,
         keepWithNext=True
     )
 
@@ -104,11 +101,11 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         'Header2',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10.5,
-        leading=14,
+        fontSize=9.5,
+        leading=13,
         textColor=SECONDARY,
-        spaceBefore=8,
-        spaceAfter=4,
+        spaceBefore=7,
+        spaceAfter=3,
         keepWithNext=True
     )
 
@@ -116,8 +113,8 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         'BodyDark',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=8.5,
-        leading=12,
+        fontSize=7.8,
+        leading=11,
         textColor=colors.HexColor("#334155")
     )
 
@@ -125,8 +122,8 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         'BoldBody',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8.5,
-        leading=12,
+        fontSize=7.8,
+        leading=11,
         textColor=SECONDARY
     )
 
@@ -134,70 +131,55 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         'CodeBlock',
         parent=styles['Normal'],
         fontName='Courier',
-        fontSize=7.5,
-        leading=10,
+        fontSize=6.5,
+        leading=8.8,
         textColor=colors.HexColor("#0F172A"),
-        backColor=colors.HexColor("#F1F5F9"),
-        borderPadding=6,
-        spaceBefore=3,
-        spaceAfter=5
-    )
-
-    badge_style = ParagraphStyle(
-        'Badge',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=9,
-        textColor=colors.white
+        backColor=colors.HexColor("#F8FAFC"),
+        borderPadding=4,
+        spaceBefore=2,
+        spaceAfter=3
     )
 
     story = []
 
     # Title & Metadata Banner
-    story.append(Paragraph("🚚 Bems Farms — Driver Mobile App API Specification", title_style))
-    story.append(Paragraph("Official Engineering Guide & REST API Reference for React Native / Flutter / iOS & Android Mobile Developers", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=10))
+    story.append(Paragraph("🚚 Bems Farms — Driver App & Enterprise Wallet API Specification", title_style))
+    story.append(Paragraph("Complete Technical Reference: Driver Dispatch, Dedicated Virtual Accounts (DVA), Zone Earnings, Wallet Ledger & Double-Entry Accounting", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=6))
 
     # Architecture Overview Table
     meta_data = [
         [
-            Paragraph("<b>Target Platforms:</b> React Native / Flutter / iOS / Android", body_style),
-            Paragraph("<b>Authentication:</b> JWT Bearer (`Authorization: Bearer &lt;token&gt;`)", body_style)
+            Paragraph("<b>Target Platforms:</b> React Native / Flutter / iOS / Android / Web Admin", body_style),
+            Paragraph("<b>Driver Auth:</b> JWT Bearer (`Authorization: Bearer &lt;token&gt;`)", body_style)
         ],
         [
-            Paragraph("<b>Production Base URL:</b> https://api.bemsfarms.com/api/driver", body_style),
-            Paragraph("<b>Staging/Dev URL:</b> http://localhost:5000/api/driver", body_style)
+            Paragraph("<b>Driver API Base URL:</b> https://api.bemsfarms.com/api/driver", body_style),
+            Paragraph("<b>Admin Wallet Base URL:</b> https://api.bemsfarms.com/api/admin/wallets", body_style)
         ],
         [
-            Paragraph("<b>Payload Standard:</b> application/json", body_style),
-            Paragraph("<b>Live Monnify Inflows:</b> Dedicated Virtual Accounts (DVA) Connected", body_style)
+            Paragraph("<b>Payment Gateway:</b> Monnify (DVA Inflows, Batch Payouts & Webhooks)", body_style),
+            Paragraph("<b>Accounting Standard:</b> GAAP/IFRS Double-Entry General Journal", body_style)
         ]
     ]
-    meta_table = Table(meta_data, colWidths=[260, 260])
+    meta_table = Table(meta_data, colWidths=[270, 270])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDFA")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#99F6E4")),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CCFBF1")),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
     story.append(meta_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
 
-    # Section 1: Endpoints Master Matrix
-    story.append(Paragraph("1. API Directory & Routing Catalog", h1_style))
+    # SECTION 1: DRIVER MOBILE APP API CATALOG
+    story.append(Paragraph("1. Driver Mobile Application Endpoints Catalog", h1_style))
     
-    cat_headers = [
-        Paragraph("<b>Category</b>", bold_body_style),
-        Paragraph("<b>Method &amp; Endpoint</b>", bold_body_style),
-        Paragraph("<b>Auth</b>", bold_body_style),
-        Paragraph("<b>Description</b>", bold_body_style)
-    ]
-    cat_rows = [
-        cat_headers,
+    d_rows = [
+        [Paragraph("<b>Category</b>", bold_body_style), Paragraph("<b>Method &amp; Endpoint</b>", bold_body_style), Paragraph("<b>Auth</b>", bold_body_style), Paragraph("<b>Description</b>", bold_body_style)],
         [Paragraph("Onboarding", body_style), Paragraph("<code>GET /onboarding/verify?token=...</code>", body_style), Paragraph("Public", body_style), Paragraph("Verify invite token & driver pre-fill data", body_style)],
         [Paragraph("Onboarding", body_style), Paragraph("<code>POST /onboarding/submit</code>", body_style), Paragraph("Public", body_style), Paragraph("Submit driver KYC, NIN, vehicle & bank info", body_style)],
         [Paragraph("Auth", body_style), Paragraph("<code>POST /auth/login</code>", body_style), Paragraph("Public", body_style), Paragraph("Driver authentication & JWT token generation", body_style)],
@@ -211,112 +193,171 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         [Paragraph("Deliveries", body_style), Paragraph("<code>PATCH /deliveries/:orderId/status</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Update milestone (picked_up, en_route, delivered)", body_style)],
         [Paragraph("Deliveries", body_style), Paragraph("<code>GET /deliveries/history</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Paginated past delivery trips & metrics", body_style)],
         [Paragraph("Telemetry", body_style), Paragraph("<code>POST /location</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Background GPS coordinate stream ping", body_style)],
-        [Paragraph("Fintech", body_style), Paragraph("<code>GET /earnings</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Driver wallet balance, zone pay & history", body_style)],
-        [Paragraph("Fintech", body_style), Paragraph("<code>POST /withdraw</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Request payout disbursement to personal bank", body_style)],
+        [Paragraph("Wallet", body_style), Paragraph("<code>GET /earnings</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Driver wallet balance, zone pay & history", body_style)],
+        [Paragraph("Wallet", body_style), Paragraph("<code>POST /withdraw</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Request payout disbursement to personal bank", body_style)],
     ]
-    t_cat = Table(cat_rows, colWidths=[70, 185, 45, 220])
-    t_cat.setStyle(TableStyle([
+    t_d = Table(d_rows, colWidths=[65, 185, 45, 245])
+    t_d.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#E2E8F0")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
-        ('TOPPADDING', (0,0), (-1,-1), 3.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
-    story.append(t_cat)
-    story.append(Spacer(1, 12))
-
-    # Section 2: Authentication & Profile Deep Dive
-    story.append(Paragraph("2. Authentication & Dedicated Virtual Accounts (Monnify)", h1_style))
-    story.append(Paragraph("<b>2.1 Driver Login (`POST /api/driver/auth/login`)</b>", h2_style))
-    story.append(Paragraph("Authenticates driver by phone/email and password. Returns JWT token and driver profile with auto-provisioned Monnify Dedicated Virtual Account (DVA).", body_style))
-    
-    login_req = '{\n  "emailOrPhone": "08123456789",\n  "password": "Password123!"\n}'
-    login_res = '{\n  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",\n  "message": "Login successful",\n  "driver": {\n    "id": 6,\n    "name": "Victor Kalu",\n    "phone": "08123456789",\n    "email": "victor.kalu@bemsfarms.com",\n    "wallet_account_number": "3397202109",\n    "wallet_bank_name": "Wema Bank",\n    "wallet_account_name": "BEM - Victor Kalu",\n    "bank_name": "GTBank",\n    "account_number": "0123456789",\n    "is_available": true\n  }\n}'
-    
-    t_login = Table([
-        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
-        [Paragraph(login_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(login_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
-    ], colWidths=[200, 320])
-    t_login.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-    ]))
-    story.append(t_login)
-    story.append(Spacer(1, 10))
-
-    # Section 3: Delivery Milestones
-    story.append(Paragraph("3. Delivery Dispatch & Milestone Lifecycle", h1_style))
-    story.append(Paragraph("Drivers update delivery milestones as they progress from farm pickup to customer handover.", body_style))
-    
-    ms_headers = [Paragraph("<b>Milestone</b>", bold_body_style), Paragraph("<b>Action Description</b>", bold_body_style), Paragraph("<b>Customer Tracking State</b>", bold_body_style), Paragraph("<b>Financial Trigger</b>", bold_body_style)]
-    ms_data = [
-        ms_headers,
-        [Paragraph("<code>accepted</code>", body_style), Paragraph("Driver accepts delivery assignment", body_style), Paragraph("<code>driver_assigned</code>", body_style), Paragraph("—", body_style)],
-        [Paragraph("<code>awaiting_pickup</code>", body_style), Paragraph("Driver at store/hub loading goods", body_style), Paragraph("<code>packed_ready</code>", body_style), Paragraph("—", body_style)],
-        [Paragraph("<code>en_route</code>", body_style), Paragraph("Driver departed with order package", body_style), Paragraph("<code>out_for_delivery</code>", body_style), Paragraph("—", body_style)],
-        [Paragraph("<code>arrived</code>", body_style), Paragraph("Driver arrived at customer destination", body_style), Paragraph("<code>driver_arrived</code>", body_style), Paragraph("—", body_style)],
-        [Paragraph("<code>delivered</code>", body_style), Paragraph("Handover complete with photo proof", body_style), Paragraph("<code>delivered</code>", body_style), Paragraph("<b>Auto-Credit Zone Commission</b>", body_style)],
-        [Paragraph("<code>failed</code>", body_style), Paragraph("Delivery failed after 3 gate calls", body_style), Paragraph("<code>delivery_attempted</code>", body_style), Paragraph("—", body_style)],
-    ]
-    t_ms = Table(ms_data, colWidths=[80, 160, 130, 150])
-    t_ms.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#E2E8F0")),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-    ]))
-    story.append(t_ms)
+    story.append(t_d)
     story.append(Spacer(1, 8))
 
-    story.append(Paragraph("<b>Delivery Status Update Payload (`PATCH /api/driver/deliveries/:orderId/status`)</b>", h2_style))
-    status_sample = '{\n  "status": "delivered",\n  "proof_note": "Package received directly by customer Mrs. Ngozi.",\n  "proof_photo": "https://storage.googleapis.com/.../proof_delivered.jpg"\n}'
-    story.append(Paragraph(status_sample.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
-    story.append(Spacer(1, 10))
-
-    # Section 4: Zone-Based Earnings & Withdrawal
-    story.append(Paragraph("4. Zone-Based Earnings & Payout Disbursements", h1_style))
-    story.append(Paragraph("Driver earnings are calibrated per coverage zone. When a delivery in a zone is completed, the driver is automatically credited with their zone compensation rate.", body_style))
+    # SECTION 2: DRIVER WALLET & EARNINGS SPECIFICATION
+    story.append(Paragraph("2. Driver Wallet, Dedicated Virtual Account (DVA) & Withdrawals", h1_style))
+    story.append(Paragraph("<b>2.1 Get Driver Wallet & Earnings (`GET /api/driver/earnings`)</b>", h2_style))
+    story.append(Paragraph("Returns live wallet balance, unwithdrawn earnings, pending payout amounts, Monnify Reserved Virtual Account (DVA) details, zone rates, and transaction ledger.", body_style))
     
-    zone_data = [
-        [Paragraph("<b>Zone ID</b>", bold_body_style), Paragraph("<b>Zone Coverage Area</b>", bold_body_style), Paragraph("<b>Customer Delivery Fee</b>", bold_body_style), Paragraph("<b>Driver Drop Payout (70%)</b>", bold_body_style)],
-        [Paragraph("ZONE001", body_style), Paragraph("Zone 1 - Maitama &amp; Asokoro", body_style), Paragraph("₦1,000.00", body_style), Paragraph("<b>₦700.00</b>", body_style)],
-        [Paragraph("ZONE002", body_style), Paragraph("Zone 2 - Garki, Wuse, Central Area", body_style), Paragraph("₦2,500.00", body_style), Paragraph("<b>₦1,750.00</b>", body_style)],
-        [Paragraph("ZONE003", body_style), Paragraph("Zone 3 - Utako, Jabi, Mabushi", body_style), Paragraph("₦3,500.00", body_style), Paragraph("<b>₦2,450.00</b>", body_style)],
-        [Paragraph("ZONE004", body_style), Paragraph("Zone 4 - Gwarinpa, Kubwa Expressway", body_style), Paragraph("₦5,000.00", body_style), Paragraph("<b>₦3,500.00</b>", body_style)],
-        [Paragraph("ZONE005", body_style), Paragraph("Zone 5 - Lugbe, Airport Road", body_style), Paragraph("₦8,000.00", body_style), Paragraph("<b>₦5,600.00</b>", body_style)],
-        [Paragraph("ZONE006", body_style), Paragraph("Zone 6 - Interstate / Regional Express", body_style), Paragraph("₦35,000.00", body_style), Paragraph("<b>₦24,500.00</b>", body_style)],
+    earnings_res = """{
+  "wallet": {
+    "total_earned": 28500.00,
+    "total_paid": 12000.00,
+    "pending_payouts": 0.00,
+    "available_balance": 16500.00,
+    "commission_per_delivery": 1750.00,
+    "dedicated_virtual_account": {
+      "account_number": "8559127267",
+      "bank_name": "Monnify / Wema Bank",
+      "account_name": "BEMS - VICTOR KALU",
+      "is_frozen": false
+    },
+    "settlement_bank": {
+      "bank_name": "GTBank",
+      "account_number": "0123456789",
+      "account_name": "Victor Kalu"
+    }
+  },
+  "zone_rates": [
+    { "zone_id": "ZONE001", "zone_name": "Maitama & Asokoro", "driver_earning_fee": 700.00, "commission_percent": 70 },
+    { "zone_id": "ZONE002", "zone_name": "Garki & Wuse", "driver_earning_fee": 1750.00, "commission_percent": 70 },
+    { "zone_id": "ZONE006", "zone_name": "Interstate Express", "driver_earning_fee": 24500.00, "commission_percent": 70 }
+  ],
+  "recent_commissions": [
+    { "id": 104, "total_earned": 1750.00, "deliveries": 1, "status": "pending", "created_at": "2026-09-21T09:10:00Z" }
+  ],
+  "recent_payouts": [
+    { "payout_ref": "PAY-MNFY-8819", "amount": 12000.00, "status": "paid", "processed_at": "2026-09-20T14:30:00Z" }
+  ]
+}"""
+    story.append(Paragraph(earnings_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph("<b>2.2 Request Payout / Withdrawal (`POST /api/driver/withdraw`)</b>", h2_style))
+    with_req = '{\n  "amount": 10000.00,\n  "bank_name": "GTBank",\n  "account_number": "0123456789",\n  "account_name": "Victor Kalu",\n  "notes": "Weekly earnings payout"\n}'
+    with_res = '{\n  "message": "Withdrawal request of ₦10,000.00 submitted successfully!",\n  "payout_ref": "PAY-MNFY-99201",\n  "available_balance": 6500.00,\n  "status": "pending"\n}'
+    t_with = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
+        [Paragraph(with_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(with_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_with.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_with)
+    story.append(Spacer(1, 8))
+
+    # SECTION 3: ADMIN ENTERPRISE WALLET & DISBURSEMENT APIs
+    story.append(Paragraph("3. Admin Enterprise Wallet Hub & Monnify Gateway APIs", h1_style))
+    
+    admin_w_rows = [
+        [Paragraph("<b>Category</b>", bold_body_style), Paragraph("<b>Method &amp; Endpoint</b>", bold_body_style), Paragraph("<b>Auth Role</b>", bold_body_style), Paragraph("<b>Description</b>", bold_body_style)],
+        [Paragraph("Overview", body_style), Paragraph("<code>GET /api/admin/wallets/summary</code>", body_style), Paragraph("Superadmin / Accountant", body_style), Paragraph("Fleet floating liability, Monnify reserve (₦5B), queue size", body_style)],
+        [Paragraph("Driver Fleet", body_style), Paragraph("<code>GET /api/admin/wallets/drivers</code>", body_style), Paragraph("Superadmin / Manager", body_style), Paragraph("List driver balances, unwithdrawn pay, DVA status, freeze state", body_style)],
+        [Paragraph("Payout Queue", body_style), Paragraph("<code>GET /api/admin/wallets/payouts</code>", body_style), Paragraph("Superadmin / Accountant", body_style), Paragraph("Paginated driver withdrawal requests (pending, paid, rejected)", body_style)],
+        [Paragraph("Disbursement", body_style), Paragraph("<code>POST /api/admin/wallets/payouts/:id/disburse</code>", body_style), Paragraph("Superadmin / Accountant", body_style), Paragraph("Instant bank transfer via Monnify API + General Ledger debit", body_style)],
+        [Paragraph("Batch Payout", body_style), Paragraph("<code>POST /api/admin/wallets/payouts/batch-disburse</code>", body_style), Paragraph("Superadmin", body_style), Paragraph("Batch disburse multiple approved driver payouts in one call", body_style)],
+        [Paragraph("Approval", body_style), Paragraph("<code>PATCH /api/admin/wallets/payouts/:id/status</code>", body_style), Paragraph("Superadmin / Manager", body_style), Paragraph("Approve or reject payout request with reason notes", body_style)],
+        [Paragraph("Adjustment", body_style), Paragraph("<code>POST /api/admin/wallets/adjust</code>", body_style), Paragraph("Superadmin", body_style), Paragraph("Manual driver credit/debit adjustment (bonus or penalty) + Journal", body_style)],
+        [Paragraph("Security", body_style), Paragraph("<code>PATCH /api/admin/wallets/drivers/:id/freeze</code>", body_style), Paragraph("Superadmin", body_style), Paragraph("Freeze or unfreeze driver wallet with security hold reason", body_style)],
+        [Paragraph("Gateway", body_style), Paragraph("<code>GET /api/admin/wallets/gateway/transactions</code>", body_style), Paragraph("Superadmin / Accountant", body_style), Paragraph("Customer storefront Monnify checkouts (Gross, Fee 1.5%, Net)", body_style)],
+        [Paragraph("Webhooks", body_style), Paragraph("<code>GET /api/admin/wallets/gateway/webhooks</code>", body_style), Paragraph("Superadmin", body_style), Paragraph("Monnify inbound webhook audit logs with SHA-512 signatures", body_style)],
     ]
-    t_zone = Table(zone_data, colWidths=[65, 195, 120, 140])
+    t_aw = Table(admin_w_rows, colWidths=[65, 195, 95, 185])
+    t_aw.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#E2E8F0")),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_aw)
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("<b>3.1 Single Driver Payout Disbursement Payload (`POST /api/admin/wallets/payouts/:id/disburse`)</b>", h2_style))
+    disb_req = '{\n  "disbursement_method": "monnify_transfer",\n  "notes": "Approved September Batch #1"\n}'
+    disb_res = '{\n  "message": "Payout of ₦12,000.00 successfully disbursed!",\n  "payout": {\n    "id": 88,\n    "payout_ref": "PAY-MNFY-99201",\n    "status": "paid",\n    "gateway_reference": "MNFY-DISB-M88X9A",\n    "session_id": "9990581789211094",\n    "bank_response_code": "00"\n  }\n}'
+    t_disb = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
+        [Paragraph(disb_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(disb_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_disb.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_disb)
+    story.append(Spacer(1, 8))
+
+    # SECTION 4: DOUBLE-ENTRY ACCOUNTING & TRIAL BALANCE INTEGRATION
+    story.append(Paragraph("4. Double-Entry General Ledger Rules for Wallets", h1_style))
+    story.append(Paragraph("All wallet transactions post automatically to the central Chart of Accounts (COA), maintaining zero variance across the company balance sheet.", body_style))
+    
+    coa_data = [
+        [Paragraph("<b>Transaction Event</b>", bold_body_style), Paragraph("<b>Debit Entry (Dr)</b>", bold_body_style), Paragraph("<b>Credit Entry (Cr)</b>", bold_body_style), Paragraph("<b>Ledger Sub-System</b>", bold_body_style)],
+        [Paragraph("Customer Online Checkout", body_style), Paragraph("<code>1120 Monnify Settlement Vault</code>", body_style), Paragraph("<code>4110 Sales Revenue</code>", body_style), Paragraph("Central General Journal", body_style)],
+        [Paragraph("Order Delivery Completion", body_style), Paragraph("<code>5210 Delivery Commission Expense</code>", body_style), Paragraph("<code>2120 Driver Wallet Payable</code>", body_style), Paragraph("Driver Wallet Ledger + COA", body_style)],
+        [Paragraph("Driver Bank Disbursement", body_style), Paragraph("<code>2120 Driver Wallet Payable</code>", body_style), Paragraph("<code>1120 Monnify Settlement Vault</code>", body_style), Paragraph("Central General Journal", body_style)],
+        [Paragraph("Driver Bonus Award", body_style), Paragraph("<code>5220 Driver Bonus Expense</code>", body_style), Paragraph("<code>2120 Driver Wallet Payable</code>", body_style), Paragraph("Driver Wallet Ledger + COA", body_style)],
+        [Paragraph("Driver Penalty Deduction", body_style), Paragraph("<code>2120 Driver Wallet Payable</code>", body_style), Paragraph("<code>4210 Penalty &amp; Other Revenue</code>", body_style), Paragraph("Driver Wallet Ledger + COA", body_style)],
+    ]
+    t_coa = Table(coa_data, colWidths=[120, 150, 150, 120])
+    t_coa.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#F1F5F9")),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_coa)
+    story.append(Spacer(1, 8))
+
+    # SECTION 5: ZONE RATE SPECIFICATION (ZONES 1 TO 6)
+    story.append(Paragraph("5. Zone-Based Compensation Rate Card (Zones 1–6)", h1_style))
+    zone_data = [
+        [Paragraph("<b>Zone ID</b>", bold_body_style), Paragraph("<b>Zone Coverage Area</b>", bold_body_style), Paragraph("<b>Customer Delivery Fee</b>", bold_body_style), Paragraph("<b>Driver Drop Payout (70%)</b>", bold_body_style), Paragraph("<b>Estimated ETA</b>", bold_body_style)],
+        [Paragraph("ZONE001", body_style), Paragraph("Zone 1 - Maitama &amp; Asokoro", body_style), Paragraph("₦1,000.00", body_style), Paragraph("<b>₦700.00</b>", body_style), Paragraph("20 - 35 mins", body_style)],
+        [Paragraph("ZONE002", body_style), Paragraph("Zone 2 - Garki, Wuse, Central Area", body_style), Paragraph("₦2,500.00", body_style), Paragraph("<b>₦1,750.00</b>", body_style), Paragraph("25 - 45 mins", body_style)],
+        [Paragraph("ZONE003", body_style), Paragraph("Zone 3 - Utako, Jabi, Mabushi", body_style), Paragraph("₦3,500.00", body_style), Paragraph("<b>₦2,450.00</b>", body_style), Paragraph("30 - 50 mins", body_style)],
+        [Paragraph("ZONE004", body_style), Paragraph("Zone 4 - Gwarinpa, Kubwa Expressway", body_style), Paragraph("₦5,000.00", body_style), Paragraph("<b>₦3,500.00</b>", body_style), Paragraph("40 - 65 mins", body_style)],
+        [Paragraph("ZONE005", body_style), Paragraph("Zone 5 - Lugbe, Airport Road", body_style), Paragraph("₦8,000.00", body_style), Paragraph("<b>₦5,600.00</b>", body_style), Paragraph("45 - 75 mins", body_style)],
+        [Paragraph("ZONE006", body_style), Paragraph("Zone 6 - Interstate / Regional Express", body_style), Paragraph("₦35,000.00", body_style), Paragraph("<b>₦24,500.00</b>", body_style), Paragraph("Same Day / Next Day", body_style)],
+    ]
+    t_zone = Table(zone_data, colWidths=[55, 175, 105, 115, 90])
     t_zone.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#F1F5F9")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
     story.append(t_zone)
-    story.append(Spacer(1, 10))
-
-    # Section 5: Mobile Developer Checklist
-    story.append(Paragraph("5. Mobile Client Implementation Checklist", h1_style))
-    chk_items = [
-        "<b>1. Secure Storage:</b> Store the JWT token using <code>SecureStore</code> (Expo) / <code>EncryptedSharedPreferences</code> (Android) / <code>Keychain</code> (iOS).",
-        "<b>2. Background GPS Streaming:</b> Implement background location listeners to ping <code>POST /api/driver/location</code> every 10–15s while active.",
-        "<b>3. Turn-by-Turn Navigation Deep Linking:</b> Deep-link customer coordinates to Google Maps (<code>geo:${lat},${lng}?q=${lat},${lng}</code>) or Apple Maps (<code>maps://?daddr=${lat},${lng}</code>).",
-        "<b>4. Direct Customer Contact:</b> Provide 1-tap call (<code>tel:${phone}</code>) and WhatsApp quick chat (<code>https://wa.me/234${phone}</code>).",
-        "<b>5. Offline Resilience:</b> Cache active delivery details locally so drivers can view delivery addresses even during cellular connectivity drops."
-    ]
-    for chk in chk_items:
-        story.append(Paragraph(f"• {chk}", body_style))
-        story.append(Spacer(1, 2))
 
     doc.build(story, canvasmaker=NumberedCanvas)
-    print(f"✅ Generated PDF successfully: {filename}")
+    print(f"✅ Generated Complete Driver & Wallet API PDF successfully: {filename}")
 
 if __name__ == "__main__":
-    out = "BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"
+    out = "BEMS_FARMS_DRIVER_AND_WALLET_API_SPECIFICATION.pdf"
     if len(sys.argv) > 1:
         out = sys.argv[1]
     build_pdf(out)
