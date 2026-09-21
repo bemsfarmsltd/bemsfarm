@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-BEMS FARMS — CHEF BEMS FLOWCHART & WEBHOOK SPECIFICATION (PDF GENERATOR)
-Publication-grade visual flowchart with graphical process cards, visual step badges,
-flow connectors, and side-by-side JSON webhook contracts.
+BEMS FARMS — CHEF BEMS VISUAL FLOWCHART & WEBHOOK GUIDE
+Crystal-clear, high-impact 1-page visual flowchart explaining how normal chat
+leads to Add-to-Cart, with zero technical jargon.
 """
 
 import sys
@@ -10,29 +10,35 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 )
 from reportlab.pdfgen import canvas
 
-# Palette definition
+# Theme Palette
 PRIMARY = colors.HexColor("#0D9488")      # Teal 600
-PRIMARY_DARK = colors.HexColor("#115E59") # Teal 800
-SECONDARY = colors.HexColor("#0F172A")    # Slate 900
-TEXT_MAIN = colors.HexColor("#334155")    # Slate 700
-BORDER_COL = colors.HexColor("#CBD5E1")   # Slate 300
-CODE_BG = colors.HexColor("#F8FAFC")      # Slate 50
+PRIMARY_DARK = colors.HexColor("#0F766E") # Teal 700
+NAVY = colors.HexColor("#0F172A")         # Slate 900
+SLATE_TEXT = colors.HexColor("#334155")   # Slate 700
+BORDER_LIGHT = colors.HexColor("#CBD5E1") # Slate 300
 
-# Stage Colors
-DISCOVERY_BG = colors.HexColor("#F0F9FF")   # Sky 50
-DISCOVERY_BORDER = colors.HexColor("#BAE6FD")
+# Step Colors
+STEP1_BG = colors.HexColor("#EFF6FF")     # Blue 50
+STEP1_BORDER = colors.HexColor("#93C5FD") # Blue 300
+STEP1_TITLE = colors.HexColor("#1D4ED8")  # Blue 700
 
-REFINEMENT_BG = colors.HexColor("#FEFCE8")  # Yellow 50
-REFINEMENT_BORDER = colors.HexColor("#FEF08A")
+STEP2_BG = colors.HexColor("#FEFCE8")     # Yellow 50
+STEP2_BORDER = colors.HexColor("#FDE047") # Yellow 300
+STEP2_TITLE = colors.HexColor("#A16207")  # Yellow 700
 
-CART_BG = colors.HexColor("#ECFDF5")        # Emerald 50
-CART_BORDER = colors.HexColor("#A7F3D0")
+STEP3_BG = colors.HexColor("#FFF7ED")     # Orange 50
+STEP3_BORDER = colors.HexColor("#FDBA74") # Orange 300
+STEP3_TITLE = colors.HexColor("#C2410C")  # Orange 700
 
-class NumberedCanvas(canvas.Canvas):
+STEP4_BG = colors.HexColor("#ECFDF5")     # Green 50
+STEP4_BORDER = colors.HexColor("#86EFAC") # Green 300
+STEP4_TITLE = colors.HexColor("#15803D")  # Green 700
+
+class CleanCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
@@ -53,20 +59,20 @@ class NumberedCanvas(canvas.Canvas):
         self.saveState()
         self.setFont("Helvetica-Bold", 8)
         self.setFillColor(PRIMARY_DARK)
-        self.drawString(36, 758, "BEMS FARMS — CHEF BEMS AI VISUAL FLOWCHART & SPECIFICATION")
+        self.drawString(36, 758, "BEMS FARMS — CHEF BEMS CHAT & ADD-TO-CART FLOWCHART")
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#64748B"))
-        self.drawRightString(576, 758, "Visual Engineering Flowchart • Page " + str(self._pageNumber) + f" of {page_count}")
+        self.drawRightString(576, 758, "Visual Process Chart")
         
-        self.setStrokeColor(BORDER_COL)
+        self.setStrokeColor(BORDER_LIGHT)
         self.setLineWidth(0.75)
         self.line(36, 752, 576, 752)
 
-        self.line(36, 36, 576, 36)
+        self.line(36, 32, 576, 32)
         self.setFont("Helvetica", 7.5)
         self.setFillColor(colors.HexColor("#64748B"))
-        self.drawString(36, 26, "© 2026 Bems Farms Ltd. • AI Automation & Cart Integration")
-        self.drawRightString(576, 26, "Confidential Engineering Specification")
+        self.drawString(36, 22, "© 2026 Bems Farms Ltd. • Chef Bems AI Assistant")
+        self.drawRightString(576, 22, f"Page {self._pageNumber} of {page_count}")
         self.restoreState()
 
 def build_pdf(filename="BEMS_FARMS_CHEF_BEMS_ADD_TO_CART_FLOW.pdf"):
@@ -75,8 +81,8 @@ def build_pdf(filename="BEMS_FARMS_CHEF_BEMS_ADD_TO_CART_FLOW.pdf"):
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
-        topMargin=54,
-        bottomMargin=48
+        topMargin=50,
+        bottomMargin=40
     )
 
     styles = getSampleStyleSheet()
@@ -85,230 +91,242 @@ def build_pdf(filename="BEMS_FARMS_CHEF_BEMS_ADD_TO_CART_FLOW.pdf"):
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
+        fontSize=15,
+        leading=18,
         textColor=PRIMARY_DARK,
         spaceAfter=2
     )
     
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        textColor=SLATE_TEXT,
+        spaceAfter=5
+    )
+
     h1_style = ParagraphStyle(
         'Heading1_Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9.5,
-        leading=11.5,
-        textColor=PRIMARY_DARK,
-        spaceBefore=4,
-        spaceAfter=2,
+        fontSize=10.5,
+        leading=13,
+        textColor=NAVY,
+        spaceBefore=5,
+        spaceAfter=3,
         keepWithNext=True
     )
 
-    body_style = ParagraphStyle(
-        'Body_Custom',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=7,
-        leading=9,
-        textColor=TEXT_MAIN
-    )
-
-    bold_body_style = ParagraphStyle(
-        'BoldBody_Custom',
+    card_title_style = ParagraphStyle(
+        'CardTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7,
-        leading=9,
-        textColor=SECONDARY
+        fontSize=9,
+        leading=11
+    )
+
+    card_body_style = ParagraphStyle(
+        'CardBody',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7.5,
+        leading=10,
+        textColor=SLATE_TEXT
+    )
+
+    arrow_style = ParagraphStyle(
+        'ArrowStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=14,
+        textColor=PRIMARY_DARK,
+        alignment=1
     )
 
     code_style = ParagraphStyle(
         'Code_Custom',
         parent=styles['Normal'],
         fontName='Courier',
-        fontSize=6,
-        leading=7.5,
-        textColor=colors.HexColor("#0F172A"),
-        backColor=CODE_BG,
-        borderColor=BORDER_COL,
+        fontSize=6.5,
+        leading=8.5,
+        textColor=NAVY,
+        backColor=colors.HexColor("#F8FAFC"),
+        borderColor=BORDER_LIGHT,
         borderWidth=0.5,
-        borderPadding=2.5,
+        borderPadding=3,
         spaceBefore=1,
         spaceAfter=1
     )
 
     story = []
 
-    # Title & Header
-    story.append(Paragraph("👨‍🍳 Chef Bems AI — Visual Flowchart & Webhook Architecture", title_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=3))
+    # Title Banner
+    story.append(Paragraph("👨‍🍳 Chef Bems: Normal Chat to Add-to-Cart Flowchart", title_style))
+    story.append(Paragraph("A simple visual map showing how customer conversations naturally turn into grocery orders.", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=5))
 
-    # WEBHOOK TARGET BOX (Top Banner)
-    wb_box = [
+    # WEBHOOK ADDRESS BANNER
+    wb_data = [
         [
-            Paragraph("<b>Production n8n Webhook Target:</b>", bold_body_style),
-            Paragraph("<b>Trigger Method:</b>", bold_body_style)
-        ],
-        [
-            Paragraph("<code>https://n8n.srv1987482.hstgr.cloud/webhook/chef-bems</code>", ParagraphStyle('WbCode', parent=code_style, fontSize=7, leading=9, textColor=PRIMARY_DARK)),
-            Paragraph("<code>POST (Content-Type: application/json)</code>", ParagraphStyle('WbCode2', parent=code_style, fontSize=7, leading=9))
+            Paragraph("<b>Target n8n Webhook:</b>", ParagraphStyle('WbT', fontName='Helvetica-Bold', fontSize=8, leading=10, textColor=PRIMARY_DARK)),
+            Paragraph("<code>https://n8n.srv1987482.hstgr.cloud/webhook/chef-bems</code>", ParagraphStyle('WbC', fontName='Courier-Bold', fontSize=8, leading=10, textColor=NAVY))
         ]
     ]
-    t_wb = Table(wb_box, colWidths=[370, 170])
+    t_wb = Table(wb_data, colWidths=[130, 410])
     t_wb.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDFA")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#99F6E4")),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CCFBF1")),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
     story.append(t_wb)
-    story.append(Spacer(1, 3))
+    story.append(Spacer(1, 5))
 
-    # SECTION 1: THREE-TIER VISUAL ARCHITECTURE FLOWCHART
-    story.append(Paragraph("1. System Architecture & Topology Flowchart", h1_style))
-    
-    tier_rows = [
+    # THE 4-STEP VISUAL CHART
+    story.append(Paragraph("The 4-Step Conversational Shopping Journey", h1_style))
+
+    # STEP 1 CARD
+    step1_rows = [
         [
-            Paragraph("<b>CLIENT TIER</b><br/><font color='#0D9488'><b>React Web / Mobile</b></font>", ParagraphStyle('T1H', parent=bold_body_style, alignment=1)),
-            Paragraph("<font size=12 color='#0D9488'><b>➔</b></font><br/><font size=5.5 color='#64748B'>1. POST</font>", ParagraphStyle('Arr1', alignment=1)),
-            Paragraph("<b>BACKEND BRIDGE</b><br/><font color='#115E59'><b>Express API Server</b></font>", ParagraphStyle('T2H', parent=bold_body_style, alignment=1)),
-            Paragraph("<font size=12 color='#0D9488'><b>➔</b></font><br/><font size=5.5 color='#64748B'>2. Forward</font>", ParagraphStyle('Arr2', alignment=1)),
-            Paragraph("<b>AI ENGINE</b><br/><font color='#047857'><b>Timi's n8n Agent</b></font>", ParagraphStyle('T3H', parent=bold_body_style, alignment=1)),
+            Paragraph("<font color='#1D4ED8'><b>STEP 1: CUSTOMER STARTS CHATTING (EXPLORATION)</b></font>", ParagraphStyle('S1T', parent=card_title_style, textColor=STEP1_TITLE)),
+            Paragraph("<font color='#64748B'>Cart: <b>🛒 Empty (0 items)</b></font>", ParagraphStyle('S1C', fontName='Helvetica-Bold', fontSize=7.5, leading=9.5, alignment=2))
         ],
         [
-            Paragraph("• User types prompt<br/>• Attaches JWT token<br/>• Holds active `CartContext`<br/>• Real-time toast & badge", ParagraphStyle('T1B', parent=body_style, fontSize=6.5, leading=8)),
-            Paragraph("<font size=12 color='#0D9488'><b>⬅</b></font><br/><font size=5.5 color='#64748B'>4. Injects Cart</font>", ParagraphStyle('Arr1b', alignment=1)),
-            Paragraph("• Verifies user identity<br/>• Injects user & cart context<br/>• Logs DB conversation<br/>• Local Gemini fallback", ParagraphStyle('T2B', parent=body_style, fontSize=6.5, leading=8)),
-            Paragraph("<font size=12 color='#0D9488'><b>⬅</b></font><br/><font size=5.5 color='#64748B'>3. JSON Reply</font>", ParagraphStyle('Arr2b', alignment=1)),
-            Paragraph("• Processes LLM prompt<br/>• Retains chat memory<br/>• Detects cart intent<br/>• Formats `recipeBundle`", ParagraphStyle('T3B', parent=body_style, fontSize=6.5, leading=8)),
+            Paragraph("<b>Customer Action:</b> Opens chat and asks general cooking questions:<br/>"
+                      "<i>'What healthy Nigerian soup can I cook for someone managing blood sugar?'</i><br/>"
+                      "<b>Chef Bems Answer:</b> Gives friendly culinary advice:<br/>"
+                      "<i>'I recommend Okro Soup or Afang Soup! They are packed with fiber and have a low glycemic index. Which would you like to prepare?'</i>", card_body_style),
+            Paragraph("<b>Status:</b><br/>"
+                      "• Normal conversation<br/>"
+                      "• Advice & suggestions only<br/>"
+                      "• Nothing in cart yet", ParagraphStyle('S1S', fontName='Helvetica', fontSize=7, leading=9, textColor=STEP1_TITLE))
         ]
     ]
-    t_topo = Table(tier_rows, colWidths=[150, 45, 150, 45, 150])
-    t_topo.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (0,-1), colors.HexColor("#F0FDF4")),
-        ('BACKGROUND', (2,0), (2,-1), colors.HexColor("#F8FAFC")),
-        ('BACKGROUND', (4,0), (4,-1), colors.HexColor("#F0FDFA")),
-        ('BOX', (0,0), (0,-1), 1, colors.HexColor("#BBF7D0")),
-        ('BOX', (2,0), (2,-1), 1, BORDER_COL),
-        ('BOX', (4,0), (4,-1), 1, colors.HexColor("#99F6E4")),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 3),
-        ('RIGHTPADDING', (0,0), (-1,-1), 3),
-    ]))
-    story.append(t_topo)
-    story.append(Spacer(1, 4))
-
-    # SECTION 2: MULTI-TURN CONVERSATION & ADD-TO-CART FLOWCHART
-    story.append(Paragraph("2. Multi-Turn Conversational Lifecycle & Add-to-Cart Flowchart", h1_style))
-
-    # CARD 1: STAGE 1 DISCOVERY
-    card1_data = [
-        [
-            Paragraph("<font color='#0369A1'><b>STAGE 1: MEAL EXPLORATION & DISCOVERY (ROUND 1)</b></font>", ParagraphStyle('St1H', parent=bold_body_style, fontSize=7.5, leading=9.5)),
-            Paragraph("<font color='#64748B'>Cart Status: <b>🛒 0 items (₦0)</b></font>", ParagraphStyle('St1C', parent=bold_body_style, alignment=2))
-        ],
-        [
-            Paragraph("<b>👤 Customer:</b> <i>'What healthy Nigerian soup can I cook for someone managing blood sugar?'</i><br/>"
-                      "<b>👨‍🍳 Chef Bems:</b> <i>'I recommend Okro Soup or Afang Soup! They are rich in fiber and have a low glycemic index. Which one would you prefer?'</i>", body_style),
-            Paragraph("<font color='#0284C7'><b>Normal Chat Advice</b><br/>• History logged<br/>• Cart untouched</font>", ParagraphStyle('St1R', parent=body_style, fontSize=6.5, leading=8, alignment=1))
-        ]
-    ]
-    t_c1 = Table(card1_data, colWidths=[400, 140])
-    t_c1.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), DISCOVERY_BG),
-        ('BOX', (0,0), (-1,-1), 1, DISCOVERY_BORDER),
-        ('LINEBELOW', (0,0), (-1,0), 0.5, DISCOVERY_BORDER),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    t_s1 = Table(step1_rows, colWidths=[410, 130])
+    t_s1.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), STEP1_BG),
+        ('BOX', (0,0), (-1,-1), 1, STEP1_BORDER),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, STEP1_BORDER),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
         ('LEFTPADDING', (0,0), (-1,-1), 4),
         ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
-    story.append(t_c1)
+    story.append(t_s1)
     story.append(Spacer(1, 1))
 
-    # CONNECTOR 1
-    story.append(Paragraph("<font color='#64748B' size=9><b>⬇  Customer continues conversation & refines recipe options</b></font>", ParagraphStyle('C1', alignment=1)))
+    # ARROW 1
+    story.append(Paragraph("⬇ <i>Customer continues chatting and asks for adjustments</i> ⬇", arrow_style))
     story.append(Spacer(1, 1))
 
-    # CARD 2: STAGE 2 REFINEMENT
-    card2_data = [
+    # STEP 2 CARD
+    step2_rows = [
         [
-            Paragraph("<font color='#A16207'><b>STAGE 2: RECIPE REFINEMENT & SUBSTITUTIONS (ROUND 2)</b></font>", ParagraphStyle('St2H', parent=bold_body_style, fontSize=7.5, leading=9.5)),
-            Paragraph("<font color='#64748B'>Cart Status: <b>🛒 0 items (₦0)</b></font>", ParagraphStyle('St2C', parent=bold_body_style, alignment=2))
+            Paragraph("<font color='#A16207'><b>STEP 2: RECIPE REFINEMENT & FAMILY SIZING (DISCUSSION)</b></font>", ParagraphStyle('S2T', parent=card_title_style, textColor=STEP2_TITLE)),
+            Paragraph("<font color='#64748B'>Cart: <b>🛒 Empty (0 items)</b></font>", ParagraphStyle('S2C', fontName='Helvetica-Bold', fontSize=7.5, leading=9.5, alignment=2))
         ],
         [
-            Paragraph("<b>👤 Customer:</b> <i>'How do I make the Okro Soup for 5 people? Can I use fresh Catfish instead of beef?'</i><br/>"
-                      "<b>👨‍🍳 Chef Bems:</b> <i>'Yes! Fresh Catfish pairs wonderfully with Okro and Ugu leaves. Here is the step-by-step preparation for 5 servings...'</i>", body_style),
-            Paragraph("<font color='#D97706'><b>Context Retained</b><br/>• Scaled to 5 servings<br/>• Catfish substituted</font>", ParagraphStyle('St2R', parent=body_style, fontSize=6.5, leading=8, alignment=1))
+            Paragraph("<b>Customer Action:</b> Asks for portions, substitutions, and steps:<br/>"
+                      "<i>'How do I make the Okro Soup for 5 people? Can I use fresh Catfish instead of beef?'</i><br/>"
+                      "<b>Chef Bems Answer:</b> Customizes the recipe steps and portion quantities:<br/>"
+                      "<i>'Yes! Fresh Catfish goes great with Okro and Ugu leaves. For 5 people, you will need 1kg Okro, 2 Catfish, Palm Oil, and Ugu. Here is the step-by-step cooking guide...'</i>", card_body_style),
+            Paragraph("<b>Status:</b><br/>"
+                      "• Chat memory active<br/>"
+                      "• Portions adjusted for 5<br/>"
+                      "• Ingredients finalized", ParagraphStyle('S2S', fontName='Helvetica', fontSize=7, leading=9, textColor=STEP2_TITLE))
         ]
     ]
-    t_c2 = Table(card2_data, colWidths=[400, 140])
-    t_c2.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), REFINEMENT_BG),
-        ('BOX', (0,0), (-1,-1), 1, REFINEMENT_BORDER),
-        ('LINEBELOW', (0,0), (-1,0), 0.5, REFINEMENT_BORDER),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    t_s2 = Table(step2_rows, colWidths=[410, 130])
+    t_s2.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), STEP2_BG),
+        ('BOX', (0,0), (-1,-1), 1, STEP2_BORDER),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, STEP2_BORDER),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
         ('LEFTPADDING', (0,0), (-1,-1), 4),
         ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
-    story.append(t_c2)
+    story.append(t_s2)
     story.append(Spacer(1, 1))
 
-    # CONNECTOR 2
-    story.append(Paragraph("<font color='#10B981' size=9><b>⬇  Customer reaches purchase decision & explicitly triggers intent</b></font>", ParagraphStyle('C2', alignment=1)))
+    # ARROW 2
+    story.append(Paragraph("⬇ <i>Customer decides to buy and says 'Add to cart'</i> ⬇", arrow_style))
     story.append(Spacer(1, 1))
 
-    # CARD 3: STAGE 3 CART TRIGGER
-    card3_data = [
+    # STEP 3 CARD
+    step3_rows = [
         [
-            Paragraph("<font color='#047857'><b>STAGE 3: THE 'ADD TO CART' INTENT TRIGGER (ROUND 3)</b></font>", ParagraphStyle('St3H', parent=bold_body_style, fontSize=7.5, leading=9.5)),
-            Paragraph("<font color='#10B981'><b>⚡ Cart Updated: 🛒 4 items (₦13,500)</b></font>", ParagraphStyle('St3C', parent=bold_body_style, alignment=2))
+            Paragraph("<font color='#C2410C'><b>STEP 3: CUSTOMER TRIGGERS 'ADD TO CART' (BUYING INTENT)</b></font>", ParagraphStyle('S3T', parent=card_title_style, textColor=STEP3_TITLE)),
+            Paragraph("<font color='#EA580C'><b>⚡ Intent Detected</b></font>", ParagraphStyle('S3C', fontName='Helvetica-Bold', fontSize=7.5, leading=9.5, alignment=2))
         ],
         [
-            Paragraph("<b>👤 Customer:</b> <i>'Awesome! Please add all those ingredients to my cart now.'</i><br/>"
-                      "<b>👨‍🍳 Chef Bems:</b> <i>'I have added all 4 fresh ingredients for Okro Soup directly to your shopping cart!'</i><br/>"
-                      "<font color='#047857'><b>⚡ System Action:</b> `action: 'AUTO_ADD_TO_CART'` ➔ Injects [Okro, Catfish, Palm Oil, Ugu] ➔ Shows Toast ➔ Updates Cart Badge</font>", body_style),
-            Paragraph("<font color='#047857'><b>Automatic Cart Injection</b><br/>• 1kg Okro (₦2,500)<br/>• 2x Catfish (₦6,200)<br/>• 1L Palm Oil (₦2,800)<br/>• 2x Ugu (₦2,000)</font>", ParagraphStyle('St3R', parent=body_style, fontSize=6.5, leading=8, alignment=1))
+            Paragraph("<b>Customer Action:</b> Expresses buying intent in normal English:<br/>"
+                      "<i>'Awesome! Please add all those ingredients to my cart now.'</i><br/>"
+                      "<b>AI System Detection:</b><br/>"
+                      "Timi's n8n AI detects the request to purchase and attaches the 4 grocery products to the response.", card_body_style),
+            Paragraph("<b>Products Selected:</b><br/>"
+                      "1. Fresh Okro (1kg)<br/>"
+                      "2. Fresh Catfish (2kg)<br/>"
+                      "3. Red Palm Oil (1L)<br/>"
+                      "4. Fresh Ugu (2 bunches)", ParagraphStyle('S3S', fontName='Helvetica', fontSize=7, leading=9, textColor=STEP3_TITLE))
         ]
     ]
-    t_c3 = Table(card3_data, colWidths=[400, 140])
-    t_c3.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), CART_BG),
-        ('BOX', (0,0), (-1,-1), 1, CART_BORDER),
-        ('LINEBELOW', (0,0), (-1,0), 0.5, CART_BORDER),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    t_s3 = Table(step3_rows, colWidths=[410, 130])
+    t_s3.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), STEP3_BG),
+        ('BOX', (0,0), (-1,-1), 1, STEP3_BORDER),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, STEP3_BORDER),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
         ('LEFTPADDING', (0,0), (-1,-1), 4),
         ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
-    story.append(t_c3)
-    story.append(Spacer(1, 4))
+    story.append(t_s3)
+    story.append(Spacer(1, 1))
 
-    # SECTION 3: WEBHOOK REQUEST & RESPONSE JSON CONTRACTS
-    story.append(Paragraph("3. Webhook Request & Response JSON Contracts", h1_style))
-    
-    in_sample = """// A. Payload Sent by Bems Farms Backend to n8n:
-{
-  "chatInput": "Add all those ingredients to my cart.",
-  "message": "Add all those ingredients to my cart.",
-  "userId": 42,
-  "customerId": 42,
-  "customerEmail": "customer@example.com",
-  "sessionId": "user-42",
-  "conversationHistory": [
-    { "role": "user", "content": "How do I make Okro soup for 5 people?" },
-    { "role": "assistant", "content": "Use 1kg Okro and 2 fresh Catfish..." }
-  ],
-  "cartItems": []
-}"""
+    # ARROW 3
+    story.append(Paragraph("⬇ <i>Website automatically loads the items into the shopping cart</i> ⬇", arrow_style))
+    story.append(Spacer(1, 1))
 
-    out_sample = """// B. Required JSON Returned by n8n (To Add to Cart):
-{
+    # STEP 4 CARD
+    step4_rows = [
+        [
+            Paragraph("<font color='#15803D'><b>STEP 4: AUTOMATIC CART LOAD & CHECKOUT READY</b></font>", ParagraphStyle('S4T', parent=card_title_style, textColor=STEP4_TITLE)),
+            Paragraph("<font color='#16A34A'><b>🛒 4 Items in Cart (₦13,500)</b></font>", ParagraphStyle('S4C', fontName='Helvetica-Bold', fontSize=7.5, leading=9.5, alignment=2))
+        ],
+        [
+            Paragraph("<b>What the Customer Sees on Screen:</b><br/>"
+                      "1. Chef Bems replies: <i>'I have added all 4 fresh ingredients for Okro Soup to your shopping cart!'</i><br/>"
+                      "2. A green notification toast slides in: <b>'✨ 4 items added to your cart!'</b><br/>"
+                      "3. The shopping cart icon at the top of the website instantly updates from <b>🛒 0</b> to <b>🛒 4</b>.<br/>"
+                      "4. Customer can open their cart drawer or tap <b>'Checkout'</b> to complete payment.", card_body_style),
+            Paragraph("<b>Result:</b><br/>"
+                      "• Zero manual searching<br/>"
+                      "• All items in cart<br/>"
+                      "• Ready for payment!", ParagraphStyle('S4S', fontName='Helvetica', fontSize=7, leading=9, textColor=STEP4_TITLE))
+        ]
+    ]
+    t_s4 = Table(step4_rows, colWidths=[410, 130])
+    t_s4.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), STEP4_BG),
+        ('BOX', (0,0), (-1,-1), 1, STEP4_BORDER),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, STEP4_BORDER),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_s4)
+    story.append(Spacer(1, 5))
+
+    # SIMPLE FORMAT SUMMARY (FOR TIMI)
+    story.append(Paragraph("Summary: What Timi's n8n AI Returns When Customer Says 'Add to Cart'", h1_style))
+    simple_json = """{
   "reply": "I have added all 4 fresh ingredients for Okro Soup directly into your shopping cart!",
   "action": "AUTO_ADD_TO_CART",
   "recipeBundle": {
@@ -322,23 +340,10 @@ def build_pdf(filename="BEMS_FARMS_CHEF_BEMS_ADD_TO_CART_FLOW.pdf"):
     ]
   }
 }"""
+    story.append(Paragraph(simple_json.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
 
-    t_contracts = Table([
-        [Paragraph("<b>1. Webhook Input Payload (From Backend)</b>", bold_body_style), Paragraph("<b>2. Webhook Output Payload (From n8n)</b>", bold_body_style)],
-        [Paragraph(in_sample.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(out_sample.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
-    ], colWidths=[270, 270])
-    t_contracts.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]))
-    story.append(t_contracts)
-
-    doc.build(story, canvasmaker=NumberedCanvas)
-    print(f"✅ Generated Visual Flowchart PDF successfully: {filename}")
+    doc.build(story, canvasmaker=CleanCanvas)
+    print(f"✅ Generated Solid Flowchart PDF successfully: {filename}")
 
 if __name__ == "__main__":
     out = "BEMS_FARMS_CHEF_BEMS_ADD_TO_CART_FLOW.pdf"
