@@ -31,7 +31,6 @@ import AddProduct      from './pages/products/AddProduct'
 import Categories      from './pages/products/Categories'
 import SubCategories   from './pages/products/SubCategories'
 import Units           from './pages/products/Units'
-import Variants        from './pages/products/Variants'
 import Reviews         from './pages/products/Reviews'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
@@ -159,7 +158,7 @@ function App() {
                 <Route path="/products/sub-categories" element={<Navigate to="/products/categories" replace />} />
                 <Route path="/products/units"          element={<Units />} />
                 <Route path="/products/brands"         element={<Navigate to="/products" replace />} />
-                <Route path="/products/variants"       element={<Variants />} />
+                <Route path="/products/variants"       element={<Navigate to="/products" replace />} />
                 <Route path="/products/reviews"        element={<Reviews />} />
                 <Route path="/products/barcode"        element={<Barcode />} />
                 <Route path="/products/export"         element={<BulkExport />} />
