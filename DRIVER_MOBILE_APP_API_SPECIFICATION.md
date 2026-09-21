@@ -25,14 +25,14 @@ The Bems Farms Driver API connects the **Mobile Driver Application** to the cent
                                      └──────────────────────────┘          └─────────────────────────┘
 ```
 
-### Key Workflow Highlights:
-1. **Self-Service Registration:** Prospective drivers can register themselves directly on the mobile app via `POST /api/driver/auth/register`. Their account is created with `status: 'pending'` and `onboarding_status: 'pending_verification'`.
-2. **Review & KYC Documents:** While awaiting admin verification, drivers can log in, view their live verification status (`GET /api/driver/auth/status`), and upload their KYC documents (`POST /api/driver/upload/kyc`).
-3. **Admin Verification & Activation:** Once dispatch verifies their credentials and documents in the admin dashboard, the account is activated (`status: 'active'`). Drivers receive an in-app alert and email.
-4. **Shift Management:** Active drivers toggle `is_available: true` (Go Online) when starting shift to become eligible for automated order routing. Unverified drivers cannot toggle online.
-5. **Delivery Lifecycle:** Delivery progresses through discrete milestones: `assigned` ➔ `awaiting_pickup` ➔ `en_route` ➔ `arrived` ➔ `delivered` / `delivery_attempted`.
-6. **Live GPS Streaming:** Mobile app streams driver coordinates (`latitude`, `longitude`, `heading`, `speed`) every 10–15s while on active duty.
-7. **Wallet & Payouts:** Every successful delivery credits the driver's wallet with their custom commission. Drivers can request direct bank payouts via `/withdraw`.
+### Key Workflow Lifecycle:
+1. **Self-Service Registration:** Prospective drivers open the app, enter all required credentials (Name, Phone, Email, Password, NIN, Driver's License, Vehicle Type & Plate, Emergency Contact, Bank Details), and submit via `POST /api/driver/auth/register`.
+2. **Pending Notification:** The driver immediately receives an in-app confirmation and notification stating their application is received and to await administrative compliance verification (`status: 'pending'`, `onboarding_status: 'pending_verification'`).
+3. **Admin Verification & Immediate Email:** Admins inspect the credentials and documents in the Admin Portal and approve the driver (`PATCH /api/admin/deliveries/drivers/:id/approve` or `/compliance`). The system immediately dispatches an official approval email to the driver with their credentials summary and a direct **"Sign In to Your Driver Account"** link.
+4. **Email Redirect & Driver Sign-In:** The driver taps the "Sign In" button in their approval email, which redirects them directly to the Driver App Login screen. The driver enters their registered email/phone and password to authenticate.
+5. **Automatic Wallet Initialization:** Upon authentication, the system automatically initializes their driver commission wallet and dedicated virtual account (`driver_wallets` / Monnify Virtual Account), ready for earning commissions and requesting instant bank payouts.
+6. **Shift Availability:** Active drivers toggle `is_available: true` (Go Online) to start receiving automated doorstep delivery dispatches. Unverified or suspended drivers are strictly prevented from toggling online.
+7. **Delivery Milestones & Live Tracking:** Dispatches progress through `assigned` ➔ `awaiting_pickup` ➔ `en_route` ➔ `arrived` ➔ `delivered`, with GPS tracking coordinates streamed every 10–15s.
 
 ---
 

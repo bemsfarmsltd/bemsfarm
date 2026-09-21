@@ -496,21 +496,23 @@ async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin
       </div>
 
       <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
-        <div style="font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; margin-bottom: 8px;">Your Driver Login Credentials:</div>
-        <div style="font-size: 14px; color: #111827; margin-bottom: 4px;"><strong>Phone / Login ID:</strong> <span style="font-family: monospace; font-size: 15px;">${phone}</span></div>
-        ${driverPin ? `<div style="font-size: 14px; color: #111827;"><strong>Driver App PIN:</strong> <span style="font-family: monospace; font-size: 16px; font-weight: 800; color: #1B4332;">${driverPin}</span></div>` : ""}
+        <div style="font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; margin-bottom: 8px;">Your Driver Sign-In Details:</div>
+        <div style="font-size: 14px; color: #111827; margin-bottom: 4px;"><strong>Email / Phone:</strong> <span style="font-family: monospace; font-size: 15px;">${email || phone}</span></div>
+        <p style="font-size: 13px; color: #6B7280; margin: 6px 0 0 0;">
+          Use the password you created during self-service registration to log in. Upon login, your driver commission wallet is automatically initialized.
+        </p>
       </div>
 
       <div style="text-align: center; margin: 32px 0;">
         <a href="${loginUrl || "https://www.bemsfarms.com/driver"}" style="background: linear-gradient(135deg, #059669, #10B981); color: #ffffff; padding: 16px 36px;
           border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
           display: inline-block; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
-          Launch Driver App &amp; Go Online →
+          Sign In to Your Driver Account →
         </a>
       </div>
 
       <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
-        For any assistance, contact BemsFarms Dispatch Control via phone or your dispatch manager.
+        For any assistance, contact BemsFarms Dispatch Operations via phone or email.
       </p>
       ${footer}
     </div>`,

@@ -373,6 +373,39 @@ const login = async (req, res, next) => {
       [authRecord.id]
     );
 
+    // Auto-provision wallet / Monnify Virtual Account if not yet generated
+    let walletAccountNumber = driver.wallet_account_number;
+    let walletBankName = driver.wallet_bank_name || "Monnify / Wema Bank";
+    let walletAccountName = driver.wallet_account_name || `BEMS - ${driver.name.toUpperCase()}`;
+
+    if (!walletAccountNumber) {
+      walletAccountNumber = "855" + String(driver.id).padStart(7, "0");
+      try {
+        const { createMonnifyReservedAccount } = require("../utils/monnify");
+        createMonnifyReservedAccount({
+          accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
+          accountName: `BEMS - ${driver.name.toUpperCase()}`,
+          customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
+          customerName: driver.name,
+        }).then(async (monnifyRes) => {
+          if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
+            const primary = monnifyRes.accounts[0];
+            await pool.query(
+              `UPDATE drivers 
+               SET wallet_account_number = $1, 
+                   wallet_bank_name = $2, 
+                   wallet_account_name = $3, 
+                   updated_at = NOW() 
+               WHERE id = $4`,
+              [primary.accountNumber, primary.bankName || "Monnify / Wema Bank", primary.accountName || `BEMS - ${driver.name.toUpperCase()}`, driver.id]
+            );
+          }
+        }).catch((e) => console.warn("[driver-login] Monnify wallet provisioning note:", e.message));
+      } catch (e) {
+        console.warn("[driver-login] Wallet initialization note:", e.message);
+      }
+    }
+
     const isVerified = driver.status === "active";
     const token = generateDriverToken(driver);
 
@@ -380,7 +413,17 @@ const login = async (req, res, next) => {
       token,
       driver: {
         ...driver,
+        wallet_account_number: walletAccountNumber,
+        wallet_bank_name: walletBankName,
+        wallet_account_name: walletAccountName,
         is_available: isVerified ? driver.is_available : false,
+      },
+      wallet: {
+        account_number: walletAccountNumber,
+        bank_name: walletBankName,
+        account_name: walletAccountName,
+        total_earnings: parseFloat(driver.total_earnings) || 0,
+        commission_per_delivery: parseFloat(driver.commission_per_delivery) || 700,
       },
       verification: {
         status: driver.status,
