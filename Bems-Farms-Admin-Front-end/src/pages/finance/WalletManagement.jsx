@@ -1393,70 +1393,165 @@ export default function WalletManagement() {
           TAB 5: CENTRAL FINANCIAL AUDIT LEDGER
       ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'ledger' && (
-        <div className="card border-0 shadow-sm" style={{ borderRadius: 14 }}>
-          <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3 d-flex justify-content-between align-items-center">
-            <h6 className="mb-0 font-weight-bold text-dark">
-              <i className="ri-shield-check-line text-success"></i> Immutable Driver Financial Audit Ledger
-            </h6>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-              onClick={fetchAllData}
-            >
-              <i className="ri-refresh-line"></i> Refresh Ledger
-            </button>
+        <div>
+          {/* Double-Entry Ledger Summary Cards */}
+          <div className="row g-3 mb-4">
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3" style={{ borderRadius: 12, borderLeft: '4px solid #16A34A' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Total Credits (Cr)</div>
+                <div className="h4 font-weight-bold text-success mt-1 mb-0">
+                  +₦{ledgerLogs
+                    .filter((l) => l.type === 'credit')
+                    .reduce((acc, l) => acc + parseFloat(l.amount || 0), 0)
+                    .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Delivery Commissions &amp; Bonuses</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3" style={{ borderRadius: 12, borderLeft: '4px solid #DC2626' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Total Debits (Dr)</div>
+                <div className="h4 font-weight-bold text-danger mt-1 mb-0">
+                  -₦{ledgerLogs
+                    .filter((l) => l.type === 'debit')
+                    .reduce((acc, l) => acc + parseFloat(l.amount || 0), 0)
+                    .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Payout Withdrawals &amp; Penalties</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3" style={{ borderRadius: 12, borderLeft: '4px solid #2563EB' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Net Ledger Balance</div>
+                <div className="h4 font-weight-bold text-primary mt-1 mb-0">
+                  ₦{(
+                    ledgerLogs.filter((l) => l.type === 'credit').reduce((acc, l) => acc + parseFloat(l.amount || 0), 0) -
+                    ledgerLogs.filter((l) => l.type === 'debit').reduce((acc, l) => acc + parseFloat(l.amount || 0), 0)
+                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Current Driver Wallet Liability</div>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card border-0 shadow-sm p-3 bg-light" style={{ borderRadius: 12, borderLeft: '4px solid #059669' }}>
+                <div className="text-muted small text-uppercase font-weight-bold" style={{ fontSize: 11 }}>Ledger Integrity</div>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  <i className="ri-shield-check-fill text-success fs-4"></i>
+                  <span className="font-weight-bold text-success small">Double-Entry Balanced</span>
+                </div>
+                <div className="text-muted small mt-1" style={{ fontSize: 11 }}>Dr &amp; Cr Postings Reconciled</div>
+              </div>
+            </div>
           </div>
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
-              <thead className="table-light text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.6 }}>
-                <tr>
-                  <th className="ps-3 py-3">Timestamp</th>
-                  <th>Driver Name</th>
-                  <th>Transaction Type</th>
-                  <th>Category</th>
-                  <th>Amount</th>
-                  <th>Reference</th>
-                  <th>Audit Description</th>
-                  <th className="pe-3">Authorized By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledgerLogs.length === 0 ? (
+
+          <div className="card border-0 shadow-sm" style={{ borderRadius: 14 }}>
+            <div className="card-header bg-white border-bottom border-secondary border-opacity-10 p-3 d-flex justify-content-between align-items-center">
+              <div>
+                <h6 className="mb-0 font-weight-bold text-dark d-flex align-items-center gap-2">
+                  <i className="ri-book-2-line text-success"></i> Central Double-Entry Financial Audit Ledger
+                </h6>
+                <small className="text-muted" style={{ fontSize: 11 }}>
+                  Real-time recording of all Debits (Dr) and Credits (Cr) across driver sub-ledgers &amp; general company accounts
+                </small>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                onClick={fetchAllData}
+              >
+                <i className="ri-refresh-line"></i> Refresh Ledger
+              </button>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                <thead className="table-light text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.6 }}>
                   <tr>
-                    <td colSpan="8" className="text-center py-5 text-muted">
-                      No audit records found.
-                    </td>
+                    <th className="ps-3 py-3">Timestamp</th>
+                    <th>Driver</th>
+                    <th>Entry Type</th>
+                    <th>Debit (Dr) / Credit (Cr) Effect</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Reference</th>
+                    <th>Audit Narration</th>
+                    <th className="pe-3">Authorized By</th>
                   </tr>
-                ) : (
-                  ledgerLogs.map((log) => (
-                    <tr key={log.id}>
-                      <td className="ps-3 text-muted small">{new Date(log.created_at).toLocaleString()}</td>
-                      <td className="font-weight-bold text-dark">{log.driver_name}</td>
-                      <td>
-                        <span
-                          className="badge text-uppercase"
-                          style={{
-                            background: log.type === 'credit' ? '#DCFCE7' : '#FEE2E2',
-                            color: log.type === 'credit' ? '#166534' : '#DC2626',
-                          }}
-                        >
-                          {log.type}
-                        </span>
+                </thead>
+                <tbody>
+                  {ledgerLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="text-center py-5 text-muted">
+                        No double-entry audit records found.
                       </td>
-                      <td className="text-muted text-capitalize">{log.category?.replace('_', ' ')}</td>
-                      <td className="font-weight-bold">
-                        <span className={log.type === 'credit' ? 'text-success' : 'text-danger'}>
-                          {log.type === 'credit' ? '+' : '-'}₦{parseFloat(log.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
-                      <td className="font-monospace text-primary small">{log.reference}</td>
-                      <td className="text-dark small" style={{ maxWidth: 280 }}>{log.description}</td>
-                      <td className="pe-3 text-muted small">{log.performed_by_name || 'System Auto'}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    ledgerLogs.map((log) => {
+                      const isCredit = log.type === 'credit';
+                      let drAccount = '';
+                      let crAccount = '';
+
+                      if (log.category === 'delivery_commission') {
+                        drAccount = 'Delivery Expense (P&L)';
+                        crAccount = 'Driver Wallet Payable (Liability)';
+                      } else if (log.category === 'withdrawal') {
+                        drAccount = 'Driver Wallet Payable (Liability)';
+                        crAccount = 'Monnify Cash at Bank (Asset)';
+                      } else if (log.category === 'bonus') {
+                        drAccount = 'Driver Bonus Expense (P&L)';
+                        crAccount = 'Driver Wallet Payable (Liability)';
+                      } else if (log.category === 'penalty') {
+                        drAccount = 'Driver Wallet Payable (Liability)';
+                        crAccount = 'Loss Recovery Income (P&L)';
+                      } else {
+                        drAccount = isCredit ? 'Operating Expense' : 'Driver Wallet Payable';
+                        crAccount = isCredit ? 'Driver Wallet Payable' : 'Cash at Bank';
+                      }
+
+                      return (
+                        <tr key={log.id}>
+                          <td className="ps-3 text-muted small">{new Date(log.created_at).toLocaleString()}</td>
+                          <td className="font-weight-bold text-dark">{log.driver_name}</td>
+                          <td>
+                            <span
+                              className="badge"
+                              style={{
+                                background: isCredit ? '#DCFCE7' : '#FEE2E2',
+                                color: isCredit ? '#166534' : '#DC2626',
+                                fontWeight: 700,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              }}
+                            >
+                              {isCredit ? 'CR (CREDIT)' : 'DR (DEBIT)'}
+                            </span>
+                          </td>
+                          <td className="small">
+                            <div className="text-danger font-monospace" style={{ fontSize: 11 }}>
+                              <strong>Dr:</strong> {drAccount}
+                            </div>
+                            <div className="text-success font-monospace" style={{ fontSize: 11 }}>
+                              <strong>Cr:</strong> {crAccount}
+                            </div>
+                          </td>
+                          <td className="font-weight-bold">
+                            <span className={isCredit ? 'text-success' : 'text-danger'}>
+                              {isCredit ? '+' : '-'}₦{parseFloat(log.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                          <td className="text-muted text-capitalize">{log.category?.replace('_', ' ')}</td>
+                          <td className="font-monospace text-primary small">{log.reference}</td>
+                          <td className="text-dark small" style={{ maxWidth: 260 }}>{log.description}</td>
+                          <td className="pe-3 text-muted small">{log.performed_by_name || 'System Auto'}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1773,7 +1868,7 @@ export default function WalletManagement() {
                       <thead className="table-light">
                         <tr>
                           <th>Date</th>
-                          <th>Type</th>
+                          <th>Dr / Cr</th>
                           <th>Category</th>
                           <th>Amount</th>
                           <th>Reference</th>
@@ -1781,22 +1876,33 @@ export default function WalletManagement() {
                         </tr>
                       </thead>
                       <tbody>
-                        {statementData.map((ev, i) => (
-                          <tr key={i}>
-                            <td className="text-muted">{new Date(ev.date).toLocaleDateString()}</td>
-                            <td>
-                              <span className={`badge text-uppercase ${ev.type === 'credit' ? 'bg-success' : 'bg-danger'}`}>
-                                {ev.type}
-                              </span>
-                            </td>
-                            <td className="text-capitalize">{ev.category?.replace('_', ' ')}</td>
-                            <td className={`font-weight-bold ${ev.type === 'credit' ? 'text-success' : 'text-danger'}`}>
-                              {ev.type === 'credit' ? '+' : '-'}₦{parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="font-monospace small text-primary">{ev.reference}</td>
-                            <td className="text-muted small">{ev.description}</td>
-                          </tr>
-                        ))}
+                        {statementData.map((ev, i) => {
+                          const isCredit = ev.type === 'credit';
+                          return (
+                            <tr key={i}>
+                              <td className="text-muted">{new Date(ev.date).toLocaleDateString()}</td>
+                              <td>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    background: isCredit ? '#DCFCE7' : '#FEE2E2',
+                                    color: isCredit ? '#166534' : '#DC2626',
+                                    fontWeight: 700,
+                                    fontSize: 10,
+                                  }}
+                                >
+                                  {isCredit ? 'CR (CREDIT)' : 'DR (DEBIT)'}
+                                </span>
+                              </td>
+                              <td className="text-capitalize">{ev.category?.replace('_', ' ')}</td>
+                              <td className={`font-weight-bold ${isCredit ? 'text-success' : 'text-danger'}`}>
+                                {isCredit ? '+' : '-'}₦{parseFloat(ev.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="font-monospace small text-primary">{ev.reference}</td>
+                              <td className="text-muted small">{ev.description}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
