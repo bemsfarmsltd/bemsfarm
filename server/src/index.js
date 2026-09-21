@@ -58,8 +58,11 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(require('./services/auditService').auditRequests);
 app.use('/api/audit', require('./routes/audit'));
+
 
 // Auto-run God Eye audit v2 & Driver tables schema migration on startup (idempotent)
 (async () => {

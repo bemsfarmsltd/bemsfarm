@@ -639,9 +639,160 @@ const updateDeliveryStatus = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/deliveries/:orderId/accept ──────────────────────
+// Explicitly accept an assigned delivery drop
+const acceptDelivery = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+
+    await client.query("BEGIN");
+
+    const deliveryRes = await client.query(
+      `
+      SELECT d.*, o.order_ref, o.id as actual_order_id
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      WHERE (d.order_id = $1 OR o.order_ref = $1)
+        AND d.driver_id = $2
+      FOR UPDATE
+      `,
+      [orderId, driverId]
+    );
+
+    if (deliveryRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ status: "error", message: "Assigned delivery not found for this driver" });
+    }
+
+    const delivery = deliveryRes.rows[0];
+
+    await client.query(
+      `
+      UPDATE deliveries 
+      SET 
+        status = 'assigned',
+        accepted_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [delivery.id]
+    );
+
+    await client.query(
+      `UPDATE orders SET tracking_status = 'driver_assigned', updated_at = NOW() WHERE id = $1`,
+      [delivery.actual_order_id]
+    );
+
+    // Update assignment record if exists
+    await client.query(
+      `
+      UPDATE delivery_assignments 
+      SET driver_response = 'accepted', response_at = NOW()
+      WHERE delivery_id = $1 AND driver_id = $2
+      `,
+      [delivery.id, driverId]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      status: "success",
+      message: "Delivery accepted successfully",
+      delivery_id: delivery.id,
+      order_id: delivery.actual_order_id,
+      order_ref: delivery.order_ref,
+      status: "accepted"
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("acceptDelivery error:", err.message);
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+// ── POST /api/driver/deliveries/:orderId/decline ─────────────────────
+// Decline an assigned delivery drop with reason
+const declineDelivery = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+    const { reason = "unavailable", notes } = req.body;
+
+    await client.query("BEGIN");
+
+    const deliveryRes = await client.query(
+      `
+      SELECT d.*, o.order_ref, o.id as actual_order_id
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      WHERE (d.order_id = $1 OR o.order_ref = $1)
+        AND d.driver_id = $2
+      FOR UPDATE
+      `,
+      [orderId, driverId]
+    );
+
+    if (deliveryRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ status: "error", message: "Assigned delivery not found for this driver" });
+    }
+
+    const delivery = deliveryRes.rows[0];
+
+    // Remove driver so it returns to unassigned queue for other drivers
+    await client.query(
+      `
+      UPDATE deliveries 
+      SET 
+        driver_id = NULL,
+        status = 'pending_assignment',
+        declined_at = NOW(),
+        decline_reason = $1,
+        declined_by = COALESCE(declined_by, '[]'::jsonb) || JSON_BUILD_OBJECT('driver_id', $2::int, 'reason', $1::text, 'declined_at', NOW())::jsonb,
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [`${reason}${notes ? `: ${notes}` : ""}`, driverId, delivery.id]
+    );
+
+    // Update assignment record if exists
+    await client.query(
+      `
+      UPDATE delivery_assignments 
+      SET driver_response = 'rejected', rejection_reason = $1, response_at = NOW()
+      WHERE delivery_id = $2 AND driver_id = $3
+      `,
+      [reason, delivery.id, driverId]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      status: "success",
+      message: "Delivery declined. Returned to dispatch pool for reassignment.",
+      order_id: delivery.actual_order_id,
+      order_ref: delivery.order_ref
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("declineDelivery error:", err.message);
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getActiveDeliveries,
   getDeliveryHistory,
   getDeliveryDetails,
   updateDeliveryStatus,
+  acceptDelivery,
+  declineDelivery,
 };
+

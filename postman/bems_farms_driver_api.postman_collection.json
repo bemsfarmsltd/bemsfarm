@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "bems-farms-driver-fintech-api-v2",
-		"name": "Bems Farms - Driver Mobile App & Wallet API",
-		"description": "Complete API Collection for Bems Farms Driver Mobile App, Logistics Dispatch, Dedicated Virtual Accounts (Monnify), and Zone-Based Wallet Payouts.",
+		"_postman_id": "bems-farms-driver-app-api-v2",
+		"name": "Bems Farms - Driver Mobile Application API",
+		"description": "Complete 100% Driver-Only API Collection for Bems Farms Driver Mobile App (React Native / Flutter / iOS / Android). Includes Auth, Dispatch Deliveries, Accept/Decline, POD Uploads, Wallet, Bank Verification, Push Tokens, Incident Reporting, and Emergency SOS.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -12,24 +12,14 @@
 			"type": "string"
 		},
 		{
-			"key": "adminUrl",
-			"value": "https://api.bemsfarms.com/api/admin",
-			"type": "string"
-		},
-		{
 			"key": "token",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "adminToken",
 			"value": "",
 			"type": "string"
 		}
 	],
 	"item": [
 		{
-			"name": "1. Driver Onboarding & Compliance",
+			"name": "1. Driver Onboarding & KYC",
 			"item": [
 				{
 					"name": "Verify Invite Token",
@@ -40,28 +30,18 @@
 							"raw": "{{baseUrl}}/onboarding/verify?token=YOUR_INVITE_TOKEN",
 							"host": ["{{baseUrl}}"],
 							"path": ["onboarding", "verify"],
-							"query": [
-								{
-									"key": "token",
-									"value": "YOUR_INVITE_TOKEN"
-								}
-							]
+							"query": [{ "key": "token", "value": "YOUR_INVITE_TOKEN" }]
 						}
 					}
 				},
 				{
-					"name": "Submit Onboarding KYC & Bank Info",
+					"name": "Submit Onboarding KYC & Bank Details",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"token\": \"YOUR_INVITE_TOKEN\",\n  \"nin_number\": \"12345678901\",\n  \"address\": \"14 Commercial Avenue, Yaba, Lagos\",\n  \"vehicle_type\": \"Motorcycle (Box)\",\n  \"vehicle_plate\": \"KJA-849-XY\",\n  \"bank_name\": \"GTBank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Victor Kalu\",\n  \"emergency_contact_name\": \"Sarah Kalu\",\n  \"emergency_contact_phone\": \"08098765432\",\n  \"emergency_contact_relationship\": \"Spouse\",\n  \"guarantor_name\": \"Chief Babatunde Kalu\",\n  \"guarantor_phone\": \"08033334444\",\n  \"guarantor_address\": \"8 Herbert Macaulay Way, Yaba\",\n  \"documents\": {\n    \"drivers_license\": \"https://storage.googleapis.com/bems-uploads/license.jpg\",\n    \"nin_slip\": \"https://storage.googleapis.com/bems-uploads/nin.jpg\"\n  }\n}"
+							"raw": "{\n  \"token\": \"YOUR_INVITE_TOKEN\",\n  \"nin_number\": \"12345678901\",\n  \"address\": \"14 Commercial Avenue, Maitama, Abuja\",\n  \"vehicle_type\": \"Motorcycle (Box)\",\n  \"vehicle_plate\": \"ABJ-849-XY\",\n  \"bank_name\": \"GTBank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Victor Kalu\",\n  \"emergency_contact_name\": \"Sarah Kalu\",\n  \"emergency_contact_phone\": \"08098765432\",\n  \"emergency_contact_relationship\": \"Spouse\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/onboarding/submit",
@@ -73,7 +53,7 @@
 			]
 		},
 		{
-			"name": "2. Authentication & Profile",
+			"name": "2. Authentication & Duty Status",
 			"item": [
 				{
 					"name": "Driver Login",
@@ -85,7 +65,6 @@
 									"var jsonData = pm.response.json();",
 									"if (jsonData.token) {",
 									"    pm.collectionVariables.set('token', jsonData.token);",
-									"    console.log('Driver Token Saved!');",
 									"}"
 								],
 								"type": "text/javascript"
@@ -94,12 +73,7 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"emailOrPhone\": \"08123456789\",\n  \"password\": \"Password123!\"\n}"
@@ -112,15 +86,10 @@
 					}
 				},
 				{
-					"name": "Forgot Password Request",
+					"name": "Forgot Password",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"emailOrPhone\": \"08123456789\"\n}"
@@ -133,18 +102,13 @@
 					}
 				},
 				{
-					"name": "Reset Password with OTP",
+					"name": "Reset Password",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"emailOrPhone\": \"08123456789\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"NewSecurePass2026!\"\n}"
+							"raw": "{\n  \"token\": \"RESET_TOKEN_HERE\",\n  \"password\": \"NewPassword123!\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/auth/reset-password",
@@ -154,15 +118,10 @@
 					}
 				},
 				{
-					"name": "Get Profile & Monnify DVA (/auth/me)",
+					"name": "Get Authenticated Profile",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
 							"raw": "{{baseUrl}}/auth/me",
 							"host": ["{{baseUrl}}"],
@@ -171,22 +130,16 @@
 					}
 				},
 				{
-					"name": "Update Profile & Settlement Bank",
+					"name": "Update Profile",
 					"request": {
 						"method": "PATCH",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"phone\": \"08123456789\",\n  \"email\": \"victor.kalu@bemsfarms.com\",\n  \"bank_name\": \"GTBank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Victor Kalu\"\n}"
+							"raw": "{\n  \"phone\": \"08123456789\",\n  \"vehicle_type\": \"Motorcycle (Box)\",\n  \"vehicle_plate\": \"ABJ-849-XY\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/auth/profile",
@@ -196,22 +149,16 @@
 					}
 				},
 				{
-					"name": "Toggle Availability (Online/Offline)",
+					"name": "Toggle Duty Availability",
 					"request": {
 						"method": "PATCH",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"is_available\": true\n}"
+							"raw": "{\n  \"is_available\": true,\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/availability",
@@ -223,18 +170,13 @@
 			]
 		},
 		{
-			"name": "3. Delivery Operations & Milestones",
+			"name": "3. Dispatch Deliveries & Orders",
 			"item": [
 				{
-					"name": "Get Active Deliveries",
+					"name": "Get Active Deliveries Queue",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
 							"raw": "{{baseUrl}}/deliveries",
 							"host": ["{{baseUrl}}"],
@@ -243,44 +185,64 @@
 					}
 				},
 				{
-					"name": "Get Delivery Details",
+					"name": "Get Delivery Details Breakdown",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
-							"raw": "{{baseUrl}}/deliveries/42",
+							"raw": "{{baseUrl}}/deliveries/1092",
 							"host": ["{{baseUrl}}"],
-							"path": ["deliveries", "42"]
+							"path": ["deliveries", "1092"]
 						}
 					}
 				},
 				{
-					"name": "Update Delivery Status (Milestone)",
+					"name": "Accept Delivery Assignment",
 					"request": {
-						"method": "PATCH",
+						"method": "POST",
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/1092/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "1092", "accept"]
+						}
+					}
+				},
+				{
+					"name": "Decline Delivery Assignment",
+					"request": {
+						"method": "POST",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"status\": \"delivered\",\n  \"proof_note\": \"Delivered directly to customer at front door\",\n  \"proof_photo\": \"https://storage.googleapis.com/bems-uploads/proof_delivered.jpg\"\n}"
+							"raw": "{\n  \"reason\": \"vehicle_breakdown\",\n  \"notes\": \"Flat tyre on Airport road\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/deliveries/42/status",
+							"raw": "{{baseUrl}}/deliveries/1092/decline",
 							"host": ["{{baseUrl}}"],
-							"path": ["deliveries", "42", "status"]
+							"path": ["deliveries", "1092", "decline"]
+						}
+					}
+				},
+				{
+					"name": "Update Milestone Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"delivered\",\n  \"proof_note\": \"Handed to customer Mrs. Ngozi\",\n  \"proof_photo\": \"https://api.bemsfarms.com/uploads/proofs/POD_17899_3c8f.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/deliveries/1092/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "1092", "status"]
 						}
 					}
 				},
@@ -288,25 +250,14 @@
 					"name": "Get Delivery History",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
 							"raw": "{{baseUrl}}/deliveries/history?page=1&limit=20",
 							"host": ["{{baseUrl}}"],
 							"path": ["deliveries", "history"],
 							"query": [
-								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "limit",
-									"value": "20"
-								}
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "20" }
 							]
 						}
 					}
@@ -314,25 +265,46 @@
 			]
 		},
 		{
-			"name": "4. Location Telemetry",
+			"name": "4. Proof of Delivery (POD) Image Upload",
 			"item": [
 				{
-					"name": "Send GPS Location Ping",
+					"name": "Upload Photo Proof from Camera",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/upload/proof",
+							"host": ["{{baseUrl}}"],
+							"path": ["upload", "proof"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. GPS Telemetry",
+			"item": [
+				{
+					"name": "Stream Background GPS Ping",
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986,\n  \"heading\": 180.0,\n  \"speed\": 35.0,\n  \"accuracy\": 4.0\n}"
+							"raw": "{\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986,\n  \"heading\": 180.5,\n  \"speed\": 34.2,\n  \"accuracy\": 5.0\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/location",
@@ -344,18 +316,13 @@
 			]
 		},
 		{
-			"name": "5. Driver Wallet & Payouts (Driver Side)",
+			"name": "6. Driver Wallet, Banks & Withdrawals",
 			"item": [
 				{
-					"name": "Get Driver Wallet Balance & Zone Rates",
+					"name": "Get Wallet Balance & DVA Info",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
 							"raw": "{{baseUrl}}/earnings",
 							"host": ["{{baseUrl}}"],
@@ -364,22 +331,47 @@
 					}
 				},
 				{
-					"name": "Request Withdrawal (Payout to Bank)",
+					"name": "List Nigerian Commercial Banks",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+						"url": {
+							"raw": "{{baseUrl}}/banks",
+							"host": ["{{baseUrl}}"],
+							"path": ["banks"]
+						}
+					}
+				},
+				{
+					"name": "Resolve NUBAN Account Name",
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"amount\": 15000,\n  \"bank_name\": \"GTBank\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"Victor Kalu\",\n  \"notes\": \"Weekly earnings withdrawal\"\n}"
+							"raw": "{\n  \"account_number\": \"0123456789\",\n  \"bank_code\": \"058\",\n  \"bank_name\": \"Guaranty Trust Bank (GTBank)\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/bank/resolve",
+							"host": ["{{baseUrl}}"],
+							"path": ["bank", "resolve"]
+						}
+					}
+				},
+				{
+					"name": "Request Withdrawal to Bank",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 10000.00,\n  \"bank_name\": \"Guaranty Trust Bank (GTBank)\",\n  \"bank_code\": \"058\",\n  \"account_number\": \"0123456789\",\n  \"account_name\": \"VICTOR KALU\",\n  \"notes\": \"Weekly earnings withdrawal\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/withdraw",
@@ -391,183 +383,153 @@
 			]
 		},
 		{
-			"name": "6. Admin Wallet & Payment Gateway Hub (Admin Side)",
+			"name": "7. Push Tokens & Notifications",
 			"item": [
 				{
-					"name": "Get Executive Summary & Driver Wallets",
+					"name": "Register Device Push Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\",\n  \"platform\": \"expo\",\n  \"device_info\": { \"os\": \"iOS 17.4\", \"model\": \"iPhone 15 Pro\" }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/device-token",
+							"host": ["{{baseUrl}}"],
+							"path": ["device-token"]
+						}
+					}
+				},
+				{
+					"name": "Get Notification Inbox",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
-							"raw": "{{adminUrl}}/wallets/summary?search=&status=all",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "summary"],
+							"raw": "{{baseUrl}}/notifications?page=1&limit=20",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications"],
 							"query": [
-								{
-									"key": "search",
-									"value": ""
-								},
-								{
-									"key": "status",
-									"value": "all"
-								}
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "20" }
 							]
 						}
 					}
 				},
 				{
-					"name": "Get Zone Earnings Payout Matrix",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{adminUrl}}/wallets/zone-earnings",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "zone-earnings"]
-						}
-					}
-				},
-				{
-					"name": "Update Zone Payout Rate",
+					"name": "Mark Single Notification as Read",
 					"request": {
 						"method": "PATCH",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"driver_earning_fee\": 1800,\n  \"driver_commission_percent\": 72\n}"
-						},
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
-							"raw": "{{adminUrl}}/wallets/zone-earnings/2",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "zone-earnings", "2"]
+							"raw": "{{baseUrl}}/notifications/101/read",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "101", "read"]
 						}
 					}
 				},
 				{
-					"name": "Single Payout Disbursement (Monnify Live)",
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PATCH",
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/read-all",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "read-all"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Incident & Problem Reporting",
+			"item": [
+				{
+					"name": "Report Mid-Trip Issue",
 					"request": {
 						"method": "POST",
 						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"disbursement_method\": \"monnify_transfer\",\n  \"manual_reference\": \"\",\n  \"notes\": \"Approved weekly payout\"\n}"
+							"raw": "{\n  \"issue_type\": \"customer_unreachable\",\n  \"description\": \"Customer phone switched off at gate\",\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986,\n  \"photo_urls\": [\"https://api.bemsfarms.com/uploads/proofs/gate_photo.jpg\"]\n}"
 						},
 						"url": {
-							"raw": "{{adminUrl}}/wallets/payouts/1/disburse",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "payouts", "1", "disburse"]
+							"raw": "{{baseUrl}}/deliveries/1092/report-issue",
+							"host": ["{{baseUrl}}"],
+							"path": ["deliveries", "1092", "report-issue"]
 						}
 					}
 				},
 				{
-					"name": "Bulk Batch Payout Disbursement",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"payout_ids\": [1, 2, 3],\n  \"disbursement_method\": \"monnify_transfer\",\n  \"notes\": \"Batch Friday payout run\"\n}"
-						},
-						"url": {
-							"raw": "{{adminUrl}}/wallets/payouts/bulk-disburse",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "payouts", "bulk-disburse"]
-						}
-					}
-				},
-				{
-					"name": "Provision Real Monnify DVA for Driver",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							}
-						],
-						"url": {
-							"raw": "{{adminUrl}}/wallets/drivers/6/provision-monnify-dva",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "drivers", "6", "provision-monnify-dva"]
-						}
-					}
-				},
-				{
-					"name": "Get Monnify Gateway Live Overview & Balance",
+					"name": "Get Incident Reports",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							}
-						],
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
-							"raw": "{{adminUrl}}/wallets/gateway/overview",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "gateway", "overview"]
+							"raw": "{{baseUrl}}/incidents",
+							"host": ["{{baseUrl}}"],
+							"path": ["incidents"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Emergency SOS / Safety Panic",
+			"item": [
+				{
+					"name": "Trigger Emergency SOS",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 9.0765,\n  \"longitude\": 7.3986,\n  \"address\": \"Maitama Junction, Near Transcorp Hilton\",\n  \"battery_level\": 42,\n  \"emergency_type\": \"vehicle_accident\",\n  \"notes\": \"Need immediate dispatch assistance\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/emergency",
+							"host": ["{{baseUrl}}"],
+							"path": ["emergency"]
 						}
 					}
 				},
 				{
-					"name": "Validate NUBAN Account (Bank Name Resolution)",
+					"name": "Cancel Emergency SOS",
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{adminToken}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"account_number\": \"0123456789\",\n  \"bank_name\": \"GTBank\"\n}"
-						},
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
 						"url": {
-							"raw": "{{adminUrl}}/wallets/validate-bank",
-							"host": ["{{adminUrl}}"],
-							"path": ["wallets", "validate-bank"]
+							"raw": "{{baseUrl}}/emergency/SOS-TEST-99/cancel",
+							"host": ["{{baseUrl}}"],
+							"path": ["emergency", "SOS-TEST-99", "cancel"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Performance Scorecard & Ratings",
+			"item": [
+				{
+					"name": "Get Driver Stats & Ratings",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+						"url": {
+							"raw": "{{baseUrl}}/stats",
+							"host": ["{{baseUrl}}"],
+							"path": ["stats"]
 						}
 					}
 				}

@@ -1,16 +1,37 @@
+#!/usr/bin/env python3
+"""
+BEMS FARMS — DRIVER MOBILE APP API SPECIFICATION (PDF GENERATOR)
+Comprehensive, publication-grade technical documentation for React Native, Flutter, iOS & Android.
+100% EXCLUSIVE TO THE DRIVER MOBILE APPLICATION (/api/driver/*).
+Includes all 24 driver endpoints, full request/response payloads, authentication,
+wallet system, bank resolution, push tokens, incident reporting, POD uploads, and emergency SOS.
+"""
+
 import os
 import sys
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
-)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+)
 from reportlab.pdfgen import canvas
+
+# Palette definition
+PRIMARY = colors.HexColor("#0D9488")      # Teal 600
+PRIMARY_DARK = colors.HexColor("#115E59") # Teal 800
+SECONDARY = colors.HexColor("#0F172A")    # Slate 900
+ACCENT = colors.HexColor("#F59E0B")       # Amber 500
+TEXT_MAIN = colors.HexColor("#334155")    # Slate 700
+BORDER_COL = colors.HexColor("#E2E8F0")   # Slate 200
+CODE_BG = colors.HexColor("#F8FAFC")      # Slate 50
+SUCCESS = colors.HexColor("#10B981")      # Emerald 500
+DANGER = colors.HexColor("#EF4444")       # Red 500
 
 class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
-        super(NumberedCanvas, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._saved_page_states = []
 
     def showPage(self):
@@ -21,29 +42,28 @@ class NumberedCanvas(canvas.Canvas):
         num_pages = len(self._saved_page_states)
         for state in self._saved_page_states:
             self.__dict__.update(state)
-            self.draw_page_decorations(num_pages)
-            super(NumberedCanvas, self).showPage()
-        super(NumberedCanvas, self).save()
+            self.draw_decorations(num_pages)
+            super().showPage()
+        super().save()
 
-    def draw_page_decorations(self, page_count):
+    def draw_decorations(self, page_count):
         self.saveState()
-        self.setFont("Helvetica", 8)
+        self.setFont("Helvetica-Bold", 7.5)
+        self.setFillColor(PRIMARY_DARK)
+        self.drawString(36, 758, "BEMS FARMS — DRIVER MOBILE APPLICATION API SPECIFICATION")
+        self.setFont("Helvetica", 7.5)
         self.setFillColor(colors.HexColor("#64748B"))
+        self.drawRightString(576, 758, "API Version 2.0 • Confidential Engineering Reference")
         
-        # Header (pages > 1)
-        if self._pageNumber > 1:
-            self.drawString(36, 762, "Bems Farms — Driver Mobile App API Specification & Engineering Guide")
-            self.setStrokeColor(colors.HexColor("#CBD5E1"))
-            self.setLineWidth(0.5)
-            self.line(36, 754, 576, 754)
-        
-        # Footer
-        page_str = f"Page {self._pageNumber} of {page_count}"
-        self.drawRightString(576, 25, page_str)
-        self.drawString(36, 25, "CONFIDENTIAL — BEMS FARMS DRIVER MOBILE APPLICATION (IOS & ANDROID)")
-        self.setStrokeColor(colors.HexColor("#CBD5E1"))
-        self.setLineWidth(0.5)
-        self.line(36, 35, 576, 35)
+        self.setStrokeColor(BORDER_COL)
+        self.setLineWidth(0.75)
+        self.line(36, 752, 576, 752)
+
+        self.line(36, 36, 576, 36)
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(colors.HexColor("#64748B"))
+        self.drawString(36, 26, "© 2026 Bems Farms Ltd. • Driver Logistics & Dispatch Platform")
+        self.drawRightString(576, 26, f"Page {self._pageNumber} of {page_count}")
         self.restoreState()
 
 def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
@@ -52,98 +72,95 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
-        topMargin=40,
-        bottomMargin=40
+        topMargin=54,
+        bottomMargin=48
     )
 
     styles = getSampleStyleSheet()
     
-    PRIMARY = colors.HexColor("#0F766E")   # Teal 700
-    SECONDARY = colors.HexColor("#0F172A") # Slate 900
-    MUTED = colors.HexColor("#64748B")     # Slate 500
-    BORDER_COL = colors.HexColor("#CBD5E1")
-
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=18,
-        leading=22,
-        textColor=SECONDARY,
-        spaceAfter=3
+        fontSize=15,
+        leading=18,
+        textColor=PRIMARY_DARK,
+        spaceAfter=2
     )
     
     subtitle_style = ParagraphStyle(
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9,
-        leading=13,
-        textColor=MUTED,
-        spaceAfter=8
+        fontSize=8.5,
+        leading=11,
+        textColor=TEXT_MAIN,
+        spaceAfter=5
     )
 
     h1_style = ParagraphStyle(
-        'Header1',
+        'Heading1_Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11.5,
-        leading=15,
-        textColor=PRIMARY,
-        spaceBefore=10,
-        spaceAfter=4,
+        fontSize=11,
+        leading=13,
+        textColor=PRIMARY_DARK,
+        spaceBefore=7,
+        spaceAfter=3,
         keepWithNext=True
     )
 
     h2_style = ParagraphStyle(
-        'Header2',
+        'Heading2_Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9.5,
-        leading=13,
+        fontSize=9,
+        leading=11,
         textColor=SECONDARY,
-        spaceBefore=7,
+        spaceBefore=4,
         spaceAfter=2,
         keepWithNext=True
     )
 
     body_style = ParagraphStyle(
-        'BodyDark',
+        'Body_Custom',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.8,
-        leading=11,
-        textColor=colors.HexColor("#334155")
+        fontSize=7.5,
+        leading=9.5,
+        textColor=TEXT_MAIN
     )
 
     bold_body_style = ParagraphStyle(
-        'BoldBody',
+        'BoldBody_Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.8,
-        leading=11,
+        fontSize=7.5,
+        leading=9.5,
         textColor=SECONDARY
     )
 
     code_style = ParagraphStyle(
-        'CodeBlock',
+        'Code_Custom',
         parent=styles['Normal'],
         fontName='Courier',
         fontSize=6.5,
-        leading=8.8,
+        leading=8.2,
         textColor=colors.HexColor("#0F172A"),
-        backColor=colors.HexColor("#F8FAFC"),
-        borderPadding=4,
-        spaceBefore=2,
-        spaceAfter=3
+        backColor=CODE_BG,
+        borderColor=BORDER_COL,
+        borderWidth=0.5,
+        borderPadding=3,
+        spaceBefore=1,
+        spaceAfter=2
     )
 
     story = []
 
     # Title & Metadata Banner
     story.append(Paragraph("🚚 Bems Farms — Driver Mobile App API Specification", title_style))
-    story.append(Paragraph("Official Engineering Guide for Mobile App Developers (React Native, Flutter, iOS & Android)", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=6))
+    story.append(Paragraph("Official Engineering Guide for Mobile App Developers (React Native, Flutter, iOS & Android) • Version 2.0.0", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=PRIMARY, spaceAfter=4))
 
     # Architecture Overview Table
     meta_data = [
@@ -156,7 +173,7 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
             Paragraph("<b>Local Development URL:</b> http://localhost:5000/api/driver", body_style)
         ],
         [
-            Paragraph("<b>Payload Standard:</b> application/json", body_style),
+            Paragraph("<b>Payload Standard:</b> application/json & multipart/form-data", body_style),
             Paragraph("<b>Driver Wallet &amp; DVA:</b> Monnify Virtual NUBAN + Zone-Based Earnings", body_style)
         ]
     ]
@@ -165,16 +182,16 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDFA")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#99F6E4")),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CCFBF1")),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
     story.append(meta_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
-    # SECTION 1: MASTER ROUTING DIRECTORY (ALL DRIVER ENDPOINTS)
-    story.append(Paragraph("1. Driver API Directory & Endpoint Index", h1_style))
+    # SECTION 1: MASTER ROUTING DIRECTORY (ALL 24 DRIVER ENDPOINTS)
+    story.append(Paragraph("1. Driver API Directory & Endpoint Index (24 Endpoints)", h1_style))
     
     d_rows = [
         [Paragraph("<b>Category</b>", bold_body_style), Paragraph("<b>Method &amp; Endpoint</b>", bold_body_style), Paragraph("<b>Auth</b>", bold_body_style), Paragraph("<b>Description &amp; Mobile Trigger</b>", bold_body_style)],
@@ -184,29 +201,41 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         [Paragraph("Auth", body_style), Paragraph("<code>POST /auth/forgot-password</code>", body_style), Paragraph("Public", body_style), Paragraph("Send password reset token via SMS / Email", body_style)],
         [Paragraph("Auth", body_style), Paragraph("<code>POST /auth/reset-password</code>", body_style), Paragraph("Public", body_style), Paragraph("Confirm reset token and configure new driver password", body_style)],
         [Paragraph("Profile", body_style), Paragraph("<code>GET /auth/me</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Retrieve driver profile, rating, stats & Monnify Virtual Account", body_style)],
-        [Paragraph("Profile", body_style), Paragraph("<code>PATCH /auth/profile</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Update driver phone number, profile photo, or bank details", body_style)],
+        [Paragraph("Profile", body_style), Paragraph("<code>PATCH /auth/profile</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Update driver phone number, profile photo, or vehicle details", body_style)],
         [Paragraph("Availability", body_style), Paragraph("<code>PATCH /availability</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Toggle duty state: Online (ready for dispatch) vs Offline", body_style)],
         [Paragraph("Deliveries", body_style), Paragraph("<code>GET /deliveries</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Fetch assigned active deliveries with customer addresses & items", body_style)],
         [Paragraph("Deliveries", body_style), Paragraph("<code>GET /deliveries/:orderId</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Fetch full itemized breakdown for a specific delivery drop", body_style)],
+        [Paragraph("Deliveries", body_style), Paragraph("<code>POST /deliveries/:orderId/accept</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Explicitly accept an assigned delivery drop within countdown", body_style)],
+        [Paragraph("Deliveries", body_style), Paragraph("<code>POST /deliveries/:orderId/decline</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Decline delivery with reason so dispatch can reassign", body_style)],
         [Paragraph("Milestones", body_style), Paragraph("<code>PATCH /deliveries/:orderId/status</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Progress milestone (accepted, en_route, arrived, delivered)", body_style)],
+        [Paragraph("Incidents", body_style), Paragraph("<code>POST /deliveries/:orderId/report-issue</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Report mid-trip issue (customer unreachable, wrong address)", body_style)],
+        [Paragraph("Incidents", body_style), Paragraph("<code>GET /incidents</code>", body_style), Paragraph("Bearer", body_style), Paragraph("List past incident reports and resolution statuses", body_style)],
         [Paragraph("History", body_style), Paragraph("<code>GET /deliveries/history</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Fetch paginated past delivery drops and completed trips", body_style)],
+        [Paragraph("POD Upload", body_style), Paragraph("<code>POST /upload/proof</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Upload camera photo proof of delivery (multipart/form-data)", body_style)],
         [Paragraph("Telemetry", body_style), Paragraph("<code>POST /location</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Background GPS coordinate stream ping (every 10–15s)", body_style)],
         [Paragraph("Wallet", body_style), Paragraph("<code>GET /earnings</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Live wallet balance, Monnify DVA NUBAN, zone rate card & history", body_style)],
-        [Paragraph("Wallet / Bank", body_style), Paragraph("<code>GET /banks</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Directory of Nigerian commercial banks & fintechs with codes", body_style)],
-        [Paragraph("Wallet / Bank", body_style), Paragraph("<code>POST /bank/resolve</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Verify 10-digit NUBAN account number & resolve legal account name", body_style)],
-        [Paragraph("Wallet", body_style), Paragraph("<code>POST /withdraw</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Request payout of unwithdrawn earnings to personal bank account", body_style)],
+        [Paragraph("Bank Directory", body_style), Paragraph("<code>GET /banks</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Directory of Nigerian commercial banks & fintechs with codes", body_style)],
+        [Paragraph("Bank Resolve", body_style), Paragraph("<code>POST /bank/resolve</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Verify 10-digit NUBAN account number & resolve legal account name", body_style)],
+        [Paragraph("Withdrawal", body_style), Paragraph("<code>POST /withdraw</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Request payout of unwithdrawn earnings to personal bank account", body_style)],
+        [Paragraph("Push Tokens", body_style), Paragraph("<code>POST /device-token</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Register / update device Expo / FCM push notification token", body_style)],
+        [Paragraph("Notifications", body_style), Paragraph("<code>GET /notifications</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Fetch in-app notification inbox with unread count", body_style)],
+        [Paragraph("Notifications", body_style), Paragraph("<code>PATCH /notifications/:id/read</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Mark single notification as read", body_style)],
+        [Paragraph("Notifications", body_style), Paragraph("<code>PATCH /notifications/read-all</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Mark all notifications in inbox as read", body_style)],
+        [Paragraph("Performance", body_style), Paragraph("<code>GET /stats</code> | <code>/performance</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Driver scorecard, rating (⭐), on-time rate & badges", body_style)],
+        [Paragraph("Emergency SOS", body_style), Paragraph("<code>POST /emergency</code>", body_style), Paragraph("Bearer", body_style), Paragraph("🚨 1-Tap SOS panic alert broadcasting live GPS to dispatch", body_style)],
+        [Paragraph("Emergency SOS", body_style), Paragraph("<code>POST /emergency/:id/cancel</code>", body_style), Paragraph("Bearer", body_style), Paragraph("Cancel emergency false alarm", body_style)],
     ]
-    t_d = Table(d_rows, colWidths=[70, 180, 45, 245])
+    t_d = Table(d_rows, colWidths=[65, 185, 40, 250])
     t_d.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#E2E8F0")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 1.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 3),
+        ('RIGHTPADDING', (0,0), (-1,-1), 3),
     ]))
     story.append(t_d)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     # SECTION 2: AUTHENTICATION, ONBOARDING & PROFILE
     story.append(Paragraph("2. Driver Authentication, Onboarding & Profile APIs", h1_style))
@@ -227,7 +256,7 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ]))
     story.append(t_login)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("<b>2.2 Toggle Availability State (`PATCH /api/driver/availability`)</b>", h2_style))
     avail_req = '{\n  "is_available": true,\n  "latitude": 9.0765,\n  "longitude": 7.3986\n}'
@@ -243,12 +272,35 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ]))
     story.append(t_avail)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
-    # SECTION 3: DELIVERIES & MILESTONES
-    story.append(Paragraph("3. Dispatch Deliveries & Milestone Progression", h1_style))
-    story.append(Paragraph("Drivers receive live delivery drops and progress them through 5 status milestones.", body_style))
-    
+    # SECTION 3: DISPATCH DELIVERIES, ACCEPT/DECLINE & MILESTONES
+    story.append(Paragraph("3. Dispatch Deliveries, Accept/Decline & Milestones", h1_style))
+    story.append(Paragraph("When an order is dispatched, the driver has endpoints to explicitly Accept or Decline, progress through 5 status milestones, and capture photo proof of delivery.", body_style))
+    story.append(Spacer(1, 3))
+
+    story.append(Paragraph("<b>3.1 Accept Delivery Drop (`POST /api/driver/deliveries/:orderId/accept`)</b>", h2_style))
+    acc_res = '{\n  "status": "success",\n  "message": "Delivery accepted successfully",\n  "delivery_id": 482,\n  "order_id": 1092,\n  "order_ref": "BEMS-ORD-8819",\n  "status": "accepted"\n}'
+    story.append(Paragraph(acc_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 3))
+
+    story.append(Paragraph("<b>3.2 Decline Delivery Drop (`POST /api/driver/deliveries/:orderId/decline`)</b>", h2_style))
+    dec_req = '{\n  "reason": "vehicle_breakdown",\n  "notes": "Flat tyre along Airport Road, fixing at repair shop."\n}'
+    dec_res = '{\n  "status": "success",\n  "message": "Delivery declined. Returned to dispatch pool for reassignment.",\n  "order_id": 1092,\n  "order_ref": "BEMS-ORD-8819"\n}'
+    t_dec = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
+        [Paragraph(dec_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(dec_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_dec.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_dec)
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph("<b>3.3 Milestone Progression Lifecycle</b>", h2_style))
     ms_headers = [Paragraph("<b>Milestone</b>", bold_body_style), Paragraph("<b>Action Description</b>", bold_body_style), Paragraph("<b>Customer Tracking State</b>", bold_body_style), Paragraph("<b>Financial Trigger</b>", bold_body_style)]
     ms_data = [
         ms_headers,
@@ -269,9 +321,9 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     story.append(t_ms)
     story.append(Spacer(1, 4))
 
-    story.append(Paragraph("<b>3.1 Update Milestone (`PATCH /api/driver/deliveries/:orderId/status`)</b>", h2_style))
-    status_sample = '{\n  "status": "delivered",\n  "proof_note": "Handed directly to customer Mrs. Ngozi.",\n  "proof_photo": "https://storage.googleapis.com/bems-uploads/proof_del_998.jpg"\n}'
-    status_res = '{\n  "message": "Delivery completed successfully",\n  "delivery_status": "delivered",\n  "order_status": "delivered",\n  "commission_earned": 1750.00,\n  "new_wallet_balance": 18250.00\n}'
+    story.append(Paragraph("<b>3.4 Update Milestone (`PATCH /api/driver/deliveries/:orderId/status`)</b>", h2_style))
+    status_sample = '{\n  "status": "delivered",\n  "proof_note": "Handed directly to customer Mrs. Ngozi.",\n  "proof_photo": "https://api.bemsfarms.com/uploads/proofs/POD_17899_a8b9.jpg"\n}'
+    status_res = '{\n  "message": "Delivery status updated to delivered",\n  "delivery": { "id": 482, "status": "delivered", "arrived_at": "2026-09-21T10:14:00Z" },\n  "order_id": 1092,\n  "status": "delivered"\n}'
     t_status = Table([
         [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
         [Paragraph(status_sample.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(status_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
@@ -283,16 +335,30 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ]))
     story.append(t_status)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
-    # SECTION 4: DRIVER WALLET & EARNINGS SYSTEM
-    story.append(Paragraph("4. Driver Wallet, Bank Verification & Withdrawal System", h1_style))
-    story.append(Paragraph("The driver wallet architecture provides real-time balances, Dedicated Virtual Accounts (Monnify DVA NUBAN), Nigerian bank directory lookup, instant NIP account name verification, and on-demand withdrawal requests.", body_style))
-    story.append(Spacer(1, 4))
-
-    story.append(Paragraph("<b>4.1 Get Driver Wallet & Earnings (`GET /api/driver/earnings`)</b>", h2_style))
-    story.append(Paragraph("Returns live wallet balance, unwithdrawn earnings, pending payout amounts, Monnify Dedicated Virtual Account (DVA), saved withdrawal bank, zone rate card, and recent transaction history.", body_style))
+    # SECTION 4: PROOF OF DELIVERY (POD) CAMERA PHOTO UPLOAD
+    story.append(Paragraph("4. Proof of Delivery (POD) Photo Upload API", h1_style))
+    story.append(Paragraph("<b>4.1 Upload POD Photo (`POST /api/driver/upload/proof`)</b>", h2_style))
+    story.append(Paragraph("Accepts multipart/form-data with image file or JSON body with base64 data URI. Returns public image URL for use in milestone status updates.", body_style))
     
+    upload_res = """{
+  "status": "success",
+  "message": "Proof photo uploaded successfully",
+  "url": "https://api.bemsfarms.com/uploads/proofs/POD_178992819_3c8f.jpg",
+  "filename": "POD_178992819_3c8f.jpg",
+  "size": 184520,
+  "mimetype": "image/jpeg"
+}"""
+    story.append(Paragraph(upload_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 6))
+
+    # SECTION 5: DRIVER WALLET, BANK VERIFICATION & WITHDRAWALS
+    story.append(Paragraph("5. Driver Wallet, Bank Verification & Withdrawal System", h1_style))
+    story.append(Paragraph("Provides live wallet balance, Monnify Dedicated Virtual Accounts (DVA NUBAN), Nigerian commercial bank directory, live NIP account name resolution, and withdrawal processing.", body_style))
+    story.append(Spacer(1, 3))
+
+    story.append(Paragraph("<b>5.1 Get Driver Wallet & Earnings (`GET /api/driver/earnings`)</b>", h2_style))
     earnings_res = """{
   "wallet": {
     "total_earned": 28500.00,
@@ -308,7 +374,7 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
     "withdrawal_bank": {
       "bank_name": "GTBank",
       "account_number": "0123456789",
-      "account_name": "Victor Kalu"
+      "account_name": "VICTOR KALU"
     }
   },
   "zone_rates": [
@@ -321,32 +387,14 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
   ]
 }"""
     story.append(Paragraph(earnings_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("<b>4.2 List Nigerian Commercial Banks & Fintechs (`GET /api/driver/banks`)</b>", h2_style))
-    story.append(Paragraph("Provides the mobile app with the complete directory of Nigerian banks and fintech institutions (Access, GTBank, Zenith, OPay, PalmPay, Kuda, Moniepoint, Wema, etc.) for populating bank picker modals.", body_style))
-    
-    banks_res = """{
-  "status": "success",
-  "count": 33,
-  "banks": [
-    { "name": "Access Bank", "code": "044", "ussd": "*901#" },
-    { "name": "Guaranty Trust Bank (GTBank)", "code": "058", "ussd": "*737#" },
-    { "name": "Kuda Bank", "code": "50211", "ussd": "" },
-    { "name": "Moniepoint MFB", "code": "50515", "ussd": "" },
-    { "name": "OPay Digital Services", "code": "999992", "ussd": "" },
-    { "name": "PalmPay", "code": "999991", "ussd": "" },
-    { "name": "United Bank for Africa (UBA)", "code": "033", "ussd": "*919#" },
-    { "name": "Wema Bank / ALAT", "code": "035", "ussd": "*945#" },
-    { "name": "Zenith Bank", "code": "057", "ussd": "*966#" }
-  ]
-}"""
-    story.append(Paragraph(banks_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
-    story.append(Spacer(1, 4))
+    story.append(Paragraph("<b>5.2 List Nigerian Commercial Banks & Fintechs (`GET /api/driver/banks`)</b>", h2_style))
+    story.append(Paragraph("Returns official directory of 33+ Nigerian banks (Access, GTBank, Zenith, OPay, PalmPay, Kuda, Moniepoint, Wema, etc.) with codes for populating bank picker modals.", body_style))
+    story.append(Spacer(1, 2))
 
-    story.append(Paragraph("<b>4.3 Resolve & Verify Bank Account Name (`POST /api/driver/bank/resolve`)</b>", h2_style))
-    story.append(Paragraph("Validates a 10-digit NUBAN account number against the selected bank code using NIP name enquiry. The mobile app calls this as soon as the driver enters 10 digits to display the verified account holder name.", body_style))
-    
+    story.append(Paragraph("<b>5.3 Resolve & Verify Bank Account Name (`POST /api/driver/bank/resolve`)</b>", h2_style))
+    story.append(Paragraph("Validates 10-digit NUBAN account number against the bank code via NIP name enquiry. The app calls this as soon as 10 digits are typed to display the verified account holder name.", body_style))
     resolve_req = '{\n  "account_number": "0123456789",\n  "bank_code": "058",\n  "bank_name": "Guaranty Trust Bank (GTBank)"\n}'
     resolve_res = '{\n  "status": "success",\n  "account_number": "0123456789",\n  "bank_code": "058",\n  "bank_name": "Guaranty Trust Bank (GTBank)",\n  "account_name": "VICTOR KALU",\n  "is_valid": true,\n  "message": "Account name successfully resolved: VICTOR KALU"\n}'
     t_resolve = Table([
@@ -360,11 +408,9 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ]))
     story.append(t_resolve)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
 
-    story.append(Paragraph("<b>4.4 Request Withdrawal (`POST /api/driver/withdraw`)</b>", h2_style))
-    story.append(Paragraph("Submits a withdrawal request of earnings directly to the driver's verified commercial bank account. Automatically updates the driver's default saved settlement account.", body_style))
-    
+    story.append(Paragraph("<b>5.4 Request Withdrawal (`POST /api/driver/withdraw`)</b>", h2_style))
     with_req = '{\n  "amount": 10000.00,\n  "bank_name": "Guaranty Trust Bank (GTBank)",\n  "bank_code": "058",\n  "account_number": "0123456789",\n  "account_name": "VICTOR KALU",\n  "notes": "Weekly earnings withdrawal"\n}'
     with_res = '{\n  "message": "Withdrawal request submitted successfully.",\n  "payout": {\n    "payout_ref": "PAY-MNFY-99201",\n    "amount": 10000.00,\n    "bank_name": "Guaranty Trust Bank (GTBank)",\n    "account_number": "0123456789",\n    "account_name": "VICTOR KALU",\n    "status": "pending"\n  },\n  "remaining_available_balance": 6500.00\n}'
     t_with = Table([
@@ -378,11 +424,111 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ]))
     story.append(t_with)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
+    # SECTION 6: PUSH NOTIFICATIONS & IN-APP ALERTS
+    story.append(Paragraph("6. Push Notifications & In-App Feed System", h1_style))
+    story.append(Paragraph("<b>6.1 Register Device Push Token (`POST /api/driver/device-token`)</b>", h2_style))
+    story.append(Paragraph("Registers the mobile device's Expo or Firebase (FCM) push token so the server can push delivery alerts when the app is in the background.", body_style))
+    
+    token_req = '{\n  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",\n  "platform": "expo",\n  "device_info": { "os": "iOS 17.4", "model": "iPhone 15 Pro" }\n}'
+    token_res = '{\n  "status": "success",\n  "message": "Device push token registered successfully"\n}'
+    t_token = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (200 OK)</b>", bold_body_style)],
+        [Paragraph(token_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(token_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_token.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_token)
+    story.append(Spacer(1, 4))
 
-    # SECTION 5: ZONE RATE CARD SPECIFICATION
-    story.append(Paragraph("5. Zone-Based Compensation Rate Schedule (Zones 1–6)", h1_style))
+    story.append(Paragraph("<b>6.2 Fetch In-App Notifications (`GET /api/driver/notifications`)</b>", h2_style))
+    notif_res = """{
+  "status": "success",
+  "total": 14,
+  "unread_count": 2,
+  "notifications": [
+    { "id": 101, "title": "New Dispatch Assigned", "body": "Order #BEMS-9901 is ready for pickup at Hub.", "type": "dispatch", "is_read": false, "created_at": "2026-09-21T10:05:00Z" },
+    { "id": 98, "title": "Withdrawal Approved", "body": "₦10,000.00 has been paid to your GTBank account.", "type": "payout", "is_read": true, "created_at": "2026-09-20T16:20:00Z" }
+  ]
+}"""
+    story.append(Paragraph(notif_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 6))
+
+    # SECTION 7: MID-TRIP INCIDENT & PROBLEM REPORTING
+    story.append(Paragraph("7. Mid-Trip Incident & Problem Reporting", h1_style))
+    story.append(Paragraph("<b>7.1 Report Delivery Problem (`POST /api/driver/deliveries/:orderId/report-issue`)</b>", h2_style))
+    story.append(Paragraph("Allows drivers to open an operational problem ticket directly with dispatch when encountering issues on the road.", body_style))
+    
+    inc_req = '{\n  "issue_type": "customer_unreachable",\n  "description": "Called customer 4 times, phone switched off at gate.",\n  "latitude": 9.0765,\n  "longitude": 7.3986,\n  "photo_urls": ["https://api.bemsfarms.com/uploads/proofs/gate_photo.jpg"]\n}'
+    inc_res = '{\n  "status": "success",\n  "message": "Incident report submitted to dispatch operations",\n  "incident": {\n    "incident_ref": "INC-MNFY-7712",\n    "issue_type": "customer_unreachable",\n    "status": "open"\n  }\n}'
+    t_inc = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (201 Created)</b>", bold_body_style)],
+        [Paragraph(inc_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(inc_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_inc.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_inc)
+    story.append(Spacer(1, 6))
+
+    # SECTION 8: 1-TAP EMERGENCY SOS / PANIC ALERTS
+    story.append(Paragraph("8. Emergency SOS / Safety Panic System", h1_style))
+    story.append(Paragraph("<b>8.1 Trigger Emergency SOS (`POST /api/driver/emergency`)</b>", h2_style))
+    story.append(Paragraph("High-priority safety endpoint that instantly alerts the Operations Control Room with the driver's exact coordinates and vehicle details.", body_style))
+    
+    sos_req = '{\n  "latitude": 9.0765,\n  "longitude": 7.3986,\n  "address": "Maitama Junction, Near Transcorp Hilton",\n  "battery_level": 42,\n  "emergency_type": "vehicle_accident",\n  "notes": "Rear-ended by another vehicle, need immediate assistance."\n}'
+    sos_res = '{\n  "status": "success",\n  "message": "🚨 Emergency SOS alert activated. Dispatch Operations team has been notified immediately.",\n  "emergency": {\n    "emergency_ref": "SOS-MNFY-9910",\n    "status": "active"\n  }\n}'
+    t_sos = Table([
+        [Paragraph("<b>Request Payload</b>", bold_body_style), Paragraph("<b>Success Response (201 Created)</b>", bold_body_style)],
+        [Paragraph(sos_req.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style), Paragraph(sos_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style)]
+    ], colWidths=[240, 300])
+    t_sos.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('GRID', (0,0), (-1,-1), 0.5, BORDER_COL),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+    ]))
+    story.append(t_sos)
+    story.append(Spacer(1, 6))
+
+    # SECTION 9: PERFORMANCE SCORECARD & RATINGS
+    story.append(Paragraph("9. Driver Performance Scorecard & Customer Ratings", h1_style))
+    story.append(Paragraph("<b>9.1 Get Performance Scorecard (`GET /api/driver/stats`)</b>", h2_style))
+    
+    stats_res = """{
+  "status": "success",
+  "scorecard": {
+    "customer_rating": 4.92,
+    "total_ratings_count": 84,
+    "acceptance_rate": 97.5,
+    "on_time_delivery_rate": 98.2,
+    "total_km_driven": 412.80
+  },
+  "deliveries_summary": {
+    "completed_today": 6,
+    "completed_this_week": 28,
+    "completed_this_month": 112,
+    "total_completed": 112
+  },
+  "badges": [
+    { "id": "top_rated", "name": "Top Rated Star", "earned": true, "icon": "⭐" },
+    { "id": "century_rider", "name": "100 Deliveries Club", "earned": true, "icon": "🏆" },
+    { "id": "speedy_courier", "name": "Fast Dispatcher", "earned": true, "icon": "⚡" }
+  ]
+}"""
+    story.append(Paragraph(stats_res.replace("\n", "<br/>").replace(" ", "&nbsp;"), code_style))
+    story.append(Spacer(1, 6))
+
+    # SECTION 10: ZONE RATE CARD
+    story.append(Paragraph("10. Zone-Based Compensation Rate Schedule (Zones 1–6)", h1_style))
     zone_data = [
         [Paragraph("<b>Zone ID</b>", bold_body_style), Paragraph("<b>Zone Coverage Area</b>", bold_body_style), Paragraph("<b>Customer Delivery Fee</b>", bold_body_style), Paragraph("<b>Driver Drop Payout (70%)</b>", bold_body_style), Paragraph("<b>Estimated ETA</b>", bold_body_style)],
         [Paragraph("ZONE001", body_style), Paragraph("Zone 1 - Maitama &amp; Asokoro", body_style), Paragraph("₦1,000.00", body_style), Paragraph("<b>₦700.00</b>", body_style), Paragraph("20 - 35 mins", body_style)],
@@ -402,17 +548,19 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_MOBILE_APP_API_SPECIFICATION.pdf"):
         ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]))
     story.append(t_zone)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
-    # SECTION 6: MOBILE IMPLEMENTATION CHECKLIST
-    story.append(Paragraph("6. Mobile Client Engineering Checklist", h1_style))
+    # SECTION 11: MOBILE IMPLEMENTATION CHECKLIST
+    story.append(Paragraph("11. Mobile Client Engineering Checklist", h1_style))
     chk_items = [
         "<b>1. Secure Storage:</b> Store the JWT token securely using <code>SecureStore</code> (Expo) / <code>EncryptedSharedPreferences</code> (Android) / <code>Keychain</code> (iOS).",
-        "<b>2. Background GPS Streaming:</b> When online (<code>is_available: true</code>), stream background coordinates to <code>POST /api/driver/location</code> every 10–15s.",
-        "<b>3. Navigation Deep Linking:</b> Deep-link customer coordinates to Google Maps (<code>geo:${lat},${lng}?q=${lat},${lng}</code>) or Apple Maps (<code>maps://?daddr=${lat},${lng}</code>).",
-        "<b>4. Direct Customer Contact:</b> Provide 1-tap dialer (<code>tel:${phone}</code>) and WhatsApp quick chat (<code>https://wa.me/234${phone}</code>).",
-        "<b>5. Live Earnings View:</b> Show driver's real-time unwithdrawn earnings and Dedicated Virtual Account (DVA) directly on the app's wallet tab.",
-        "<b>6. Offline Caching:</b> Cache active deliveries locally so drivers can view delivery addresses and items even during cellular network dips."
+        "<b>2. Push Token Registration:</b> Call <code>POST /api/driver/device-token</code> upon app launch and notification permission grant.",
+        "<b>3. Background GPS Streaming:</b> When duty state is online (<code>is_available: true</code>), stream GPS coordinates to <code>POST /api/driver/location</code> every 10–15s.",
+        "<b>4. Navigation Deep Linking:</b> Deep-link customer coordinates to Google Maps (<code>geo:${lat},${lng}?q=${lat},${lng}</code>) or Apple Maps (<code>maps://?daddr=${lat},${lng}</code>).",
+        "<b>5. Direct Customer Contact:</b> Provide 1-tap dialer (<code>tel:${phone}</code>) and WhatsApp quick chat (<code>https://wa.me/234${phone}</code>).",
+        "<b>6. Live Bank Validation:</b> Call <code>POST /api/driver/bank/resolve</code> dynamically upon entering 10 digits in the withdrawal modal to preview verified account name.",
+        "<b>7. POD Camera Capture:</b> Upload handover pictures via <code>POST /api/driver/upload/proof</code> prior to calling <code>PATCH /status</code> with status `delivered`.",
+        "<b>8. 1-Tap SOS Button:</b> Provide a persistent SOS panic button on active delivery screens linking to <code>POST /api/driver/emergency</code>."
     ]
     for chk in chk_items:
         story.append(Paragraph(f"• {chk}", body_style))
