@@ -94,3 +94,17 @@ ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS account_number VARCHAR(30);
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS account_name VARCHAR(100);
+
+-- 8. Ensure delivery_assignments table exists for dispatch mapping and timeout tracking
+CREATE TABLE IF NOT EXISTS public.delivery_assignments (
+    id BIGSERIAL PRIMARY KEY,
+    delivery_id BIGINT NOT NULL REFERENCES public.deliveries(id) ON DELETE CASCADE,
+    driver_id BIGINT NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
+    assignment_type VARCHAR(30) DEFAULT 'auto',
+    driver_response VARCHAR(30) DEFAULT 'pending',
+    rejection_reason TEXT,
+    response_at TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_delivery_assignments_lookup ON public.delivery_assignments(delivery_id, driver_id, driver_response, created_at);
+

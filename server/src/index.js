@@ -89,6 +89,14 @@ app.use('/api/audit', require('./routes/audit'));
       console.warn('[driver-app] Driver migration notice:', e.message?.slice(0,120));
     }
 
+    // Start automated driver assignment timeout worker (10 min threshold, checks every 60s)
+    try {
+      const { startAutoDispatchTimeoutWorker } = require('./services/dispatchEngine');
+      startAutoDispatchTimeoutWorker(60, 10);
+    } catch (e) {
+      console.warn('[dispatch-worker] Failed to initialize timeout worker:', e.message);
+    }
+
     // Auto-record deployment audit event for Developer Audit
     const { recordDeploymentEvent } = require('./services/auditService');
     await recordDeploymentEvent();

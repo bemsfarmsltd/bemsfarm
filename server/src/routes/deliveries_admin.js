@@ -1324,5 +1324,41 @@ router.patch("/payouts/:id", requireRole("superadmin", "manager", "admin"), asyn
   }
 });
 
+// ── POST /api/admin/deliveries/check-timeouts ────────────────────────
+// Manually trigger check for 10-min unresponsive drivers and reassign them
+const { autoAssignClosestDriver, processUnresponsiveAssignments } = require("../services/dispatchEngine");
+
+router.post("/check-timeouts", requireRole("superadmin", "admin", "manager", "delivery_manager"), async (req, res, next) => {
+  try {
+    const timeoutMinutes = parseInt(req.body.timeout_minutes) || 10;
+    const result = await processUnresponsiveAssignments(timeoutMinutes);
+    res.json({
+      message: `Processed unresponsive assignments check (${timeoutMinutes} min window)`,
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/deliveries/:id/auto-assign ───────────────────────
+// Proximity auto-assign delivery to closest available online driver
+router.post("/:id/auto-assign", requireRole("superadmin", "admin", "manager", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await autoAssignClosestDriver(id);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json({
+      message: `Delivery #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away)`,
+      assignment: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+
 

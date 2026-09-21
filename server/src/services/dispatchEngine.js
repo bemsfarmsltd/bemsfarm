@@ -16,11 +16,18 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Automatically assign the closest online & available driver to an order/delivery
- * @param {string} orderId - Order ID or Delivery ID
+ * Automatically assign the closest online & available driver to an order/delivery.
+ * Drivers who are currently in transit, on an active delivery, or in the excludedDriverIds list are bypassed.
+ * 
+ * @param {string|number} orderId - Order ID or Delivery ID
  * @param {object} storeCoords - { lat, lng } (Default: Bems Farms Store Hub, Aba, Abia State: 5.1065, 7.3667)
+ * @param {Array<number>} excludedDriverIds - List of driver IDs to bypass (e.g. timed-out or rejected drivers)
  */
-async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng: 7.3667 }) {
+async function autoAssignClosestDriver(
+  orderId,
+  storeCoords = { lat: 5.1065, lng: 7.3667 },
+  excludedDriverIds = []
+) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -46,7 +53,21 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
     const originLat = parseFloat(order.latitude) || storeCoords.lat;
     const originLng = parseFloat(order.longitude) || storeCoords.lng;
 
-    // Find all online, unsuspended drivers with their latest GPS location
+    // Filter available drivers:
+    // 1. Status not suspended, inactive, off_duty, on_delivery, in_transit
+    // 2. driver_availability.is_available = true and is_on_delivery = false
+    // 3. No open deliveries currently in progress (assigned, awaiting_pickup, en_route, arrived)
+    // 4. Not in excludedDriverIds (e.g. drivers who timed out for this specific order)
+    const params = [];
+    let excludedCondition = "";
+    if (Array.isArray(excludedDriverIds) && excludedDriverIds.length > 0) {
+      const validIds = excludedDriverIds.map((id) => parseInt(id)).filter((id) => !isNaN(id));
+      if (validIds.length > 0) {
+        params.push(validIds);
+        excludedCondition = `AND d.id != ALL($${params.length}::bigint[])`;
+      }
+    }
+
     const driversRes = await client.query(
       `
       SELECT 
@@ -63,10 +84,17 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
         ORDER BY recorded_at DESC
         LIMIT 1
       ) dl ON true
-      WHERE d.status != 'suspended'
+      WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
         AND COALESCE(da.is_available, d.is_available, true) = true
         AND COALESCE(da.is_on_delivery, false) = false
-      `
+        AND NOT EXISTS (
+          SELECT 1 FROM deliveries del 
+          WHERE del.driver_id = d.id 
+            AND del.status IN ('assigned', 'awaiting_pickup', 'en_route', 'arrived')
+        )
+        ${excludedCondition}
+      `,
+      params
     );
 
     if (driversRes.rows.length === 0) {
@@ -117,7 +145,7 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
       await client.query(
         `
         UPDATE deliveries
-        SET driver_id = $1, status = 'assigned', assigned_at = NOW(), updated_at = NOW()
+        SET driver_id = $1, status = 'assigned', assigned_at = NOW(), accepted_at = NULL, updated_at = NOW()
         WHERE id = $2
         `,
         [bestDriver.id, deliveryId]
@@ -134,7 +162,7 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
       [bestDriver.id, order.id]
     );
 
-    // Record delivery assignment
+    // Record delivery assignment with 'pending' status
     await client.query(
       `
       INSERT INTO delivery_assignments (
@@ -155,7 +183,7 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
       `,
       [
         bestDriver.id,
-        `You have been assigned order #${order.id}. Please proceed to store for packaging pickup.`,
+        `You have been assigned order #${order.order_ref || order.id}. Please accept and proceed to store for packaging pickup.`,
         deliveryId,
       ]
     );
@@ -183,7 +211,162 @@ async function autoAssignClosestDriver(orderId, storeCoords = { lat: 5.1065, lng
   }
 }
 
+/**
+ * Scan for any assigned deliveries where the assigned driver did not respond/accept within `timeoutMinutes` (default 10 mins).
+ * Automatically times out the non-responsive assignment and re-maps to the next closest available driver.
+ * 
+ * @param {number} timeoutMinutes - Threshold in minutes before auto-reassignment (Default: 10)
+ * @param {object} storeCoords - Default store coordinates for distance ranking
+ */
+async function processUnresponsiveAssignments(
+  timeoutMinutes = 10,
+  storeCoords = { lat: 5.1065, lng: 7.3667 }
+) {
+  try {
+    // Find active deliveries assigned over 10 minutes ago where the driver never accepted
+    const timedOutRes = await pool.query(
+      `
+      SELECT 
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.driver_id,
+        d.order_id,
+        d.assigned_at,
+        da.id AS assignment_id,
+        da.created_at AS assignment_created_at,
+        o.order_ref,
+        o.customer_name,
+        drv.name AS driver_name
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = d.driver_id
+      LEFT JOIN drivers drv ON d.driver_id = drv.id
+      WHERE d.status = 'assigned'
+        AND d.accepted_at IS NULL
+        AND da.driver_response = 'pending'
+        AND da.created_at <= NOW() - ($1 * INTERVAL '1 minute')
+      ORDER BY da.created_at ASC
+      `,
+      [timeoutMinutes]
+    );
+
+    if (timedOutRes.rows.length === 0) {
+      return { processedCount: 0, reassignments: [] };
+    }
+
+    const reassignments = [];
+
+    for (const item of timedOutRes.rows) {
+      console.log(
+        `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to delivery ${item.delivery_ref} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
+      );
+
+      // 1. Mark the timed out assignment as 'timeout'
+      await pool.query(
+        `
+        UPDATE delivery_assignments
+        SET 
+          driver_response = 'timeout',
+          rejection_reason = $1,
+          response_at = NOW()
+        WHERE id = $2
+        `,
+        [
+          `Auto-timeout: Driver did not respond within ${timeoutMinutes} minutes`,
+          item.assignment_id,
+        ]
+      );
+
+      // 2. Notify the timed-out driver
+      await pool.query(
+        `
+        INSERT INTO driver_notifications (
+          driver_id, title, body, type, reference_type, reference_id, created_at
+        )
+        VALUES ($1, 'Delivery Assignment Timed Out', $2, 'order_cancelled', 'order', $3, NOW())
+        `,
+        [
+          item.driver_id,
+          `Delivery order #${item.order_ref || item.order_id} timed out after ${timeoutMinutes} minutes without response and has been re-assigned.`,
+          item.delivery_id,
+        ]
+      );
+
+      // 3. Collect all drivers who have already rejected or timed out for this delivery
+      const previousAssignmentsRes = await pool.query(
+        `SELECT DISTINCT driver_id FROM delivery_assignments WHERE delivery_id = $1`,
+        [item.delivery_id]
+      );
+      const excludedDriverIds = previousAssignmentsRes.rows.map((r) => r.driver_id);
+
+      // 4. Map to next closest available driver
+      const reassignResult = await autoAssignClosestDriver(
+        item.order_id,
+        storeCoords,
+        excludedDriverIds
+      );
+
+      if (reassignResult.success) {
+        console.log(
+          `✅ Successfully re-mapped order #${item.order_ref || item.order_id} to next closest driver: ${reassignResult.driver?.name} (${reassignResult.driver?.distanceKm} km)`
+        );
+        reassignments.push({
+          order_id: item.order_id,
+          delivery_id: item.delivery_id,
+          previous_driver_id: item.driver_id,
+          new_driver: reassignResult.driver,
+          status: "reassigned",
+        });
+      } else {
+        console.warn(
+          `⚠️ Could not find next available driver for order #${item.order_ref || item.order_id}: ${reassignResult.message}`
+        );
+        reassignments.push({
+          order_id: item.order_id,
+          delivery_id: item.delivery_id,
+          previous_driver_id: item.driver_id,
+          status: "unassigned_no_drivers",
+          message: reassignResult.message,
+        });
+      }
+    }
+
+    return {
+      processedCount: timedOutRes.rows.length,
+      reassignments,
+    };
+  } catch (err) {
+    console.error("processUnresponsiveAssignments error:", err.message);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Start the background worker that checks every minute for timed-out driver assignments
+ */
+let timeoutWorkerInterval = null;
+function startAutoDispatchTimeoutWorker(intervalSeconds = 60, timeoutMinutes = 10) {
+  if (timeoutWorkerInterval) {
+    clearInterval(timeoutWorkerInterval);
+  }
+
+  timeoutWorkerInterval = setInterval(async () => {
+    try {
+      await processUnresponsiveAssignments(timeoutMinutes);
+    } catch (e) {
+      console.error("[dispatch-worker] Auto-reassignment tick error:", e.message);
+    }
+  }, intervalSeconds * 1000);
+
+  console.log(
+    `🚚 Auto-dispatch timeout worker active (Checks every ${intervalSeconds}s for ${timeoutMinutes}min unresponsive drivers)`
+  );
+}
+
 module.exports = {
   calculateDistanceKm,
   autoAssignClosestDriver,
+  processUnresponsiveAssignments,
+  startAutoDispatchTimeoutWorker,
 };
+
