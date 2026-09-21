@@ -38,6 +38,27 @@ const COA = {
   EXPENSE_KITCHEN_RAW_USAGE: { code: "5330", name: "Kitchen Raw Ingredients Consumption", type: "expense" },
 };
 
+// Common Aliases for COA
+COA.ASSET_MAIN_BANK = COA.CASH_MAIN_BANK;
+COA.ASSET_MONNIFY_VAULT = COA.CASH_MONNIFY_VAULT;
+COA.ASSET_POS_DRAWER = COA.CASH_POS_DRAWER;
+COA.ASSET_INVENTORY_FINISHED = COA.INVENTORY_FINISHED_GOODS;
+COA.ASSET_INVENTORY_RAW = COA.INVENTORY_RAW_INGREDIENTS;
+COA.REVENUE_SALES = COA.REVENUE_PRODUCT_SALES;
+COA.EXPENSE_COGS = COA.COGS_PRODUCE;
+
+function resolveAccount(acc) {
+  if (!acc) return { code: "9999", name: "Suspense Account", type: "other" };
+  if (typeof acc === "object" && acc.code && acc.name) return acc;
+  if (typeof acc === "string") {
+    // Check if matching code in COA
+    const found = Object.values(COA).find((c) => c.code === acc);
+    if (found) return found;
+    return { code: acc, name: `Account ${acc}`, type: "other" };
+  }
+  return { code: "9999", name: "Suspense Account", type: "other" };
+}
+
 let ledgerTablesReady = false;
 
 /**
@@ -100,14 +121,14 @@ async function ensureDoubleEntryTables(clientOrPool = pool) {
 }
 
 /**
- * Record a balanced Double-Entry General Journal pair
+ * Record a standard Double-Entry General Journal Entry (Dr & Cr Balanced)
  */
 async function postGeneralJournal(client, {
   source_module,
   source_ref,
   journal_ref,
-  debit_account,   // { code, name }
-  credit_account,  // { code, name }
+  debit_account,   // { code, name } or string code
+  credit_account,  // { code, name } or string code
   amount,
   narration,
   user_id = null,
@@ -116,6 +137,8 @@ async function postGeneralJournal(client, {
   const numAmount = parseFloat(amount) || 0;
   if (numAmount <= 0) return null;
 
+  const dr = resolveAccount(debit_account);
+  const cr = resolveAccount(credit_account);
   const jRef = journal_ref || `JRN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const res = await client.query(
@@ -133,11 +156,11 @@ async function postGeneralJournal(client, {
       jRef,
       source_module,
       source_ref,
-      debit_account.code,
-      debit_account.name,
+      dr.code,
+      dr.name,
       numAmount,
-      credit_account.code,
-      credit_account.name,
+      cr.code,
+      cr.name,
       numAmount,
       narration,
       user_id,
@@ -171,6 +194,9 @@ async function postInventoryDoubleEntry(client, {
   const totalValue = Math.abs(qty) * cost;
 
   if (totalValue > 0) {
+    const dr = resolveAccount(debit_account);
+    const cr = resolveAccount(credit_account);
+
     // 1. Post to Inventory Financial Sub-Ledger
     await client.query(
       `
@@ -193,10 +219,10 @@ async function postInventoryDoubleEntry(client, {
         qty,
         cost,
         totalValue,
-        debit_account.code,
-        debit_account.name,
-        credit_account.code,
-        credit_account.name,
+        dr.code,
+        dr.name,
+        cr.code,
+        cr.name,
         narration,
         balance_after_qty,
         balance_after_value,
