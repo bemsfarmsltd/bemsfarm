@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -179,14 +180,14 @@ export default function Refunds() {
     setLogForm({
       date: new Date().toISOString().slice(0, 10),
       ordRef: '',
-      customerId: customers[0]?.id || '',
-      customer: customers[0]?.name || '',
-      phone: customers[0]?.phone || '',
-      productId: products[0]?.id || '',
-      product: products[0]?.name || '',
+      customerId: '',
+      customer: '',
+      phone: '',
+      productId: '',
+      product: '',
       qty: 1,
-      unit: products[0]?.unit || 'kg',
-      unitPrice: parseFloat(products[0]?.unit_price || products[0]?.price || 0),
+      unit: 'kg',
+      unitPrice: 0,
       reason: RETURN_REASONS[0],
       notes: '',
       refundMethod: 'Bank Transfer',
@@ -208,18 +209,18 @@ export default function Refunds() {
     }
   }
 
-  function handleLogProductChange(val) {
-    const prod = products.find(p => String(p.id) === String(val) || p.name === val)
+  function handleLogProductChange(selectedId, prodObj) {
+    const prod = prodObj || products.find(p => String(p.id) === String(selectedId) || p.name === selectedId)
     if (prod) {
       setLogForm(f => ({
         ...f,
-        productId: prod.id,
+        productId: String(prod.id),
         product: prod.name,
         unit: prod.unit || 'kg',
         unitPrice: parseFloat(prod.unit_price || prod.price || 0),
       }))
     } else {
-      setLogForm(f => ({ ...f, productId: '', product: val }))
+      setLogForm(f => ({ ...f, productId: '', product: selectedId || '', unitPrice: 0 }))
     }
   }
 
@@ -676,21 +677,13 @@ export default function Refunds() {
                       </div>
                       <div className="col-md-5">
                         <label className="form-label fw-medium small">Product Returned <span className="text-danger">*</span></label>
-                        <input
-                          className="form-control form-control-sm"
-                          placeholder="Select or type product name..."
-                          list="return-product-options"
+                        <ProductSelect
+                          products={products}
+                          value={logForm.productId}
+                          onChange={handleLogProductChange}
+                          placeholder="Search name, scan barcode, SKU..."
                           required
-                          value={logForm.product}
-                          onChange={e => handleLogProductChange(e.target.value)}
                         />
-                        <datalist id="return-product-options">
-                          {products.map(p => (
-                            <option key={p.id} value={p.name}>
-                              ₦{Number(p.unit_price || p.price || 0).toLocaleString()} / {p.unit || 'kg'}
-                            </option>
-                          ))}
-                        </datalist>
                       </div>
                       <div className="col-md-3">
                         <label className="form-label fw-medium small">Qty <span className="text-danger">*</span></label>

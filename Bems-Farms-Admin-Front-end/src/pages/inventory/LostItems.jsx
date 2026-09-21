@@ -89,7 +89,7 @@ export default function LostItems() {
 
   function openAdd() {
     setEditItem(null)
-    setForm({ product_id: products[0]?.id ? String(products[0].id) : '', warehouse_id: '', quantity: 1, reason: REASONS[0], notes: '' })
+    setForm({ product_id: '', warehouse_id: '', quantity: 1, reason: REASONS[0], notes: '' })
     setActiveModal('form')
   }
   function openEdit(r) {

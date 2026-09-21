@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import PremiumModal from '../../components/ui/PremiumModal'
 import CartonBreakdownModal from '../../components/inventory/CartonBreakdownModal'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 const REASONS = [
   'Physical Count Correction',
@@ -126,7 +127,15 @@ export default function StockAdjustment() {
   }, [products, productSearch])
 
   function selectProduct(prod) {
-    if (!prod) return
+    if (!prod) {
+      setForm((prev) => ({
+        ...prev,
+        product_id: '',
+        current_qty: 0,
+        new_quantity: '0',
+      }))
+      return
+    }
     const currentStock = prod.stock !== undefined ? prod.stock : 0
     setForm((prev) => ({
       ...prev,
@@ -196,7 +205,7 @@ export default function StockAdjustment() {
   }
 
   function openAdjustmentModal(initialProduct = null) {
-    const prod = initialProduct || (form.product_id ? products.find((p) => String(p.id) === String(form.product_id)) : products[0])
+    const prod = (initialProduct && initialProduct.id) ? initialProduct : null
     setForm({
       product_id: prod?.id ? String(prod.id) : '',
       warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
@@ -210,9 +219,7 @@ export default function StockAdjustment() {
     setModalOpen(true)
 
     setTimeout(() => {
-      if (!initialProduct && !prod?.id) {
-        searchScanInputRef.current?.focus()
-      } else {
+      if (prod?.id) {
         countInputRef.current?.focus()
         countInputRef.current?.select()
       }
@@ -430,180 +437,17 @@ export default function StockAdjustment() {
         )}>
         <form id="stock-adjustment-form" onSubmit={handleSubmit}>
           {/* Product Search & Barcode Scan Section */}
-          <div className="mb-3 position-relative" ref={dropdownRef}>
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <label className="form-label fw-semibold mb-0">
-                Select / Scan Product <span className="text-danger">*</span>
-              </label>
-              <span className="badge bg-success-subtle text-success fs-xs d-flex align-items-center gap-1">
-                <i className="ri-barcode-line"></i> Scanner Ready
-              </span>
-            </div>
-
-            {selectedProduct ? (
-              <div className="card border rounded-3 p-2 bg-light bg-opacity-50">
-                <div className="d-flex align-items-center justify-content-between gap-2">
-                  <div className="d-flex align-items-center gap-2 overflow-hidden">
-                    {selectedProduct.image_url ? (
-                      <img
-                        src={selectedProduct.image_url}
-                        alt={selectedProduct.name}
-                        className="rounded-2 object-fit-cover border flex-shrink-0"
-                        style={{ width: '42px', height: '42px' }}
-                      />
-                    ) : (
-                      <div
-                        className="rounded-2 bg-white d-flex align-items-center justify-content-center text-muted border flex-shrink-0"
-                        style={{ width: '42px', height: '42px' }}
-                      >
-                        <i className="ri-box-3-line fs-5"></i>
-                      </div>
-                    )}
-                    <div className="text-truncate">
-                      <div className="fw-bold text-dark fs-sm text-truncate">{selectedProduct.name}</div>
-                      <div className="d-flex align-items-center gap-2 flex-wrap fs-xs text-muted">
-                        <span>SKU: <code className="text-dark">{selectedProduct.sku || '—'}</code></span>
-                        {selectedProduct.barcode && (
-                          <span className="badge bg-success-subtle text-success py-0 px-1 font-monospace">
-                            <i className="ri-barcode-line me-1"></i>{selectedProduct.barcode}
-                          </span>
-                        )}
-                        <span className="badge bg-primary-subtle text-primary py-0 px-1">
-                          Current Stock: {selectedProduct.stock ?? 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary flex-shrink-0"
-                    onClick={() => {
-                      setForm((prev) => ({ ...prev, product_id: '' }))
-                      setProductSearch('')
-                      setShowDropdown(true)
-                      setTimeout(() => searchScanInputRef.current?.focus(), 100)
-                    }}
-                    title="Search or scan a different product"
-                  >
-                    <i className="ri-refresh-line me-1"></i> Change
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="position-relative">
-                <div className="input-group">
-                  <span className="input-group-text bg-white border-end-0 text-muted">
-                    <i className="ri-search-line"></i>
-                  </span>
-                  <input
-                    ref={searchScanInputRef}
-                    type="text"
-                    className="form-control border-start-0 ps-0"
-                    placeholder="Search product name, SKU, or scan barcode [Press Enter]…"
-                    value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value)
-                      setShowDropdown(true)
-                    }}
-                    onFocus={() => setShowDropdown(true)}
-                    onKeyDown={handleScanOrSearchKey}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary"
-                    onClick={() => {
-                      const query = productSearch.trim().toLowerCase()
-                      if (!query) return
-                      const match = products.find(
-                        (p) =>
-                          p.barcode?.toLowerCase() === query ||
-                          p.sku?.toLowerCase() === query ||
-                          p.name?.toLowerCase().includes(query)
-                      )
-                      if (match) {
-                        selectProduct(match)
-                        toast.success(`Selected "${match.name}"`)
-                      } else {
-                        toast.error(`No product found for "${productSearch}"`)
-                      }
-                    }}
-                    title="Find Product"
-                  >
-                    <i className="ri-scan-2-line me-1"></i> Find
-                  </button>
-                </div>
-
-                {/* Dropdown list */}
-                {showDropdown && (
-                  <div
-                    className="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1 overflow-auto"
-                    style={{ maxHeight: '240px', zIndex: 1050 }}
-                  >
-                    <div className="p-2 border-bottom bg-light d-flex justify-content-between align-items-center">
-                      <span className="fs-xs text-muted fw-semibold">
-                        {filteredModalProducts.length} matching product{filteredModalProducts.length === 1 ? '' : 's'}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-close fs-xs"
-                        style={{ fontSize: '10px' }}
-                        onClick={() => setShowDropdown(false)}
-                      ></button>
-                    </div>
-                    {filteredModalProducts.length === 0 ? (
-                      <div className="p-3 text-center text-muted fs-xs">
-                        No products found matching "{productSearch}".
-                      </div>
-                    ) : (
-                      filteredModalProducts.map((p) => (
-                        <div
-                          key={p.id}
-                          className="p-2 border-bottom d-flex align-items-center justify-content-between gap-2"
-                          style={{ cursor: 'pointer', transition: 'background 0.15s ease' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
-                          onClick={() => selectProduct(p)}
-                        >
-                          <div className="d-flex align-items-center gap-2 overflow-hidden">
-                            {p.image_url ? (
-                              <img
-                                src={p.image_url}
-                                alt={p.name}
-                                className="rounded-1 object-fit-cover border flex-shrink-0"
-                                style={{ width: '32px', height: '32px' }}
-                              />
-                            ) : (
-                              <div
-                                className="rounded-1 bg-light d-flex align-items-center justify-content-center text-muted border flex-shrink-0"
-                                style={{ width: '32px', height: '32px' }}
-                              >
-                                <i className="ri-box-3-line"></i>
-                              </div>
-                            )}
-                            <div className="text-truncate">
-                              <div className="fw-semibold text-dark fs-xs text-truncate">{p.name}</div>
-                              <div className="d-flex align-items-center gap-2 fs-xs text-muted">
-                                <span>SKU: {p.sku || '—'}</span>
-                                {p.barcode && (
-                                  <span className="font-monospace text-success">
-                                    <i className="ri-barcode-line me-1"></i>{p.barcode}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-end flex-shrink-0">
-                            <span className="badge bg-light text-dark border fs-xs">
-                              Stock: {p.stock ?? 0}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="mb-3">
+            <label className="form-label fw-semibold mb-1">
+              Select / Scan Product <span className="text-danger">*</span>
+            </label>
+            <ProductSelect
+              products={products}
+              value={form.product_id}
+              onChange={(selectedId, prod) => selectProduct(prod)}
+              placeholder="Search product name, SKU, or scan barcode..."
+              required
+            />
           </div>
 
           <div className="mb-3">
