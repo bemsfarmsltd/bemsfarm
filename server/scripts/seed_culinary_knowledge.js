@@ -669,11 +669,11 @@ async function seed() {
     console.log(`✅ Seeded ${ingredientsData.length} Master Ingredients.`);
 
     // ═════════════════════════════════════════════════════════════════════════
-    // 4. SEED MEAL INGREDIENTS (Full Recipe Breakdowns with Quantities)
+    // 4. SEED MEAL INGREDIENTS (Full Recipe Breakdowns for ALL 34 Meals)
     // ═════════════════════════════════════════════════════════════════════════
     await pool.query(`DELETE FROM meal_ingredients;`);
     const mealIngredientsData = [
-      // 1. Jollof Rice
+      // 1. Party Jollof Rice
       { meal_id: "meal-jollof-rice", meal_name: "Authentic Nigerian Party Jollof Rice", ingredient_name: "Long Grain Parboiled Rice", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Base Carb", importance_score: 5 },
       { meal_id: "meal-jollof-rice", meal_name: "Authentic Nigerian Party Jollof Rice", ingredient_name: "Fresh Tomatoes", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Sauce Base", importance_score: 5 },
       { meal_id: "meal-jollof-rice", meal_name: "Authentic Nigerian Party Jollof Rice", ingredient_name: "Sonia Sachet Tomatoes / Tomato Paste", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "sachet", role_in_meal: "Color & Depth", importance_score: 5 },
@@ -684,86 +684,249 @@ async function seed() {
       { meal_id: "meal-jollof-rice", meal_name: "Authentic Nigerian Party Jollof Rice", ingredient_name: "Curry Powder, Thyme & Bay Leaves", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Signature Herbal Aroma", importance_score: 5 },
       { meal_id: "meal-jollof-rice", meal_name: "Authentic Nigerian Party Jollof Rice", ingredient_name: "Stock Seasoning Cubes (Knorr / Maggi)", requirement_type: "Essential", qty_per_person: 2, recipe_unit: "cubes", role_in_meal: "Umami Seasoning", importance_score: 5 },
 
-      // 2. Egusi Soup
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Ground Melon Seeds (Egusi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Soup Base & Protein", importance_score: 5 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Color & Rich Flavor", importance_score: 5 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Leafy Greens", importance_score: 5 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Protein", importance_score: 4 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Stockfish (Okporoko / Panla)", requirement_type: "Optional", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Chewy Rich Texture", importance_score: 4 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Optional", qty_per_person: 0.02, recipe_unit: "cup", role_in_meal: "Fermented Traditional Aroma", importance_score: 4 },
-      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup", ingredient_name: "Ayoola Poundo Yam Flour", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Swallow Pairing", importance_score: 5 },
+      // 2. Nigerian Fried Rice
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Long Grain Parboiled Rice", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Base Carb", importance_score: 5 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Sweet Corn & Green Peas", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Vegetable Medley", importance_score: 4 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Fresh Carrots", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Vibrant Color", importance_score: 4 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Chicken / Turkey Gizzards", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Diced Protein", importance_score: 5 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Curry Powder, Thyme & Bay Leaves", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Signature Gold Seasoning", importance_score: 5 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.06, recipe_unit: "L", role_in_meal: "Sauté Base", importance_score: 4 },
+      { meal_id: "meal-fried-rice", meal_name: "Nigerian Style Fried Rice", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Sauté Aromatics", importance_score: 4 },
 
       // 3. Ofada Rice with Ayamase
       { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Ofada Rice", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Base Grain", importance_score: 5 },
-      { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Green Bell Peppers & Rodo", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Green Pepper Base", importance_score: 5 },
+      { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Green Bell Peppers & Rodo", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Green Pepper Base", importance_score: 5 },
       { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "L", role_in_meal: "Bleached Base Oil", importance_score: 5 },
       { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "cup", role_in_meal: "Signature Savory Punch", importance_score: 5 },
       { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Offals & Protein", importance_score: 5 },
       { meal_id: "meal-ofada-rice-stew", meal_name: "Ofada Rice with Designer Ayamase Stew", ingredient_name: "Boiled Eggs", requirement_type: "Optional", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Traditional Garnish", importance_score: 4 },
 
-      // 4. Efo Riro
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Fresh Waterleaf (Gbure)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Tender Leaf Base", importance_score: 5 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Rich Iron Greens", importance_score: 5 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Coarse Pepper Puree", importance_score: 5 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Cooking Oil", importance_score: 4 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Fish", importance_score: 4 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Umami Seasoning", importance_score: 5 },
-      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Traditional Fragrance", importance_score: 4 },
+      // 4. Native Palm Oil Jollof (Iwuk Edesi)
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Long Grain Parboiled Rice", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Base Carb", importance_score: 5 },
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Native Base Oil", importance_score: 5 },
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Flaked Smoked Fish", importance_score: 4 },
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Fresh Scent Leaves (Efirin / Nchanwu)", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "bunch", role_in_meal: "Herbal Fragrance", importance_score: 5 },
+      { meal_id: "meal-native-jollof-rice", meal_name: "Native Palm Oil Jollof Rice (Iwuk Edesi)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Traditional Flavor", importance_score: 4 },
 
-      // 5. Banga Soup
-      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup", ingredient_name: "Palm Fruit Concentrate (Banga Paste)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Soup Base", importance_score: 5 },
-      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "kg", role_in_meal: "Primary Protein", importance_score: 5 },
-      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup", ingredient_name: "Banga Spices (Oburunbebe / Beletiete)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Traditional Herbal Aroma", importance_score: 5 },
-      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Base", importance_score: 5 },
-      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Optional", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Chewy Seafood Texture", importance_score: 4 },
+      // 5. Coconut Jollof Rice
+      { meal_id: "meal-coconut-jollof-rice", meal_name: "Rich Coconut Jollof Rice", ingredient_name: "Long Grain Parboiled Rice", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Base Grain", importance_score: 5 },
+      { meal_id: "meal-coconut-jollof-rice", meal_name: "Rich Coconut Jollof Rice", ingredient_name: "Fresh Coconut Milk Extract", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "L", role_in_meal: "Rich Creamy Base", importance_score: 5 },
+      { meal_id: "meal-coconut-jollof-rice", meal_name: "Rich Coconut Jollof Rice", ingredient_name: "Fresh Tomatoes", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Light Color Base", importance_score: 4 },
+      { meal_id: "meal-coconut-jollof-rice", meal_name: "Rich Coconut Jollof Rice", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Essence", importance_score: 4 },
+      { meal_id: "meal-coconut-jollof-rice", meal_name: "Rich Coconut Jollof Rice", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Spicy Balance", importance_score: 4 },
 
-      // 6. Afang Soup
+      // 6. Egusi Soup
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Ground Melon Seeds (Egusi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Soup Base & Protein", importance_score: 5 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Color & Rich Flavor", importance_score: 5 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Leafy Greens", importance_score: 5 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Protein", importance_score: 4 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Stockfish (Okporoko / Panla)", requirement_type: "Optional", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Chewy Rich Texture", importance_score: 4 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Optional", qty_per_person: 0.02, recipe_unit: "cup", role_in_meal: "Fermented Traditional Aroma", importance_score: 4 },
+      { meal_id: "meal-egusi-soup", meal_name: "Rich Nigerian Egusi Soup (Melon Seed Soup)", ingredient_name: "Ayoola Poundo Yam Flour", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Swallow Pairing", importance_score: 5 },
+
+      // 7. Efo Riro
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Fresh Waterleaf (Gbure)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Tender Leaf Base", importance_score: 5 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Rich Iron Greens", importance_score: 5 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Coarse Pepper Puree", importance_score: 5 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Cooking Oil", importance_score: 4 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Fish", importance_score: 4 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Umami Seasoning", importance_score: 5 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Traditional Fragrance", importance_score: 4 },
+      { meal_id: "meal-efo-riro", meal_name: "Authentic Yoruba Efo Riro (Rich Vegetable Soup)", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Assorted Meats", importance_score: 5 },
+
+      // 8. Banga Soup
+      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup (Palm Nut Concentrate Soup)", ingredient_name: "Palm Fruit Concentrate (Banga Paste)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Soup Base", importance_score: 5 },
+      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup (Palm Nut Concentrate Soup)", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "kg", role_in_meal: "Primary Protein", importance_score: 5 },
+      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup (Palm Nut Concentrate Soup)", ingredient_name: "Banga Spices (Oburunbebe / Beletiete)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Traditional Herbal Aroma", importance_score: 5 },
+      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup (Palm Nut Concentrate Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Base", importance_score: 5 },
+      { meal_id: "meal-banga-soup", meal_name: "Delta Banga Soup (Palm Nut Concentrate Soup)", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Optional", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Chewy Seafood Texture", importance_score: 4 },
+
+      // 9. Calabar Afang Soup
       { meal_id: "meal-afang-soup", meal_name: "Calabar Afang Soup", ingredient_name: "Afang / Okazi Leaves", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Pounded Okazi Base", importance_score: 5 },
       { meal_id: "meal-afang-soup", meal_name: "Calabar Afang Soup", ingredient_name: "Fresh Waterleaf (Gbure)", requirement_type: "Essential", qty_per_person: 0.6, recipe_unit: "bunch", role_in_meal: "Moisture & Leaf Softness", importance_score: 5 },
       { meal_id: "meal-afang-soup", meal_name: "Calabar Afang Soup", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "L", role_in_meal: "Gloss & Flavor", importance_score: 5 },
       { meal_id: "meal-afang-soup", meal_name: "Calabar Afang Soup", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Signature Coastal Crunch", importance_score: 5 },
       { meal_id: "meal-afang-soup", meal_name: "Calabar Afang Soup", ingredient_name: "Stockfish (Okporoko / Panla)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Stockfish Essence", importance_score: 4 },
 
-      // 7. Pepper Soup
+      // 10. Traditional Edikang Ikong
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.7, recipe_unit: "bunch", role_in_meal: "Primary Iron Leaf", importance_score: 5 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Fresh Waterleaf (Gbure)", requirement_type: "Essential", qty_per_person: 0.7, recipe_unit: "bunch", role_in_meal: "Hydrating Greens", importance_score: 5 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "L", role_in_meal: "Rich Coating Oil", importance_score: 5 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Shellfish Crunch", importance_score: 5 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Flaked Smoke", importance_score: 4 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Umami Seasoning", importance_score: 5 },
+      { meal_id: "meal-edikaikong", meal_name: "Traditional Edikang Ikong Soup", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Meat Foundation", importance_score: 5 },
+
+      // 11. Ogbono Soup (Draw Soup)
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Ground Ogbono Seeds (Apon)", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "kg", role_in_meal: "Slippery Thickener Base", importance_score: 5 },
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.07, recipe_unit: "L", role_in_meal: "Dissolving Base Oil", importance_score: 5 },
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Washed Bitterleaf (Onugbu / Ewuro)", requirement_type: "Optional", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Leafy Contrast", importance_score: 4 },
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Fish", importance_score: 4 },
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
+      { meal_id: "meal-ogbono-soup", meal_name: "Ogbono Soup (Draw Soup / Apon)", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Tender Meat Cut", importance_score: 5 },
+
+      // 12. Ofe Nsala (White Soup)
+      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (Igbo White Soup)", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.35, recipe_unit: "kg", role_in_meal: "River Fresh Fish", importance_score: 5 },
+      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (Igbo White Soup)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Pounded Yam Thickener", importance_score: 5 },
+      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (Igbo White Soup)", ingredient_name: "Fresh Utazi Leaves", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "bunch", role_in_meal: "Bitter-Sweet Herbal Punch", importance_score: 5 },
+      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (Igbo White Soup)", ingredient_name: "Calabash Nutmeg (Ehuru) & Uda Pods", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Aromatic Spice Blend", importance_score: 5 },
+      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (Igbo White Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Essence", importance_score: 5 },
+
+      // 13. Ofe Onugbu (Bitterleaf Soup)
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Washed Bitterleaf (Onugbu / Ewuro)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Washed Bitter Greens", importance_score: 5 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Yam Paste Thickener", importance_score: 5 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Color & Flavor", importance_score: 5 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Traditional Fermented Umami", importance_score: 5 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Stockfish (Okporoko / Panla)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Fish Broth", importance_score: 4 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Umami Punch", importance_score: 5 },
+      { meal_id: "meal-ofe-onugbu", meal_name: "Ofe Onugbu (Authentic Bitterleaf Soup)", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Tender Beef Chunks", importance_score: 5 },
+
+      // 14. Ofe Oha
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Fresh Oha Leaves", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "bunch", role_in_meal: "Hand-Shredded Delicate Greens", importance_score: 5 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Velvety Thickener", importance_score: 5 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Soup Base", importance_score: 5 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.02, recipe_unit: "cup", role_in_meal: "Traditional Fermented Aroma", importance_score: 4 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Fish", importance_score: 4 },
+      { meal_id: "meal-ofe-oha", meal_name: "Ofe Oha (Oha Soup with Cocoyam Thickener)", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Tender Meat Cuts", importance_score: 5 },
+
+      // 15. Abula (Gbegiri & Ewedu)
+      { meal_id: "meal-abula", meal_name: "Authentic Abula (Gbegiri, Ewedu & Buka Stew Combo)", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Smooth Gbegiri Base", importance_score: 5 },
+      { meal_id: "meal-abula", meal_name: "Authentic Abula (Gbegiri, Ewedu & Buka Stew Combo)", ingredient_name: "Fresh Waterleaf (Gbure)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Ewedu Leaf Base", importance_score: 5 },
+      { meal_id: "meal-abula", meal_name: "Authentic Abula (Gbegiri, Ewedu & Buka Stew Combo)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "cup", role_in_meal: "Traditional Umami", importance_score: 5 },
+      { meal_id: "meal-abula", meal_name: "Authentic Abula (Gbegiri, Ewedu & Buka Stew Combo)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Flavor", importance_score: 5 },
+      { meal_id: "meal-abula", meal_name: "Authentic Abula (Gbegiri, Ewedu & Buka Stew Combo)", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Buka Stew Protein", importance_score: 5 },
+
+      // 16. Ila Alasepo (Seafood Okro)
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Fresh Lady Finger Okro", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Chunky Chopped Okro", importance_score: 5 },
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Fresh Fish Cut", importance_score: 5 },
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Cooking Oil", importance_score: 4 },
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Umami Aroma", importance_score: 5 },
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Coarse Pepper Heat", importance_score: 4 },
+      { meal_id: "meal-okro-ila-alasepo", meal_name: "Ila Alasepo (Rich Seafood & Assorted Okro Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Seasoning", importance_score: 5 },
+
+      // 17. Rivers Native Fisherman Soup
+      { meal_id: "meal-fisherman-soup", meal_name: "Rivers Native Fisherman Soup", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "kg", role_in_meal: "River Fresh Catfish", importance_score: 5 },
+      { meal_id: "meal-fisherman-soup", meal_name: "Rivers Native Fisherman Soup", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Coastal Periwinkles", importance_score: 5 },
+      { meal_id: "meal-fisherman-soup", meal_name: "Rivers Native Fisherman Soup", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.06, recipe_unit: "L", role_in_meal: "Native Base Oil", importance_score: 5 },
+      { meal_id: "meal-fisherman-soup", meal_name: "Rivers Native Fisherman Soup", ingredient_name: "Fresh Scent Leaves (Efirin / Nchanwu)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "bunch", role_in_meal: "Aromatic Garnish", importance_score: 5 },
+      { meal_id: "meal-fisherman-soup", meal_name: "Rivers Native Fisherman Soup", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "kg", role_in_meal: "Fiery Broth Heat", importance_score: 5 },
+
+      // 18. Miyan Kuka
+      { meal_id: "meal-miyan-kuka", meal_name: "Miyan Kuka with Tuwo Shinkafa", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Seasoned Meat", importance_score: 5 },
+      { meal_id: "meal-miyan-kuka", meal_name: "Miyan Kuka with Tuwo Shinkafa", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Dawadawa Aroma", importance_score: 5 },
+      { meal_id: "meal-miyan-kuka", meal_name: "Miyan Kuka with Tuwo Shinkafa", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Spicy Broth", importance_score: 4 },
+      { meal_id: "meal-miyan-kuka", meal_name: "Miyan Kuka with Tuwo Shinkafa", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.02, recipe_unit: "kg", role_in_meal: "Flavor Enhancer", importance_score: 4 },
+
+      // 19. Miyan Taushe
+      { meal_id: "meal-miyan-taushe", meal_name: "Miyan Taushe (Northern Pumpkin & Peanut Soup)", ingredient_name: "Fresh Goat Meat (Ogunfe)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Tender Meat", importance_score: 5 },
+      { meal_id: "meal-miyan-taushe", meal_name: "Miyan Taushe (Northern Pumpkin & Peanut Soup)", ingredient_name: "Fresh Tomatoes", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Tomato Base", importance_score: 4 },
+      { meal_id: "meal-miyan-taushe", meal_name: "Miyan Taushe (Northern Pumpkin & Peanut Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Dawadawa Aroma", importance_score: 5 },
+      { meal_id: "meal-miyan-taushe", meal_name: "Miyan Taushe (Northern Pumpkin & Peanut Soup)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Sweet Aromatics", importance_score: 4 },
+
+      // 20. Miyan Zogale
+      { meal_id: "meal-miyan-zogale", meal_name: "Miyan Zogale (Moringa Leaf Soup)", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Tender Meat", importance_score: 5 },
+      { meal_id: "meal-miyan-zogale", meal_name: "Miyan Zogale (Moringa Leaf Soup)", ingredient_name: "Fresh Tomatoes", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Tomato Reduction", importance_score: 4 },
+      { meal_id: "meal-miyan-zogale", meal_name: "Miyan Zogale (Moringa Leaf Soup)", ingredient_name: "Locust Beans (Iru / Dawadawa)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "cup", role_in_meal: "Savory Depth", importance_score: 5 },
+      { meal_id: "meal-miyan-zogale", meal_name: "Miyan Zogale (Moringa Leaf Soup)", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Sauté Oil", importance_score: 4 },
+
+      // 21. Pepper Soup
       { meal_id: "meal-pepper-soup", meal_name: "Nigerian Catfish & Goat Meat Pepper Soup", ingredient_name: "Fresh Goat Meat (Ogunfe)", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "kg", role_in_meal: "Rich Meat Cut", importance_score: 5 },
       { meal_id: "meal-pepper-soup", meal_name: "Nigerian Catfish & Goat Meat Pepper Soup", ingredient_name: "Calabash Nutmeg (Ehuru) & Uda Pods", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Spicy Herbal Broth", importance_score: 5 },
       { meal_id: "meal-pepper-soup", meal_name: "Nigerian Catfish & Goat Meat Pepper Soup", ingredient_name: "Fresh Scent Leaves (Efirin / Nchanwu)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "bunch", role_in_meal: "Medicinal Herbal Garnish", importance_score: 5 },
       { meal_id: "meal-pepper-soup", meal_name: "Nigerian Catfish & Goat Meat Pepper Soup", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Fiery Heat", importance_score: 5 },
 
-      // 8. Beans & Plantain (Ewa Oloyin & Dodo)
-      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans & Fried Plantain", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Sweet Protein Base", importance_score: 5 },
-      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans & Fried Plantain", ingredient_name: "Ripe Plantain (Dodo)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "finger", role_in_meal: "Golden Fried Side", importance_score: 5 },
-      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans & Fried Plantain", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Simmering Oil", importance_score: 4 },
-      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans & Fried Plantain", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Caramelized Aromatics", importance_score: 4 },
-      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans & Fried Plantain", ingredient_name: "Ground Crayfish", requirement_type: "Optional", qty_per_person: 0.02, recipe_unit: "kg", role_in_meal: "Flavor Enhancer", importance_score: 4 },
+      // 22. Nigerian Buka Stew
+      { meal_id: "meal-buka-stew", meal_name: "Nigerian Buka Stew (Obe Ata Dindin)", ingredient_name: "Fresh Tomatoes", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Stew Body", importance_score: 5 },
+      { meal_id: "meal-buka-stew", meal_name: "Nigerian Buka Stew (Obe Ata Dindin)", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Rich Crimson Color", importance_score: 5 },
+      { meal_id: "meal-buka-stew", meal_name: "Nigerian Buka Stew (Obe Ata Dindin)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "kg", role_in_meal: "Signature Pepper Heat", importance_score: 5 },
+      { meal_id: "meal-buka-stew", meal_name: "Nigerian Buka Stew (Obe Ata Dindin)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Bleached Frying Base", importance_score: 5 },
+      { meal_id: "meal-buka-stew", meal_name: "Nigerian Buka Stew (Obe Ata Dindin)", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Deep-Fried Assorted Cuts", importance_score: 5 },
 
-      // 9. Asaro (Savory Yam Porridge)
-      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Savory Yam Porridge)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.4, recipe_unit: "kg", role_in_meal: "Yam Base", importance_score: 5 },
-      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Savory Yam Porridge)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Color & Taste", importance_score: 5 },
-      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Savory Yam Porridge)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Protein Flakes", importance_score: 4 },
-      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Savory Yam Porridge)", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Optional", qty_per_person: 0.3, recipe_unit: "bunch", role_in_meal: "Fresh Green Garnish", importance_score: 4 },
-      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Savory Yam Porridge)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Savory Base", importance_score: 5 },
+      // 23. Honey Beans & Fried Plantain (Ewa Oloyin & Dodo)
+      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans (Ewa Oloyin) & Fried Plantain (Dodo)", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Sweet Protein Base", importance_score: 5 },
+      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans (Ewa Oloyin) & Fried Plantain (Dodo)", ingredient_name: "Ripe Plantain (Dodo)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "finger", role_in_meal: "Golden Fried Side", importance_score: 5 },
+      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans (Ewa Oloyin) & Fried Plantain (Dodo)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Simmering Oil", importance_score: 4 },
+      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans (Ewa Oloyin) & Fried Plantain (Dodo)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Caramelized Aromatics", importance_score: 4 },
+      { meal_id: "meal-beans-plantain", meal_name: "Honey Beans (Ewa Oloyin) & Fried Plantain (Dodo)", ingredient_name: "Ground Crayfish", requirement_type: "Optional", qty_per_person: 0.02, recipe_unit: "kg", role_in_meal: "Flavor Enhancer", importance_score: 4 },
 
-      // 10. Suya Skewers
+      // 24. Ewa Aganyin
+      { meal_id: "meal-ewa-aganyin", meal_name: "Ewa Aganyin with Spicy Aganyin Sauce", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Ultra-Soft Mashed Beans", importance_score: 5 },
+      { meal_id: "meal-ewa-aganyin", meal_name: "Ewa Aganyin with Spicy Aganyin Sauce", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "L", role_in_meal: "Deeply Charred Frying Oil", importance_score: 5 },
+      { meal_id: "meal-ewa-aganyin", meal_name: "Ewa Aganyin with Spicy Aganyin Sauce", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 2, recipe_unit: "bulbs", role_in_meal: "Caramelized Onion Rings", importance_score: 5 },
+      { meal_id: "meal-ewa-aganyin", meal_name: "Ewa Aganyin with Spicy Aganyin Sauce", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Savory Sauce Umami", importance_score: 5 },
+
+      // 25. Steamed Moi Moi
+      { meal_id: "meal-moi-moi", meal_name: "Steamed Nigerian Moi Moi (Bean Pudding)", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Peeled Bean Puree", importance_score: 5 },
+      { meal_id: "meal-moi-moi", meal_name: "Steamed Nigerian Moi Moi (Bean Pudding)", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Sweet Red Color", importance_score: 5 },
+      { meal_id: "meal-moi-moi", meal_name: "Steamed Nigerian Moi Moi (Bean Pudding)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Pepper Puree", importance_score: 5 },
+      { meal_id: "meal-moi-moi", meal_name: "Steamed Nigerian Moi Moi (Bean Pudding)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Umami", importance_score: 5 },
+      { meal_id: "meal-moi-moi", meal_name: "Steamed Nigerian Moi Moi (Bean Pudding)", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.06, recipe_unit: "L", role_in_meal: "Softening Oil", importance_score: 4 },
+
+      // 26. Crispy Akara
+      { meal_id: "meal-akara", meal_name: "Crispy Nigerian Akara (Bean Cakes)", ingredient_name: "Honey Brown Beans (Ewa Oloyin)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Whipped Peeled Bean Batter", importance_score: 5 },
+      { meal_id: "meal-akara", meal_name: "Crispy Nigerian Akara (Bean Cakes)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Finely Diced Pepper", importance_score: 5 },
+      { meal_id: "meal-akara", meal_name: "Crispy Nigerian Akara (Bean Cakes)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Finely Minced Onions", importance_score: 5 },
+      { meal_id: "meal-akara", meal_name: "Crispy Nigerian Akara (Bean Cakes)", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "L", role_in_meal: "Deep Frying Oil", importance_score: 5 },
+
+      // 27. Asaro Yam Porridge
+      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Yoruba Savory Yam Porridge)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.4, recipe_unit: "kg", role_in_meal: "Yam Base", importance_score: 5 },
+      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Yoruba Savory Yam Porridge)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "L", role_in_meal: "Color & Taste", importance_score: 5 },
+      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Yoruba Savory Yam Porridge)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Smoked Protein Flakes", importance_score: 4 },
+      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Yoruba Savory Yam Porridge)", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Optional", qty_per_person: 0.3, recipe_unit: "bunch", role_in_meal: "Fresh Green Garnish", importance_score: 4 },
+      { meal_id: "meal-asaro-yam-porridge", meal_name: "Asaro (Yoruba Savory Yam Porridge)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Savory Base", importance_score: 5 },
+
+      // 28. Ekpang Nkukwo
+      { meal_id: "meal-ekpang-nkukwo", meal_name: "Ekpang Nkukwo (Grated Cocoyam & Water Yam Pot)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.35, recipe_unit: "kg", role_in_meal: "Grated Tuber Mix", importance_score: 5 },
+      { meal_id: "meal-ekpang-nkukwo", meal_name: "Ekpang Nkukwo (Grated Cocoyam & Water Yam Pot)", ingredient_name: "Fresh Pumpkin Leaves (Ugu)", requirement_type: "Essential", qty_per_person: 0.5, recipe_unit: "bunch", role_in_meal: "Leaf Wrappers", importance_score: 5 },
+      { meal_id: "meal-ekpang-nkukwo", meal_name: "Ekpang Nkukwo (Grated Cocoyam & Water Yam Pot)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "L", role_in_meal: "Heavy Coating Oil", importance_score: 5 },
+      { meal_id: "meal-ekpang-nkukwo", meal_name: "Ekpang Nkukwo (Grated Cocoyam & Water Yam Pot)", ingredient_name: "Shelled Periwinkles (Isam / Mfi)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Coastal Shellfish", importance_score: 5 },
+      { meal_id: "meal-ekpang-nkukwo", meal_name: "Ekpang Nkukwo (Grated Cocoyam & Water Yam Pot)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Rich Crayfish Layer", importance_score: 5 },
+
+      // 29. Abacha & Ugba
+      { meal_id: "meal-abacha-ugba", meal_name: "Abacha & Ugba (African Salad)", ingredient_name: "Garri (Ijebu White / Yellow)", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Soaked Cassava Base", importance_score: 5 },
+      { meal_id: "meal-abacha-ugba", meal_name: "Abacha & Ugba (African Salad)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.06, recipe_unit: "L", role_in_meal: "Curded Ncha Sauce", importance_score: 5 },
+      { meal_id: "meal-abacha-ugba", meal_name: "Abacha & Ugba (African Salad)", ingredient_name: "Fresh Utazi Leaves", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "bunch", role_in_meal: "Thin Shredded Bitter Garnish", importance_score: 5 },
+      { meal_id: "meal-abacha-ugba", meal_name: "Abacha & Ugba (African Salad)", ingredient_name: "Smoked Catfish / Dry Fish", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "piece", role_in_meal: "Fried Fish Protein", importance_score: 5 },
+      { meal_id: "meal-abacha-ugba", meal_name: "Abacha & Ugba (African Salad)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seasoning Powder", importance_score: 5 },
+
+      // 30. Ukodo (Plantain Pottage)
+      { meal_id: "meal-plantain-porridge", meal_name: "Ukodo (Yam & Unripe Plantain Pepper Soup Pot)", ingredient_name: "Unripe Green Plantain", requirement_type: "Essential", qty_per_person: 2, recipe_unit: "fingers", role_in_meal: "Sliced Plantain Chunks", importance_score: 5 },
+      { meal_id: "meal-plantain-porridge", meal_name: "Ukodo (Yam & Unripe Plantain Pepper Soup Pot)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Yam Chunks", importance_score: 5 },
+      { meal_id: "meal-plantain-porridge", meal_name: "Ukodo (Yam & Unripe Plantain Pepper Soup Pot)", ingredient_name: "Fresh Goat Meat (Ogunfe)", requirement_type: "Essential", qty_per_person: 0.3, recipe_unit: "kg", role_in_meal: "Tender Goat Meat", importance_score: 5 },
+      { meal_id: "meal-plantain-porridge", meal_name: "Ukodo (Yam & Unripe Plantain Pepper Soup Pot)", ingredient_name: "Calabash Nutmeg (Ehuru) & Uda Pods", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Pepper Soup Broth", importance_score: 5 },
+      { meal_id: "meal-plantain-porridge", meal_name: "Ukodo (Yam & Unripe Plantain Pepper Soup Pot)", ingredient_name: "Fresh Scent Leaves (Efirin / Nchanwu)", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "bunch", role_in_meal: "Aromatic Garnish", importance_score: 5 },
+
+      // 31. Suya Skewers
       { meal_id: "meal-suya-skewer", meal_name: "Authentic Mai Suya Spiced Beef Skewers", ingredient_name: "Fresh Cow Meat (Beef Cuts)", requirement_type: "Essential", qty_per_person: 0.25, recipe_unit: "kg", role_in_meal: "Lean Beef Slices", importance_score: 5 },
       { meal_id: "meal-suya-skewer", meal_name: "Authentic Mai Suya Spiced Beef Skewers", ingredient_name: "Suya Pepper (Yaji Spice)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Spicy Peanut Rub", importance_score: 5 },
       { meal_id: "meal-suya-skewer", meal_name: "Authentic Mai Suya Spiced Beef Skewers", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Raw Crisp Rings", importance_score: 4 },
       { meal_id: "meal-suya-skewer", meal_name: "Authentic Mai Suya Spiced Beef Skewers", ingredient_name: "Fresh Tomatoes", requirement_type: "Optional", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Fresh Slices", importance_score: 3 },
 
-      // 11. Ofe Nsala (White Soup)
-      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (White Soup)", ingredient_name: "Fresh Point & Kill Catfish", requirement_type: "Essential", qty_per_person: 0.35, recipe_unit: "kg", role_in_meal: "River Fresh Fish", importance_score: 5 },
-      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (White Soup)", ingredient_name: "Puna White Yam Tuber", requirement_type: "Essential", qty_per_person: 0.15, recipe_unit: "kg", role_in_meal: "Pounded Yam Thickener", importance_score: 5 },
-      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (White Soup)", ingredient_name: "Fresh Utazi Leaves", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "bunch", role_in_meal: "Bitter-Sweet Herbal Punch", importance_score: 5 },
-      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (White Soup)", ingredient_name: "Calabash Nutmeg (Ehuru) & Uda Pods", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Aromatic Spice Blend", importance_score: 5 },
-      { meal_id: "meal-ofe-nsala", meal_name: "Ofe Nsala (White Soup)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.04, recipe_unit: "kg", role_in_meal: "Seafood Essence", importance_score: 5 },
+      // 32. Asun (Peppered Goat Meat)
+      { meal_id: "meal-asun-goat-meat", meal_name: "Authentic Yoruba Asun (Spicy Peppered Smoked Goat Meat)", ingredient_name: "Fresh Goat Meat (Ogunfe)", requirement_type: "Essential", qty_per_person: 0.35, recipe_unit: "kg", role_in_meal: "Smoked Goat Meat Dices", importance_score: 5 },
+      { meal_id: "meal-asun-goat-meat", meal_name: "Authentic Yoruba Asun (Spicy Peppered Smoked Goat Meat)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "kg", role_in_meal: "Crushed Habanero", importance_score: 5 },
+      { meal_id: "meal-asun-goat-meat", meal_name: "Authentic Yoruba Asun (Spicy Peppered Smoked Goat Meat)", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.08, recipe_unit: "kg", role_in_meal: "Red Pepper Color", importance_score: 5 },
+      { meal_id: "meal-asun-goat-meat", meal_name: "Authentic Yoruba Asun (Spicy Peppered Smoked Goat Meat)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 2, recipe_unit: "bulbs", role_in_meal: "Sautéed Onion Slices", importance_score: 5 },
+      { meal_id: "meal-asun-goat-meat", meal_name: "Authentic Yoruba Asun (Spicy Peppered Smoked Goat Meat)", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "L", role_in_meal: "Stir-Fry Oil", importance_score: 4 },
 
-      // 12. Gizdodo
-      { meal_id: "meal-gizdodo", meal_name: "Gizdodo", ingredient_name: "Chicken / Turkey Gizzards", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Savory Meaty Bites", importance_score: 5 },
-      { meal_id: "meal-gizdodo", meal_name: "Gizdodo", ingredient_name: "Ripe Plantain (Dodo)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "finger", role_in_meal: "Sweet Golden Dices", importance_score: 5 },
-      { meal_id: "meal-gizdodo", meal_name: "Gizdodo", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Rich Sweet Sauce", importance_score: 5 },
-      { meal_id: "meal-gizdodo", meal_name: "Gizdodo", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Frying Oil", importance_score: 4 },
-      { meal_id: "meal-gizdodo", meal_name: "Gizdodo", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Chunky Sauté", importance_score: 4 }
+      // 33. Nkwobi (Spicy Cow Foot)
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Assorted Meat (Shaki, Abodi, Kpomo)", requirement_type: "Essential", qty_per_person: 0.35, recipe_unit: "kg", role_in_meal: "Tender Cow Foot Cuts", importance_score: 5 },
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Pure Red Palm Oil", requirement_type: "Essential", qty_per_person: 0.06, recipe_unit: "L", role_in_meal: "Curded Sauce Base", importance_score: 5 },
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Calabash Nutmeg (Ehuru) & Uda Pods", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "pack", role_in_meal: "Toasted Nutmeg Powder", importance_score: 5 },
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Fresh Utazi Leaves", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "bunch", role_in_meal: "Thin Shredded Bitter Garnish", importance_score: 5 },
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Ground Crayfish", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Seafood Savory Base", importance_score: 5 },
+      { meal_id: "meal-nkwobi", meal_name: "Nkwobi (Spicy Cow Foot Delicacy in Potash Sauce)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Sliced Ring Garnish", importance_score: 4 },
+
+      // 34. Gizdodo
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Chicken / Turkey Gizzards", requirement_type: "Essential", qty_per_person: 0.2, recipe_unit: "kg", role_in_meal: "Savory Meaty Bites", importance_score: 5 },
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Ripe Plantain (Dodo)", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "finger", role_in_meal: "Sweet Golden Dices", importance_score: 5 },
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Red Bell Pepper (Tatashe)", requirement_type: "Essential", qty_per_person: 0.1, recipe_unit: "kg", role_in_meal: "Rich Sweet Sauce", importance_score: 5 },
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Vegetable / Groundnut Oil", requirement_type: "Essential", qty_per_person: 0.05, recipe_unit: "L", role_in_meal: "Frying Oil", importance_score: 4 },
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Red Onions", requirement_type: "Essential", qty_per_person: 1, recipe_unit: "bulb", role_in_meal: "Chunky Sauté", importance_score: 4 },
+      { meal_id: "meal-gizdodo", meal_name: "Gizdodo (Spicy Chicken Gizzard & Dodo Medley)", ingredient_name: "Scotch Bonnet Pepper (Rodo)", requirement_type: "Essential", qty_per_person: 0.03, recipe_unit: "kg", role_in_meal: "Spicy Heat", importance_score: 4 }
     ];
 
     for (const mi of mealIngredientsData) {
