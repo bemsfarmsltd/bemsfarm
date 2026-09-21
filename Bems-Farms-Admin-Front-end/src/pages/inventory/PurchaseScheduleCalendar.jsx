@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 export default function PurchaseScheduleCalendar() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -231,13 +232,14 @@ export default function PurchaseScheduleCalendar() {
   }
 
   // Handle product selection to auto-fill unit and cost
-  const handleProductSelect = (e) => {
-    const pId = e.target.value
-    if (!pId) {
-      setFormData((prev) => ({ ...prev, product_id: '', product_name: '' }))
+  const handleProductSelect = (selectedId, foundProduct, event) => {
+    const id = typeof selectedId === 'object' && selectedId?.target ? selectedId.target.value : selectedId
+    if (!id && !foundProduct) {
+      const customName = event?.target?.value || ''
+      setFormData((prev) => ({ ...prev, product_id: '', product_name: customName }))
       return
     }
-    const found = productsList.find((p) => String(p.id) === String(pId))
+    const found = foundProduct || productsList.find((p) => String(p.id) === String(id))
     if (found) {
       setFormData((prev) => ({
         ...prev,
@@ -803,28 +805,22 @@ export default function PurchaseScheduleCalendar() {
                 <div className="modal-body p-4 bg-light-subtle">
                   {/* Product Choice */}
                   <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark fs-sm">Select Product from Catalog</label>
-                    <select
-                      className="form-select mb-2"
+                    <label className="form-label fw-semibold text-dark fs-sm">
+                      Select or Search Product <span className="text-danger">*</span>
+                    </label>
+                    <ProductSelect
+                      products={productsList}
                       value={formData.product_id}
                       onChange={handleProductSelect}
-                    >
-                      <option value="">— Or type custom product below —</option>
-                      {productsList.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (Stock: {p.stock ?? 0}, SKU: {p.sku || '—'})
-                        </option>
-                      ))}
-                    </select>
-
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Product name (e.g. Fresh Tomatoes, Yam Tubers)"
-                      value={formData.product_name}
-                      onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
+                      placeholder="Type name, SKU, scan barcode, or select from list..."
+                      allowCustom={true}
                       required
                     />
+                    {!formData.product_id && formData.product_name && (
+                      <small className="text-muted d-block mt-1">
+                        Custom product: <strong>{formData.product_name}</strong>
+                      </small>
+                    )}
                   </div>
 
                   {/* Expected Date & Quantity */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 const ASSOCIATION_TYPES = ['pairs_well_with', 'meal_co_occurrence', 'substitute_for', 'complements']
 const TYPE_LABEL = {
@@ -28,6 +29,7 @@ function Modal({ show, onClose, title, children }) {
 
 export default function MealAssociations() {
   const [associations, setAssociations] = useState([])
+  const [productsList, setProductsList] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
@@ -36,6 +38,12 @@ export default function MealAssociations() {
   const [editModal, setEditModal] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
+
+  useEffect(() => {
+    api.get('/admin/products', { params: { limit: 500 } })
+      .then(res => setProductsList(res.data?.products || []))
+      .catch(() => {})
+  }, [])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -99,11 +107,41 @@ export default function MealAssociations() {
     <div className="row g-3">
       <div className="col-md-6">
         <label className="form-label fw-medium">Product A <span className="text-danger">*</span></label>
-        <input type="text" className="form-control" placeholder="e.g. garri" value={form.product_a} onChange={e => setForm(f => ({ ...f, product_a: e.target.value }))} />
+        <ProductSelect
+          products={productsList}
+          value={form.product_a_id || ''}
+          placeholder="Search, scan, or type Product A..."
+          allowCustom={true}
+          onChange={(id, p, e) => {
+            const name = p ? p.name : (e?.target?.value || id || '')
+            setForm(f => ({ ...f, product_a: name, product_a_id: id }))
+          }}
+          required
+        />
+        {form.product_a && (
+          <small className="text-muted d-block mt-1">
+            Selected: <strong>{form.product_a}</strong>
+          </small>
+        )}
       </div>
       <div className="col-md-6">
         <label className="form-label fw-medium">Product B <span className="text-danger">*</span></label>
-        <input type="text" className="form-control" placeholder="e.g. palm oil" value={form.product_b} onChange={e => setForm(f => ({ ...f, product_b: e.target.value }))} />
+        <ProductSelect
+          products={productsList}
+          value={form.product_b_id || ''}
+          placeholder="Search, scan, or type Product B..."
+          allowCustom={true}
+          onChange={(id, p, e) => {
+            const name = p ? p.name : (e?.target?.value || id || '')
+            setForm(f => ({ ...f, product_b: name, product_b_id: id }))
+          }}
+          required
+        />
+        {form.product_b && (
+          <small className="text-muted d-block mt-1">
+            Selected: <strong>{form.product_b}</strong>
+          </small>
+        )}
       </div>
       <div className="col-md-8">
         <label className="form-label fw-medium">Association Type</label>

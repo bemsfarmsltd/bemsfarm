@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import ProductSelect from '../ui/ProductSelect'
 
 export default function CartonBreakdownModal({ isOpen, onClose, onSuccess, initialSourceProduct = null }) {
   const [products, setProducts] = useState([])
@@ -157,28 +158,21 @@ export default function CartonBreakdownModal({ isOpen, onClose, onSuccess, initi
                         </span>
                       )}
                     </label>
-                    <select
-                      className="form-select mb-2"
+                    <ProductSelect
+                      products={products}
                       value={sourceProductId}
-                      onChange={(e) => {
-                        setSourceProductId(e.target.value)
-                        const picked = products.find((p) => String(p.id) === e.target.value)
+                      onChange={(selectedId, picked) => {
+                        setSourceProductId(selectedId)
                         if (picked) {
                           const m = (picked.name || '').match(/(\d+)\s*(pcs|pieces|pack|sachets|units)/i)
                           if (m && m[1]) setPiecesPerCarton(parseInt(m[1]) || 40)
                         }
                       }}
+                      placeholder="Scan barcode, SKU, or search bulk carton..."
                       required
-                    >
-                      <option value="">-- Choose Carton / Bulk Item --</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (Stock: {p.stock ?? p.stock_quantity ?? 0} {p.unit || 'cartons'})
-                        </option>
-                      ))}
-                    </select>
+                    />
 
-                    <label className="form-label fw-semibold fs-xs text-muted mt-2">
+                    <label className="form-label fw-semibold fs-xs text-muted mt-3">
                       Number of Cartons to Open / Break Down:
                     </label>
                     <div className="input-group">
@@ -223,19 +217,13 @@ export default function CartonBreakdownModal({ isOpen, onClose, onSuccess, initi
                         <span className="text-success fw-bold">{targetStock} in stock</span>
                       )}
                     </label>
-                    <select
-                      className="form-select mb-2"
+                    <ProductSelect
+                      products={products}
                       value={targetProductId}
-                      onChange={(e) => setTargetProductId(e.target.value)}
+                      onChange={(selectedId) => setTargetProductId(selectedId)}
+                      placeholder="Scan barcode, SKU, or search single piece..."
                       required
-                    >
-                      <option value="">-- Choose Single Piece / Unit Item --</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (Current: {p.stock ?? p.stock_quantity ?? 0} {p.unit || 'pcs'})
-                        </option>
-                      ))}
-                    </select>
+                    />
 
                     <label className="form-label fw-semibold fs-xs text-muted mt-2">
                       Pieces Inside Each Carton (Multiplier):

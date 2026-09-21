@@ -105,12 +105,12 @@ export default function StockIn() {
     setModalOpen(true)
   }
 
-  function handleProductChange(e) {
-    const selectedId = e.target.value
-    const found = products.find((p) => String(p.id) === String(selectedId))
+  function handleProductChange(selectedId, foundProduct) {
+    const id = typeof selectedId === 'object' && selectedId?.target ? selectedId.target.value : selectedId
+    const found = foundProduct || products.find((p) => String(p.id) === String(id))
     setForm((prev) => ({
       ...prev,
-      product_id: selectedId,
+      product_id: id ? String(id) : '',
       unit_cost: found?.cost_price !== undefined ? String(found.cost_price) : prev.unit_cost,
     }))
   }
