@@ -1907,7 +1907,7 @@ router.delete(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// PURCHASE & RESTOCK CALENDAR SCHEDULER
+// PURCHASE & RESTOCK CALENDAR SCHEDULER (WITH SMART AUTO-PLANNING)
 // ════════════════════════════════════════════════════════════════════════════
 
 let scheduledTableReady = false;
@@ -1926,17 +1926,167 @@ async function ensureScheduledPurchasesTable() {
       supplier_id        INT,
       notes              TEXT,
       status             VARCHAR(30) DEFAULT 'scheduled',
+      is_auto_scheduled  BOOLEAN DEFAULT false,
+      urgency            VARCHAR(20) DEFAULT 'normal',
       received_date      DATE,
       received_quantity  INT,
       created_by         INT REFERENCES users(id) ON DELETE SET NULL,
       created_at         TIMESTAMP DEFAULT NOW(),
       updated_at         TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE scheduled_purchases ADD COLUMN IF NOT EXISTS is_auto_scheduled BOOLEAN DEFAULT false;
+    ALTER TABLE scheduled_purchases ADD COLUMN IF NOT EXISTS urgency VARCHAR(20) DEFAULT 'normal';
     CREATE INDEX IF NOT EXISTS idx_scheduled_purchases_date ON scheduled_purchases(expected_date);
     CREATE INDEX IF NOT EXISTS idx_scheduled_purchases_status ON scheduled_purchases(status);
   `);
   scheduledTableReady = true;
 }
+
+// ── GET /api/admin/inventory/schedules/auto-plan ──────────────────────
+router.get(
+  "/schedules/auto-plan",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const targetMonth = req.query.month || new Date().toISOString().slice(0, 7);
+
+      // 1. Fetch all low stock or zero stock products
+      const lowStockQuery = await pool.query(`
+        SELECT 
+          p.id, p.name, p.sku, p.barcode, p.stock, p.stock_quantity,
+          p.low_stock_threshold, p.reorder_level, p.price, p.cost_price, p.unit, p.image_url,
+          COALESCE(cat.name, 'General Produce') AS category_name
+        FROM products p
+        LEFT JOIN categories cat ON p.category_id = cat.id
+        WHERE (p.stock <= COALESCE(p.low_stock_threshold, 5) OR p.stock_quantity <= COALESCE(p.reorder_level, 5) OR p.stock <= 0)
+        ORDER BY p.stock ASC, p.name ASC
+      `);
+
+      // 2. Fetch existing active schedules in this month to flag duplicates
+      const existingSchedules = await pool.query(`
+        SELECT product_id, expected_date 
+        FROM scheduled_purchases 
+        WHERE status IN ('scheduled', 'received') 
+          AND TO_CHAR(expected_date, 'YYYY-MM') = $1
+      `, [targetMonth]);
+
+      const scheduledProductIds = new Set(
+        existingSchedules.rows.filter(r => r.product_id).map(r => r.product_id)
+      );
+
+      // 3. Stagger dates across upcoming business days
+      const now = new Date();
+      const planItems = lowStockQuery.rows.map((p, idx) => {
+        const currentStock = p.stock ?? p.stock_quantity ?? 0;
+        const reorderThreshold = p.low_stock_threshold || p.reorder_level || 5;
+        const isCritical = currentStock <= 0;
+        
+        // Stagger dates: critical items arrive in 1-2 days, warnings in 3-7 days
+        const daysOffset = isCritical ? (idx % 3) + 1 : (idx % 7) + 3;
+        const targetDate = new Date();
+        targetDate.setDate(now.getDate() + daysOffset);
+        const expectedDateStr = targetDate.toISOString().slice(0, 10);
+
+        const suggestedQty = isCritical ? 50 : Math.max(25, reorderThreshold * 5 - currentStock);
+        const unitCost = Number(p.cost_price) || (Number(p.price) ? Number(p.price) * 0.8 : 500);
+        const estimatedCost = Math.round(suggestedQty * unitCost);
+
+        const alreadyScheduled = scheduledProductIds.has(p.id);
+
+        return {
+          product_id: p.id,
+          product_name: p.name,
+          sku: p.sku || '—',
+          barcode: p.barcode || '',
+          current_stock: currentStock,
+          reorder_threshold: reorderThreshold,
+          unit: p.unit || 'pcs',
+          unit_cost: unitCost,
+          suggested_quantity: suggestedQty,
+          estimated_cost: estimatedCost,
+          expected_date: expectedDateStr,
+          supplier_name: 'Bems Farms Partner Supplier',
+          urgency: isCritical ? 'critical' : currentStock <= reorderThreshold ? 'warning' : 'normal',
+          reason: isCritical ? 'Zero Stock Outage' : 'Below Safety Threshold',
+          category_name: p.category_name,
+          image_url: p.image_url,
+          already_scheduled: alreadyScheduled,
+        };
+      });
+
+      const totalOutlay = planItems.reduce((acc, item) => acc + item.estimated_cost, 0);
+
+      res.json({
+        target_month: targetMonth,
+        total_low_stock: lowStockQuery.rows.length,
+        recommendations: planItems,
+        total_estimated_outlay: totalOutlay,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── POST /api/admin/inventory/schedules/auto-generate ─────────────────
+router.post(
+  "/schedules/auto-generate",
+  requireRole("superadmin", "manager", "admin", "storekeeper"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const { items } = req.body;
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No restock plan items provided" });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const createdSchedules = [];
+
+        for (const it of items) {
+          if (!it.product_name && !it.product_id) continue;
+          const resInsert = await client.query(
+            `INSERT INTO scheduled_purchases
+               (product_id, product_name, expected_date, quantity, unit, estimated_cost, supplier_name, notes, status, is_auto_scheduled, urgency, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled', true, $9, $10)
+             RETURNING *`,
+            [
+              it.product_id ? parseInt(it.product_id) : null,
+              it.product_name.trim(),
+              it.expected_date,
+              parseInt(it.quantity || it.suggested_quantity) || 20,
+              it.unit || 'pcs',
+              parseFloat(it.estimated_cost) || 0,
+              it.supplier_name ? it.supplier_name.trim() : 'Bems Farms Partner Supplier',
+              it.notes ? it.notes.trim() : `Auto-planned restock (${it.reason || 'Safety Threshold'})`,
+              it.urgency || 'normal',
+              req.user?.id || null,
+            ]
+          );
+          createdSchedules.push(resInsert.rows[0]);
+        }
+
+        await client.query("COMMIT");
+        res.json({
+          success: true,
+          count: createdSchedules.length,
+          schedules: createdSchedules,
+          message: `Successfully scheduled ${createdSchedules.length} restock purchases on the calendar`,
+        });
+      } catch (e) {
+        await client.query("ROLLBACK");
+        throw e;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // ── GET /api/admin/inventory/schedules ──────────────────────────────
 router.get(

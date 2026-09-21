@@ -29,6 +29,13 @@ export default function PurchaseScheduleCalendar() {
   const [receiveWarehouseId, setReceiveWarehouseId] = useState('')
   const [receivingLoading, setReceivingLoading] = useState(false)
 
+  // Auto-Plan state
+  const [autoPlanModalOpen, setAutoPlanModalOpen] = useState(false)
+  const [autoPlanLoading, setAutoPlanLoading] = useState(false)
+  const [autoPlanItems, setAutoPlanItems] = useState([])
+  const [selectedPlanKeys, setSelectedPlanKeys] = useState([])
+  const [autoPlanSubmitting, setAutoPlanSubmitting] = useState(false)
+
   // New Schedule form state
   const [formData, setFormData] = useState({
     product_id: '',
@@ -284,6 +291,88 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
+  // Open & Fetch Auto-Plan Recommendations
+  const handleOpenAutoPlan = async () => {
+    setAutoPlanLoading(true)
+    setAutoPlanModalOpen(true)
+    try {
+      const res = await api.get('/admin/inventory/schedules/auto-plan', {
+        params: { month: monthString },
+      })
+      const items = (res.data?.recommendations || []).map((it, idx) => ({
+        ...it,
+        keyId: `${it.product_id || idx}-${Date.now()}-${idx}`,
+        quantity: it.suggested_quantity,
+        expected_date: it.expected_date,
+        supplier_name: it.supplier_name,
+        estimated_cost: it.estimated_cost,
+      }))
+      setAutoPlanItems(items)
+      // Auto-select all items that are not already scheduled
+      const defaultSelected = items.filter((it) => !it.already_scheduled).map((it) => it.keyId)
+      setSelectedPlanKeys(defaultSelected)
+    } catch (err) {
+      toast.error('Failed to generate restock recommendations')
+      console.error(err)
+    } finally {
+      setAutoPlanLoading(false)
+    }
+  }
+
+  // Toggle individual item in auto-plan
+  const handleTogglePlanItem = (keyId) => {
+    setSelectedPlanKeys((prev) =>
+      prev.includes(keyId) ? prev.filter((k) => k !== keyId) : [...prev, keyId]
+    )
+  }
+
+  // Toggle select all in auto-plan
+  const handleToggleAllPlan = () => {
+    if (selectedPlanKeys.length === autoPlanItems.length) {
+      setSelectedPlanKeys([])
+    } else {
+      setSelectedPlanKeys(autoPlanItems.map((it) => it.keyId))
+    }
+  }
+
+  // Update a field inside an auto-plan recommendation item
+  const handleUpdatePlanItem = (keyId, field, value) => {
+    setAutoPlanItems((prev) =>
+      prev.map((it) => {
+        if (it.keyId !== keyId) return it
+        const updated = { ...it, [field]: value }
+        if (field === 'quantity') {
+          const qty = parseInt(value) || 0
+          updated.estimated_cost = Math.round(qty * (it.unit_cost || 0))
+        }
+        return updated
+      })
+    )
+  }
+
+  // Execute and place auto-plan items on calendar
+  const handleExecuteAutoPlan = async () => {
+    const itemsToSchedule = autoPlanItems.filter((it) => selectedPlanKeys.includes(it.keyId))
+    if (!itemsToSchedule.length) {
+      toast.error('Please select at least one item to schedule')
+      return
+    }
+
+    setAutoPlanSubmitting(true)
+    try {
+      const res = await api.post('/admin/inventory/schedules/auto-generate', {
+        items: itemsToSchedule,
+      })
+      toast.success(res.data?.message || `Scheduled ${itemsToSchedule.length} restocks on calendar!`)
+      setAutoPlanModalOpen(false)
+      fetchSchedules()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-schedule restocks')
+    } finally {
+      setAutoPlanSubmitting(false)
+    }
+  }
+
   // Open Receive Stock modal
   const handleOpenReceive = (schedule) => {
     setReceiveModalSchedule(schedule)
@@ -368,6 +457,16 @@ export default function PurchaseScheduleCalendar() {
               <i className="ri-list-check-2 me-1"></i> Agenda / List
             </button>
           </div>
+
+          <button
+            type="button"
+            className="btn btn-outline-primary d-flex align-items-center gap-1.5 shadow-xs bg-white"
+            onClick={handleOpenAutoPlan}
+            title="Auto-analyze low stock & sales velocity to draft calendar restocks"
+          >
+            <i className="ri-flashlight-line text-warning"></i>
+            <span className="fw-semibold">Auto-Schedule Restock</span>
+          </button>
 
           <button
             type="button"
@@ -1143,6 +1242,247 @@ export default function PurchaseScheduleCalendar() {
                   ) : (
                     <>
                       <i className="ri-checkbox-circle-fill"></i> Confirm &amp; Add to Stock
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Auto-Restock Planner Modal ── */}
+      {autoPlanModalOpen && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 1060 }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden">
+              {/* Header */}
+              <div className="modal-header bg-dark text-white px-4 py-3 border-0">
+                <div className="d-flex align-items-center gap-2.5">
+                  <div className="avatar size-9 bg-warning bg-opacity-20 text-warning rounded-3 d-flex align-items-center justify-content-center">
+                    <i className="ri-flashlight-fill fs-4"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-white mb-0 font-display">
+                      Auto-Schedule Restock Planner
+                    </h5>
+                    <small className="text-white text-opacity-75">
+                      Analyzes safety thresholds and sales velocity to generate optimized delivery dates
+                    </small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setAutoPlanModalOpen(false)}
+                  disabled={autoPlanSubmitting}
+                ></button>
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4 bg-light-subtle">
+                {autoPlanLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-primary mb-3"></div>
+                    <div className="fw-semibold text-dark">Scanning Catalog &amp; Forecasting Restocks…</div>
+                    <small className="text-muted">Evaluating safety stock, runout rates, and supplier lead times</small>
+                  </div>
+                ) : autoPlanItems.length === 0 ? (
+                  <div className="text-center py-5 bg-white rounded-3 border shadow-xs">
+                    <i className="ri-checkbox-circle-line fs-1 text-success d-block mb-2"></i>
+                    <h6 className="fw-bold text-dark">All Stock Levels Optimal!</h6>
+                    <p className="text-muted mb-0">No items are currently below safety thresholds or out of stock.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Top Summary KPI row */}
+                    <div className="row g-3 mb-3">
+                      <div className="col-md-4">
+                        <div className="card border-0 shadow-xs rounded-3 p-3 bg-white">
+                          <small className="text-muted text-uppercase fw-semibold fs-xs">Low / Out of Stock</small>
+                          <div className="fs-4 fw-bold text-danger">{autoPlanItems.length} SKUs</div>
+                          <small className="text-muted">Requiring warehouse restock</small>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="card border-0 shadow-xs rounded-3 p-3 bg-white">
+                          <small className="text-muted text-uppercase fw-semibold fs-xs">Selected for Calendar</small>
+                          <div className="fs-4 fw-bold text-primary">{selectedPlanKeys.length} items</div>
+                          <small className="text-muted">Ready to place on calendar</small>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="card border-0 shadow-xs rounded-3 p-3 bg-white">
+                          <small className="text-muted text-uppercase fw-semibold fs-xs">Est. Procurement Outlay</small>
+                          <div className="fs-4 fw-bold text-success">
+                            ₦{autoPlanItems
+                              .filter((it) => selectedPlanKeys.includes(it.keyId))
+                              .reduce((sum, it) => sum + (it.estimated_cost || 0), 0)
+                              .toLocaleString()}
+                          </div>
+                          <small className="text-muted">Anticipated supplier expenditure</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table of items */}
+                    <div className="card border shadow-xs rounded-3 overflow-hidden bg-white">
+                      <div className="card-header bg-white py-2.5 px-3 d-flex align-items-center justify-content-between">
+                        <div className="form-check mb-0">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            id="selectAllPlan"
+                            checked={selectedPlanKeys.length === autoPlanItems.length && autoPlanItems.length > 0}
+                            onChange={handleToggleAllPlan}
+                          />
+                          <label className="form-check-label fw-semibold fs-sm cursor-pointer" htmlFor="selectAllPlan">
+                            Select All ({autoPlanItems.length})
+                          </label>
+                        </div>
+                        <span className="text-muted fs-xs">
+                          💡 You can adjust target dates or quantities before confirming.
+                        </span>
+                      </div>
+
+                      <div className="table-responsive" style={{ maxHeight: '420px' }}>
+                        <table className="table table-hover align-middle mb-0 fs-sm">
+                          <thead className="table-light text-muted fs-xs text-uppercase sticky-top">
+                            <tr>
+                              <th style={{ width: 40 }}></th>
+                              <th>Product</th>
+                              <th>Stock Status</th>
+                              <th style={{ width: 150 }}>Arrival Date</th>
+                              <th style={{ width: 110 }}>Restock Qty</th>
+                              <th style={{ width: 130 }}>Est. Outlay</th>
+                              <th>Supplier</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {autoPlanItems.map((item) => {
+                              const isChecked = selectedPlanKeys.includes(item.keyId)
+                              const isCritical = item.current_stock <= 0
+
+                              return (
+                                <tr key={item.keyId} className={isChecked ? '' : 'opacity-60 bg-light-subtle'}>
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      className="form-check-input"
+                                      checked={isChecked}
+                                      onChange={() => handleTogglePlanItem(item.keyId)}
+                                    />
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                      {item.image_url ? (
+                                        <img
+                                          src={item.image_url}
+                                          alt={item.product_name}
+                                          style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6 }}
+                                          onError={(e) => (e.target.style.display = 'none')}
+                                        />
+                                      ) : (
+                                        <div className="rounded bg-light text-muted d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
+                                          <i className="ri-box-3-line"></i>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: 220 }}>
+                                          {item.product_name}
+                                        </div>
+                                        <small className="text-muted">SKU: {item.sku}</small>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`badge ${
+                                        isCritical
+                                          ? 'bg-danger-subtle text-danger border border-danger-subtle'
+                                          : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                                      }`}
+                                    >
+                                      {isCritical ? '0 Stock Outage' : `${item.current_stock} left (Min: ${item.reorder_threshold})`}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="date"
+                                      className="form-control form-control-sm"
+                                      value={item.expected_date}
+                                      onChange={(e) => handleUpdatePlanItem(item.keyId, 'expected_date', e.target.value)}
+                                      disabled={!isChecked}
+                                    />
+                                  </td>
+                                  <td>
+                                    <div className="input-group input-group-sm">
+                                      <input
+                                        type="number"
+                                        className="form-control text-center"
+                                        min="1"
+                                        value={item.quantity}
+                                        onChange={(e) => handleUpdatePlanItem(item.keyId, 'quantity', e.target.value)}
+                                        disabled={!isChecked}
+                                      />
+                                      <span className="input-group-text fs-xs">{item.unit || 'pcs'}</span>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div className="fw-semibold text-dark">
+                                      ₦{(item.estimated_cost || 0).toLocaleString()}
+                                    </div>
+                                    <small className="text-muted">@ ₦{Math.round(item.unit_cost || 0)}/unit</small>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      className="form-control form-control-sm"
+                                      value={item.supplier_name}
+                                      onChange={(e) => handleUpdatePlanItem(item.keyId, 'supplier_name', e.target.value)}
+                                      disabled={!isChecked}
+                                    />
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setAutoPlanModalOpen(false)}
+                  disabled={autoPlanSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 shadow-sm"
+                  onClick={handleExecuteAutoPlan}
+                  disabled={autoPlanSubmitting || selectedPlanKeys.length === 0}
+                >
+                  {autoPlanSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-1"></span>
+                      Scheduling Restocks…
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-calendar-check-fill"></i>
+                      <span>Place Selected ({selectedPlanKeys.length}) on Calendar</span>
                     </>
                   )}
                 </button>
