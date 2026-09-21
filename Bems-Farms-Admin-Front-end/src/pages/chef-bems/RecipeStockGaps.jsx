@@ -25,12 +25,47 @@ export default function RecipeStockGaps() {
     loadGaps()
   }, [loadGaps])
 
+  const exportToCSV = () => {
+    const rows = []
+    rows.push(["Ingredient Name", "Matched Catalog Product", "Current Stock", "Status", "Used In Meals", "Suggested AI Substitute"])
+
+    const allItems = [...out_of_stock, ...low_stock, ...unlisted]
+    if (allItems.length === 0) {
+      return toast.error("No stock gap items to export")
+    }
+
+    allItems.forEach(item => {
+      rows.push([
+        `"${(item.ingredient_name || "").replace(/"/g, '""')}"`,
+        `"${(item.matched_product_name || "Not in Catalog").replace(/"/g, '""')}"`,
+        item.current_stock ?? 0,
+        `"${item.status || "UNLISTED"}"`,
+        `"${(item.meal_name || "").replace(/"/g, '""')}"`,
+        `"${(item.suggested_substitute || "").replace(/"/g, '""')}"`
+      ])
+    })
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `bems_farms_restock_list_${new Date().toISOString().slice(0,10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success("🛒 Restock list exported successfully as CSV!")
+  }
+
+  const printRestockSheet = () => {
+    window.print()
+  }
+
   const { summary = {}, out_of_stock = [], low_stock = [], unlisted = [], affected_meals = [] } = data
 
   return (
     <div className="container-fluid">
       {/* Page Header */}
-      <div className="d-flex align-items-center justify-content-between mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <div>
           <h4 className="fs-xl mb-1">
             <i className="ri-error-warning-line me-2 text-danger"></i>Recipe Ingredients Stock Gaps
@@ -39,9 +74,17 @@ export default function RecipeStockGaps() {
             Dedicated inventory monitor for Chef Bems AI — identifies out-of-stock, low-stock, and missing recipe ingredients.
           </p>
         </div>
-        <button className="btn btn-outline-secondary btn-sm" onClick={loadGaps}>
-          <i className="ri-refresh-line me-1"></i>Refresh Analysis
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button className="btn btn-outline-secondary btn-sm" onClick={loadGaps}>
+            <i className="ri-refresh-line me-1"></i>Refresh
+          </button>
+          <button className="btn btn-outline-dark btn-sm" onClick={printRestockSheet}>
+            <i className="ri-printer-line me-1"></i>Print Restock Sheet
+          </button>
+          <button className="btn btn-success btn-sm font-weight-bold" onClick={exportToCSV}>
+            <i className="ri-download-2-line me-1"></i>Export List to Buy (CSV)
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI Cards */}

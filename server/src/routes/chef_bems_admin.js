@@ -862,20 +862,55 @@ router.get("/out-of-stock-ingredients", AI_ROLES, async (req, res, next) => {
     const unlisted = [];
     const affectedMealsMap = new Map();
 
+    const stopWords = new Set(["pure", "fresh", "rich", "style", "authentic", "nigerian", "best", "biggest", "pack", "kg", "g", "ml", "liters", "unit", "piece", "sachet", "carton", "bag", "roll", "bottle"]);
+
     for (const ing of allIngredients) {
-      const ingNameClean = ing.ingredient_name.toLowerCase().trim();
-      
-      // Find matching catalog product
-      const matched = allProducts.find(p => {
+      const ingRaw = ing.ingredient_name.toLowerCase();
+      // Extract primary words and any bracketed aliases
+      const cleanAlias = ingRaw.replace(/[\(\)]/g, " ").replace(/\s+/g, " ").trim();
+      const ingKeywords = cleanAlias.split(" ").filter(w => w.length > 2 && !stopWords.has(w));
+
+      // Find matching catalog product with score
+      let bestMatch = null;
+      let highestScore = 0;
+
+      for (const p of allProducts) {
         const pName = p.name.toLowerCase();
-        // Check contains or keyword overlap
-        return pName.includes(ingNameClean) || ingNameClean.includes(pName) ||
-          ingNameClean.split(" ").some(w => w.length > 3 && pName.includes(w));
-      });
+        let score = 0;
+
+        // Exact full phrase match
+        if (pName.includes(cleanAlias) || cleanAlias.includes(pName)) {
+          score += 10;
+        }
+
+        // Core noun matching
+        for (const kw of ingKeywords) {
+          // Avoid matching brand prefix if core product type differs (e.g. honeywell vs honey beans)
+          if (kw === "beans" && pName.includes("beans")) score += 6;
+          else if (kw === "rice" && pName.includes("rice")) score += 6;
+          else if (kw === "tomatoes" && (pName.includes("tomato") || pName.includes("tomatoes"))) score += 6;
+          else if (kw === "yam" && pName.includes("yam")) score += 6;
+          else if (kw === "crayfish" && pName.includes("crayfish")) score += 6;
+          else if (kw === "salt" && pName.includes("salt")) score += 6;
+          else if (kw === "oil" && pName.includes("oil")) score += 4;
+          else if (kw === "plantain" && pName.includes("plantain")) score += 6;
+          else if (kw === "egusi" && (pName.includes("egusi") || pName.includes("melon"))) score += 6;
+          else if (kw === "semovita" && pName.includes("semovita")) score += 6;
+          else if (kw === "wheat" && pName.includes("wheat") && !ingRaw.includes("bean")) score += 6;
+          else if (pName.includes(kw) && kw.length > 3) score += 2;
+        }
+
+        if (score > highestScore && score >= 4) {
+          highestScore = score;
+          bestMatch = p;
+        }
+      }
+
+      const matched = bestMatch;
 
       // Find configured substitute if any
       const subMatch = allSubs.find(s => 
-        s.original_item.toLowerCase().includes(ingNameClean) || ingNameClean.includes(s.original_item.toLowerCase())
+        s.original_item.toLowerCase().includes(ingRaw) || ingRaw.includes(s.original_item.toLowerCase())
       );
 
       const itemReport = {
