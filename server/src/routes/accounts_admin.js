@@ -569,38 +569,170 @@ router.delete("/expenses/:id", requireRole("superadmin"), async (req, res, next)
 // ════════════════════════════════════════════════════════════════════════════
 // TRANSACTIONS  ──  GET /api/admin/accounts/transactions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transactions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
+router.get("/transactions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
-    const limit = clampLimit(limitRaw, 20);
+    const { page = 1, limit: limitRaw = 100, type = "", bank_account_id = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 100);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
 
-    if (type)            { params.push(type);                 where.push(`t.type = $${params.length}`);             }
-    if (bank_account_id) { params.push(parseInt(bank_account_id)); where.push(`t.bank_account_id = $${params.length}`); }
-    if (from)            { params.push(from);                 where.push(`t.date >= $${params.length}`);            }
-    if (to)              { params.push(to);                   where.push(`t.date <= $${params.length}`);            }
+    if (type && type !== "all") {
+      params.push(type);
+      where.push(`u.type = $${params.length}`);
+    }
+    if (from) {
+      params.push(from);
+      where.push(`u.date >= $${params.length}`);
+    }
+    if (to) {
+      params.push(to);
+      where.push(`u.date <= $${params.length}`);
+    }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const countRes    = await pool.query(`SELECT COUNT(*) FROM transactions t ${whereClause}`, params);
+
+    const countRes = await pool.query(
+      `
+      WITH unified_transactions AS (
+        -- 1. Direct transactions in transactions table
+        SELECT
+          t.id::text AS id,
+          t.reference,
+          t.date::text AS date,
+          t.time::text AS time,
+          t.type,
+          t.sub_type,
+          t.description,
+          t.amount::numeric AS amount,
+          t.status,
+          ba.bank_name,
+          ba.account_name AS bank_account,
+          t.created_at
+        FROM transactions t
+        LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
+
+        UNION ALL
+
+        -- 2. Customer Storefront & POS Orders
+        SELECT
+          CONCAT('ORD-', o.id) AS id,
+          COALESCE(o.order_ref, o.id) AS reference,
+          o.created_at::date::text AS date,
+          o.created_at::time::text AS time,
+          'income' AS type,
+          CASE WHEN o.source LIKE '%POS%' THEN 'pos_sale' ELSE 'customer_checkout' END AS sub_type,
+          CONCAT(
+            CASE WHEN o.source LIKE '%POS%' THEN 'POS Retail Sale: ' ELSE 'Online Order: ' END,
+            COALESCE(o.customer_name, 'Customer'),
+            ' (', COALESCE(o.payment_method, 'Monnify'), ')'
+          ) AS description,
+          o.total::numeric AS amount,
+          CASE WHEN o.payment_status = 'paid' THEN 'completed' ELSE 'pending' END AS status,
+          CASE WHEN o.source LIKE '%POS%' THEN 'POS Cash Drawer' ELSE 'Monnify Settlement Vault' END AS bank_name,
+          CASE WHEN o.source LIKE '%POS%' THEN 'Register #1' ELSE 'DVA Master (8559127267)' END AS bank_account,
+          o.created_at
+        FROM orders o
+        WHERE (o.payment_status = 'paid' OR o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
+
+        UNION ALL
+
+        -- 3. Completed Driver Payouts / Disbursements
+        SELECT
+          CONCAT('PAY-', p.id) AS id,
+          COALESCE(p.payout_ref, CONCAT('PAY-', p.id)) AS reference,
+          p.requested_at::date::text AS date,
+          p.requested_at::time::text AS time,
+          'expense' AS type,
+          'driver_payout' AS sub_type,
+          CONCAT('Driver Bank Payout to ', dr.name, ' (', COALESCE(p.bank_name, 'Bank'), ' - ', p.account_number, ')') AS description,
+          -p.amount::numeric AS amount,
+          p.status,
+          'Monnify Vault' AS bank_name,
+          'Disbursement Channel' AS bank_account,
+          p.requested_at AS created_at
+        FROM driver_payouts p
+        JOIN drivers dr ON p.driver_id = dr.id
+        WHERE p.status = 'paid' OR p.status = 'completed'
+      )
+      SELECT COUNT(*) FROM unified_transactions u ${whereClause}
+      `,
+      params
+    );
 
     params.push(parseInt(limit));
     params.push(offset);
 
-    // No created_by column on transactions (verified against the live schema),
-    // so there's no user to join here — the prior version referenced one and
-    // failed on every call with "column t.created_by does not exist".
-    const rows = await pool.query(`
-      SELECT
-        t.*,
-        ba.bank_name, ba.account_name AS bank_account
-      FROM transactions t
-      LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
+    const rows = await pool.query(
+      `
+      WITH unified_transactions AS (
+        -- 1. Direct transactions in transactions table
+        SELECT
+          t.id::text AS id,
+          t.reference,
+          t.date::text AS date,
+          t.time::text AS time,
+          t.type,
+          t.sub_type,
+          t.description,
+          t.amount::numeric AS amount,
+          t.status,
+          ba.bank_name,
+          ba.account_name AS bank_account,
+          t.created_at
+        FROM transactions t
+        LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
+
+        UNION ALL
+
+        -- 2. Customer Storefront & POS Orders
+        SELECT
+          CONCAT('ORD-', o.id) AS id,
+          COALESCE(o.order_ref, o.id) AS reference,
+          o.created_at::date::text AS date,
+          o.created_at::time::text AS time,
+          'income' AS type,
+          CASE WHEN o.source LIKE '%POS%' THEN 'pos_sale' ELSE 'customer_checkout' END AS sub_type,
+          CONCAT(
+            CASE WHEN o.source LIKE '%POS%' THEN 'POS Retail Sale: ' ELSE 'Online Order: ' END,
+            COALESCE(o.customer_name, 'Customer'),
+            ' (', COALESCE(o.payment_method, 'Monnify'), ')'
+          ) AS description,
+          o.total::numeric AS amount,
+          CASE WHEN o.payment_status = 'paid' THEN 'completed' ELSE 'pending' END AS status,
+          CASE WHEN o.source LIKE '%POS%' THEN 'POS Cash Drawer' ELSE 'Monnify Settlement Vault' END AS bank_name,
+          CASE WHEN o.source LIKE '%POS%' THEN 'Register #1' ELSE 'DVA Master (8559127267)' END AS bank_account,
+          o.created_at
+        FROM orders o
+        WHERE (o.payment_status = 'paid' OR o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
+
+        UNION ALL
+
+        -- 3. Completed Driver Payouts / Disbursements
+        SELECT
+          CONCAT('PAY-', p.id) AS id,
+          COALESCE(p.payout_ref, CONCAT('PAY-', p.id)) AS reference,
+          p.requested_at::date::text AS date,
+          p.requested_at::time::text AS time,
+          'expense' AS type,
+          'driver_payout' AS sub_type,
+          CONCAT('Driver Bank Payout to ', dr.name, ' (', COALESCE(p.bank_name, 'Bank'), ' - ', p.account_number, ')') AS description,
+          -p.amount::numeric AS amount,
+          p.status,
+          'Monnify Vault' AS bank_name,
+          'Disbursement Channel' AS bank_account,
+          p.requested_at AS created_at
+        FROM driver_payouts p
+        JOIN drivers dr ON p.driver_id = dr.id
+        WHERE p.status = 'paid' OR p.status = 'completed'
+      )
+      SELECT * FROM unified_transactions u
       ${whereClause}
-      ORDER BY t.created_at DESC
+      ORDER BY u.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
-    `, params);
+      `,
+      params
+    );
 
     res.json({
       transactions: rows.rows,
