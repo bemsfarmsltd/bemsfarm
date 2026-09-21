@@ -212,9 +212,9 @@ router.post("/chef-chat", async (req, res, next) => {
     trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
 
     // 1. Try calling the n8n webhook first (prevents client-side CORS issues)
-    const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://bems333.app.n8n.cloud/webhook/chef-bems";
+    const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://n8n.srv1987482.hstgr.cloud/webhook/chef-bems";
     try {
-      console.log("➡️ Forwarding Chef Bems request to n8n webhook...");
+      console.log("➡️ Forwarding Chef Bems request to n8n webhook:", N8N_WEBHOOK);
 
       const n8nRes = await fetch(N8N_WEBHOOK, {
         method: "POST",
