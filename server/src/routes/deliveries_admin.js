@@ -406,6 +406,15 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       `
       SELECT
         dr.*,
+        COALESCE(da.is_available, dr.is_available, false) AS is_available,
+        COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+        CASE
+          WHEN dr.status = 'suspended' THEN 'suspended'
+          WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
+          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
+          ELSE 'off_duty'
+        END AS status,
         dr.primary_zone_id AS zone_id,
         dz.zone_name AS zone,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
@@ -417,25 +426,31 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
          WHERE d2.driver_id = dr.id AND d2.status NOT IN ('delivered','cancelled')
          LIMIT 1)                                                   AS current_order
       FROM drivers dr
+      LEFT JOIN driver_availability da ON dr.id = da.driver_id
       LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id
       LEFT JOIN deliveries d ON d.driver_id = dr.id
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       ${whereClause}
-      GROUP BY dr.id, dz.zone_name
-      ORDER BY dr.status ASC, dr.name ASC
+      GROUP BY dr.id, da.is_available, da.is_on_delivery, dz.zone_name
+      ORDER BY 
+        CASE 
+          WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification','documents_submitted') THEN 0 
+          WHEN COALESCE(da.is_available, false) = true THEN 1
+          ELSE 2 
+        END,
+        dr.name ASC
     `,
       params,
     );
 
     const stats = await pool.query(`
       SELECT
-        COUNT(*)                                              AS total,
-        COUNT(*) FILTER (WHERE status = 'active')            AS active,
-        COUNT(*) FILTER (WHERE status = 'on_delivery')       AS on_delivery,
-        COUNT(*) FILTER (WHERE status = 'off_duty')          AS off_duty,
-        COUNT(*) FILTER (WHERE status = 'suspended')         AS suspended,
-        COUNT(*) FILTER (WHERE onboarding_status = 'invited') AS invited,
-        COUNT(*) FILTER (WHERE onboarding_status = 'documents_submitted') AS pending_compliance
+        COUNT(*)                                                                                     AS total,
+        COUNT(*) FILTER (WHERE status = 'suspended')                                                 AS suspended,
+        COUNT(*) FILTER (WHERE status = 'pending' OR onboarding_status IN ('pending_verification','documents_submitted')) AS pending_compliance,
+        COUNT(*) FILTER (WHERE status = 'active' AND id IN (SELECT driver_id FROM driver_availability WHERE is_on_delivery = true)) AS on_delivery,
+        COUNT(*) FILTER (WHERE status = 'active' AND id IN (SELECT driver_id FROM driver_availability WHERE is_available = true AND is_on_delivery = false)) AS active,
+        COUNT(*) FILTER (WHERE status = 'active' AND id NOT IN (SELECT driver_id FROM driver_availability WHERE is_available = true)) AS off_duty
       FROM drivers
     `);
 
