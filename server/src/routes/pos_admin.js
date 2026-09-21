@@ -819,7 +819,9 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
             cost_price: pu.cost_price ? parseFloat(pu.cost_price) : null,
           });
         });
-      } catch (_) {}
+      } catch (pkgErr) {
+        console.warn("POS packaging units lookup notice:", pkgErr?.message);
+      }
     }
 
     const trimmedBc = barcode ? barcode.trim().toLowerCase() : null;

@@ -801,7 +801,9 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
         [req.params.id]
       );
       recentMovements = smRes.rows;
-    } catch (_) {}
+    } catch (smErr) {
+      console.warn("Product movements enrichment notice:", smErr?.message);
+    }
 
     // Packaging & Multi-Unit Tiers (Cartons, Packs, Crates)
     let packagingUnits = [];
@@ -819,7 +821,9 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
         price: parseFloat(u.price || 0),
         cost_price: u.cost_price ? parseFloat(u.cost_price) : null
       }));
-    } catch (_) {}
+    } catch (puErr) {
+      console.warn("Packaging units enrichment notice:", puErr?.message);
+    }
 
     res.json({
       ...result.rows[0],

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import api from '../../lib/api'
+import api, { API_BASE_URL } from '../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CATEGORIES = ['all', 'auth', 'customer', 'admin', 'financial', 'security', 'system', 'developer', 'ai', 'comms']
@@ -1146,7 +1146,7 @@ export default function SystemAudit() {
   }
 
   const handleCopyWebhook = () => {
-    const webhookUrl = 'https://api.bemsfarms.com/api/audit/github-webhook'
+    const webhookUrl = `${API_BASE_URL.replace(/\/+$/, '')}/audit/github-webhook`
     navigator.clipboard?.writeText(webhookUrl)
     setCopiedWebhook(true)
     setTimeout(() => setCopiedWebhook(false), 2500)
@@ -1286,7 +1286,7 @@ export default function SystemAudit() {
                 </p>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
                   <code style={{ background:'#fff', border:'1px solid #f0abfc', padding:'6px 12px', borderRadius:6, fontSize:12, color:'#701a75', fontWeight:600 }}>
-                    https://api.bemsfarms.com/api/audit/github-webhook
+                    {API_BASE_URL.replace(/\/+$/, '')}/audit/github-webhook
                   </code>
                   <button onClick={handleCopyWebhook} style={{ background:'#86198f', border:'none', borderRadius:6, color:'#fff', padding:'6px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                     {copiedWebhook ? '✓ Webhook Copied!' : '📋 Copy Webhook URL'}

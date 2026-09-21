@@ -39,8 +39,10 @@ async function sendMessage(customerId,message,actor){
             message: message.trim(),
           },
           actor: { id: customerId, name: senderName, role: 'customer' },
-        }).catch(() => {});
-      } catch (_) {}
+        });
+      } catch (notifErr) {
+        console.warn("Admin notification dispatch notice:", notifErr?.message);
+      }
     }
     await db.query('COMMIT');return {message:{...r.rows[0],admin_name:actor?.name}};
   }catch(err){await db.query('ROLLBACK');throw err;}finally{db.release();}
