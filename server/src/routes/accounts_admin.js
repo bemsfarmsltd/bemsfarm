@@ -693,31 +693,45 @@ router.post("/commissions/generate", requireRole("superadmin", "manager"), async
     const { period_from, period_to, rate_per_delivery = 500 } = req.body;
     if (!period_from || !period_to) { await client.query("ROLLBACK"); return res.status(400).json({ message: "period_from and period_to required" }); }
 
-    // Count delivered orders per driver in the period
+    // Count delivered orders per driver in the period and calculate zone-based earnings
     const driverStats = await client.query(`
       SELECT
         d.id AS driver_id,
-        COUNT(o.id) AS deliveries,
-        $3::DECIMAL * COUNT(o.id) AS base_amount
+        COUNT(DISTINCT del.id) AS deliveries,
+        COALESCE(
+          SUM(
+            CASE 
+              WHEN del.driver_commission_amount IS NOT NULL AND del.driver_commission_amount > 0 THEN del.driver_commission_amount
+              WHEN dz.driver_earning_fee IS NOT NULL AND dz.driver_earning_fee > 0 THEN dz.driver_earning_fee
+              WHEN dz.delivery_fee IS NOT NULL AND dz.delivery_fee > 0 THEN ROUND(dz.delivery_fee * 0.70, 2)
+              ELSE COALESCE(d.commission_per_delivery, 700)
+            END
+          ), 
+          0
+        ) AS base_amount
       FROM drivers d
-      LEFT JOIN orders o ON o.driver_id = d.id
-        AND o.status = 'delivered'
-        AND o.created_at::DATE BETWEEN $1 AND $2
+      LEFT JOIN deliveries del ON del.driver_id = d.id 
+        AND del.status = 'delivered' 
+        AND del.created_at::DATE BETWEEN $1 AND $2
+      LEFT JOIN orders o ON del.order_id = o.id
+      LEFT JOIN delivery_zones dz ON (del.zone_id = dz.zone_id OR o.zone_id = dz.zone_id)
       WHERE d.status = 'active'
       GROUP BY d.id
-    `, [period_from, period_to, parseFloat(rate_per_delivery)]);
+    `, [period_from, period_to]);
 
     let generated = 0;
     for (const ds of driverStats.rows) {
       const netPayout = parseFloat(ds.base_amount);
-      await client.query(
-        `INSERT INTO driver_commissions
-           (driver_id, period_from, period_to, deliveries, base_amount, bonus, deductions, net_payout, status, created_by, created_at)
-         VALUES ($1,$2,$3,$4,$5,0,0,$6,'pending',$7,NOW())
-         ON CONFLICT DO NOTHING`,
-        [ds.driver_id, period_from, period_to, parseInt(ds.deliveries), parseFloat(ds.base_amount), netPayout, req.user.id]
-      );
-      generated++;
+      if (parseInt(ds.deliveries) > 0 || netPayout > 0) {
+        await client.query(
+          `INSERT INTO driver_commissions
+             (driver_id, period_from, period_to, deliveries, base_amount, bonus, deductions, net_payout, status, created_by, created_at)
+           VALUES ($1,$2,$3,$4,$5,0,0,$6,'pending',$7,NOW())
+           ON CONFLICT DO NOTHING`,
+          [ds.driver_id, period_from, period_to, parseInt(ds.deliveries), parseFloat(ds.base_amount), netPayout, req.user.id]
+        );
+        generated++;
+      }
     }
 
     await client.query("COMMIT");

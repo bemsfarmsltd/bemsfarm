@@ -245,11 +245,30 @@ export default function DriverCommissions() {
         ))}
       </div>
 
+      {/* Notice Banner */}
+      <div className="alert alert-info border-0 shadow-sm rounded-3 mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ background: '#F0FDFA', borderLeft: '4px solid #0F766E' }}>
+        <div className="d-flex align-items-center gap-2">
+          <i className="ri-shield-check-line fs-5" style={{ color: '#0F766E' }}></i>
+          <div>
+            <span className="fw-bold" style={{ color: '#0F766E' }}>Zone-Based Driver Earnings &amp; Monnify Live Wallets are Active.</span>
+            <div className="text-muted small">Deliveries automatically calculate earnings based on the customer delivery zone (₦700 – ₦24,500 / drop).</div>
+          </div>
+        </div>
+        <Link to="/accounts/wallets" className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" style={{ background: '#0F766E', borderColor: '#0F766E', fontWeight: 600 }}>
+          <i className="ri-wallet-3-line"></i> Open Wallet &amp; Gateway Hub ➔
+        </Link>
+      </div>
+
       {/* Generate Commissions */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body p-3">
-          <div className="fw-medium mb-3" style={{ fontSize:13 }}>
-            <i className="ri-calculator-line me-1 text-primary"/>Generate Commissions for a Period
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div className="fw-medium" style={{ fontSize:13 }}>
+              <i className="ri-calculator-line me-1 text-primary"/>Generate Scheduled Commissions Batch
+            </div>
+            <span className="badge" style={{ background: '#DCFCE7', color: '#166534', fontWeight: 600 }}>
+              Dynamic Zone Matrix Active
+            </span>
           </div>
           <div className="row g-2 align-items-end">
             <div className="col-md-3">
@@ -263,19 +282,20 @@ export default function DriverCommissions() {
                 onChange={e => setGenForm(f => ({ ...f, period_to: e.target.value }))}/>
             </div>
             <div className="col-md-3">
-              <label className="form-label small text-muted mb-1">Rate per Delivery (₦)</label>
-              <input type="number" className="form-control form-control-sm" value={genForm.rate_per_delivery}
-                onChange={e => setGenForm(f => ({ ...f, rate_per_delivery: e.target.value }))}/>
+              <label className="form-label small text-muted mb-1">Pricing Model</label>
+              <div className="form-control form-control-sm bg-light text-dark font-monospace" style={{ fontSize: 11, fontWeight: 600 }}>
+                📍 Zone Rates Matrix (70%)
+              </div>
             </div>
             <div className="col-md-3">
-              <button className="btn btn-primary btn-sm w-100" onClick={generateCommissions} disabled={generating}>
+              <button className="btn btn-primary btn-sm w-100" onClick={generateCommissions} disabled={generating} style={{ background: '#0F766E', borderColor: '#0F766E' }}>
                 {generating ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="ri-flashlight-line me-1"/>}
-                Generate
+                Generate Batch
               </button>
             </div>
           </div>
           <p className="text-muted mt-2 mb-0" style={{ fontSize:11 }}>
-            Creates one commission record per active driver, counting their delivered orders in this date range × the rate above. Running this again for an overlapping period skips drivers who already have a record for it.
+            Scans all delivered orders in this date range and calculates exact driver compensation based on each order's specific coverage zone (Zone 1: ₦700, Zone 2: ₦1,750, Zone 3: ₦2,450, etc.).
           </p>
         </div>
       </div>
