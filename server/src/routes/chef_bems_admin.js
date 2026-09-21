@@ -389,7 +389,7 @@ router.get("/dietary-rules", AI_ROLES, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, res, next) => {
+router.post("/dietary-rules", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
@@ -404,7 +404,7 @@ router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, r
   } catch (err) { next(err); }
 });
 
-router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req, res, next) => {
+router.put("/dietary-rules/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
@@ -417,7 +417,7 @@ router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req
   } catch (err) { next(err); }
 });
 
-router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res, next) => {
+router.delete("/dietary-rules/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query("DELETE FROM admin_dietary_rules WHERE id=$1 RETURNING id", [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
@@ -446,7 +446,7 @@ router.get("/meal-associations", AI_ROLES, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/meal-associations", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
+router.post("/meal-associations", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { product_a, product_b, association_type, association_strength } = req.body;
     if (!product_a?.trim()) return res.status(400).json({ message: "First product is required" });
@@ -459,7 +459,7 @@ router.post("/meal-associations", requireRole("superadmin","manager","kitchen_st
   } catch (err) { next(err); }
 });
 
-router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
+router.put("/meal-associations/:id", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { product_a, product_b, association_type, association_strength } = req.body;
     const result = await pool.query(
@@ -471,7 +471,7 @@ router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen
   } catch (err) { next(err); }
 });
 
-router.delete("/meal-associations/:id", requireRole("superadmin","manager"), async (req, res, next) => {
+router.delete("/meal-associations/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM product_associations WHERE id=$1", [req.params.id]);
     res.json({ message: "Association deleted" });
@@ -497,7 +497,7 @@ router.get("/substitutions", AI_ROLES, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
+router.post("/substitutions", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { original_item, substitute_item, reason, dietary_tags, confidence } = req.body;
     if (!original_item?.trim()) return res.status(400).json({ message: "Original item is required" });
@@ -512,7 +512,7 @@ router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"
   } catch (err) { next(err); }
 });
 
-router.put("/substitutions/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
+router.put("/substitutions/:id", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { original_item, substitute_item, reason, dietary_tags, confidence, is_active } = req.body;
     const result = await pool.query(
@@ -524,7 +524,7 @@ router.put("/substitutions/:id", requireRole("superadmin","manager","kitchen_sta
   } catch (err) { next(err); }
 });
 
-router.delete("/substitutions/:id", requireRole("superadmin","manager"), async (req, res, next) => {
+router.delete("/substitutions/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM admin_substitutions WHERE id=$1", [req.params.id]);
     res.json({ message: "Substitution deleted" });
@@ -550,7 +550,7 @@ router.get("/recommendations", AI_ROLES, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/recommendations", requireRole("superadmin","manager"), async (req, res, next) => {
+router.post("/recommendations", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { title, trigger_condition, recommended_items, context_tags, priority } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: "Title is required" });
@@ -564,7 +564,7 @@ router.post("/recommendations", requireRole("superadmin","manager"), async (req,
   } catch (err) { next(err); }
 });
 
-router.put("/recommendations/:id", requireRole("superadmin","manager"), async (req, res, next) => {
+router.put("/recommendations/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { title, trigger_condition, recommended_items, context_tags, priority, is_active } = req.body;
     const result = await pool.query(
@@ -573,6 +573,14 @@ router.put("/recommendations/:id", requireRole("superadmin","manager"), async (r
     );
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ recommendation: result.rows[0] });
+  } catch (err) { next(err); }
+});
+
+router.delete("/recommendations/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
+  try {
+    const result = await pool.query("DELETE FROM admin_recommendations WHERE id=$1 RETURNING id", [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ message: "Recommendation not found" });
+    res.json({ message: "Recommendation deleted" });
   } catch (err) { next(err); }
 });
 
@@ -793,7 +801,7 @@ router.get("/allergy-rules", AI_ROLES, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post("/allergy-rules", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.post("/allergy-rules", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { allergy_name, excluded_item, action_type = "Hard Filter", substitution_guidance = "", safety_note = "" } = req.body;
     if (!allergy_name?.trim()) return res.status(400).json({ message: "Allergy name is required" });
@@ -811,7 +819,7 @@ router.post("/allergy-rules", requireRole("superadmin", "manager"), async (req, 
   } catch (err) { next(err); }
 });
 
-router.put("/allergy-rules/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.put("/allergy-rules/:id", requireRole("superadmin", "admin", "manager", "kitchen_staff"), async (req, res, next) => {
   try {
     const { allergy_name, excluded_item, action_type, substitution_guidance, safety_note } = req.body;
     const result = await pool.query(`
@@ -830,7 +838,7 @@ router.put("/allergy-rules/:id", requireRole("superadmin", "manager"), async (re
   } catch (err) { next(err); }
 });
 
-router.delete("/allergy-rules/:id", requireRole("superadmin"), async (req, res, next) => {
+router.delete("/allergy-rules/:id", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query("DELETE FROM allergy_rules WHERE allergy_id = $1 RETURNING allergy_id", [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Allergy rule not found" });
