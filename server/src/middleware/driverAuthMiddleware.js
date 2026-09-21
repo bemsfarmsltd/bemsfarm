@@ -51,11 +51,19 @@ const driverProtect = async (req, res, next) => {
         d.total_earnings,
         d.commission_per_delivery,
         d.status,
+        d.onboarding_status,
         d.license_number,
+        d.nin_number,
+        d.address,
         d.bank_name,
         d.account_number,
         d.account_name,
-        COALESCE(da.is_available, d.is_available, true) AS is_available,
+        d.documents,
+        d.compliance_notes,
+        d.wallet_account_number,
+        d.wallet_bank_name,
+        d.wallet_account_name,
+        COALESCE(da.is_available, d.is_available, false) AS is_available,
         COALESCE(da.is_on_delivery, false) AS is_on_delivery
       FROM drivers d
       LEFT JOIN driver_availability da ON d.id = da.driver_id

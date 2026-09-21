@@ -897,21 +897,125 @@ router.patch(
   },
 );
 
-// ── PATCH /api/admin/deliveries/drivers/:id/activate ─────────────
+// ── PATCH /api/admin/deliveries/drivers/:id/activate & approve ────
 router.patch(
   "/drivers/:id/activate",
   requireRole("superadmin", "manager", "admin"),
   async (req, res, next) => {
     try {
       await pool.query(
-        "UPDATE drivers SET status='active', notes=NULL, updated_at=NOW() WHERE id=$1",
+        "UPDATE drivers SET status='active', onboarding_status='verified', updated_at=NOW() WHERE id=$1",
         [req.params.id],
+      );
+      await pool.query(
+        "UPDATE driver_availability SET is_available=true, last_toggled_at=NOW() WHERE driver_id=$1",
+        [req.params.id]
       );
       res.json({ message: "Driver activated" });
     } catch (err) {
       next(err);
     }
   },
+);
+
+router.patch(
+  "/drivers/:id/approve",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const driverRes = await pool.query(
+        `UPDATE drivers 
+         SET status='active', onboarding_status='verified', compliance_notes='Approved by admin on ' || TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'), updated_at=NOW() 
+         WHERE id=$1 
+         RETURNING *`,
+        [req.params.id]
+      );
+
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+
+      await pool.query(
+        "UPDATE driver_availability SET is_available=true, last_toggled_at=NOW() WHERE driver_id=$1",
+        [driver.id]
+      );
+
+      // Send in-app notification
+      await pool.query(
+        `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+         VALUES ($1, 'Account Verified & Activated', 'Congratulations! Your Bems Farms driver profile has been verified and approved. You can now toggle online and receive deliveries.', 'announcement', 'onboarding', NOW())`,
+        [driver.id]
+      );
+
+      if (driver.email) {
+        try {
+          await sendDriverApprovedEmail(driver);
+        } catch (e) {
+          console.warn("sendDriverApprovedEmail error:", e.message);
+        }
+      }
+
+      res.json({
+        message: `Driver ${driver.name} approved and activated successfully.`,
+        driver,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── PATCH /api/admin/deliveries/drivers/:id/reject ─────────────────
+router.patch(
+  "/drivers/:id/reject",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const { reason } = req.body;
+      const driverRes = await pool.query(
+        `UPDATE drivers 
+         SET status='rejected', onboarding_status='rejected', compliance_notes=$1, updated_at=NOW() 
+         WHERE id=$2 
+         RETURNING *`,
+        [reason || "Application documents did not meet verification criteria.", req.params.id]
+      );
+
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+
+      await pool.query(
+        "UPDATE driver_availability SET is_available=false, last_toggled_at=NOW() WHERE driver_id=$1",
+        [driver.id]
+      );
+
+      // Send in-app notification
+      await pool.query(
+        `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+         VALUES ($1, 'Application Verification Update', $2, 'announcement', 'onboarding', NOW())`,
+        [driver.id, `Your driver registration was not approved: ${reason || "Missing or invalid documents"}. Please update your profile.`]
+      );
+
+      if (driver.email) {
+        try {
+          await sendDriverRejectionEmail(driver, reason || "Documents did not meet compliance requirements");
+        } catch (e) {
+          console.warn("sendDriverRejectionEmail error:", e.message);
+        }
+      }
+
+      res.json({
+        message: `Driver application rejected.`,
+        driver,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 );
 
 // ── GET /api/admin/delivery-zones ─────────────────────────────────

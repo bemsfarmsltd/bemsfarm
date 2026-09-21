@@ -40,7 +40,11 @@ router.get("/", (req, res) => {
   });
 });
 
-// ── 0. Driver Onboarding & Compliance (Public with Token) ─────────
+// ── 0. Driver Onboarding & Self-Service Registration ───────────────
+router.post("/auth/register", driverAuthController.register);
+router.post("/register", driverAuthController.register);
+router.get("/auth/status", driverProtect, driverAuthController.getVerificationStatus);
+router.get("/auth/verification", driverProtect, driverAuthController.getVerificationStatus);
 router.get("/onboarding/verify", driverOnboardingController.verifyToken);
 router.post("/onboarding/submit", driverOnboardingController.submitOnboarding);
 
@@ -51,6 +55,10 @@ router.post("/auth/reset-password", driverAuthController.resetPassword);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
 router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/availability", driverProtect, driverAuthController.toggleAvailability);
+
+// ── 2. KYC & Document Uploads (Public or Authenticated) ─────────────
+router.post("/upload/kyc", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
+router.post("/upload/document", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
 
 // ── 2. Deliveries / Orders (Automated Mapping & Dispatch) ───────────
 router.get("/deliveries", driverProtect, driverDeliveryController.getActiveDeliveries);

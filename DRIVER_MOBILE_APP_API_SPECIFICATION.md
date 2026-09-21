@@ -26,18 +26,87 @@ The Bems Farms Driver API connects the **Mobile Driver Application** to the cent
 ```
 
 ### Key Workflow Highlights:
-1. **Onboarding & First Login:** Drivers are onboarded by the Admin Dispatch Team. The driver logs in using their **Phone Number** and the **6-digit temporary PIN/password**.
-2. **Shift Management:** Drivers toggle `is_available: true` (Go Online) when starting shift to become eligible for automated order routing.
-3. **Delivery Lifecycle:** Delivery progresses through discrete milestones: `assigned` ➔ `awaiting_pickup` ➔ `en_route` ➔ `arrived` ➔ `delivered` / `delivery_attempted`.
-4. **Live GPS Streaming:** Mobile app streams driver coordinates (`latitude`, `longitude`, `heading`, `speed`) every 10–15s while on active duty.
-5. **Wallet & Payouts:** Every successful delivery credits the driver's wallet with their custom commission (default ₦500). Drivers can request direct bank payouts via `/withdraw`.
+1. **Self-Service Registration:** Prospective drivers can register themselves directly on the mobile app via `POST /api/driver/auth/register`. Their account is created with `status: 'pending'` and `onboarding_status: 'pending_verification'`.
+2. **Review & KYC Documents:** While awaiting admin verification, drivers can log in, view their live verification status (`GET /api/driver/auth/status`), and upload their KYC documents (`POST /api/driver/upload/kyc`).
+3. **Admin Verification & Activation:** Once dispatch verifies their credentials and documents in the admin dashboard, the account is activated (`status: 'active'`). Drivers receive an in-app alert and email.
+4. **Shift Management:** Active drivers toggle `is_available: true` (Go Online) when starting shift to become eligible for automated order routing. Unverified drivers cannot toggle online.
+5. **Delivery Lifecycle:** Delivery progresses through discrete milestones: `assigned` ➔ `awaiting_pickup` ➔ `en_route` ➔ `arrived` ➔ `delivered` / `delivery_attempted`.
+6. **Live GPS Streaming:** Mobile app streams driver coordinates (`latitude`, `longitude`, `heading`, `speed`) every 10–15s while on active duty.
+7. **Wallet & Payouts:** Every successful delivery credits the driver's wallet with their custom commission. Drivers can request direct bank payouts via `/withdraw`.
 
 ---
 
-## 2. Authentication & Profile Endpoints
+## 2. Authentication & Self-Service Registration Endpoints
+
+### 2.0 Self-Service Driver Registration
+Enables prospective drivers to register their profile and submit credentials directly.
+
+* **Method:** `POST`
+* **Path:** `/api/driver/auth/register` (or `/api/driver/register`)
+* **Auth Required:** No
+* **Headers:** `Content-Type: application/json`
+
+#### Request Body
+```json
+{
+  "name": "Ifeanyi Nwachukwu",
+  "phone": "08031234567",
+  "email": "ifeanyi@example.com",
+  "password": "SecurePassword123!",
+  "vehicle_type": "motorcycle",
+  "vehicle_plate": "ABA-456-XY",
+  "nin_number": "12345678901",
+  "license_number": "DL-98765432",
+  "address": "24 Faulks Road, Aba, Abia State",
+  "emergency_contact_name": "Ngozi Nwachukwu",
+  "emergency_contact_phone": "08039876543",
+  "emergency_contact_relationship": "Spouse",
+  "guarantor_name": "Chief Emeka Okafor",
+  "guarantor_phone": "08021112222",
+  "guarantor_address": "12 Jubilee Road, Aba",
+  "bank_name": "First Bank of Nigeria",
+  "account_number": "3012345678",
+  "account_name": "Ifeanyi Nwachukwu",
+  "avatar_url": "https://api.bemsfarms.com/uploads/documents/AVATAR_123.jpg",
+  "documents": {
+    "driver_license_front": "https://api.bemsfarms.com/uploads/documents/LICENSE_123.jpg",
+    "nin_slip": "https://api.bemsfarms.com/uploads/documents/NIN_123.jpg",
+    "vehicle_photo": "https://api.bemsfarms.com/uploads/documents/VEHICLE_123.jpg"
+  }
+}
+```
+
+#### Success Response (`201 Created`)
+```json
+{
+  "status": "success",
+  "message": "Driver registered successfully. Your account is currently awaiting verification by the dispatch team.",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "driver": {
+    "id": 12,
+    "name": "Ifeanyi Nwachukwu",
+    "phone": "08031234567",
+    "email": "ifeanyi@example.com",
+    "vehicle_type": "motorcycle",
+    "vehicle_plate": "ABA-456-XY",
+    "status": "pending",
+    "onboarding_status": "pending_verification",
+    "is_available": false
+  },
+  "verification": {
+    "status": "pending",
+    "onboarding_status": "pending_verification",
+    "is_verified": false,
+    "can_accept_orders": false,
+    "message": "Your application is currently under review by Bems Farms Dispatch. You can log in and update your profile or documents while awaiting activation."
+  }
+}
+```
+
+---
 
 ### 2.1 Driver Login
-Authenticates the driver using phone number or email and PIN/password.
+Authenticates registered drivers. Unverified (`pending`) drivers can also log in to check their application review status and update documents.
 
 * **Method:** `POST`
 * **Path:** `/api/driver/auth/login`
