@@ -7,21 +7,28 @@ const STATUS_CFG = {
   active:      { label: 'Active',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'  },
   on_delivery: { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
   off_duty:    { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
+  pending:     { label: 'Pending Review', color: '#d97706', bg: '#fef3c7', icon: 'ri-time-line'          },
   suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
 }
 
 const ONBOARDING_STATUS_CFG = {
-  invited: {
-    label: 'Invited (Pending Docs)',
-    color: '#2563eb',
-    bg: '#dbeafe',
-    icon: 'ri-mail-send-line',
+  pending_verification: {
+    label: 'Awaiting Verification (App Submission)',
+    color: '#d97706',
+    bg: '#fef3c7',
+    icon: 'ri-time-line',
   },
   documents_submitted: {
     label: 'Documents Submitted (Review Needed)',
     color: '#d97706',
     bg: '#fef3c7',
     icon: 'ri-file-text-line',
+  },
+  verified: {
+    label: 'Verified & Active',
+    color: '#16a34a',
+    bg: '#dcfce7',
+    icon: 'ri-shield-check-line',
   },
   approved: {
     label: 'Compliant & Approved',
@@ -84,7 +91,7 @@ const BLANK_FORM = {
   notes: '',
   license_number: '',
   emergency_contact: '',
-  onboard_mode: 'invite', // 'invite' | 'direct'
+  onboard_mode: 'direct', // 'direct'
 }
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
@@ -147,9 +154,7 @@ export default function DriversManagement() {
       ])
       let allDrivers = drvRes.data.drivers || []
       if (filterStatus === 'onboarding_review') {
-        allDrivers = allDrivers.filter((d) => d.onboarding_status === 'documents_submitted')
-      } else if (filterStatus === 'onboarding_invited') {
-        allDrivers = allDrivers.filter((d) => d.onboarding_status === 'invited')
+        allDrivers = allDrivers.filter((d) => d.status === 'pending' || d.onboarding_status === 'documents_submitted' || d.onboarding_status === 'pending_verification')
       }
       setDrivers(allDrivers)
       setZones(zoneRes.data.zones || [])
@@ -198,7 +203,7 @@ export default function DriversManagement() {
       setForm({
         ...BLANK_FORM,
         password: Math.floor(100000 + Math.random() * 900000).toString(),
-        onboard_mode: 'invite',
+        onboard_mode: 'direct',
       })
       setIsEditing(false)
     }
@@ -240,8 +245,7 @@ export default function DriversManagement() {
       onDelivery: drivers.filter((d) => d.status === 'on_delivery').length,
       offDuty: drivers.filter((d) => d.status === 'off_duty').length,
       suspended: drivers.filter((d) => d.status === 'suspended').length,
-      pendingCompliance: drivers.filter((d) => d.onboarding_status === 'documents_submitted').length,
-      invited: drivers.filter((d) => d.onboarding_status === 'invited').length,
+      pendingCompliance: drivers.filter((d) => d.status === 'pending' || d.onboarding_status === 'documents_submitted' || d.onboarding_status === 'pending_verification').length,
       totalDeliveries: drivers.reduce((s, d) => s + Number(d.total_deliveries || 0), 0),
       totalEarnings: drivers.reduce((s, d) => s + Number(d.earnings || d.total_earnings || 0), 0),
     }),
@@ -422,7 +426,7 @@ export default function DriversManagement() {
         <div>
           <h5 className="mb-1 fw-bold text-dark font-display fs-20">Dispatch Fleet &amp; Driver Wallets</h5>
           <p className="text-muted mb-0 fs-13">
-            Fleet operations, courier compliance verification, driver commission wallets, and bank payout requests.
+            Review self-service driver registrations, monitor live courier compliance, track earnings, and disburse bank payouts.
           </p>
         </div>
         <div className="d-flex align-items-center gap-2.5">
@@ -431,18 +435,18 @@ export default function DriversManagement() {
               <Link to="/deliveries/active">Deliveries</Link>
             </li>
             <li className="breadcrumb-item active">
-              {tabMode === 'fleet' ? 'Drivers & Compliance' : 'Wallets & Payouts'}
+              {tabMode === 'fleet' ? 'Drivers & Verification' : 'Wallets & Payouts'}
             </li>
           </ul>
-          {tabMode === 'fleet' && (
+          {tabMode === 'fleet' && stats.pendingCompliance > 0 && (
             <button
               type="button"
-              className="btn btn-success fw-bold px-3.5 py-2 d-flex align-items-center gap-2 shadow-sm text-white rounded-3"
-              style={{ background: '#16a34a', borderColor: '#16a34a', fontSize: 13 }}
-              onClick={() => openModal('add')}
+              className="btn btn-warning fw-bold px-3.5 py-2 d-flex align-items-center gap-2 shadow-sm text-dark rounded-3"
+              style={{ fontSize: 13 }}
+              onClick={() => setFilterStatus('onboarding_review')}
             >
-              <i className="ri-user-add-line fs-16" />
-              <span>+ Onboard New Driver</span>
+              <i className="ri-shield-check-line fs-16" />
+              <span>⚠️ Review Verification ({stats.pendingCompliance})</span>
             </button>
           )}
         </div>
@@ -459,6 +463,11 @@ export default function DriversManagement() {
         >
           <i className="ri-truck-line fs-16" />
           <span>🚚 Fleet Directory ({drivers.length})</span>
+          {stats.pendingCompliance > 0 && (
+            <span className="badge bg-amber-subtle text-amber rounded-pill px-2 py-0.5 fs-10" style={{ background: '#fef3c7', color: '#d97706' }}>
+              {stats.pendingCompliance} pending
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -494,26 +503,16 @@ export default function DriversManagement() {
                 glowClass: 'bg-card-glow-blue',
               },
               {
-                label: 'Compliance Review',
+                label: 'Awaiting Verification',
                 value: stats.pendingCompliance,
                 color: '#d97706',
                 icon: 'ri-file-shield-line',
                 filter: 'onboarding_review',
-                subLeft: 'Pending Documents',
+                subLeft: 'Self-Service Queue',
                 subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
                 badgeBg: stats.pendingCompliance > 0 ? '#FEF3C7' : '#DCFCE7',
                 badgeColor: stats.pendingCompliance > 0 ? '#D97706' : '#16A34A',
                 glowClass: 'bg-card-glow-amber',
-              },
-              {
-                label: 'Invited Couriers',
-                value: stats.invited,
-                color: '#2563eb',
-                icon: 'ri-mail-send-line',
-                filter: 'onboarding_invited',
-                subLeft: 'Pending Sign-ups',
-                subRight: 'Link Sent',
-                glowClass: 'bg-card-glow-blue',
               },
               {
                 label: 'Active Standby',
@@ -538,6 +537,16 @@ export default function DriversManagement() {
                 badgeBg: '#E0F2FE',
                 badgeColor: '#0284C7',
                 glowClass: 'bg-card-glow-teal',
+              },
+              {
+                label: 'Off Duty',
+                value: stats.offDuty,
+                color: '#6b7280',
+                icon: 'ri-moon-line',
+                filter: 'off_duty',
+                subLeft: 'Shift Ended',
+                subRight: `${stats.offDuty} Couriers`,
+                glowClass: 'bg-card-glow-blue',
               },
               {
                 label: 'Suspended',
@@ -634,12 +643,12 @@ export default function DriversManagement() {
                 </span>
                 <button
                   type="button"
-                  className="btn btn-success px-3 py-2 fw-bold text-white fs-13 d-flex align-items-center gap-1.5 shadow-sm rounded-2"
-                  style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                  className="btn btn-outline-success px-3 py-2 fw-semibold fs-13 d-flex align-items-center gap-1.5 rounded-2"
                   onClick={() => openModal('add')}
+                  title="Direct Manual Entry for In-Office Setup"
                 >
                   <i className="ri-user-add-line fs-15" />
-                  <span>Onboard New Driver</span>
+                  <span>Manual Driver Entry (Admin Override)</span>
                 </button>
               </div>
             </div>
@@ -649,8 +658,7 @@ export default function DriversManagement() {
               <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
                 {[
                   { key: 'all', label: 'All Drivers' },
-                  { key: 'onboarding_review', label: `⚠️ Review Compliance (${stats.pendingCompliance})` },
-                  { key: 'onboarding_invited', label: `📨 Invited (${stats.invited})` },
+                  { key: 'onboarding_review', label: `⚠️ Review Verification (${stats.pendingCompliance})` },
                   { key: 'active', label: 'Active' },
                   { key: 'on_delivery', label: 'On Delivery' },
                   { key: 'off_duty', label: 'Off Duty' },
@@ -713,9 +721,9 @@ export default function DriversManagement() {
                     drivers.map((driver) => {
                       const cfg = STATUS_CFG[driver.status] || STATUS_CFG.active
                       const onbCfg =
-                        ONBOARDING_STATUS_CFG[driver.onboarding_status] || ONBOARDING_STATUS_CFG.approved
-                      const isPendingReview = driver.onboarding_status === 'documents_submitted'
-                      const isInvited = driver.onboarding_status === 'invited'
+                        ONBOARDING_STATUS_CFG[driver.onboarding_status] ||
+                        (driver.status === 'pending' ? ONBOARDING_STATUS_CFG.pending_verification : ONBOARDING_STATUS_CFG.approved)
+                      const isPendingReview = driver.status === 'pending' || driver.onboarding_status === 'pending_verification' || driver.onboarding_status === 'documents_submitted'
 
                       return (
                         <tr key={driver.id} className={isPendingReview ? 'table-warning' : ''}>
@@ -742,7 +750,7 @@ export default function DriversManagement() {
                               <div>
                                 <div className="fw-bold text-dark fs-13">{driver.name}</div>
                                 <div className="text-muted fs-11">
-                                  {driver.joined_date ? `Joined ${driver.joined_date.slice(0, 10)}` : 'Invited Candidate'}
+                                  {driver.created_at || driver.joined_date ? `Registered ${String(driver.created_at || driver.joined_date).slice(0, 10)}` : 'Self-Service Applicant'}
                                 </div>
                               </div>
                             </div>
@@ -770,16 +778,7 @@ export default function DriversManagement() {
                                   className="btn btn-warning btn-sm py-0.5 px-2 text-xs fw-bold rounded-pill mt-0.5 shadow-sm"
                                   onClick={() => openModal('compliance', driver)}
                                 >
-                                  <i className="ri-shield-check-line me-1"></i> Verify Docs Now
-                                </button>
-                              )}
-                              {isInvited && (
-                                <button
-                                  className="btn btn-outline-primary btn-sm py-0.5 px-2 text-xs fw-semibold rounded-pill mt-0.5"
-                                  onClick={() => handleResendInvite(driver)}
-                                  title="Resend onboarding email"
-                                >
-                                  <i className="ri-mail-send-line me-1"></i> Resend Email
+                                  <i className="ri-shield-check-line me-1"></i> Review &amp; Verify Now
                                 </button>
                               )}
                             </div>
@@ -1763,7 +1762,7 @@ export default function DriversManagement() {
             )
           })()}
 
-          {/* ── 3. ONBOARD / ADD DRIVER MODAL (WITH EMAIL INVITE) ─── */}
+          {/* ── 3. MANUAL DRIVER ENTRY / EDIT MODAL ─── */}
           {(activeModal === 'add' || activeModal === 'edit') && (
             <div
               style={{
@@ -1780,12 +1779,12 @@ export default function DriversManagement() {
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom bg-light-subtle">
                 <div>
                   <h5 className="mb-0 fw-bold text-dark font-display">
-                    {isEditing ? 'Edit Dispatch Driver Profile' : '🛵 Onboard Dispatch Driver'}
+                    {isEditing ? 'Edit Dispatch Driver Profile' : '🛵 Manual Driver Entry (Admin Override)'}
                   </h5>
                   <p className="text-muted small mb-0">
                     {isEditing
-                      ? 'Update fleet vehicle and contact details.'
-                      : 'Send driver compliance onboarding invitation email or register directly.'}
+                      ? 'Update fleet vehicle, remuneration, and contact details.'
+                      : 'Direct manual registration for physical/in-office driver setup.'}
                   </p>
                 </div>
                 <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}>
@@ -1794,29 +1793,6 @@ export default function DriversManagement() {
               </div>
 
               <div className="p-4">
-                {!isEditing && (
-                  <div className="mb-4 bg-light p-2 rounded-3 d-flex gap-2">
-                    <button
-                      type="button"
-                      className={`btn btn-sm flex-fill fw-bold py-2 ${
-                        form.onboard_mode === 'invite' ? 'btn-primary shadow-sm' : 'btn-light text-muted'
-                      }`}
-                      onClick={() => setField('onboard_mode', 'invite')}
-                    >
-                      <i className="ri-mail-send-line me-1.5"></i> Send Email Onboarding Invite (Recommended)
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm flex-fill fw-bold py-2 ${
-                        form.onboard_mode === 'direct' ? 'btn-primary shadow-sm' : 'btn-light text-muted'
-                      }`}
-                      onClick={() => setField('onboard_mode', 'direct')}
-                    >
-                      <i className="ri-user-add-line me-1.5"></i> Direct In-Office Registration
-                    </button>
-                  </div>
-                )}
-
                 <div className="row g-3">
                   <div className="col-12">
                     <div className="fw-bold small text-uppercase tracking-wider text-muted mb-1">
@@ -1843,7 +1819,7 @@ export default function DriversManagement() {
                   </div>
                   <div className="col-6">
                     <label className="form-label fw-medium small">
-                      Email Address {form.onboard_mode === 'invite' ? '*' : '(Optional)'}
+                      Email Address (Optional)
                     </label>
                     <input
                       className="form-control"
@@ -1863,7 +1839,7 @@ export default function DriversManagement() {
                     />
                   </div>
 
-                  {form.onboard_mode === 'direct' && !isEditing && (
+                  {!isEditing && (
                     <div className="col-12 bg-primary-subtle p-3 rounded-3">
                       <label className="form-label fw-bold small text-primary mb-1">
                         <i className="ri-lock-password-line me-1" />
@@ -1969,15 +1945,13 @@ export default function DriversManagement() {
                   <button
                     className="btn btn-emerald-solid flex-fill fw-bold py-2.5 text-white"
                     onClick={saveDriver}
-                    disabled={!form.name || !form.phone || (form.onboard_mode === 'invite' && !form.email) || saving}
+                    disabled={!form.name || !form.phone || saving}
                   >
-                    <i className={`${isEditing ? 'ri-save-line' : form.onboard_mode === 'invite' ? 'ri-mail-send-line' : 'ri-user-add-line'} me-1.5`} />
+                    <i className={`${isEditing ? 'ri-save-line' : 'ri-user-add-line'} me-1.5`} />
                     {saving
                       ? 'Processing…'
                       : isEditing
                       ? 'Save Changes'
-                      : form.onboard_mode === 'invite'
-                      ? 'Send Onboarding Email Invitation'
                       : 'Complete Direct Registration'}
                   </button>
                 </div>
