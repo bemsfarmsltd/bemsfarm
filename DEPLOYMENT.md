@@ -1,15 +1,13 @@
-# One frontend deployment
+# Deployment & Hosting (Hostinger)
 
-The customer shop and admin dashboard are built into one Vercel site at
-https://www.bemsfarms.com. Render hosts the shared Express API.
+The customer storefront and admin dashboard are built into a unified production build on Hostinger at
+https://www.bemsfarms.com. The backend Express API runs as a Node.js service on Hostinger.
 
-## Existing Vercel project
+## Production Build & Deploy
 
-Connect bemsfarmsltd/bemsfarm, production branch main. Set Root Directory to
-repository root (leave blank), not client or Bems-Farms-Admin-Front-end.
-The root vercel.json installs both apps and builds one dist directory.
-Remove dashboard build/output overrides if they conflict with vercel.json.
-Retain the existing www.bemsfarms.com domain assignment.
+The repository build script (`npm run build`) compiles both the customer storefront (`/client`) and the admin dashboard (`/Bems-Farms-Admin-Front-end`) into the `dist/` directory:
+- Customer storefront: `dist/index.html`
+- Admin dashboard: `dist/admin/index.html`
 
 Set VITE_API_URL to the production API URL including /api, and preserve
 VITE_GOOGLE_CLIENT_ID. VITE_ADMIN_URL and VITE_STOREFRONT_URL are no longer used:
