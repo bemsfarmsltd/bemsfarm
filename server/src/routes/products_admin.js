@@ -43,11 +43,6 @@ async function ensurePackagingTables() {
 }
 ensurePackagingTables();
 
-router.use(async (req, res, next) => {
-  await ensurePackagingTables();
-  next();
-});
-
 // ── HELPERS ──────────────────────────────────────────────────────
 function calculateEan13Checksum(code12) {
   const digits = String(code12).padStart(12, "0").split("").map(Number);

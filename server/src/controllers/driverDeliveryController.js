@@ -63,7 +63,7 @@ const getActiveDeliveries = async (req, res, next) => {
               'product_name', COALESCE(oi.product_name, p.name),
               'quantity', oi.quantity,
               'unit_price', oi.unit_price,
-              'total_price', oi.total_price,
+              'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
               'unit', COALESCE(p.unit, 'item'),
               'image_url', p.image_url
             )
@@ -251,7 +251,7 @@ const getDeliveryDetails = async (req, res, next) => {
               'product_name', COALESCE(oi.product_name, p.name),
               'quantity', oi.quantity,
               'unit_price', oi.unit_price,
-              'total_price', oi.total_price,
+              'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
               'unit', COALESCE(p.unit, 'item'),
               'image_url', p.image_url
             )
