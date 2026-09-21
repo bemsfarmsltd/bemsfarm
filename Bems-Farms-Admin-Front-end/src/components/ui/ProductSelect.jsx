@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 
 /**
- * Universal ProductSelect / Combobox Component
+ * Universal Intuitive ProductSelect Component
  * 
- * Supports:
- * 1. Live Type-to-Search (Product Name, Category, Brand, Unit)
- * 2. SKU Search (e.g., PEAK-20-8960, EGGS-25)
- * 3. Physical Barcode Scanner & live barcode entry
- * 4. Dropdown Browse with stock status, price, category, and thumbnails
- * 5. Keyboard Navigation (↑ / ↓ / Enter / Escape)
- * 6. Dual-format onChange (works with `(id, product)` or synthetic `(e)`)
+ * Features:
+ * - Selected State: Displays a clean, elegant product badge with image, title, SKU, live stock, and "Change" action.
+ * - Search / Input State: Instant typing filter, physical barcode scanner detection, SKU lookup, and dropdown browse.
+ * - Dual-format onChange: works with (selectedId, productObj, syntheticEvent).
  */
 export default function ProductSelect({
   products = [],
   value = '',
   onChange,
-  placeholder = 'Type name, SKU, scan barcode, or select from list...',
+  placeholder = 'Search by name, SKU, or scan barcode...',
   required = false,
   disabled = false,
   autoFocus = false,
@@ -24,6 +21,7 @@ export default function ProductSelect({
   allowCustom = false,
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const containerRef = useRef(null)
@@ -35,14 +33,13 @@ export default function ProductSelect({
     return products.find((p) => String(p.id) === String(value)) || null
   }, [products, value])
 
-  // Sync display text with selected product
+  // Sync state when value changes externally
   useEffect(() => {
-    if (selectedProduct) {
-      setSearchTerm(`${selectedProduct.name} (${selectedProduct.sku || 'No SKU'})`)
-    } else if (!isOpen && !allowCustom) {
+    if (!value) {
+      setIsSearching(false)
       setSearchTerm('')
     }
-  }, [selectedProduct, isOpen, allowCustom])
+  }, [value])
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -50,19 +47,16 @@ export default function ProductSelect({
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false)
         if (selectedProduct) {
-          setSearchTerm(`${selectedProduct.name} (${selectedProduct.sku || 'No SKU'})`)
-        } else if (!allowCustom) {
-          setSearchTerm('')
+          setIsSearching(false)
         }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [selectedProduct, allowCustom])
+  }, [selectedProduct])
 
   // Filter products by search term (Name, Barcode, SKU, Category, Brand)
   const filteredProducts = useMemo(() => {
-    if (!isOpen && selectedProduct) return products
     const term = searchTerm.trim().toLowerCase()
     if (!term) return products
 
@@ -81,19 +75,16 @@ export default function ProductSelect({
         brand.includes(term)
       )
     })
-  }, [products, searchTerm, isOpen, selectedProduct])
+  }, [products, searchTerm])
 
-  // Select a product
+  // Handle selecting a product
   const handleSelect = (product) => {
     const selectedId = product ? String(product.id) : ''
-    if (!product) {
-      setSearchTerm('')
-    } else {
-      setSearchTerm(`${product.name} (${product.sku || 'No SKU'})`)
-    }
+    setIsSearching(false)
+    setIsOpen(false)
+    setSearchTerm('')
 
     if (onChange) {
-      // Create synthetic event compatibility
       const syntheticEvent = {
         target: { name: id || 'product_id', value: selectedId },
         currentTarget: { name: id || 'product_id', value: selectedId },
@@ -102,10 +93,9 @@ export default function ProductSelect({
       }
       onChange(selectedId, product, syntheticEvent)
     }
-    setIsOpen(false)
   }
 
-  // Handle barcode scanner input / keyboard events
+  // Handle keyboard navigation and barcode scanner input
   const handleKeyDown = (e) => {
     if (disabled) return
 
@@ -126,7 +116,7 @@ export default function ProductSelect({
       e.preventDefault()
       const term = searchTerm.trim().toLowerCase()
 
-      // 1. Direct barcode scan match or SKU exact match
+      // 1. Direct barcode or SKU match
       const exactMatch = products.find(
         (p) =>
           (p.barcode && p.barcode.toLowerCase() === term) ||
@@ -143,18 +133,123 @@ export default function ProductSelect({
         return
       }
 
-      // 3. If allowCustom is enabled and no match, keep custom text
+      // 3. Custom product name
       if (allowCustom && term) {
         if (onChange) {
           onChange('', null, { target: { name: id || 'product_name', value: term } })
         }
+        setIsSearching(false)
         setIsOpen(false)
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false)
+      if (selectedProduct) {
+        setIsSearching(false)
+      }
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // 1. SELECTED STATE: Display clean summary card
+  // ──────────────────────────────────────────────────────────────────────────
+  if (selectedProduct && !isSearching) {
+    const stockCount = selectedProduct.stock ?? selectedProduct.stock_quantity ?? 0
+    const isOutOfStock = stockCount <= 0
+    const img = selectedProduct.image_url || selectedProduct.main_image_url
+
+    return (
+      <div className={`selected-product-card ${className}`} ref={containerRef}>
+        <div className="d-flex align-items-center justify-content-between p-2 bg-white border border-2 border-success-subtle rounded-3 shadow-xs">
+          {/* Left: Thumbnail & Info */}
+          <div className="d-flex align-items-center gap-2.5 overflow-hidden me-2">
+            {img ? (
+              <img
+                src={img}
+                alt={selectedProduct.name}
+                style={{
+                  width: 36,
+                  height: 36,
+                  objectFit: 'cover',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  flexShrink: 0,
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div
+                className="rounded-2 bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0"
+                style={{ width: 36, height: 36, fontSize: 16 }}
+              >
+                <i className="ri-check-line fw-bold"></i>
+              </div>
+            )}
+
+            <div className="overflow-hidden">
+              <div className="fw-bold text-dark text-truncate" style={{ fontSize: 13 }} title={selectedProduct.name}>
+                {selectedProduct.name}
+              </div>
+              <div className="text-muted d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: 11 }}>
+                <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: 10 }}>
+                  SKU: {selectedProduct.sku || '—'}
+                </span>
+                <span>• Stock: <strong>{stockCount} {selectedProduct.unit || 'pcs'}</strong></span>
+                {selectedProduct.cost_price ? (
+                  <span>• Cost: ₦{Number(selectedProduct.cost_price).toLocaleString()}</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary py-1 px-2.5 d-flex align-items-center gap-1"
+              style={{ fontSize: 12 }}
+              onClick={() => {
+                setIsSearching(true)
+                setIsOpen(true)
+                setSearchTerm('')
+                setTimeout(() => inputRef.current?.focus(), 50)
+              }}
+              title="Change selected product"
+              disabled={disabled}
+            >
+              <i className="ri-repeat-line"></i>
+              <span>Change</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-light text-muted border-0 p-1"
+              onClick={() => handleSelect(null)}
+              title="Remove selection"
+              disabled={disabled}
+            >
+              <i className="ri-close-line fs-5"></i>
+            </button>
+          </div>
+        </div>
+
+        {/* Hidden input for native HTML5 form validation */}
+        {required && (
+          <input
+            type="text"
+            style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', height: 0, width: 0, bottom: 0 }}
+            value={value || ''}
+            onChange={() => {}}
+            required
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. SEARCH & SELECT STATE: Input with dropdown
+  // ──────────────────────────────────────────────────────────────────────────
   return (
     <div
       className={`position-relative product-select-combobox ${className}`}
@@ -186,15 +281,12 @@ export default function ProductSelect({
           placeholder={placeholder}
           value={searchTerm}
           disabled={disabled}
-          autoFocus={autoFocus}
+          autoFocus={autoFocus || isSearching}
           required={required && !value && !searchTerm}
           autoComplete="off"
           onClick={() => {
             if (!disabled) {
               setIsOpen(true)
-              if (selectedProduct) {
-                setSearchTerm('')
-              }
             }
           }}
           onChange={(e) => {
@@ -203,7 +295,7 @@ export default function ProductSelect({
             setIsOpen(true)
             setHighlightedIndex(0)
 
-            // Instant Barcode Scan Auto-Detect (fast 6+ digit barcode scanner input)
+            // Instant Barcode Scan Auto-Detect
             const clean = val.trim().toLowerCase()
             if (clean.length >= 6) {
               const exact = products.find(
@@ -217,36 +309,21 @@ export default function ProductSelect({
             }
           }}
           onKeyDown={handleKeyDown}
-          style={{ fontSize: 13, fontWeight: selectedProduct ? 600 : 400 }}
+          style={{ fontSize: 13 }}
         />
-
-        {/* Clear Button */}
-        {(value || searchTerm) && !disabled && (
-          <button
-            type="button"
-            className="btn btn-light border-top border-bottom border-start-0 border-end-0 px-2 text-muted hover-text-dark"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleSelect(null)
-              inputRef.current?.focus()
-            }}
-            title="Clear selection"
-          >
-            <i className="ri-close-line fs-5"></i>
-          </button>
-        )}
 
         {/* Dropdown Toggle Button */}
         <button
           type="button"
-          className="btn btn-light border border-start-0 px-2.5 text-muted"
+          className="btn btn-light border border-start-0 px-2.5 text-muted d-flex align-items-center gap-1"
           disabled={disabled}
           onClick={() => {
             setIsOpen(!isOpen)
             inputRef.current?.focus()
           }}
-          title="Toggle product dropdown"
+          title="Browse all products"
         >
+          <span className="fs-xs text-muted d-none d-sm-inline">Browse</span>
           <i
             className="ri-arrow-down-s-line fs-5 transition-transform"
             style={{
@@ -286,7 +363,7 @@ export default function ProductSelect({
           <div className="d-flex align-items-center justify-content-between px-3 py-2 bg-light border-bottom text-muted fs-xs">
             <span>
               <i className="ri-box-3-line me-1"></i>
-              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'} available
+              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'} found
             </span>
             <span>
               <kbd className="bg-white border text-dark px-1.5 py-0.5 rounded shadow-xs" style={{ fontSize: 10 }}>↑</kbd>{' '}
@@ -298,7 +375,7 @@ export default function ProductSelect({
           {filteredProducts.length === 0 ? (
             <div className="p-4 text-center text-muted">
               <i className="ri-inbox-line fs-1 d-block mb-2 text-muted opacity-50"></i>
-              <div className="fw-semibold">No product found for "{searchTerm}"</div>
+              <div className="fw-semibold">No product matches "{searchTerm}"</div>
               <small className="text-muted d-block mt-1">
                 Try scanning a physical barcode or searching by product name / SKU.
               </small>

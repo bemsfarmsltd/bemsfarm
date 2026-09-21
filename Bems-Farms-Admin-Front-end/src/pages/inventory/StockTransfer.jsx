@@ -61,9 +61,9 @@ export default function StockTransfer() {
 
   const selectedProduct = products.find((p) => String(p.id) === String(form.product_id))
 
-  function openAdd() {
+  function openAdd(preselectedProduct = null) {
     setForm({
-      product_id: products[0]?.id ? String(products[0].id) : '',
+      product_id: preselectedProduct?.id ? String(preselectedProduct.id) : '',
       from_warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
       to_warehouse_id: warehouses[1]?.id ? String(warehouses[1].id) : '',
       quantity: 1, notes: '',

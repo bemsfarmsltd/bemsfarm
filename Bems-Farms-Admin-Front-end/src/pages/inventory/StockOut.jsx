@@ -65,8 +65,8 @@ export default function StockOut() {
     completedQty: movements.reduce((s, m) => s + (m.quantity || 0), 0),
   }
 
-  function openAdd() {
-    const defaultProdId = products[0]?.id ? String(products[0].id) : ''
+  function openAdd(preselectedProduct = null) {
+    const defaultProdId = preselectedProduct?.id ? String(preselectedProduct.id) : ''
     const defaultWh = warehouses[0]?.id ? String(warehouses[0].id) : ''
     setForm({
       product_id: defaultProdId, warehouse_id: defaultWh, quantity: 1,

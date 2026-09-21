@@ -85,9 +85,9 @@ export default function StockIn() {
     fetchMovements()
   }, [fetchMovements])
 
-  function openIntakeModal() {
-    const defaultProdId = products[0]?.id ? String(products[0].id) : ''
-    const defaultCost = products[0]?.cost_price !== undefined ? String(products[0].cost_price) : ''
+  function openIntakeModal(preselectedProduct = null) {
+    const defaultProdId = preselectedProduct?.id ? String(preselectedProduct.id) : ''
+    const defaultCost = preselectedProduct?.cost_price !== undefined ? String(preselectedProduct.cost_price) : ''
     const defaultWh = warehouses[0]?.id ? String(warehouses[0].id) : ''
     const refNum = `SI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
 
