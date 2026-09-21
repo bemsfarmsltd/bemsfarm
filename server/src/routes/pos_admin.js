@@ -261,7 +261,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
 // POS SALE  ──  POST /api/admin/pos/sale
 // Creates an order from the POS terminal.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/sale", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.sale), async (req, res, next) => {
+router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.sale), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

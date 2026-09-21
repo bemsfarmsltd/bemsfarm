@@ -143,6 +143,57 @@ router.post("/:id/reviews", protect, validate(submitReview), async (req, res, ne
   }
 });
 
+// ── POST /:id/waitlist and POST /waitlist (Restock Notification Signups) ──
+router.post(["/:id/waitlist", "/waitlist"], async (req, res, next) => {
+  try {
+    const productId = req.params.id || req.body.productId || req.body.product_id;
+    const { email, phone, product_name } = req.body;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ message: "Valid email address is required" });
+    }
+
+    let prodName = product_name || "Product";
+    let pId = null;
+
+    if (productId && !isNaN(parseInt(productId))) {
+      pId = parseInt(productId);
+      const pRes = await pool.query("SELECT id, name FROM products WHERE id = $1", [pId]);
+      if (pRes.rows.length > 0) {
+        prodName = pRes.rows[0].name;
+      }
+    }
+
+    // Record customer intent in telemetry
+    await pool.query(
+      `
+      INSERT INTO product_demand_telemetry (product_id, product_name, source, user_id, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      `,
+      [pId, prodName, `waitlist:${email.trim()}`, req.user?.id || null]
+    );
+
+    // Create admin notification
+    await pool.query(
+      `
+      INSERT INTO notifications (type, title, body, is_read, created_at)
+      VALUES ('restock_request', $1, $2, false, NOW())
+      `,
+      [
+        `Restock Waitlist Request: ${prodName}`,
+        `Customer (${email.trim()}${phone ? ` / ${phone}` : ''}) requested notification when ${prodName} is back in stock.`
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `You're on the list! We will notify you immediately once ${prodName} is back in stock.`
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/:id", getProductById);
 
 module.exports = router;

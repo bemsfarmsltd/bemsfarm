@@ -132,6 +132,121 @@ async function syncToCatalogue(client, product) {
   );
 }
 
+// ── SUBCATEGORIES CRUD ──────────────────────────────────────────
+router.get("/subcategories", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const { category_id, search, status } = req.query;
+    let query = `
+      SELECT 
+        s.id,
+        s.category_id,
+        s.name,
+        s.code,
+        s.description,
+        COALESCE(s.status, 'active') AS status,
+        s.created_at,
+        c.name AS category_name,
+        (SELECT COUNT(*) FROM products p WHERE p.sub_category_id = s.id OR p.category_id = s.category_id) AS product_count
+      FROM subcategories s
+      LEFT JOIN categories c ON s.category_id = c.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (category_id) {
+      params.push(parseInt(category_id));
+      query += ` AND s.category_id = $${params.length}`;
+    }
+    if (status && status !== 'all') {
+      params.push(status);
+      query += ` AND s.status = $${params.length}`;
+    }
+    if (search) {
+      params.push(`%${search.trim()}%`);
+      query += ` AND (s.name ILIKE $${params.length} OR s.code ILIKE $${params.length} OR s.description ILIKE $${params.length})`;
+    }
+
+    query += ` ORDER BY s.name ASC`;
+    const result = await pool.query(query, params);
+    res.json({ subcategories: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/subcategories", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const { category_id, name, code, description, status = "active" } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Subcategory name is required" });
+    }
+    const catId = category_id ? parseInt(category_id) : null;
+    const subCode = code || name.toUpperCase().replace(/[^A-Z0-9]/g, "-").slice(0, 10);
+
+    const result = await pool.query(
+      `
+      INSERT INTO subcategories (category_id, name, code, description, status, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
+      RETURNING *
+      `,
+      [catId, name.trim(), subCode, description || "", status]
+    );
+
+    res.status(201).json({ message: "Subcategory created successfully", subcategory: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/subcategories/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { category_id, name, code, description, status } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE subcategories
+      SET 
+        category_id = COALESCE($1, category_id),
+        name = COALESCE($2, name),
+        code = COALESCE($3, code),
+        description = COALESCE($4, description),
+        status = COALESCE($5, status)
+      WHERE id = $6
+      RETURNING *
+      `,
+      [category_id ? parseInt(category_id) : null, name?.trim(), code, description, status, parseInt(id)]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Subcategory not found" });
+    }
+
+    res.json({ message: "Subcategory updated successfully", subcategory: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/subcategories/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const prodCount = await pool.query("SELECT COUNT(*) FROM products WHERE sub_category_id = $1", [parseInt(id)]);
+    if (parseInt(prodCount.rows[0].count) > 0) {
+      return res.status(400).json({ message: `Cannot delete subcategory linked to ${prodCount.rows[0].count} product(s)` });
+    }
+
+    const result = await pool.query("DELETE FROM subcategories WHERE id = $1 RETURNING id", [parseInt(id)]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Subcategory not found" });
+    }
+
+    res.json({ message: "Subcategory deleted successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/products ───────────────────────────────────────
 // Paginated product list with filters
 router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
