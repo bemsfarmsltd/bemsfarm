@@ -372,6 +372,22 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
       ]
     );
 
+    // Double-Entry Ledger Side B: Central Company Accounts Debit
+    await client.query(
+      `
+      INSERT INTO transactions (
+        reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
+      )
+      VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'debit', 'driver_payout', $2, $3, 'completed', $4, NOW())
+      `,
+      [
+        gatewayRef,
+        `Driver Payout Disbursed: ${driver.name} (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
+        payout.amount,
+        payout.payout_ref || gatewayRef,
+      ]
+    );
+
     await client.query("COMMIT");
 
     res.json({
@@ -466,7 +482,7 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
     const { payout_ids = [], disbursement_method = "monnify_transfer", batch_reference, notes } = req.body;
 
     if (!Array.isArray(payout_ids) || payout_ids.length === 0) {
-      return res.status(400).json({ message: "An array of payout_ids is required" });
+      return res.status(400).json({ message: "No payout IDs selected for disbursement" });
     }
 
     await client.query("BEGIN");
@@ -489,6 +505,43 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
       `,
       [req.user.id, disbursement_method, batchRef, notes || "", payout_ids]
     );
+
+    for (const payout of updateRes.rows) {
+      const driverRes = await client.query("SELECT total_earnings FROM drivers WHERE id = $1", [payout.driver_id]);
+      const currentEarned = parseFloat(driverRes.rows[0]?.total_earnings || 0);
+
+      // Ledger Side A: Driver Wallet
+      await client.query(
+        `INSERT INTO driver_wallet_ledger (
+          driver_id, type, category, amount, balance_before, balance_after,
+          reference, description, performed_by, created_at
+        )
+        VALUES ($1, 'debit', 'withdrawal', $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          payout.driver_id,
+          payout.amount,
+          currentEarned,
+          Math.max(0, currentEarned - payout.amount),
+          `${batchRef}-${payout.id}`,
+          `Batch Payout to ${payout.bank_name || 'Bank'} (${payout.account_number})`,
+          req.user.id,
+        ]
+      );
+
+      // Ledger Side B: Company Accounts
+      await client.query(
+        `INSERT INTO transactions (
+          reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
+        )
+        VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'debit', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
+        [
+          `${batchRef}-${payout.id}`,
+          `Batch Driver Payout (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
+          payout.amount,
+          payout.payout_ref,
+        ]
+      );
+    }
 
     const affectedDriverIds = [...new Set(updateRes.rows.map((p) => p.driver_id))];
     if (affectedDriverIds.length > 0) {
