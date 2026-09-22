@@ -752,34 +752,74 @@ router.get("/gateway/webhooks", async (req, res, next) => {
 });
 
 // ── POST /api/admin/wallets/validate-bank ──────────────────────────
-// Live bank account resolution & validation tool
+// Live bank account resolution & validation tool using Monnify / NIBSS API
 router.post("/validate-bank", async (req, res, next) => {
   try {
     const { account_number, bank_code, bank_name } = req.body;
 
-    if (!account_number || account_number.length !== 10) {
+    const cleanAcc = (account_number || "").toString().trim();
+    if (!cleanAcc || cleanAcc.length !== 10) {
       return res.status(400).json({ message: "Valid 10-digit Nigerian NUBAN account number required" });
     }
 
-    const sampleNames = [
-      "BEMS FARMS DISPATCH AGENT",
-      "CHIDI J. OKORO",
-      "EMEKA CHUKWU INVESTMENTS",
-      "SUNDAY NWOSU ENTERPRISES",
-      "VICTOR KALU LOGISTICS",
-    ];
+    const BANK_CODES = {
+      "Wema Bank": "035",
+      "GTBank": "058",
+      "Guaranty Trust Bank": "058",
+      "Access Bank": "044",
+      "Zenith Bank": "057",
+      "First Bank": "011",
+      "First Bank of Nigeria": "011",
+      "UBA": "033",
+      "United Bank for Africa": "033",
+      "Kuda Bank": "50211",
+      "Kuda Microfinance Bank": "50211",
+      "OPay": "999992",
+      "PalmPay": "999991",
+      "Sterling Bank": "232",
+      "Fidelity Bank": "070",
+      "Stanbic IBTC": "221",
+      "Union Bank": "032",
+      "FCMB": "214",
+      "Providus Bank": "101",
+    };
 
-    const resolvedName = sampleNames[parseInt(account_number.slice(-1)) % sampleNames.length] || "VERIFIED RECIPIENT ACCOUNT";
+    let targetCode = bank_code;
+    if (!targetCode && bank_name) {
+      targetCode = BANK_CODES[bank_name] || Object.entries(BANK_CODES).find(([k]) => bank_name.toLowerCase().includes(k.toLowerCase()))?.[1] || "058";
+    }
+    targetCode = targetCode || "058";
+
+    let resolvedName = null;
+    let rawResult = null;
+
+    try {
+      const monnifyRes = await validateMonnifyBankAccount(cleanAcc, targetCode);
+      if (monnifyRes?.accountName) {
+        resolvedName = monnifyRes.accountName;
+        rawResult = monnifyRes;
+      }
+    } catch (apiErr) {
+      console.warn("Monnify live account resolution error:", apiErr.message);
+      return res.status(404).json({
+        message: `Could not verify account with bank: ${apiErr.message || 'Invalid account number or bank code'}`
+      });
+    }
+
+    if (!resolvedName) {
+      return res.status(404).json({ message: "Account number could not be resolved with this bank." });
+    }
 
     res.json({
       status: "success",
-      account_number,
-      bank_code: bank_code || "058",
-      bank_name: bank_name || "GTBank / Wema Bank",
+      account_number: cleanAcc,
+      bank_code: targetCode,
+      bank_name: bank_name || "Commercial Bank",
       account_name: resolvedName,
       is_valid: true,
       kyc_match: true,
       message: `Account verified: ${resolvedName}`,
+      raw: rawResult,
     });
   } catch (err) {
     next(err);
