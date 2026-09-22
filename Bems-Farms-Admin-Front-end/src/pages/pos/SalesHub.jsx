@@ -70,6 +70,9 @@ export default function SalesHub({
   onlineOrders = [],
   onOpenOnlineOrder,
   onPrintOnlineOrderInvoice,
+  onPrintCustomerReceipt,
+  onMarkPacked,
+  onMarkDispatched,
   onReprintReceipt,
   user,
 }) {
@@ -1206,7 +1209,7 @@ export default function SalesHub({
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
                 <div>
                   <h6 className="fw-bold mb-0 font-display">Live Incoming Web &amp; WhatsApp Orders Queue</h6>
-                  <p className="text-muted fs-xs mb-0">Pack items and ring orders directly into the active POS register</p>
+                  <p className="text-muted fs-xs mb-0">Print invoice · Pack items · Mark dispatched — orders are pre-paid online</p>
                 </div>
                 <span className="badge bg-warning-subtle text-warning fs-xs fw-bold px-3 py-1.5 rounded-pill">
                   {onlineOrders.length} Pending Orders in Queue
@@ -1223,13 +1226,14 @@ export default function SalesHub({
                       <th>Phone</th>
                       <th>Time Received</th>
                       <th>Delivery Notes</th>
-                      <th>Items Count</th>
-                      <th className="text-center">Action</th>
+                      <th>Items</th>
+                      <th className="text-end">Total</th>
+                      <th className="text-center">Fulfillment Actions</th>
                     </tr>
                   </thead>
                   <tbody className="fs-sm">
                     {onlineOrders.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-4 text-muted">No pending online orders.</td></tr>
+                      <tr><td colSpan={9} className="text-center py-4 text-muted">No pending online orders.</td></tr>
                     ) : onlineOrders.map((ord) => (
                       <tr key={ord.id}>
                         <td>
@@ -1245,40 +1249,70 @@ export default function SalesHub({
                         </td>
                         <td className="text-muted fs-xs">{ord.phone}</td>
                         <td className="text-muted fs-xs">{ord.time}</td>
-                        <td className="text-muted fs-xs text-truncate" style={{ maxWidth: 220 }}>
+                        <td className="text-muted fs-xs text-truncate" style={{ maxWidth: 180 }}>
                           {ord.note || 'Standard packaging'}
                         </td>
                         <td>
                           <span className="badge bg-light text-dark border">{ord.items.length} items</span>
                         </td>
+                        <td className="text-end fw-bold text-success fs-xs font-monospace">
+                          ₦{Math.round(ord.total || 0).toLocaleString()}
+                        </td>
                         <td className="text-center">
+                          {/* ── STEP 1: Print Invoice first ── */}
                           {!(ord.invoice_printed || ord.status === 'processing' || ord.rawStatus === 'processing') ? (
                             <button
                               type="button"
                               className="btn btn-sm btn-emerald-solid rounded-pill px-3 fs-xs fw-bold"
-                              title="Print Order Invoice first to move to Packaging and enable cart loading"
-                              onClick={() => onPrintOnlineOrderInvoice ? onPrintOnlineOrderInvoice(ord) : (onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister())}
+                              title="Print invoice to start packing"
+                              onClick={() => onPrintOnlineOrderInvoice ? onPrintOnlineOrderInvoice(ord) : null}
                             >
                               <i className="ri-printer-line me-1"></i>Print Invoice
                             </button>
                           ) : (
-                            <div className="d-flex align-items-center justify-content-center gap-2">
+                            /* ── STEP 2 & 3: Pack → Dispatch ── */
+                            <div className="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                              {/* Reprint Invoice */}
                               {onPrintOnlineOrderInvoice && (
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fs-xs fw-bold"
-                                  title="Reprint Invoice"
+                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2 fs-xs"
+                                  title="Reprint Packing Invoice"
                                   onClick={() => onPrintOnlineOrderInvoice(ord)}
                                 >
-                                  <i className="ri-printer-line me-1"></i>Reprint
+                                  <i className="ri-file-list-3-line"></i>
                                 </button>
                               )}
+                              {/* Print Customer Receipt */}
+                              {onPrintCustomerReceipt && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-success rounded-pill px-2 fs-xs"
+                                  title="Print Customer Receipt (to give at delivery)"
+                                  onClick={() => onPrintCustomerReceipt(ord)}
+                                >
+                                  <i className="ri-receipt-line"></i>
+                                </button>
+                              )}
+                              {/* Mark as Packed */}
+                              {ord.status !== 'packed' && ord.rawStatus !== 'packed_ready' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-warning rounded-pill px-2 fs-xs fw-bold"
+                                  title="Mark as Packed & Ready"
+                                  onClick={() => onMarkPacked ? onMarkPacked(ord) : null}
+                                >
+                                  <i className="ri-box-3-line me-1"></i>Packed
+                                </button>
+                              )}
+                              {/* Mark as Dispatched */}
                               <button
                                 type="button"
-                                className="btn btn-sm btn-primary-bf rounded-pill px-3 fs-xs fw-bold"
-                                onClick={() => onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister()}
+                                className="btn btn-sm btn-success rounded-pill px-2 fs-xs fw-bold"
+                                title="Mark as Dispatched — removes from queue"
+                                onClick={() => onMarkDispatched ? onMarkDispatched(ord) : null}
                               >
-                                <i className="ri-shopping-cart-2-line me-1"></i>Load to Cart
+                                <i className="ri-send-plane-fill me-1"></i>Dispatched
                               </button>
                             </div>
                           )}

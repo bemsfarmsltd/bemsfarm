@@ -199,20 +199,33 @@ export default function ThermalReceipt({
     }).catch(() => {})
     return () => { active = false }
   }, [settingsOverride])
-  const isInvoice = receiptType === 'invoice' || receiptType === 'online'
+  const isInvoice = receiptType === 'invoice'
+  const isCustomerReceipt = receiptType === 'online'
+
   const receiptTitle = isInvoice
-    ? (settings.receipt_invoice_title || settings.receipt_online_title || 'OFFICIAL INVOICE')
-    : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header)
+    ? (settings.receipt_invoice_title || 'OFFICIAL INVOICE — PACKING LIST')
+    : isCustomerReceipt
+      ? (settings.receipt_online_title || 'PAYMENT RECEIPT')
+      : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header)
+
   const receiptFooter = isInvoice
-    ? (settings.receipt_invoice_footer || settings.receipt_online_footer || 'Thank you for your order')
-    : (settings[`receipt_${receiptType}_footer`] || settings.pos_receipt_footer)
-  const returnNote = isInvoice ? 'Keep this invoice for your records' : settings.pos_receipt_return_note
-  const numberLabel = isInvoice ? 'Invoice #' : 'Receipt #'
+    ? (settings.receipt_invoice_footer || 'Internal use only — for packing purposes')
+    : isCustomerReceipt
+      ? (settings.receipt_online_footer || 'Thank you for shopping with Bems Farms!')
+      : (settings[`receipt_${receiptType}_footer`] || settings.pos_receipt_footer)
+
+  const returnNote = isInvoice
+    ? 'Staff copy — packing list'
+    : isCustomerReceipt
+      ? 'Customer copy — keep for your records'
+      : settings.pos_receipt_return_note
+
+  const numberLabel = (isInvoice || isCustomerReceipt) ? 'Order #' : 'Receipt #'
 
   const calculatedSubtotal = items.reduce((sum, item) => sum + Number(item.total ?? Number(item.price || 0) * Number(item.qty || 1)), 0)
   const safeSubtotal = Number(subtotal ?? calculatedSubtotal)
 
-  return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`${isInvoice ? 'Invoice' : 'Receipt'} ${receiptNumber || ''}`}>
+  return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`${isInvoice ? 'Invoice' : isCustomerReceipt ? 'Receipt' : 'Receipt'} ${receiptNumber || ''}`}>
     <header className="thermal-receipt__brand">
       {enabled('pos_receipt_show_logo') && (
         <img

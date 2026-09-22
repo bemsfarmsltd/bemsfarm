@@ -195,6 +195,10 @@ export default function POS() {
   const [heldOrders, setHeldOrders]         = useState([])
   const [orderId, setOrderId]               = useState(genOrderId)
 
+  // Tracks the raw DB id of an online order currently loaded into the POS cart
+  // so we can mark it as delivered after the POS sale is confirmed.
+  const [activeOnlineOrderRawId, setActiveOnlineOrderRawId] = useState(null)
+
   // Tax configuration (dynamically loaded from Settings → Tax)
   const [taxConfig, setTaxConfig]           = useState({ enabled: false, rate: 7.5, inclusive: false, label: 'VAT' })
 
@@ -615,6 +619,7 @@ export default function POS() {
     setOrderNote('')
     setCustomer(null)
     setOrderId(genOrderId())
+    setActiveOnlineOrderRawId(null)
     showToast('Register cart cleared', 'info', '🧹')
   }
 
@@ -1043,6 +1048,8 @@ export default function POS() {
     if (order.id) {
       setOrderId(order.id)
     }
+    // Store the DB raw ID so confirmPayment can mark this order as fulfilled
+    setActiveOnlineOrderRawId(order.rawId || order.id || null)
 
     const matched = customersList.find(c => c.name === order.customer || (order.phone && c.phone === order.phone))
     if (matched) {
@@ -1128,11 +1135,97 @@ export default function POS() {
       try {
         await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
         setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o))
-        showToast(`Invoice printed for #${order.id} · Moved to Packaging & Auto-dispatch initiated`, 'success', '🖨️')
+        showToast(`Invoice printed for #${order.id} · Ready to pack`, 'success', '🖨️')
       } catch (err) {
         console.warn('Failed to register invoice print:', err.message)
       }
     }
+  }
+
+  // Mark online order as Packed & Ready
+  const handleMarkOrderPacked = async (order) => {
+    if (!order) return
+    const targetId = order.rawId || order.id
+    try {
+      await api.patch(`/admin/orders/${targetId}/status`, {
+        status: 'packed_ready',
+        notes: `Packed at store by ${user?.name || 'staff'}`
+      })
+      setOnlineOrders(prev => prev.map(o =>
+        o.id === order.id ? { ...o, status: 'packed', rawStatus: 'packed_ready' } : o
+      ))
+      showToast(`Order #${order.id} marked as Packed & Ready`, 'success', '📦')
+    } catch (err) {
+      console.warn('Failed to mark order as packed:', err.message)
+      showToast('Could not update order status. Try again.', 'error', '⚠️')
+    }
+  }
+
+  // Mark online order as Dispatched — removes it from the queue permanently
+  const handleMarkOrderDispatched = async (order) => {
+    if (!order) return
+    const targetId = order.rawId || order.id
+    try {
+      await api.patch(`/admin/orders/${targetId}/status`, {
+        status: 'delivered',
+        notes: `Dispatched / fulfilled by ${user?.name || 'staff'} at POS`
+      })
+      // Remove from local queue immediately — poll will also exclude it going forward
+      setOnlineOrders(prev => prev.filter(o => o.id !== order.id))
+      showToast(`Order #${order.id} dispatched ✓ Removed from queue`, 'success', '🚀')
+    } catch (err) {
+      console.warn('Failed to mark order as dispatched:', err.message)
+      showToast('Could not update order status. Try again.', 'error', '⚠️')
+    }
+  }
+
+  // Print customer-facing RECEIPT — given to the customer at delivery
+  // Different from the Invoice (packing list) — this shows PAID and goes with the goods
+  const handlePrintCustomerReceipt = async (order) => {
+    if (!order) return
+    const orderTotal = Number(order.total || 0) || (order.items || []).reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 1)), 0)
+    const receiptData = {
+      orderId: order.id,
+      receiptType: 'online',
+      isInvoice: false,
+      channel: order.channel ? (order.channel.charAt(0).toUpperCase() + order.channel.slice(1)) : 'Online Order',
+      customer: { name: order.customer, phone: order.phone },
+      cust: order.customer,
+      status: '✅ PAID — Payment Received',
+      cart: (order.items || []).map(it => ({
+        name: it.name || 'Item',
+        price: Number(it.price || 0),
+        qty: Number(it.qty || 1),
+        unit: it.unit || 'pcs'
+      })),
+      items: (order.items || []).map(it => ({
+        name: it.name || 'Item',
+        price: Number(it.price || 0),
+        qty: Number(it.qty || 1),
+        unit: it.unit || 'pcs'
+      })),
+      subtotal: orderTotal,
+      discountAmt: 0,
+      vat: 0,
+      total: orderTotal,
+      method: 'Online / Pre-paid',
+      orderNote: order.note || '',
+      cashReceived: orderTotal,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+    setSuccessData(receiptData)
+    if (isPrinterConnected()) {
+      try {
+        await printReceiptESC(receiptData, {})
+      } catch (err) {
+        console.warn('ESC/POS receipt failed, using browser:', err)
+        printThermalReceipt()
+      }
+    } else {
+      printThermalReceipt()
+    }
+    showToast(`Customer receipt printed for #${order.id}`, 'success', '🧾')
   }
 
   // Order Holding
@@ -1284,6 +1377,19 @@ export default function POS() {
     // Remove processed online order from active incoming list if applicable
     if (orderId) {
       setOnlineOrders(prev => prev.filter(o => o.id !== orderId && o.rawId !== orderId))
+    }
+
+    // If this sale fulfilled an online order, mark it as delivered in the backend
+    // so the 15-second poll doesn't re-add it to the queue.
+    const fulfilledOnlineId = activeOnlineOrderRawId
+    if (fulfilledOnlineId) {
+      setActiveOnlineOrderRawId(null)
+      api.patch(`/admin/orders/${fulfilledOnlineId}/status`, {
+        status: 'delivered',
+        notes: `Fulfilled at POS counter by ${user?.name || 'cashier'} — POS sale ${completedReceipt.orderId}`
+      }).catch(err => {
+        console.warn('Could not mark online order as delivered after POS sale:', err.message)
+      })
     }
 
     // Set active receipt for background printing
@@ -1465,10 +1571,9 @@ export default function POS() {
         historyList={historyList}
         onlineOrders={onlineOrders}
         onPrintOnlineOrderInvoice={handlePrintOnlineOrderInvoice}
-        onOpenOnlineOrder={(order) => {
-          loadOnlineOrderToCart(order)
-          setViewMode('register')
-        }}
+        onPrintCustomerReceipt={handlePrintCustomerReceipt}
+        onMarkPacked={handleMarkOrderPacked}
+        onMarkDispatched={handleMarkOrderDispatched}
         onReprintReceipt={(receipt) => {
           setSuccessData(receipt)
           setActiveModal('receipt')

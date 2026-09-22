@@ -957,7 +957,7 @@ router.post(
 // Generic status update with timeline logging
 router.patch(
   "/:id/status",
-  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  requireRole("superadmin", "manager", "admin", "delivery_manager", "cashier"),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -977,13 +977,15 @@ router.patch(
       }
 
       const current = await client.query(
-        "SELECT status, driver_id FROM orders WHERE id=$1",
+        "SELECT id, status, driver_id FROM orders WHERE UPPER(id::text)=UPPER($1) OR UPPER(order_ref)=UPPER($1)",
         [req.params.id],
       );
       if (!current.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
       }
+
+      const resolvedId = current.rows[0].id;
 
       const fromStatus = current.rows[0].status;
 
@@ -1003,12 +1005,12 @@ router.patch(
 
       await client.query(
         "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
-        [nextStatus, req.params.id],
+        [nextStatus, resolvedId],
       );
 
       // Only restore on the transition INTO cancelled
       if (nextStatus === "cancelled" && fromStatus !== "cancelled") {
-        await restoreOrderStock(client, req.params.id);
+        await restoreOrderStock(client, resolvedId);
       }
 
       // ── DOUBLE-ENTRY POSTING ON ORDER DELIVERED ────────────────────
@@ -1050,7 +1052,7 @@ router.patch(
              FROM order_items oi 
              LEFT JOIN products p ON oi.product_id = p.id 
              WHERE oi.order_id = $1`,
-            [req.params.id]
+            [resolvedId]
           );
 
           for (const item of itemsRes.rows) {
@@ -1066,7 +1068,7 @@ router.patch(
                 unit_cost: unitCost,
                 debit_account: COA.COGS_PRODUCE,
                 credit_account: COA.INVENTORY_FINISHED_GOODS,
-                reference: `ORD-${req.params.id}`,
+                reference: `ORD-${resolvedId}`,
                 narration: `Delivered Order COGS: ${item.product_name} (Qty: ${qty})`,
                 user_id: req.user.id,
               });
@@ -1079,7 +1081,7 @@ router.patch(
 
       await logStatusChange(
         client,
-        req.params.id,
+        resolvedId,
         fromStatus,
         nextStatus,
         req.user.id,
@@ -1117,7 +1119,7 @@ router.patch(
       if (ev) {
         await logTrackingEvent(
           client,
-          req.params.id,
+          resolvedId,
           null,
           ev.type,
           ev.desc,
@@ -1136,7 +1138,7 @@ router.patch(
            LEFT JOIN users u ON u.id = o.customer_id
            LEFT JOIN users c ON c.phone = o.customer_phone
            WHERE o.id = $1`,
-          [req.params.id]
+          [resolvedId]
         );
         if (emailResult.rows.length && emailResult.rows[0].email) {
           const orderInfo = emailResult.rows[0];
