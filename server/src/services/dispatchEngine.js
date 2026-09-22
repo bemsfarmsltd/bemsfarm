@@ -219,11 +219,11 @@ async function autoAssignClosestDriver(
  * @param {object} storeCoords - Default store coordinates for distance ranking
  */
 async function processUnresponsiveAssignments(
-  timeoutMinutes = 10,
+  timeoutMinutes = 5,
   storeCoords = { lat: 5.1065, lng: 7.3667 }
 ) {
   try {
-    // Find active deliveries assigned over 10 minutes ago where the driver never accepted
+    // Find active deliveries assigned over timeout threshold where driver never responded
     const timedOutRes = await pool.query(
       `
       SELECT 
@@ -342,10 +342,10 @@ async function processUnresponsiveAssignments(
 }
 
 /**
- * Start the background worker that checks every minute for timed-out driver assignments
+ * Start the background worker that checks every 30s for timed-out driver assignments (5 mins limit)
  */
 let timeoutWorkerInterval = null;
-function startAutoDispatchTimeoutWorker(intervalSeconds = 60, timeoutMinutes = 10) {
+function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5) {
   if (timeoutWorkerInterval) {
     clearInterval(timeoutWorkerInterval);
   }

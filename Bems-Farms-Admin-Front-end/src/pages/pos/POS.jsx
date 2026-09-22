@@ -1003,8 +1003,17 @@ export default function POS() {
     }
     if (order.note) setOrderNote(order.note)
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
+    
+    // Automatically register invoice print, transition order to packaging, and trigger driver dispatch
+    const targetOrderId = order.rawId || order.id
+    if (targetOrderId) {
+      api.post(`/admin/orders/${targetOrderId}/print-invoice`).catch(err => {
+        console.warn('POS invoice print registration notice:', err.message)
+      })
+    }
+
     playBeep('success')
-    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart (${order.id})`, 'success', '📥')
+    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart (${order.id}) · Moved to Packaging`, 'success', '📥')
     closeModal()
   }
 

@@ -518,8 +518,17 @@ export default function OrdersList() {
     }
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     printThermalReceipt()
+    if (selected?.id) {
+      try {
+        await api.post(`/admin/orders/${selected.id}/print-invoice`)
+        toast.success(`Invoice printed. Order #${selected.id} moved to Packaging!`)
+        fetchOrders()
+      } catch (e) {
+        console.warn('Invoice print tracking notification:', e.message)
+      }
+    }
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────

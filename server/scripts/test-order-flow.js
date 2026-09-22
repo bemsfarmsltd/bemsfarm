@@ -2,7 +2,7 @@
 // server/scripts/test-order-flow.js
 // Automated End-to-End Test for Bems Farms Order & Delivery Flow
 
-require("dotenv").config();
+require("dotenv").config({ path: __dirname + "/../.env" });
 const pool = require("../src/db/pool");
 const { autoAssignClosestDriver } = require("../src/services/dispatchEngine");
 

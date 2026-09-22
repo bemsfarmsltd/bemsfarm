@@ -863,6 +863,95 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
   }
 });
 
+// ── POST /api/admin/orders/:id/print-invoice ───────────────────────────
+// Triggered immediately when invoice is printed from Admin or POS.
+// Transitions order to packaging ('processing') and activates proximity auto-dispatch.
+router.post(
+  "/:id/print-invoice",
+  requireRole("superadmin", "manager", "admin", "delivery_manager", "staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { id } = req.params;
+
+      const orderRes = await client.query(
+        "SELECT id, order_ref, status, total, address, latitude, longitude, driver_id FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1)) FOR UPDATE",
+        [id]
+      );
+
+      if (!orderRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const order = orderRes.rows[0];
+
+      if (order.status === "cancelled") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot print invoice for a cancelled order" });
+      }
+
+      // Mark invoice printed and advance to processing / packaging
+      await client.query(
+        `UPDATE orders
+         SET invoice_printed = true,
+             invoice_printed_at = NOW(),
+             status = CASE 
+               WHEN status IN ('pending', 'paid', 'new_order', 'confirmed') THEN 'processing'
+               ELSE status
+             END,
+             tracking_status = CASE
+               WHEN tracking_status IN ('order_placed', 'pending', 'confirmed') THEN 'processing'
+               ELSE tracking_status
+             END,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.id]
+      );
+
+      // Log tracking event safely with savepoint
+      try {
+        await client.query("SAVEPOINT print_event");
+        await client.query(
+          `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
+           VALUES ($1, 'invoice_printed', 'Order invoice printed. Moved to packaging & queued for dispatch.', 'admin', $2, NOW())`,
+          [order.id, req.user.id]
+        );
+        await client.query("RELEASE SAVEPOINT print_event");
+      } catch (e) {
+        await client.query("ROLLBACK TO SAVEPOINT print_event");
+      }
+
+      await client.query("COMMIT");
+
+      // Trigger autoAssignClosestDriver if driver not yet assigned
+      let dispatchResult = null;
+      if (!order.driver_id) {
+        try {
+          const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+          dispatchResult = await autoAssignClosestDriver(order.id);
+        } catch (dispErr) {
+          console.warn("Auto-dispatch on invoice print notice:", dispErr.message);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Invoice printed successfully. Order moved to packaging.",
+        order_id: order.id,
+        status: "processing",
+        dispatch: dispatchResult,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
 // ── PATCH /api/admin/orders/:id/status ───────────────────────────
 // Generic status update with timeline logging
 router.patch(
