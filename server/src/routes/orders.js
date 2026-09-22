@@ -4,7 +4,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
-const { NAIRA_PER_UNIT } = require("../utils/currency");
+// NOTE: prices in the products table are plain Naira — no unit conversion needed.
 const { verifyMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const validate = require("../middleware/validate");
@@ -74,7 +74,8 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `Only ${product.stock ?? 0} of "${product.name}" left in stock` });
       }
-      const price = parseFloat(product.price) * NAIRA_PER_UNIT;
+      // prices are stored in plain Naira — no unit multiplier applied
+      const price = parseFloat(product.price);
       subtotal += price * quantity;
       items.push({ product_id: productId, quantity, price });
     }
@@ -262,7 +263,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
           message: `Only ${availableStock} of "${p.name}" left in stock`,
         });
       }
-      const unitPrice = parseFloat(p.price) * NAIRA_PER_UNIT;
+      // prices are stored in plain Naira — no unit multiplier applied
+      const unitPrice = parseFloat(p.price);
       const lineTotal = unitPrice * quantity;
       subtotal += lineTotal;
       orderItemRows.push({ productId, quantity, unitPrice });
@@ -429,7 +431,7 @@ router.get("/", protect, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT
-         o.id, o.total, o.status, o.payment_method, o.address,
+         o.id, o.total, COALESCE(o.discount_amount, 0) as discount_amount, o.status, o.payment_method, o.address,
          o.created_at, o.cancelled_at, o.cancel_reason,
          COALESCE(o.tracking_status, o.status) as tracking_status,
          json_agg(
@@ -673,12 +675,15 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const o = order.rows[0];
+    if (o.status === "cancelled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Order is already cancelled" });
+    }
 
     if (!["pending", "confirmed"].includes(o.status)) {
       await client.query("ROLLBACK");
       return res.status(400).json({
-        message: "This order can no longer be cancelled",
+        message: "This order can no longer be cancelled because processing or delivery has begun",
       });
     }
 
@@ -686,12 +691,43 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       `UPDATE orders
        SET status='cancelled',
            cancel_reason=$1,
-           cancelled_at=NOW()
+           cancelled_at=NOW(),
+           updated_at=NOW()
        WHERE id=$2`,
       [reason.trim(), id],
     );
 
+    // Cancel any associated delivery records
+    await client.query(
+      `UPDATE deliveries SET status='cancelled', updated_at=NOW() WHERE order_id=$1`,
+      [id],
+    );
+
+    // Reject any pending driver assignments
+    await client.query(
+      `UPDATE delivery_assignments da
+       SET driver_response='rejected', notes='Order cancelled by customer'
+       FROM deliveries d
+       WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
+      [id],
+    );
+
     await restoreOrderStock(client, id);
+
+    try {
+      await client.query(
+        `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
+         VALUES ($1, 'cancelled', $2, 'customer', $3, NOW())`,
+        [id, `Order cancelled by customer. Reason: ${reason.trim()}`, req.user.id]
+      );
+      await client.query(
+        `INSERT INTO order_status_history (order_id, from_status, to_status, changed_by, notes, created_at)
+         VALUES ($1, $2, 'cancelled', $3, $4, NOW())`,
+        [id, o.status, req.user.id, `Cancelled by customer: ${reason.trim()}`]
+      );
+    } catch (logErr) {
+      // Non-fatal if optional logging tables are not present
+    }
 
     await client.query("COMMIT");
 

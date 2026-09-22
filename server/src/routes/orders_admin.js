@@ -118,7 +118,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       `
       SELECT
         o.id, o.total, o.status, o.source AS channel, o.payment_method, o.payment_ref,
-        COALESCE(o.delivery_fee, 0) AS delivery_fee, o.created_at,
+        COALESCE(o.delivery_fee, 0) AS delivery_fee, o.created_at, o.cancel_reason, o.cancelled_at,
         COALESCE(NULLIF(TRIM(o.address), ''), ua.street_address, '') AS address,
         COALESCE(ua.city, 'Umuahia') AS delivery_city,
         COALESCE(ua.state, 'Abia') AS delivery_state,
@@ -897,6 +897,11 @@ router.patch(
 
       const fromStatus = current.rows[0].status;
 
+      if (fromStatus === "cancelled" && nextStatus !== "cancelled") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot process or update the status of a cancelled order" });
+      }
+
       if (fromStatus === "dispute") {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "This order is disputed — use the dispute resolution flow instead" });
@@ -1083,6 +1088,11 @@ router.patch(
       if (!order.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (order.rows[0].status === "cancelled") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot assign a driver to a cancelled order" });
       }
 
       const driver = await client.query("SELECT * FROM drivers WHERE id=$1", [
@@ -1313,6 +1323,11 @@ router.patch(
         return res.status(404).json({ message: "Order not found" });
       }
 
+      if (current.rows[0].status === "cancelled") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot reschedule a cancelled order" });
+      }
+
       const nextAttempts = (current.rows[0].attempts || 0) + 1;
       await client.query(
         "UPDATE orders SET status='driver_assigned', attempts=$1, updated_at=NOW() WHERE id=$2",
@@ -1376,6 +1391,22 @@ router.patch(
         "UPDATE orders SET status='cancelled', cancel_reason=$1, cancelled_at=NOW(), updated_at=NOW() WHERE id=$2",
         [reason || null, req.params.id],
       );
+
+      // Cancel associated delivery records
+      await client.query(
+        "UPDATE deliveries SET status='cancelled', updated_at=NOW() WHERE order_id=$1",
+        [req.params.id],
+      );
+
+      // Cancel pending driver assignments
+      await client.query(
+        `UPDATE delivery_assignments da
+         SET driver_response='rejected', notes='Order cancelled by admin'
+         FROM deliveries d
+         WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
+        [req.params.id],
+      );
+
       await restoreOrderStock(client, req.params.id);
 
       await logStatusChange(

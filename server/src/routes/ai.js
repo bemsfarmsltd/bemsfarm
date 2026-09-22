@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const jwt  = require("jsonwebtoken");
-const { NAIRA_PER_UNIT } = require("../utils/currency");
+// Prices in products table are plain Naira
 const { recordAiAudit } = require("../services/aiAuditService");
 const {
   buildContextString,
@@ -143,12 +143,56 @@ Which of these catalog products, if any, does the reply recommend or suggest the
       .map((p) => ({
         id: p.id,
         name: p.name,
-        price: Math.round((p.price || 2000) * NAIRA_PER_UNIT),
+        price: Math.round(p.price || 0),
         unit: p.unit || "1 unit",
       }));
   } catch (err) {
     console.warn("⚠️ Chef Bems product-match extraction failed:", err.message);
     return [];
+  }
+}
+
+async function enrichWithDbProducts(items) {
+  if (!Array.isArray(items) || items.length === 0) return items;
+  try {
+    const ids = items.map((i) => parseInt(i.id)).filter((id) => Number.isInteger(id) && id > 0);
+    const names = items.map((i) => (i.name || "").trim()).filter(Boolean);
+
+    const dbRes = await pool.query(
+      `SELECT id, name, price, unit, stock, image_url, image FROM products
+       WHERE (id = ANY($1::int[]) OR name = ANY($2::text[])) AND status != 'archived'`,
+      [ids.length ? ids : [-1], names.length ? names : ["__none__"]],
+    );
+
+    const idMap = new Map();
+    const nameMap = new Map();
+    for (const row of dbRes.rows) {
+      idMap.set(String(row.id), row);
+      nameMap.set(row.name.toLowerCase().trim(), row);
+    }
+
+    return items.map((item) => {
+      const matched =
+        (item.id && idMap.get(String(item.id))) ||
+        (item.name && nameMap.get(String(item.name).toLowerCase().trim()));
+      if (matched) {
+        return {
+          ...item,
+          id: matched.id,
+          name: matched.name,
+          price: Math.round(Number(matched.price || item.price || 0)),
+          unit: matched.unit || item.unit || "1 unit",
+          image: matched.image_url || matched.image || item.image || null,
+        };
+      }
+      return {
+        ...item,
+        price: Math.round(Number(item.price || 0)),
+      };
+    });
+  } catch (err) {
+    console.warn("⚠️ enrichWithDbProducts failed:", err.message);
+    return items;
   }
 }
 
@@ -264,7 +308,8 @@ router.post("/chef-chat", async (req, res, next) => {
       if (n8nRes.ok) {
         const n8nData = await n8nRes.json();
         const reply = n8nData.reply || n8nData.response || n8nData.message || n8nData.content;
-        const relatedProducts = n8nData.relatedProducts || [];
+        const rawRelatedProducts = n8nData.relatedProducts || [];
+        const relatedProducts = await enrichWithDbProducts(rawRelatedProducts);
 
         if (conversationId && reply) {
           await saveMessages(conversationId, [
@@ -287,18 +332,34 @@ router.post("/chef-chat", async (req, res, next) => {
           status: "success",
         });
 
-        const recipeBundle = n8nData.recipeBundle || (relatedProducts.length > 0 ? {
-          recipe_name: n8nData.recipeName || "Chef Bems Recommended Recipe Bundle",
-          servings: n8nData.servings || 4,
-          items: relatedProducts.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            unit: p.unit || "1 unit",
-            quantity: p.quantity || 1,
-            checked: true
-          }))
-        } : null);
+        let recipeBundle = null;
+        if (n8nData.recipeBundle && Array.isArray(n8nData.recipeBundle.items)) {
+          const enrichedBundleItems = await enrichWithDbProducts(n8nData.recipeBundle.items);
+          recipeBundle = {
+            ...n8nData.recipeBundle,
+            items: enrichedBundleItems.map(p => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              unit: p.unit || "1 unit",
+              quantity: p.quantity || 1,
+              checked: p.checked !== false
+            }))
+          };
+        } else if (relatedProducts.length > 0) {
+          recipeBundle = {
+            recipe_name: n8nData.recipeName || "Chef Bems Recommended Recipe Bundle",
+            servings: n8nData.servings || 4,
+            items: relatedProducts.map(p => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              unit: p.unit || "1 unit",
+              quantity: p.quantity || 1,
+              checked: true
+            }))
+          };
+        }
 
         let action = n8nData.action || null;
         if (!action && /add\s+(all|to\s+cart|ingredients|these)/i.test(message) && relatedProducts.length > 0) {
@@ -310,7 +371,9 @@ router.post("/chef-chat", async (req, res, next) => {
           relatedProducts,
           recipeBundle,
           action,
-          source: "n8n"
+          source: "n8n",
+          conversationId,
+          sessionId,
         });
       } else {
         throw new Error(`n8n webhook returned status ${n8nRes.status}`);
@@ -390,7 +453,15 @@ router.post("/chef-chat", async (req, res, next) => {
           status: "success",
         });
 
-        return res.json({ reply, relatedProducts, recipeBundle, action, source: "gemini" });
+        return res.json({
+          reply,
+          relatedProducts,
+          recipeBundle,
+          action,
+          source: "gemini",
+          conversationId,
+          sessionId,
+        });
       } catch (geminiErr) {
         console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
 
@@ -422,7 +493,15 @@ router.post("/chef-chat", async (req, res, next) => {
           errorMessage: geminiErr.message,
         });
 
-        return res.json({ reply: fallback, source: "fallback" });
+        return res.json({
+          reply: fallback,
+          relatedProducts: [],
+          recipeBundle: null,
+          action: null,
+          source: "fallback",
+          conversationId,
+          sessionId,
+        });
       }
     }
   } catch (err) {
@@ -656,7 +735,7 @@ router.post("/visual-scan", async (req, res, next) => {
         relatedProducts.push({
           id: p.id,
           name: p.name,
-          price: Math.round((p.price || 2) * NAIRA_PER_UNIT),
+          price: Math.round(p.price || 0),
           unit: p.unit || "1 unit",
           stock: p.stock
         });

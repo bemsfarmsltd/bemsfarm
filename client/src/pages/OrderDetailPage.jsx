@@ -123,7 +123,6 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [toast, setToast] = useState(null);
   const pollingTimerRef = useRef(null);
 
@@ -218,18 +217,6 @@ export default function OrderDetailPage() {
   const daysSinceUpdate =
     (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
   const canReturn = order.status === "delivered" && daysSinceUpdate <= 7;
-  const canCancel = order.status === "pending" || order.status === "confirmed";
-
-  const handleCancel = async () => {
-    setShowCancelConfirm(false);
-    try {
-      await ordersAPI.cancel(order.id, "Cancelled by customer");
-      setOrder((prev) => ({ ...prev, status: "cancelled" }));
-      showToast("Order cancelled");
-    } catch {
-      showToast("Failed to cancel order.", "error");
-    }
-  };
 
   return (
     <div
@@ -242,93 +229,6 @@ export default function OrderDetailPage() {
       }}
     >
       <Toast toast={toast} onClose={() => setToast(null)} />
-
-      {/* Cancel Confirmation Modal */}
-      {showCancelConfirm && (
-        <div
-          onClick={() => setShowCancelConfirm(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 1054,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              borderRadius: 20,
-              width: "100%",
-              maxWidth: 400,
-              padding: 28,
-              textAlign: "center",
-              boxShadow: "0 25px 70px rgba(0,0,0,0.3)",
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                background: "#fee2e2",
-                color: "#dc2626",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 24,
-                margin: "0 auto 16px",
-              }}
-            >
-              ⚠️
-            </div>
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0D1117", margin: "0 0 8px" }}>
-              Cancel this order?
-            </h3>
-            <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.5 }}>
-              This action cannot be undone. Your allocated items will be returned to stock.
-            </p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                style={{
-                  flex: 1,
-                  padding: "12px 0",
-                  borderRadius: 12,
-                  border: "1.5px solid #E5E7EB",
-                  background: "#fff",
-                  color: "#374151",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Keep Order
-              </button>
-              <button
-                onClick={handleCancel}
-                style={{
-                  flex: 1,
-                  padding: "12px 0",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#DC2626",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel Order
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Breadcrumb Navigation */}
       <div
@@ -813,24 +713,6 @@ export default function OrderDetailPage() {
           alignItems: "center",
         }}
       >
-        {canCancel && (
-          <button
-            onClick={() => setShowCancelConfirm(true)}
-            style={{
-              padding: "11px 22px",
-              borderRadius: 12,
-              border: "1.5px solid #EF4444",
-              background: "#FEF2F2",
-              color: "#DC2626",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            Cancel Order
-          </button>
-        )}
-
         {canReturn && (
           <button
             onClick={() => navigate("/returns", { state: { orderId: order.id } })}

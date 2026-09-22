@@ -33,7 +33,6 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
-const { NAIRA_PER_UNIT } = require("../utils/currency");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const { getTaxSettings, computeTax } = require("../utils/taxSettings");
 const { clampLimit } = require("../utils/pagination");

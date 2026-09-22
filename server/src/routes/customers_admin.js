@@ -121,7 +121,9 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         ua.street_address AS verified_address,
         ua.city AS verified_city,
         ua.latitude, ua.longitude,
-        c.status, c.total_orders, c.total_spent,
+        c.status,
+        COALESCE(o_agg.total_orders, c.total_orders, 0) AS total_orders,
+        COALESCE(o_agg.total_spent, c.total_spent, 0)   AS total_spent,
         c.joined_at, c.last_order_at, c.last_login,
         COALESCE(c.last_channel, 'web') AS last_channel,
         COALESCE(cl.points_balance, 0) AS points,
@@ -134,6 +136,11 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS total_orders, COALESCE(SUM(total), 0) AS total_spent
+        FROM orders
+        WHERE (customer_id = c.id OR user_id = c.id) AND status NOT IN ('cancelled', 'refunded')
+      ) o_agg ON true
       LEFT JOIN LATERAL (
         SELECT * FROM user_addresses 
         WHERE user_id = c.id 
@@ -157,7 +164,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         LIMIT 1
       ) dz_match ON true
       ${whereClause}
-      ORDER BY c.total_spent DESC NULLS LAST
+      ORDER BY COALESCE(o_agg.total_spent, c.total_spent, 0) DESC NULLS LAST
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
       params,
@@ -171,8 +178,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         COUNT(*) FILTER (WHERE status = 'active')        AS active,
         COUNT(*) FILTER (WHERE COALESCE(email_verified, false) = false) AS pending_verification,
         COUNT(*) FILTER (WHERE DATE_TRUNC('month', joined_at) = DATE_TRUNC('month', NOW())) AS new_this_month,
-        COALESCE(SUM(total_spent), 0)                    AS total_revenue,
-        COALESCE(AVG(total_spent), 0)                    AS avg_spent
+        COALESCE((SELECT SUM(total) FROM orders WHERE status NOT IN ('cancelled', 'refunded')), 0) AS total_revenue,
+        COALESCE((SELECT AVG(total) FROM orders WHERE status NOT IN ('cancelled', 'refunded')), 0) AS avg_spent
       FROM users
       WHERE role = 'user' AND COALESCE(status, '') != 'deleted' AND COALESCE(name, '') != 'Deleted Customer'
     `);
@@ -252,12 +259,12 @@ router.get(
               COUNT(DISTINCT CASE WHEN o_active.last_order > NOW() - INTERVAL '30 days' THEN u.id END) AS active,
               COALESCE(AVG(o.total), 0)                                                  AS avg_order_value
             FROM users u
-            LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+            LEFT JOIN orders o ON (o.customer_id = u.id OR o.user_id = u.id) AND o.status NOT IN ('cancelled', 'pending')
             LEFT JOIN (
-              SELECT customer_id, MAX(created_at) AS last_order FROM orders
+              SELECT COALESCE(customer_id, user_id) AS uid, MAX(created_at) AS last_order FROM orders
               WHERE status NOT IN ('cancelled', 'pending')
-              GROUP BY customer_id
-            ) o_active ON o_active.customer_id = u.id
+              GROUP BY COALESCE(customer_id, user_id)
+            ) o_active ON o_active.uid = u.id
             WHERE u.status = 'active'
           `),
 
@@ -270,7 +277,7 @@ router.get(
                COALESCE(AVG(o.total), 0)     AS avg_order_value,
                MAX(o.created_at)             AS last_purchase
              FROM users u
-             LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+             LEFT JOIN orders o ON (o.customer_id = u.id OR o.user_id = u.id) AND o.status NOT IN ('cancelled', 'pending')
              WHERE u.role = 'user' ${searchCond} ${dateCond}
              GROUP BY u.id
              ORDER BY ${orderBy}
@@ -297,7 +304,7 @@ router.get(
                 COUNT(o.id)       AS order_count,
                 MAX(o.created_at) AS last_purchase
               FROM users u
-              LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled')
+              LEFT JOIN orders o ON (o.customer_id = u.id OR o.user_id = u.id) AND o.status NOT IN ('cancelled')
               GROUP BY u.id
             ) t
           `),
@@ -750,6 +757,12 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
           THEN c.customer_code
           ELSE 'CUS-' || LPAD(c.id::text, 4, '0')
         END AS customer_code,
+        COALESCE(o_agg.total_orders, c.total_orders, 0) AS total_orders,
+        COALESCE(o_agg.total_spent, c.total_spent, 0)   AS total_spent,
+        COALESCE(
+          c.address,
+          ua.street_address || COALESCE(', ' || ua.city, '') || COALESCE(', ' || ua.state, '')
+        ) AS address,
         COALESCE(cl.points_balance, 0)  AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
         COALESCE(lt.name, 'Bronze')     AS tier,
@@ -761,6 +774,18 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS total_orders, COALESCE(SUM(total), 0) AS total_spent
+        FROM orders
+        WHERE (customer_id = c.id OR user_id = c.id) AND status NOT IN ('cancelled', 'refunded')
+      ) o_agg ON true
+      LEFT JOIN LATERAL (
+        SELECT street_address, city, state
+        FROM user_addresses
+        WHERE user_id = c.id
+        ORDER BY is_default DESC, created_at DESC
+        LIMIT 1
+      ) ua ON true
       WHERE ${isNum ? "(c.id = $1 OR c.customer_code = $2)" : "(c.customer_code = $1 OR LOWER(c.email) = LOWER($1))"}
     `,
       isNum ? [Number(target), target] : [target],
@@ -774,16 +799,18 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
     // Orders with items summary, payment method, delivery status, and channel
     const orders = await pool.query(
       `
-      SELECT id, total, status, delivery_status, payment_method,
+      SELECT id, total, status,
+             COALESCE(tracking_status, status) AS delivery_status,
+             payment_method,
              COALESCE(source, 'web') AS channel, created_at,
         (SELECT STRING_AGG(COALESCE(oi.product_name, p.name) || ' ×' || oi.quantity, ', ')
          FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = o.id) AS items_summary,
         (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) AS items_count
       FROM orders o
-      WHERE customer_id = $1
+      WHERE customer_id = $1 OR user_id = $1
       ORDER BY created_at DESC
-      LIMIT 25
+      LIMIT 50
     `,
       [customer.id],
     ).catch(() => ({ rows: [] }));

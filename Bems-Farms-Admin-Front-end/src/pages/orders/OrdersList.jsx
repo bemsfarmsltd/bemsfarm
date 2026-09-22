@@ -896,6 +896,8 @@ export default function OrdersList() {
                             <div className="text-muted font-monospace" style={{ fontSize: 9 }}>{order.driver.bike}</div>
                           )}
                         </div>
+                      ) : order.status === 'cancelled' ? (
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (Cancelled)</span>
                       ) : isDelivery ? (
                         <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 10 }}>
                           <i className="ri-truck-line me-1" />Awaiting Courier
@@ -1262,6 +1264,15 @@ export default function OrdersList() {
 
                       {/* Action Shortcuts */}
                       <div className="border-top pt-3 mt-4 d-flex flex-column gap-2">
+                        {selected.status === 'cancelled' && (
+                          <div className="alert alert-secondary py-2 small mb-0 d-flex align-items-center gap-2">
+                            <i className="ri-close-circle-line fs-5 text-danger" />
+                            <div>
+                              <div className="fw-bold text-danger">Order Cancelled</div>
+                              <div className="text-muted">This order is cancelled. No further processing or dispatch actions are permitted.</div>
+                            </div>
+                          </div>
+                        )}
                         {selected.status === 'paid' && (
                           <button
                             className="btn btn-primary btn-sm"

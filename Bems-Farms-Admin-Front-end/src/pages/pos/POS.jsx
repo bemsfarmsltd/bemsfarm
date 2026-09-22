@@ -195,12 +195,21 @@ export default function POS() {
   const [heldOrders, setHeldOrders]         = useState([])
   const [orderId, setOrderId]               = useState(genOrderId)
 
+  // Tax configuration (dynamically loaded from Settings → Tax)
+  const [taxConfig, setTaxConfig]           = useState({ enabled: false, rate: 7.5, inclusive: false, label: 'VAT' })
+
   // Calculation
   const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart])
   const discountAmt = Math.round(subtotal * (discountPct / 100))
   const afterDiscount = subtotal - discountAmt
-  const vat = Math.round(afterDiscount * 0.075)
-  const total = afterDiscount + vat
+  const vat = useMemo(() => {
+    if (!taxConfig.enabled || afterDiscount <= 0) return 0
+    if (taxConfig.inclusive) {
+      return Math.round(afterDiscount - afterDiscount / (1 + taxConfig.rate / 100))
+    }
+    return Math.round(afterDiscount * (taxConfig.rate / 100))
+  }, [afterDiscount, taxConfig])
+  const total = taxConfig.inclusive ? afterDiscount : afterDiscount + vat
   const itemCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart])
 
   // Modals
@@ -381,6 +390,21 @@ export default function POS() {
         }
       } catch (e) {
         console.error('Live customers load failed', e)
+      }
+
+      try {
+        const taxRes = await api.get('/admin/settings/tax').catch(() => null)
+        const tData = taxRes?.data?.settings || {}
+        if (tData && isMounted) {
+          setTaxConfig({
+            enabled: tData.tax_enabled === 'true' || tData.tax_enabled === true,
+            rate: parseFloat(tData.tax_rate ?? '7.5') || 0,
+            inclusive: tData.tax_inclusive === 'true' || tData.tax_inclusive === true,
+            label: tData.tax_label || 'VAT',
+          })
+        }
+      } catch (e) {
+        console.error('Tax settings load failed', e)
       }
 
       try {
@@ -1236,7 +1260,9 @@ export default function POS() {
     const unitsSold = 24
     const salesTarget = 100000
     const targetPct = Math.min(100, Math.round((totalSales / salesTarget) * 100))
-    const vatCollected = Math.round((totalSales * 0.075) / 1.075)
+    const vatCollected = taxConfig.enabled
+      ? Math.round((totalSales * (taxConfig.rate / 100)) / (1 + taxConfig.rate / 100))
+      : 0
     const netRevenue = totalSales - vatCollected
     const estCommission = Math.round(totalSales * 0.02)
     const walkinCount = historyList.filter(h => (h.cust || '').toLowerCase().includes('walk-in')).length
@@ -1793,15 +1819,21 @@ export default function POS() {
               </div>
             )}
 
-            <div className="pos-screen-line">
-              <span>VAT (7.5%)</span>
-              <strong>{fmt(vat)}</strong>
-            </div>
+            {taxConfig.enabled && (
+              <div className="pos-screen-line">
+                <span>{taxConfig.label} ({taxConfig.rate}%)</span>
+                <strong>{fmt(vat)}</strong>
+              </div>
+            )}
 
             <div className="pos-screen-total-card">
               <div>
                 <div className="pos-grand-label">TOTAL PAYABLE</div>
-                <div className="pos-grand-sub">INCL. 7.5% VAT</div>
+                <div className="pos-grand-sub">
+                  {taxConfig.enabled
+                    ? (taxConfig.inclusive ? `INCL. ${taxConfig.rate}% ${taxConfig.label}` : `+ ${taxConfig.rate}% ${taxConfig.label}`)
+                    : 'TAX EXEMPT / DISABLED'}
+                </div>
               </div>
               <div className="pos-grand-value">{fmt(total)}</div>
             </div>
@@ -1868,8 +1900,12 @@ export default function POS() {
       {/* ─── Scanner Basket Modal ───────────────────────────────────────── */}
       {activeModal === 'scanner' && (() => {
         const scSub   = scanCart.reduce((s, i) => s + i.price * i.qty, 0)
-        const scVat   = Math.round(scSub * 0.075)
-        const scTotal = scSub + scVat
+        const scVat   = taxConfig.enabled
+          ? (taxConfig.inclusive
+              ? Math.round(scSub - scSub / (1 + taxConfig.rate / 100))
+              : Math.round(scSub * (taxConfig.rate / 100)))
+          : 0
+        const scTotal = taxConfig.inclusive ? scSub : scSub + scVat
 
         return (
           <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" onClick={e => e.target === e.currentTarget && closeModal()}>
@@ -1951,10 +1987,12 @@ export default function POS() {
                         <span>Subtotal ({scanCart.reduce((s, i) => s + i.qty, 0)} items)</span>
                         <strong className="pos-entry-item-title">{fmt(scSub)}</strong>
                       </div>
-                      <div className="d-flex justify-content-between mb-3 fs-13 text-muted">
-                        <span>VAT (7.5%)</span>
-                        <strong className="pos-entry-item-title">{fmt(scVat)}</strong>
-                      </div>
+                      {taxConfig.enabled && (
+                        <div className="d-flex justify-content-between mb-3 fs-13 text-muted">
+                          <span>{taxConfig.label} ({taxConfig.rate}%)</span>
+                          <strong className="pos-entry-item-title">{fmt(scVat)}</strong>
+                        </div>
+                      )}
                       <div className="d-flex justify-content-between mb-4">
                         <span className="fw-bold fs-18 pos-entry-item-title">Total Payable</span>
                         <span className="fw-bolder fs-24 text-emerald">{fmt(scTotal)}</span>
@@ -2826,10 +2864,12 @@ export default function POS() {
                           <td className="text-end fw-bold">− {fmt(discountAmt)}</td>
                         </tr>
                       )}
-                      <tr className="text-muted">
-                        <td colSpan="3" className="text-end">VAT (7.5%)</td>
-                        <td className="text-end">{fmt(vat)}</td>
-                      </tr>
+                      {taxConfig.enabled && (
+                        <tr className="text-muted">
+                          <td colSpan="3" className="text-end">{taxConfig.label} ({taxConfig.rate}%)</td>
+                          <td className="text-end">{fmt(vat)}</td>
+                        </tr>
+                      )}
                       <tr className="border-top fs-15 fw-bold">
                         <td colSpan="3" className="text-end">Total Payable</td>
                         <td className="text-end text-emerald fw-bolder">{fmt(total)}</td>
@@ -3476,7 +3516,7 @@ export default function POS() {
                         <div className="col-6 col-lg-3">
                           <div className="pos-intel-tile">
                             <div className="d-flex justify-content-between align-items-center mb-1.5">
-                              <span className="pos-intel-label"><i className="ri-file-shield-2-line text-blue me-1"></i>Tax & VAT (7.5%)</span>
+                              <span className="pos-intel-label"><i className="ri-file-shield-2-line text-blue me-1"></i>{taxConfig.enabled ? `${taxConfig.label} (${taxConfig.rate}%)` : 'Tax Disabled'}</span>
                               <span className="text-muted text-xs">FIRS Reconciled</span>
                             </div>
                             <div className="pos-intel-num">{fmt(shiftStats.vatCollected)}</div>

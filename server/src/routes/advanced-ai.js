@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
-const { NAIRA_PER_UNIT } = require("../utils/currency");
+// Prices in products table are plain Naira
 
 // ═══════════════════════════════════════════════════════════════
 // PHASE 3: SEMANTIC SEARCH — now a real hybrid system
@@ -226,7 +226,7 @@ router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "man
     }
 
     const product = result.rows[0];
-    const basePrice = parseFloat(product.price) * NAIRA_PER_UNIT;
+    const basePrice = parseFloat(product.price || 0);
     const currentMonth = new Date().toLocaleString("en-US", { month: "short" });
     const currentStock = parseInt(product.stock) || 100;
 

@@ -9,7 +9,6 @@ import api from "../services/api";
 import chefBemsImg from "../assets/chef_bems_cooking.jpg";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 import { escapeHtml } from "../utils/sanitize";
-import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const QUICK_PROMPTS = [
   {
@@ -73,7 +72,7 @@ function formatMessage(text) {
 }
 
 // ── INTERACTIVE RECIPE BUNDLE CARD (AI ADD-TO-CART) ────────────
-function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat }) {
+function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat, isAutoAdded = false, cartItems = [] }) {
   const [selectedItems, setSelectedItems] = useState(() => {
     const initial = {};
     (bundle.items || []).forEach((item) => {
@@ -94,6 +93,21 @@ function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat 
     return activeItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0);
   }, [activeItems]);
 
+  const isItemInCart = (item) => {
+    return cartItems.some((ci) => {
+      const ciId = ci.product?.id || ci.id;
+      const ciName = ci.product?.name || ci.name || "";
+      const matchesId = item.id && ciId && String(ciId) === String(item.id);
+      const matchesName = item.name && ciName && ciName.toLowerCase().trim() === item.name.toLowerCase().trim();
+      return Boolean(matchesId || matchesName);
+    });
+  };
+
+  const allActiveInCart = useMemo(() => {
+    if (activeItems.length === 0) return false;
+    return activeItems.every((item) => isItemInCart(item));
+  }, [activeItems, cartItems]);
+
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-amber-50/70 to-white p-4 shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
@@ -112,6 +126,14 @@ function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat 
         )}
       </div>
 
+      {/* Auto-Added Confirmation Banner */}
+      {(isAutoAdded || bundle.isAutoAdded || allActiveInCart) && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-100/90 border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-900">
+          <span className="text-base">✨</span>
+          <span>Chef Bems has added these recipe ingredients to your active shopping cart!</span>
+        </div>
+      )}
+
       {/* Ingredients Selection Checklist */}
       <div className="my-3 space-y-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -120,6 +142,7 @@ function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat 
         <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
           {(bundle.items || []).map((item) => {
             const isChecked = !!selectedItems[item.id];
+            const inCart = isItemInCart(item);
             return (
               <label
                 key={item.id}
@@ -141,9 +164,23 @@ function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat 
                     <span className="text-[10px] text-slate-500">{item.unit || "1 unit"} &bull; Qty: {item.quantity || 1}</span>
                   </div>
                 </div>
-                <span className="font-black text-emerald-800 shrink-0">
-                  ₦{Number(item.price).toLocaleString()}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <span className="font-black text-emerald-800 block">
+                      ₦{((Number(item.price) || 0) * (item.quantity || 1)).toLocaleString()}
+                    </span>
+                    {(item.quantity || 1) > 1 && (
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        (₦{Number(item.price).toLocaleString()} each)
+                      </span>
+                    )}
+                  </div>
+                  {inCart && (
+                    <span className="rounded-md bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 text-[9px] font-black text-emerald-800">
+                      ✓ In Cart
+                    </span>
+                  )}
+                </div>
               </label>
             );
           })}
@@ -158,18 +195,23 @@ function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {/* Option 1: 1-Click Add Bundle to Cart */}
-          <button
-            type="button"
-            disabled={activeItems.length === 0}
-            onClick={() => onAddItems(activeItems)}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#0A2E1C] hover:bg-[#13422B] text-white py-2 px-3 text-xs font-black shadow-xs transition active:scale-98 disabled:opacity-50 cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-            </svg>
-            <span>🛒 Add All ({activeItems.length}) to Cart</span>
-          </button>
+          {allActiveInCart ? (
+            <div className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-900 py-2 px-3 text-xs font-black shadow-xs">
+              <span>✅ Added to Cart</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={activeItems.length === 0}
+              onClick={() => onAddItems(activeItems)}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#0A2E1C] hover:bg-[#13422B] text-white py-2 px-3 text-xs font-black shadow-xs transition active:scale-98 disabled:opacity-50 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <span>🛒 Add All ({activeItems.length}) to Cart</span>
+            </button>
+          )}
 
           {/* Option 3: Instant Express Checkout */}
           <button
@@ -255,11 +297,17 @@ export default function ChefBemsPage() {
         const list = res.data.conversations || [];
         setConversations(list);
         
-        // Auto load latest active conversation if we have past sessions
-        if (list.length > 0) {
+        // If we have an active conversation, keep it loaded; if not, only load if on blank welcome screen
+        const currentMessages = useChefStore.getState().messages;
+        const currentActiveId = useChefStore.getState().activeConversationId;
+        
+        if (currentActiveId) {
+          const activeConv = list.find((c) => c.id === currentActiveId);
+          if (activeConv) {
+            handleSelectConversation(activeConv);
+          }
+        } else if (currentMessages.length <= 1 && list.length > 0) {
           handleSelectConversation(list[0]);
-        } else {
-          clearChat();
         }
       } catch (err) {
         console.warn("Failed to load initial conversations:", err);
@@ -417,21 +465,37 @@ export default function ChefBemsPage() {
   const handleBundleAddItems = (items) => {
     const formatted = items.map((i) => ({
       ...i,
-      price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
+      price: Number(i.price) || 0,
       quantity: i.quantity || 1,
     }));
-    addMultipleToCart(formatted);
-    showToast(`🛒 Added ${items.length} recipe ingredients to your cart!`);
-    openCartDrawer();
+
+    // Filter out items already in the cart
+    const itemsToAdd = formatted.filter((item) => {
+      return !cartItems.some((ci) => {
+        const ciId = ci.product?.id || ci.id;
+        const ciName = ci.product?.name || ci.name || "";
+        const matchesId = item.id && ciId && String(ciId) === String(item.id);
+        const matchesName = item.name && ciName && ciName.toLowerCase().trim() === item.name.toLowerCase().trim();
+        return Boolean(matchesId || matchesName);
+      });
+    });
+
+    if (itemsToAdd.length === 0) {
+      showToast("✨ All selected recipe ingredients are already in your cart!", "info");
+      return;
+    }
+
+    addMultipleToCart(itemsToAdd, { preventDuplicate: true });
+    showToast(`🛒 Added ${itemsToAdd.length} recipe ingredient(s) to your cart!`);
   };
 
   const handleBundleInstantCheckout = (items) => {
     const formatted = items.map((i) => ({
       ...i,
-      price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
+      price: Number(i.price) || 0,
       quantity: i.quantity || 1,
     }));
-    addMultipleToCart(formatted);
+    addMultipleToCart(formatted, { preventDuplicate: true });
     navigate("/checkout");
   };
 
@@ -445,7 +509,7 @@ export default function ChefBemsPage() {
       .map((item) => {
         const name = item.product?.name || item.name;
         const qty = item.quantity || 1;
-        const price = (item.product?.price || item.price || 0) * NAIRA_PER_UNIT;
+        const price = Number(item.product?.price || item.price || 0);
         return `• ${qty}x ${name} (₦${(price * qty).toLocaleString()})`;
       })
       .join("\n");
@@ -498,44 +562,45 @@ export default function ChefBemsPage() {
 
       const data = await callChefChat(payload);
 
+      const isAutoAdd = data.action === "AUTO_ADD_TO_CART";
+      const itemsToAdd = data.recipeBundle?.items || data.relatedProducts || [];
+
+      // Handle Option 2: AI Direct Intent Auto-Add
+      if (isAutoAdd && itemsToAdd.length > 0) {
+        const formatted = itemsToAdd.map((i) => ({
+          ...i,
+          price: Number(i.price) || 0,
+          quantity: i.quantity || 1,
+        }));
+        addMultipleToCart(formatted, { preventDuplicate: true });
+        showToast(`✨ Chef Bems added ${itemsToAdd.length} ingredient(s) directly to your active cart!`);
+      }
+
       addMessage({
         id: `${Date.now()}-a`,
         role: "assistant",
         content: data.reply || "I did not catch that. Could you please rephrase?",
         timestamp: new Date().toISOString(),
         relatedProducts: data.relatedProducts || [],
-        recipeBundle: data.recipeBundle || null,
+        recipeBundle: data.recipeBundle ? { ...data.recipeBundle, isAutoAdded: isAutoAdd } : null,
+        autoAdded: isAutoAdd,
       });
 
-      // Handle Option 2: AI Direct Intent Auto-Add
-      if (data.action === "AUTO_ADD_TO_CART") {
-        const itemsToAdd = data.recipeBundle?.items || data.relatedProducts || [];
-        if (itemsToAdd.length > 0) {
-          const formatted = itemsToAdd.map((i) => ({
-            ...i,
-            price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
-            quantity: i.quantity || 1,
-          }));
-          addMultipleToCart(formatted);
-          showToast(`✨ Chef Bems added ${itemsToAdd.length} ingredient(s) directly to your active cart!`);
-        }
+      if (data.conversationId) {
+        useChefStore.setState({ activeConversationId: data.conversationId });
       }
 
-      // Automatically capture new conversation on list
-      if (user && !activeConversationId) {
+      // Refresh sidebar threads list silently without resetting the active chat
+      if (user) {
         setTimeout(async () => {
           try {
             const listRes = await api.get("/ai/context/conversations?bot_type=chef&limit=50");
             const list = listRes.data.conversations || [];
             setConversations(list);
-            const match = list.find((c) => c.session_id === sessionId);
-            if (match) {
-              useChefStore.setState({ activeConversationId: match.id });
-            }
           } catch (err) {
             console.warn("Failed to update active conversation list:", err);
           }
-        }, 1200);
+        }, 1500);
       }
     } catch (err) {
       addMessage({
@@ -572,7 +637,7 @@ export default function ChefBemsPage() {
 
   const handleAddProduct = (e, product) => {
     e.stopPropagation();
-    addToCart({ ...product, price: product.price / NAIRA_PER_UNIT });
+    addToCart({ ...product, price: Number(product.price) || 0 });
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
     showToast(`🛒 Added ${product.name} to cart`);
     setTimeout(() => {
@@ -974,6 +1039,8 @@ export default function ChefBemsPage() {
                                 onAddItems={handleBundleAddItems}
                                 onInstantCheckout={handleBundleInstantCheckout}
                                 onPromptChat={(p) => sendMessage(p)}
+                                isAutoAdded={msg.autoAdded || msg.recipeBundle?.isAutoAdded}
+                                cartItems={cartItems}
                               />
                             )}
 
@@ -985,31 +1052,46 @@ export default function ChefBemsPage() {
                                 </span>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {msg.relatedProducts.map((product, pIdx) => (
-                                    <div
-                                      key={pIdx}
-                                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#FAF9F6] p-2.5 shadow-2xs"
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="truncate text-xs font-bold text-slate-900">{product.name}</p>
-                                        <p className="text-[11px] font-bold text-emerald-800">
-                                          ₦{Number(product.price).toLocaleString()}
-                                        </p>
-                                      </div>
+                                  {msg.relatedProducts.map((product, pIdx) => {
+                                    const inCart =
+                                      msg.autoAdded ||
+                                      addedIds[product.id] ||
+                                      cartItems.some((ci) => {
+                                        const ciId = ci.product?.id || ci.id;
+                                        const ciName = ci.product?.name || ci.name || "";
+                                        const matchesId = product.id && ciId && String(ciId) === String(product.id);
+                                        const matchesName = product.name && ciName && ciName.toLowerCase().trim() === product.name.toLowerCase().trim();
+                                        return Boolean(matchesId || matchesName);
+                                      });
 
-                                      <button
-                                        type="button"
-                                        onClick={(e) => handleAddProduct(e, product)}
-                                        className={`rounded-lg px-3 py-1.5 text-[11px] font-black transition cursor-pointer shrink-0 ${
-                                          addedIds[product.id]
-                                            ? "bg-emerald-700 text-white"
-                                            : "bg-[#0A2E1C] hover:bg-[#14422B] text-white"
-                                        }`}
+                                    return (
+                                      <div
+                                        key={pIdx}
+                                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#FAF9F6] p-2.5 shadow-2xs"
                                       >
-                                        {addedIds[product.id] ? "Added" : "+ Add"}
-                                      </button>
-                                    </div>
-                                  ))}
+                                        <div className="min-w-0">
+                                          <p className="truncate text-xs font-bold text-slate-900">{product.name}</p>
+                                          <p className="text-[11px] font-bold text-emerald-800">
+                                            ₦{Number(product.price).toLocaleString()}
+                                          </p>
+                                        </div>
+
+                                        {inCart ? (
+                                          <span className="rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 px-2.5 py-1 text-[11px] font-black shrink-0">
+                                            ✓ In Cart
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleAddProduct(e, product)}
+                                            className="rounded-lg px-3 py-1.5 text-[11px] font-black transition cursor-pointer shrink-0 bg-[#0A2E1C] hover:bg-[#14422B] text-white"
+                                          >
+                                            + Add
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}

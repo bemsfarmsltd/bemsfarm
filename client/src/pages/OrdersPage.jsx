@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 
@@ -130,8 +129,26 @@ const ORDERS_CSS = `
 }
 .op-header-value.price {
   color: #1B4332;
-  font-family: var(--heading-font), sans-serif;
-  font-size: 14px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+.op-header-subtext {
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.op-item-price-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #15803D;
+  margin-top: 4px;
 }
 .op-header-value.order-num {
   font-size: 12px;
@@ -332,9 +349,6 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all");
-  const [cancelModal, setCancelModal] = useState(null);
-  const [cancelReason, setCancelReason] = useState("");
-  const [cancelling, setCancelling] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = "success") => {
@@ -361,24 +375,6 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  const handleCancel = async () => {
-    if (!cancelReason.trim()) return showToast("Please enter a reason", "error");
-    setCancelling(true);
-    try {
-      await api.patch(`/orders/${cancelModal.id}/cancel`, {
-        reason: cancelReason,
-      });
-      setCancelModal(null);
-      setCancelReason("");
-      showToast("Order cancelled");
-      fetchOrders();
-    } catch (err) {
-      showToast(err.response?.data?.message || "Cancellation failed", "error");
-    } finally {
-      setCancelling(false);
-    }
-  };
-
   const handleReorder = async (order) => {
     const items = order.items || [];
     const skipped = [];
@@ -398,14 +394,11 @@ export default function OrdersPage() {
           skipped.push(item.name);
           continue;
         }
+        const itemPrice = Number(product.price || item.price || 0);
         addToCart({
           id: item.product_id,
           name: item.name,
-          // order_items.price is stored in full Naira (server multiplies by
-          // NAIRA_PER_UNIT at order time) — divide back out so it matches the
-          // base-unit convention CartContext expects, or reordering silently
-          // inflates the cart total by NAIRA_PER_UNIT (1500x).
-          price: item.price / NAIRA_PER_UNIT,
+          price: itemPrice,
           image_url: item.image_url || getProductImage(item),
           stock_quantity: stock,
         });
@@ -603,6 +596,7 @@ export default function OrdersPage() {
                     <div className="op-header-col">
                       <span className="op-header-label">Total</span>
                       <span className="op-header-value price">₦{(parseFloat(order.total) || 0).toLocaleString()}</span>
+                      <span className="op-header-subtext">incl. delivery fee</span>
                     </div>
 
                     <div className="op-header-col">
@@ -633,9 +627,19 @@ export default function OrdersPage() {
                                 {statusConfig.icon} {statusConfig.label}
                               </span>
                             </div>
-                            <p className="op-item-desc">
+                            <p className="op-item-desc" style={{ marginBottom: item.price ? "2px" : "0" }}>
                               Premium organic products directly sourced from Bems Farm fields.
                             </p>
+                            {item.price ? (
+                              <div className="op-item-price-tag">
+                                <span>₦{(parseFloat(item.price) || 0).toLocaleString()} each</span>
+                                {Number(item.quantity) > 1 && (
+                                  <span style={{ color: "#4B5563", fontWeight: 500 }}>
+                                    · Subtotal: ₦{((parseFloat(item.price) || 0) * Number(item.quantity)).toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
@@ -659,12 +663,6 @@ export default function OrdersPage() {
                               >
                                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", display: "inline-block" }} />
                                 <span>Track &amp; Live Map</span>
-                              </button>
-                            )}
-
-                            {(order.status === "pending" || order.status === "confirmed") && (
-                              <button className="op-secondary-btn" style={{ color: "#EF4444", borderColor: "#EF4444" }} onClick={() => setCancelModal(order)}>
-                                Cancel Order
                               </button>
                             )}
 
@@ -697,135 +695,6 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* Cancel Order Modal */}
-      <AnimatePresence>
-        {cancelModal && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "20px",
-            }}
-            onClick={(e) => e.target === e.currentTarget && setCancelModal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              style={{
-                backgroundColor: "white",
-                borderRadius: "24px",
-                padding: "28px",
-                width: "100%",
-                maxWidth: "440px",
-                fontFamily: "var(--body-font)"
-              }}
-            >
-              <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "20px", fontWeight: 800, marginBottom: "8px", color: "#111827" }}>
-                Cancel Order #{cancelModal.id}?
-              </h3>
-              <p style={{ color: "#6B7280", fontSize: "14px", marginBottom: "20px", lineHeight: 1.5 }}>
-                This action cannot be undone. A refund will be processed in 3-5 business days.
-              </p>
-
-              <label style={{ fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "8px", display: "block" }}>
-                Why are you cancelling? *
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-                {[
-                  "Changed my mind",
-                  "Ordered by mistake",
-                  "Found a better price",
-                  "Taking too long",
-                  "Other",
-                ].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setCancelReason(r)}
-                    style={{
-                      padding: "10px 14px",
-                      borderRadius: "10px",
-                      textAlign: "left",
-                      border: `2px solid ${cancelReason === r ? "#2E7D32" : "#E5E7EB"}`,
-                      backgroundColor: cancelReason === r ? "rgba(46, 125, 50, 0.04)" : "white",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      fontFamily: "var(--body-font)",
-                      color: cancelReason === r ? "#2E7D32" : "#4B5563",
-                      fontWeight: cancelReason === r ? 700 : 400,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-
-              <textarea
-                value={cancelReason === "Other" ? "" : cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="Or type your own reason..."
-                rows={2}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "10px",
-                  fontSize: "14px",
-                  outline: "none",
-                  resize: "none",
-                  fontFamily: "var(--body-font)",
-                  marginBottom: "20px",
-                  boxSizing: "border-box",
-                }}
-              />
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  onClick={() => setCancelModal(null)}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    border: "1px solid #E5E7EB",
-                    borderRadius: "12px",
-                    backgroundColor: "white",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    fontFamily: "var(--body-font)",
-                    fontSize: "14px",
-                    color: "#4B5563"
-                  }}
-                >
-                  Keep Order
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={!cancelReason || cancelling}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    border: "none",
-                    borderRadius: "12px",
-                    backgroundColor: !cancelReason ? "#9CA3AF" : "#EF4444",
-                    color: "white",
-                    cursor: !cancelReason ? "not-allowed" : "pointer",
-                    fontWeight: 700,
-                    fontFamily: "var(--body-font)",
-                    fontSize: "14px",
-                  }}
-                >
-                  {cancelling ? "..." : "Cancel Order"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </PageWrapper>
   );
 }

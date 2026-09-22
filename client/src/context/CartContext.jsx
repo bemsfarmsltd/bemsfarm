@@ -59,7 +59,7 @@ export function CartProvider({ children }) {
     });
   };
 
-  const addMultipleToCart = (items) => {
+  const addMultipleToCart = (items, options = {}) => {
     if (!Array.isArray(items) || items.length === 0) return;
     setCart((prev) => {
       const updated = { ...prev };
@@ -69,7 +69,16 @@ export function CartProvider({ children }) {
         const currentQty = updated[prod.id]?.quantity || 0;
         const effStock = Math.max(Number(prod.stock_quantity || 0), Number(prod.stock || 0));
         const maxQty = effStock > 0 ? effStock : Infinity;
-        const nextQty = Math.min(currentQty + addQty, maxQty);
+        
+        let nextQty;
+        if (options.preventDuplicate && currentQty > 0) {
+          // If item already exists, ensure it has at least the required quantity without doubling
+          nextQty = Math.min(Math.max(currentQty, addQty), maxQty);
+        } else if (options.setExact) {
+          nextQty = Math.min(addQty, maxQty);
+        } else {
+          nextQty = Math.min(currentQty + addQty, maxQty);
+        }
         updated[prod.id] = { product: prod, quantity: nextQty };
       });
       return updated;
