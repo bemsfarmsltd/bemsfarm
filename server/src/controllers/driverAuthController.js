@@ -210,33 +210,17 @@ const register = async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    // Auto-provision Monnify Reserved Account in background
-    (async () => {
-      try {
-        const { createMonnifyReservedAccount } = require("../utils/monnify");
-        const monnifyRes = await createMonnifyReservedAccount({
-          accountReference: `DRV_BEMS_${newDriver.id}_${Date.now()}`,
-          accountName: `BEMS - ${newDriver.name.toUpperCase()}`,
-          customerEmail: newDriver.email || `driver_${newDriver.id}@bemsfarms.com`,
-          customerName: newDriver.name,
-        });
-
-        if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
-          const primary = monnifyRes.accounts[0];
-          await pool.query(
-            `UPDATE drivers 
-             SET wallet_account_number = $1, 
-                 wallet_bank_name = $2, 
-                 wallet_account_name = $3, 
-                 updated_at = NOW() 
-             WHERE id = $4`,
-            [primary.accountNumber, primary.bankName || "Wema Bank / Monnify", primary.accountName || `BEM - ${newDriver.name.toUpperCase()}`, newDriver.id]
-          );
-        }
-      } catch (monErr) {
-        console.warn("[driver-reg] Monnify provisioning notice:", monErr.message);
-      }
-    })();
+    // Auto-generate internal Bems Farms Wallet account number (e.g. 8550000012)
+    const internalWalletNum = "855" + String(newDriver.id).padStart(7, "0");
+    await pool.query(
+      `UPDATE drivers 
+       SET wallet_account_number = $1, 
+           wallet_bank_name = $2, 
+           wallet_account_name = $3, 
+           updated_at = NOW() 
+       WHERE id = $4`,
+      [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${newDriver.name.toUpperCase()}`, newDriver.id]
+    );
 
     const token = generateDriverToken(newDriver);
 
@@ -373,37 +357,22 @@ const login = async (req, res, next) => {
       [authRecord.id]
     );
 
-    // Auto-provision wallet / Monnify Virtual Account if not yet generated
+    // Auto-generate internal Bems Farms Wallet account number if not yet set
     let walletAccountNumber = driver.wallet_account_number;
-    let walletBankName = driver.wallet_bank_name || "Monnify / Wema Bank";
+    let walletBankName = driver.wallet_bank_name || "Bems Farms Internal Wallet";
     let walletAccountName = driver.wallet_account_name || `BEMS - ${driver.name.toUpperCase()}`;
 
     if (!walletAccountNumber) {
       walletAccountNumber = "855" + String(driver.id).padStart(7, "0");
-      try {
-        const { createMonnifyReservedAccount } = require("../utils/monnify");
-        createMonnifyReservedAccount({
-          accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
-          accountName: `BEMS - ${driver.name.toUpperCase()}`,
-          customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
-          customerName: driver.name,
-        }).then(async (monnifyRes) => {
-          if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
-            const primary = monnifyRes.accounts[0];
-            await pool.query(
-              `UPDATE drivers 
-               SET wallet_account_number = $1, 
-                   wallet_bank_name = $2, 
-                   wallet_account_name = $3, 
-                   updated_at = NOW() 
-               WHERE id = $4`,
-              [primary.accountNumber, primary.bankName || "Monnify / Wema Bank", primary.accountName || `BEMS - ${driver.name.toUpperCase()}`, driver.id]
-            );
-          }
-        }).catch((e) => console.warn("[driver-login] Monnify wallet provisioning note:", e.message));
-      } catch (e) {
-        console.warn("[driver-login] Wallet initialization note:", e.message);
-      }
+      await pool.query(
+        `UPDATE drivers 
+         SET wallet_account_number = $1, 
+             wallet_bank_name = $2, 
+             wallet_account_name = $3, 
+             updated_at = NOW() 
+         WHERE id = $4`,
+        [walletAccountNumber, walletBankName, walletAccountName, driver.id]
+      );
     }
 
     const isVerified = driver.status === "active";

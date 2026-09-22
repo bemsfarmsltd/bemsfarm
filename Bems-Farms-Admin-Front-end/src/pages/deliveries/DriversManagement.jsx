@@ -129,6 +129,7 @@ export default function DriversManagement() {
   const [saving, setSaving] = useState(false)
   const [onboardedCredentials, setOnboardedCredentials] = useState(null)
   const [updatingPassword, setUpdatingPassword] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Driver Payouts & Wallets State
   const [payouts, setPayouts] = useState([])
@@ -382,6 +383,21 @@ export default function DriversManagement() {
       load()
     } catch {
       toast.error('Failed to suspend driver')
+    }
+  }
+
+  async function deleteDriver() {
+    if (!selected) return
+    setDeleting(true)
+    try {
+      const res = await api.delete(`/admin/deliveries/drivers/${selected.id}`)
+      toast.success(res.data?.message || 'Driver deleted successfully')
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete driver')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -804,25 +820,26 @@ export default function DriversManagement() {
                             <StarRating rating={driver.rating} />
                           </td>
 
-                          {/* Earnings & Wallet Account */}
+                          {/* Earnings & Settlement Bank */}
                           <td>
                             <div className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</div>
                             <div className="d-flex align-items-center gap-1 mt-0.5" style={{ fontSize: 11 }}>
-                              <span className="badge bg-primary-subtle text-primary font-monospace px-1.5 py-0.5">
-                                Acct: {driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0'))}
+                              <span className="badge bg-light text-dark border font-monospace px-1.5 py-0.5">
+                                {driver.bank_name ? `${driver.bank_name} · ${driver.account_number || 'No NUBAN'}` : (driver.account_number || 'Bank Not Set')}
                               </span>
-                              <button
-                                type="button"
-                                className="btn btn-link p-0 text-muted"
-                                title="Copy Driver Dedicated Virtual Account"
-                                onClick={() => {
-                                  const num = driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0'))
-                                  navigator.clipboard.writeText(num)
-                                  toast.success(`Copied Wallet Acct: ${num}`)
-                                }}
-                              >
-                                <i className="ri-file-copy-line" style={{ fontSize: 11 }} />
-                              </button>
+                              {driver.account_number && (
+                                <button
+                                  type="button"
+                                  className="btn btn-link p-0 text-muted"
+                                  title="Copy Driver Settlement NUBAN"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(driver.account_number)
+                                    toast.success(`Copied Settlement NUBAN: ${driver.account_number}`)
+                                  }}
+                                >
+                                  <i className="ri-file-copy-line" style={{ fontSize: 11 }} />
+                                </button>
+                              )}
                             </div>
                           </td>
 
@@ -870,7 +887,7 @@ export default function DriversManagement() {
                               ) : (
                                 driver.status !== 'on_delivery' && (
                                   <button
-                                    className="btn btn-sm btn-outline-danger"
+                                    className="btn btn-sm btn-outline-warning"
                                     title="Suspend Driver"
                                     onClick={() => openModal('suspend', driver)}
                                   >
@@ -878,6 +895,14 @@ export default function DriversManagement() {
                                   </button>
                                 )
                               )}
+
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                title="Delete Driver Permanently"
+                                onClick={() => openModal('delete', driver)}
+                              >
+                                <i className="ri-delete-bin-line" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2067,6 +2092,43 @@ export default function DriversManagement() {
                   <button className="btn btn-danger flex-fill fw-bold" onClick={suspendDriver} disabled={!suspendNote}>
                     <i className="ri-forbid-line me-1" />
                     Suspend Driver
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 6. DELETE DRIVER MODAL ────────────────────────── */}
+          {activeModal === 'delete' && selected && (
+            <div
+              style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440 }}
+              className="shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom bg-danger bg-opacity-10">
+                <h5 className="mb-0 text-danger fw-bold font-display d-flex align-items-center gap-2">
+                  <i className="ri-delete-bin-line fs-5" />
+                  Delete Driver Permanently
+                </h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}>
+                  <i className="ri-close-line" />
+                </button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-danger mb-3 small">
+                  <i className="ri-error-warning-line me-1 fw-bold"></i>
+                  Are you sure you want to permanently delete <strong>{selected.name}</strong> ({selected.phone || selected.email})?
+                  <div className="mt-1 text-muted">
+                    This will permanently remove the driver profile, their Dedicated Virtual Account record, commission records, and GPS tracking data.
+                  </div>
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={deleting}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-danger flex-fill fw-bold d-flex align-items-center justify-content-center gap-1" onClick={deleteDriver} disabled={deleting}>
+                    <i className={deleting ? 'ri-loader-4-line ri-spin' : 'ri-delete-bin-line'} />
+                    {deleting ? 'Deleting...' : 'Yes, Delete Driver'}
                   </button>
                 </div>
               </div>

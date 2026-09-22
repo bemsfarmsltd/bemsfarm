@@ -61,6 +61,9 @@ export default function WalletManagement() {
   const [newRate, setNewRate] = useState('')
   const [savingRate, setSavingRate] = useState(false)
 
+  const [deleteModalDriver, setDeleteModalDriver] = useState(null)
+  const [deletingDriver, setDeletingDriver] = useState(false)
+
   const [disburseModalPayout, setDisburseModalPayout] = useState(null)
   const [disburseForm, setDisburseForm] = useState({
     disbursement_method: 'monnify_transfer',
@@ -155,6 +158,22 @@ export default function WalletManagement() {
       toast.error(err.response?.data?.message || 'Failed to apply adjustment')
     } finally {
       setAdjusting(false)
+    }
+  }
+
+  // 1b. Delete Driver
+  const confirmDeleteDriver = async () => {
+    if (!deleteModalDriver) return
+    setDeletingDriver(true)
+    try {
+      const res = await api.delete(`/admin/wallets/drivers/${deleteModalDriver.id}`)
+      toast.success(res.data?.message || 'Driver deleted successfully')
+      setDeleteModalDriver(null)
+      fetchAllData()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete driver')
+    } finally {
+      setDeletingDriver(false)
     }
   }
 
@@ -390,14 +409,14 @@ export default function WalletManagement() {
               FINANCIAL COMMAND CENTER
             </span>
             <span className="badge px-2 py-1" style={{ background: '#EFF6FF', color: '#2563EB', fontWeight: 600, fontSize: 11 }}>
-              ZONE-BASED EARNINGS &amp; MONNIFY LIVE
+              ZONE COMMISSIONS &amp; BANK PAYOUTS
             </span>
           </div>
           <h2 className="mb-0 font-weight-bold" style={{ color: '#0F172A', fontSize: 24, letterSpacing: '-0.02em' }}>
             Enterprise Wallet &amp; Payment Gateway Hub
           </h2>
           <p className="text-muted small mb-0 mt-1">
-            Zone-based driver commissions, dedicated inflow virtual accounts (DVA), Monnify merchant liquidity, batch payouts, and financial governance.
+            Zone-based driver commissions, live wallet balances, Monnify disbursement liquidity, 24-hour bank payouts, and financial governance.
           </p>
         </div>
 
@@ -558,7 +577,7 @@ export default function WalletManagement() {
                 onClick={() => handleTabChange('wallets')}
               >
                 <i className="ri-wallet-3-line"></i>
-                <span>Dedicated DVA Wallets</span>
+                <span>Driver Commission Wallets</span>
                 <span className="badge ms-1" style={{ background: activeTab === 'wallets' ? 'rgba(255,255,255,0.25)' : '#E2E8F0', color: activeTab === 'wallets' ? '#FFFFFF' : '#334155' }}>
                   {summaryData.drivers.length}
                 </span>
@@ -681,7 +700,7 @@ export default function WalletManagement() {
               <thead className="table-light text-muted text-uppercase" style={{ fontSize: 11, letterSpacing: 0.6 }}>
                 <tr>
                   <th className="ps-3 py-3">Driver Profile</th>
-                  <th>Dedicated Inflow DVA</th>
+                  <th>Settlement Bank (NUBAN)</th>
                   <th>Total Gross</th>
                   <th>Disbursed</th>
                   <th>Pending Hold</th>
@@ -731,27 +750,29 @@ export default function WalletManagement() {
                       <td>
                         <div className="d-flex align-items-center gap-2">
                           <div>
-                            <span className="font-monospace font-weight-bold text-primary" style={{ fontSize: 13 }}>
-                              {driver.wallet_account_number}
+                            <span className="font-monospace font-weight-bold text-dark" style={{ fontSize: 13 }}>
+                              {driver.account_number || 'NUBAN Not Set'}
                             </span>
-                            <div className="text-muted" style={{ fontSize: 11 }}>
-                              {driver.wallet_bank_name}
+                            <div className="text-primary font-weight-bold" style={{ fontSize: 11 }}>
+                              {driver.bank_name || 'Bank Not Configured'}
                             </div>
-                            <div className="text-secondary" style={{ fontSize: 10 }}>
-                              {driver.wallet_account_name}
+                            <div className="text-muted" style={{ fontSize: 10 }}>
+                              {driver.account_name || driver.name}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light p-1 text-muted"
-                            title="Copy DVA"
-                            onClick={() => {
-                              navigator.clipboard.writeText(driver.wallet_account_number)
-                              toast.success('DVA Account copied!')
-                            }}
-                          >
-                            <i className="ri-file-copy-line"></i>
-                          </button>
+                          {driver.account_number && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-light p-1 text-muted"
+                              title="Copy Settlement NUBAN"
+                              onClick={() => {
+                                navigator.clipboard.writeText(driver.account_number)
+                                toast.success('Settlement NUBAN copied!')
+                              }}
+                            >
+                              <i className="ri-file-copy-line"></i>
+                            </button>
+                          )}
                         </div>
                       </td>
                       <td className="font-weight-bold text-dark">
@@ -834,6 +855,14 @@ export default function WalletManagement() {
                             onClick={() => handleToggleFreeze(driver)}
                           >
                             <i className={driver.wallet_is_frozen ? 'ri-lock-unlock-line' : 'ri-lock-2-line'}></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger px-2"
+                            title="Delete Driver Permanently"
+                            onClick={() => setDeleteModalDriver(driver)}
+                          >
+                            <i className="ri-delete-bin-line"></i>
                           </button>
                         </div>
                       </td>
@@ -2256,6 +2285,45 @@ export default function WalletManagement() {
                 </button>
                 <button type="button" className="btn btn-primary" onClick={() => window.print()}>
                   <i className="ri-printer-line"></i> Print Slip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 11. Delete Driver Confirmation Modal */}
+      {deleteModalDriver && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 440 }}>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: 16 }}>
+              <div className="modal-header border-bottom border-danger border-opacity-25 bg-danger bg-opacity-10 p-3">
+                <h5 className="modal-title font-weight-bold text-danger d-flex align-items-center gap-2 mb-0">
+                  <i className="ri-delete-bin-line fs-5"></i> Delete Driver Permanently
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setDeleteModalDriver(null)} disabled={deletingDriver}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="alert alert-danger mb-3 small">
+                  <i className="ri-error-warning-line me-1 fw-bold"></i>
+                  Are you sure you want to permanently delete <strong>{deleteModalDriver.name}</strong> ({deleteModalDriver.phone || deleteModalDriver.email})?
+                  <div className="mt-2 text-muted">
+                    This will permanently remove the driver profile, their Dedicated Virtual Account record ({deleteModalDriver.wallet_account_number}), commissions, and GPS tracking logs.
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-top border-secondary border-opacity-10 p-3">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setDeleteModalDriver(null)} disabled={deletingDriver}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger font-weight-bold d-flex align-items-center gap-1"
+                  onClick={confirmDeleteDriver}
+                  disabled={deletingDriver}
+                >
+                  <i className={deletingDriver ? 'ri-loader-4-line ri-spin' : 'ri-delete-bin-line'}></i>
+                  {deletingDriver ? 'Deleting...' : 'Yes, Delete Driver'}
                 </button>
               </div>
             </div>

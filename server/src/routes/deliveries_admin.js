@@ -619,32 +619,18 @@ router.patch(
 
         await client.query("COMMIT");
 
-        // Auto-provision Monnify Dedicated Virtual Account upon approval
+        // Auto-generate internal Bems Farms Wallet account number upon approval
         if (!driver.wallet_account_number) {
-          try {
-            const { createMonnifyReservedAccount } = require("../utils/monnify");
-            createMonnifyReservedAccount({
-              accountReference: `DRV_BEMS_${driver.id}_${Date.now()}`,
-              accountName: `BEMS - ${driver.name.toUpperCase()}`,
-              customerEmail: driver.email || `driver_${driver.id}@bemsfarms.com`,
-              customerName: driver.name,
-            }).then(async (monnifyRes) => {
-              if (monnifyRes?.accounts && monnifyRes.accounts.length > 0) {
-                const primary = monnifyRes.accounts[0];
-                await pool.query(
-                  `UPDATE drivers 
-                   SET wallet_account_number = $1, 
-                       wallet_bank_name = $2, 
-                       wallet_account_name = $3, 
-                       updated_at = NOW() 
-                   WHERE id = $4`,
-                  [primary.accountNumber, primary.bankName, primary.accountName, driver.id]
-                );
-              }
-            }).catch((err) => console.warn("Background Monnify provisioning notice:", err.message));
-          } catch (e) {
-            console.warn("Monnify init error:", e.message);
-          }
+          const internalWalletNum = "855" + String(driver.id).padStart(7, "0");
+          await pool.query(
+            `UPDATE drivers 
+             SET wallet_account_number = $1, 
+                 wallet_bank_name = $2, 
+                 wallet_account_name = $3, 
+                 updated_at = NOW() 
+             WHERE id = $4`,
+            [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${driver.name.toUpperCase()}`, driver.id]
+          );
         }
 
         // Send approval congratulations email to driver
@@ -1032,6 +1018,90 @@ router.patch(
     }
   }
 );
+
+// ── DELETE /api/admin/deliveries/drivers/:id ────────────────────────
+router.delete(
+  "/drivers/:id",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const { id } = req.params;
+
+      const driverRes = await client.query("SELECT * FROM drivers WHERE id = $1", [id]);
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+
+      // Check if driver is currently on an active delivery in progress
+      const activeDelivery = await client.query(
+        "SELECT id, status FROM deliveries WHERE driver_id = $1 AND status IN ('assigned', 'picked_up', 'out_for_delivery', 'en_route', 'arrived')",
+        [id]
+      );
+
+      if (activeDelivery.rows.length > 0) {
+        return res.status(400).json({
+          message: `Cannot delete driver '${driver.name}' because they are currently assigned to active delivery #${activeDelivery.rows[0].id}. Please complete or reassign the delivery first.`
+        });
+      }
+
+      await client.query("BEGIN");
+
+      // 1. Clean up driver location tracking pings
+      await client.query("DELETE FROM driver_locations WHERE driver_id = $1", [id]);
+
+      // 2. Clean up driver availability records
+      await client.query("DELETE FROM driver_availability WHERE driver_id = $1", [id]);
+
+      // 3. Clean up driver notifications & device tokens
+      await client.query("DELETE FROM driver_notifications WHERE driver_id = $1", [id]);
+      await client.query("DELETE FROM driver_device_tokens WHERE driver_id = $1", [id]);
+
+      // 4. Clean up driver incidents if table exists
+      try {
+        await client.query("DELETE FROM driver_incidents WHERE driver_id = $1", [id]);
+      } catch (e) {
+        // Ignore if table doesn't exist
+      }
+
+      // 5. Clean up driver wallet ledger, commissions, and payouts
+      try {
+        await client.query("DELETE FROM driver_wallet_ledger WHERE driver_id = $1", [id]);
+      } catch (e) {}
+      try {
+        await client.query("DELETE FROM driver_commissions WHERE driver_id = $1", [id]);
+      } catch (e) {}
+      try {
+        await client.query("DELETE FROM driver_payouts WHERE driver_id = $1", [id]);
+      } catch (e) {}
+
+      // 6. Nullify deliveries and assignments
+      try {
+        await client.query("DELETE FROM delivery_assignments WHERE driver_id = $1", [id]);
+      } catch (e) {}
+      await client.query("UPDATE deliveries SET driver_id = NULL WHERE driver_id = $1", [id]);
+
+      // 7. Delete driver record
+      await client.query("DELETE FROM drivers WHERE id = $1", [id]);
+
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        message: `Driver '${driver.name}' (ID: ${id}) has been permanently deleted.`
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      console.error("DELETE /api/admin/deliveries/drivers/:id error:", err);
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
 
 // ── GET /api/admin/delivery-zones ─────────────────────────────────
 router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
