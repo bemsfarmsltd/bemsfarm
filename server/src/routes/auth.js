@@ -628,6 +628,13 @@ router.get("/me", protect, async (req, res, next) => {
 
     const nameParts = (user.name || "").trim().split(" ");
 
+    const addrCheck = await pool.query(
+      "SELECT id, street_address, city, state, latitude, longitude FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC LIMIT 1",
+      [user.id]
+    );
+    const defaultAddr = addrCheck.rows[0] || null;
+    const hasAddress = Boolean(defaultAddr?.street_address || user.address);
+
     // Return { user: {...} } — matches Henry's: res.data.user
     res.json({
       user: {
@@ -645,7 +652,13 @@ router.get("/me", protect, async (req, res, next) => {
         id_number: user.id_number || "",
         tax_id: user.tax_id || "",
         tax_country: user.tax_country || "",
-        address: user.address || "",
+        address: defaultAddr?.street_address || user.address || "",
+        city: defaultAddr?.city || "",
+        state: defaultAddr?.state || "",
+        latitude: defaultAddr?.latitude || null,
+        longitude: defaultAddr?.longitude || null,
+        has_address: hasAddress,
+        email_verified: Boolean(user.email_verified),
       },
     });
   } catch (err) {
@@ -1048,20 +1061,27 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider"];
       const portal = String(req.body.portal || "").toLowerCase().trim();
 
-      if ((portal === "storefront" || portal === "customer" || portal === "client") && STAFF_ROLES.includes(user.role)) {
-        return res.status(403).json({
-          message: "Administrative accounts are restricted to the Admin Portal and cannot sign in on the customer storefront. Please log in at /admin/login.",
-        });
-      }
+      // Mark email as verified since Google has cryptographically verified this identity
+      await pool.query(
+        "UPDATE users SET email_verified = true, google_id = COALESCE(google_id, $1), avatar_url = COALESCE(avatar_url, $2) WHERE id = $3",
+        [googleId, picture || null, user.id]
+      );
     } else {
       const newUser = await pool.query(
-        `INSERT INTO users (name, email, password, role, google_id, avatar_url, created_at)
-         VALUES ($1, $2, 'GOOGLE_AUTH', 'user', $3, $4, NOW())
-         RETURNING id, name, email, role`,
+        `INSERT INTO users (name, email, password, role, google_id, avatar_url, email_verified, created_at)
+         VALUES ($1, $2, 'GOOGLE_AUTH', 'user', $3, $4, true, NOW())
+         RETURNING id, name, email, role, email_verified`,
         [name || email.split("@")[0], email, googleId, picture || null],
       );
       user = newUser.rows[0];
     }
+
+    // Check if user has a verified delivery address
+    const addrCheck = await pool.query(
+      "SELECT id, street_address, city, state, latitude, longitude FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC LIMIT 1",
+      [user.id]
+    );
+    const hasAddress = addrCheck.rows.length > 0 && Boolean(addrCheck.rows[0].street_address);
 
     const token = generateAccessToken(user);
     const nameParts = (user.name || "").trim().split(" ");
@@ -1098,6 +1118,8 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
     res.json({
       message: "Google authentication successful",
       token,
+      has_address: hasAddress,
+      requiresAddress: !hasAddress,
       user: {
         id: user.id,
         name: user.name,
@@ -1106,6 +1128,9 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
         email: user.email,
         role: user.role,
         avatar_url: user.avatar_url || null,
+        email_verified: true,
+        has_address: hasAddress,
+        address: addrCheck.rows[0]?.street_address || "",
       },
     });
   } catch (err) {

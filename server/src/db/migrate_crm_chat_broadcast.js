@@ -72,6 +72,11 @@ const migrationSql = `
   );
   CREATE INDEX IF NOT EXISTS idx_product_demand_prod ON product_demand_telemetry(product_id, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_product_demand_user ON product_demand_telemetry(user_id, created_at DESC);
+
+  -- 6. Backfill email_verified for all Google OAuth accounts
+  UPDATE users SET email_verified = true 
+  WHERE (password = 'GOOGLE_AUTH' OR google_id IS NOT NULL) 
+    AND (email_verified IS NULL OR email_verified = false);
 `;
 
 let initialization;
