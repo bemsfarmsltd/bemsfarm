@@ -20,6 +20,22 @@ function generateDriverToken(driver) {
   );
 }
 
+function isDriverApproved(driver) {
+  if (!driver) return false;
+  const status = String(driver.status || "").toLowerCase().trim();
+  const onboarding = String(driver.onboarding_status || "").toLowerCase().trim();
+
+  // Suspended or explicitly rejected accounts cannot go online
+  if (status === "suspended" || status === "rejected") return false;
+  if (["rejected", "pending_verification", "documents_submitted", "invited"].includes(onboarding)) {
+    return false;
+  }
+  if (status === "pending" && onboarding !== "approved" && onboarding !== "verified") {
+    return false;
+  }
+  return true;
+}
+
 // ── POST /api/driver/auth/register & /api/driver/register ────────────
 // Self-Service Driver Registration (Awaiting Admin Verification)
 const register = async (req, res, next) => {
@@ -375,7 +391,7 @@ const login = async (req, res, next) => {
       );
     }
 
-    const isVerified = driver.status === "active";
+    const isVerified = isDriverApproved(driver);
     const token = generateDriverToken(driver);
 
     res.json({
@@ -416,7 +432,7 @@ const login = async (req, res, next) => {
 const getVerificationStatus = async (req, res, next) => {
   try {
     const driver = req.driver;
-    const isVerified = driver.status === "active";
+    const isVerified = isDriverApproved(driver);
 
     let documents = {};
     if (typeof driver.documents === "object" && driver.documents !== null) {
@@ -473,7 +489,7 @@ const getVerificationStatus = async (req, res, next) => {
 const getMe = async (req, res, next) => {
   try {
     const driver = req.driver;
-    const isVerified = driver.status === "active";
+    const isVerified = isDriverApproved(driver);
 
     res.json({
       driver: {
@@ -612,7 +628,7 @@ const updateProfile = async (req, res, next) => {
     res.json({
       driver: {
         ...updatedDriver,
-        is_available: updatedDriver.status === "active" ? req.driver.is_available : false,
+        is_available: isDriverApproved(updatedDriver) ? req.driver.is_available : false,
         is_on_delivery: req.driver.is_on_delivery,
       },
       message: "Profile updated successfully",
@@ -627,11 +643,21 @@ const updateProfile = async (req, res, next) => {
 const toggleAvailability = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
+    const driverStatus = String(req.driver.status || "").toLowerCase().trim();
 
-    // Block unverified / pending / suspended drivers from going online
-    if (req.driver.status !== "active") {
+    // Block suspended drivers
+    if (driverStatus === "suspended") {
       return res.status(403).json({
-        message: `Your driver account is currently '${req.driver.status}' (awaiting admin verification). You cannot go online until your application is approved.`,
+        message: "Your driver account is suspended. Please contact administrator.",
+        status: "suspended",
+        onboarding_status: req.driver.onboarding_status,
+      });
+    }
+
+    // Block unverified / pending drivers from going online
+    if (!isDriverApproved(req.driver)) {
+      return res.status(403).json({
+        message: `Your driver account is currently awaiting admin verification. You cannot go online until your application is approved.`,
         status: req.driver.status,
         onboarding_status: req.driver.onboarding_status,
       });
