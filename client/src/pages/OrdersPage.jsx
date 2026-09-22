@@ -250,8 +250,8 @@ export default function OrdersPage() {
 
       <div className="min-h-screen bg-[#F4F6F8] pb-28 text-slate-800">
         {/* ── TOP HERO BANNER ── */}
-        <div className="bg-gradient-to-b from-[#0A2E1C] via-[#0D3B24] to-[#12462C] text-white pt-8 pb-16 px-4 sm:px-6 lg:px-8 border-b border-emerald-950/30">
-          <div className="max-w-7xl mx-auto">
+        <div className="bg-gradient-to-b from-[#0A2E1C] via-[#0D3B24] to-[#12462C] text-white pt-8 pb-16 px-4 sm:px-8 lg:px-12 xl:px-16 border-b border-emerald-950/30">
+          <div className="w-full">
             {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-xs text-emerald-200/80 mb-3 font-medium">
               <span
@@ -272,7 +272,7 @@ export default function OrdersPage() {
                     {orders.length} Total
                   </span>
                 </h1>
-                <p className="text-emerald-100/70 text-sm mt-1.5 max-w-xl">
+                <p className="text-emerald-100/70 text-sm mt-1.5 max-w-2xl">
                   Track real-time delivery status, access instant receipts, and quickly reorder farm-fresh groceries.
                 </p>
               </div>
@@ -290,7 +290,7 @@ export default function OrdersPage() {
             </div>
 
             {/* ── METRIC STAT CARDS ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 mt-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-5 mt-8">
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Total Orders</div>
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1">{metrics.totalCount}</div>
@@ -323,8 +323,8 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* ── MAIN CONTENT CONTAINER (NEGATIVE MARGIN FOR OVERLAP) ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+        {/* ── MAIN CONTENT CONTAINER (FULL WIDTH FROM LEFT TO RIGHT) ── */}
+        <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 -mt-6">
           {/* ── FILTER, SEARCH & VIEW SWITCHER TOOLBAR ── */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-7 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             {/* Filter Tabs */}
@@ -362,7 +362,7 @@ export default function OrdersPage() {
 
             {/* Right toolbar: Search + Grid/List Mode Toggle */}
             <div className="flex items-center gap-3 w-full lg:w-auto">
-              <div className="relative flex-1 lg:w-72">
+              <div className="relative flex-1 lg:w-80">
                 <svg
                   className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                   fill="none"
@@ -437,10 +437,10 @@ export default function OrdersPage() {
             </div>
           )}
 
-          {/* ── ORDER CARDS CONTAINER (LEFT TO RIGHT 2-COLUMN GRID OR LIST) ── */}
+          {/* ── ORDER CARDS CONTAINER (LEFT TO RIGHT FULL WIDTH GRID OR LIST) ── */}
           {loading ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
                   className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm animate-pulse space-y-4"
@@ -499,7 +499,7 @@ export default function OrdersPage() {
             <div
               className={
                 viewMode === "grid"
-                  ? "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
+                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 items-start"
                   : "space-y-6"
               }
             >
