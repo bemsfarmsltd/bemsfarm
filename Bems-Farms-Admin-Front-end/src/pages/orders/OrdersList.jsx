@@ -103,7 +103,7 @@ export default function OrdersList() {
   // Filters
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
-  const [filterChannel, setFilterChannel] = useState(searchParams.get('channel') || 'all')
+  const [filterChannel, setFilterChannel] = useState(searchParams.get('channel') || 'orders')
   const [filterFulfillment, setFilterFulfillment] = useState(searchParams.get('fulfillment') || 'all')
 
   // Modals & selection
@@ -378,7 +378,12 @@ export default function OrdersList() {
         }
 
         // Channel filter
-        const okChannel = filterChannel === 'all' || o.channel === filterChannel
+        let okChannel = true
+        if (filterChannel === 'orders') {
+          okChannel = o.channel !== 'physical' && !String(o.id).startsWith('POS-')
+        } else if (filterChannel !== 'all') {
+          okChannel = o.channel === filterChannel
+        }
 
         // Fulfillment sub-category filter
         let okFulfillment = true
@@ -678,23 +683,24 @@ export default function OrdersList() {
             {/* Channel Sub-category Dropdown */}
             <select
               className="form-select"
-              style={{ maxWidth: 190 }}
+              style={{ maxWidth: 220 }}
               value={filterChannel}
               onChange={(e) => setFilterChannel(e.target.value)}
             >
-              <option value="all">All Channels</option>
+              <option value="orders">Online & App Orders</option>
               <option value="online">Online Store</option>
-              <option value="physical">Physical Store (POS)</option>
               <option value="chef_bems">Chef Bems AI</option>
               <option value="mobile_app">Mobile App</option>
+              <option value="physical">In-Store POS Purchases</option>
+              <option value="all">All Channels & POS</option>
             </select>
 
-            {(filterStatus !== 'all' || filterChannel !== 'all' || search) && (
+            {(filterStatus !== 'all' || filterChannel !== 'orders' || search) && (
               <button
                 className="btn btn-sm btn-outline-danger"
                 onClick={() => {
                   setFilterStatus('all')
-                  setFilterChannel('all')
+                  setFilterChannel('orders')
                   setSearch('')
                 }}
               >
@@ -847,9 +853,9 @@ export default function OrdersList() {
                         </span>
                       </div>
                       <div className="mt-1">
-                        <span className={`badge ${isDelivery ? 'bg-light text-success border border-success-subtle' : 'bg-light text-secondary border'}`} style={{ fontSize: 10 }}>
-                          <i className={`ri-${isDelivery ? 'e-bike-2-line' : 'building-2-line'} me-1`} />
-                          {isDelivery ? 'Doorstep Delivery' : 'In-Store / Pickup'}
+                        <span className={`badge ${isDelivery ? 'bg-light text-success border border-success-subtle' : (order.channel === 'physical' ? 'bg-light text-warning-emphasis border border-warning-subtle' : 'bg-light text-secondary border')}`} style={{ fontSize: 10 }}>
+                          <i className={`ri-${isDelivery ? 'e-bike-2-line' : (order.channel === 'physical' ? 'store-2-line' : 'building-2-line')} me-1`} />
+                          {isDelivery ? 'Doorstep Delivery' : (order.channel === 'physical' ? 'In-Store POS Sale' : 'Online Store Pickup')}
                         </span>
                       </div>
                     </td>
@@ -867,7 +873,7 @@ export default function OrdersList() {
                           </div>
                         </>
                       ) : (
-                        <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Direct Sale</span>
+                        <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Direct POS Sale</span>
                       )}
                     </td>
                     <td>
@@ -895,12 +901,13 @@ export default function OrdersList() {
                           <i className="ri-truck-line me-1" />Awaiting Courier
                         </span>
                       ) : (
-                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store)</span>
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
                       )}
                     </td>
                     <td>
-                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11, padding: '4px 8px', borderRadius: 6 }}>
-                        <i className={`${cfg.icon} me-1`} />{cfg.label}
+                      <span className="badge" style={{ background: order.channel === 'physical' ? '#ECFDF5' : cfg.bg, color: order.channel === 'physical' ? '#059669' : cfg.color, fontSize: 11, padding: '4px 8px', borderRadius: 6 }}>
+                        <i className={`${order.channel === 'physical' ? 'ri-checkbox-circle-line' : cfg.icon} me-1`} />
+                        {order.channel === 'physical' ? 'Completed Sale' : cfg.label}
                       </span>
                       {order.status === 'delivery_attempted' && (
                         <div className="text-danger fw-medium mt-0.5" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
