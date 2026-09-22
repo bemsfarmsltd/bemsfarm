@@ -8,12 +8,20 @@ const createOrder = z.object({
       z.object({
         product_id: z.union([z.number(), z.string()]),
         quantity: z.union([z.number(), z.string()]),
+        price: z.union([z.number(), z.string()]).optional(),
       }),
     )
     .min(1, "No items in order"),
-  payment_method: z.enum(["monnify", "cod"]).optional(),
+  payment_method: z.union([
+    z.enum(["monnify", "cod", "card", "cashOnDelivery", "cash_on_delivery", "pay_on_delivery", "transfer", "online"]),
+    z.string()
+  ]).optional(),
   payment_ref: z.string().nullish(),
+  payment_reference: z.string().nullish(),
+  transaction_reference: z.string().nullish(),
   address: z.string().optional(),
+  delivery_address: z.string().optional(),
+  delivery_fee: z.union([z.number(), z.string()]).nullish(),
   latitude: z.union([z.number(), z.string()]).nullish(),
   longitude: z.union([z.number(), z.string()]).nullish(),
   source: z.string().optional(),

@@ -139,12 +139,22 @@ router.get("/checkout-intent/:id", protect, async (req, res, next) => {
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
-  let { items, payment_method, payment_ref, address, latitude, longitude, source, coupon_code, checkout_intent_id } = req.body;
+  let { items, payment_method, payment_ref, payment_reference, transaction_reference, address, delivery_address, latitude, longitude, source, coupon_code, checkout_intent_id } = req.body;
 
-  const method = payment_method || "monnify";
-  if (!VALID_PAYMENT_METHODS.includes(method)) {
-    return res.status(400).json({ message: "Invalid payment method" });
+  // Normalize payment method aliases (e.g., "card", "cashOnDelivery", "monnify", "cod")
+  const rawMethod = String(payment_method || "monnify").toLowerCase().trim().replace(/[\s-_]+/g, "");
+  let method = "monnify";
+  if (["cod", "cashondelivery", "payondelivery", "cash"].includes(rawMethod)) {
+    method = "cod";
+  } else if (["monnify", "card", "transfer", "online", "paynow"].includes(rawMethod)) {
+    method = "monnify";
+  } else {
+    return res.status(400).json({ message: "Invalid payment method. Supported methods: 'card', 'monnify', or 'cashOnDelivery'" });
   }
+
+  // Normalize address & payment reference aliases
+  address = (address || delivery_address || "").trim();
+  const effectivePaymentRef = payment_ref || payment_reference || transaction_reference || null;
 
   // Normalize + dedupe requested items
   const requested = new Map();
@@ -163,11 +173,11 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
   // NOTE: Monnify amounts are plain Naira decimals (unlike Paystack's kobo).
   let monnifyData = null;
   if (method === "monnify") {
-    if (!payment_ref) {
-      return res.status(400).json({ message: "Missing payment reference" });
+    if (!effectivePaymentRef) {
+      return res.status(400).json({ message: "Missing payment reference for card/online transaction" });
     }
     try {
-      monnifyData = await verifyMonnifyTransaction(payment_ref);
+      monnifyData = await verifyMonnifyTransaction(effectivePaymentRef);
     } catch (err) {
       return res.status(402).json({
         message: "Payment could not be verified: " + err.message,
@@ -195,7 +205,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Checkout has expired. Please start checkout again." });
       }
-      if (intent.rows[0].payment_ref !== payment_ref) {
+      if (intent.rows[0].payment_ref !== effectivePaymentRef) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Payment reference does not match checkout." });
       }
@@ -211,10 +221,10 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       // Serialize concurrent callbacks for the same payment reference. A
       // duplicate SELECT without this lock can race before either request
       // commits and create two orders for one successful payment.
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [payment_ref]);
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [effectivePaymentRef]);
       const dup = await client.query(
         "SELECT id FROM orders WHERE payment_ref = $1",
-        [payment_ref],
+        [effectivePaymentRef],
       );
       if (dup.rows.length) {
         await client.query("ROLLBACK");
@@ -281,7 +291,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       if (Math.abs(monnifyData.amountPaid - total) > 1) {
         await client.query("ROLLBACK");
         return res.status(402).json({
-          message: "Amount paid does not match order total. Please contact support with reference " + payment_ref,
+          message: "Amount paid does not match order total. Please contact support with reference " + effectivePaymentRef,
         });
       }
     }
@@ -300,7 +310,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         couponDiscount,
         status,
         method,
-        method === "monnify" ? payment_ref : null,
+        method === "monnify" ? effectivePaymentRef : null,
         address || "",
         latitude || null,
         longitude || null,
@@ -347,7 +357,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     if (method === "monnify") {
       const orphanedPayment = await client.query(
         "UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL RETURNING id",
-        [orderId, payment_ref],
+        [orderId, effectivePaymentRef],
       );
       if (orphanedPayment.rows.length > 0) {
         const systemUserRes = await client.query(
@@ -358,7 +368,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
           `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
            VALUES ($1, 'sales', 'online_order', 'POS/Online Sale', $2, $3, 'transfer', $4, 'completed', CURRENT_DATE, $5)
            ON CONFLICT (reference) DO NOTHING`,
-          [`INC-${payment_ref}`, `Automated payment reconciliation for Order #${orderId}`, monnifyData.amountPaid, String(orderId), systemUserId],
+          [`INC-${effectivePaymentRef}`, `Automated payment reconciliation for Order #${orderId}`, monnifyData.amountPaid, String(orderId), systemUserId],
         );
       }
     }
