@@ -80,7 +80,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     if (search) {
       params.push(`%${search}%`);
       where.push(
-        `(o.id ILIKE $${params.length} OR c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR o.customer_name ILIKE $${params.length})`,
+        `(o.id ILIKE $${params.length} OR c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR o.address ILIKE $${params.length})`,
       );
     }
     if (status) {
@@ -107,7 +107,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
     const countRes = await pool.query(
-      `SELECT COUNT(*) FROM orders o LEFT JOIN users c ON COALESCE(o.customer_id, o.user_id) = c.id ${whereClause}`,
+      `SELECT COUNT(*) FROM orders o LEFT JOIN users c ON o.user_id = c.id ${whereClause}`,
       params,
     );
 
@@ -118,20 +118,18 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       `
       SELECT
         o.id, o.total, o.status, o.source AS channel, o.payment_method, o.payment_ref,
-        o.delivery_fee, o.discount_amount, o.created_at, o.notes,
+        COALESCE(o.delivery_fee, 0) AS delivery_fee, o.created_at,
         COALESCE(NULLIF(TRIM(o.address), ''), ua.street_address, '') AS address,
-        COALESCE(o.delivery_city, ua.city, '') AS delivery_city,
-        COALESCE(o.delivery_state, ua.state, '') AS delivery_state,
-        COALESCE(o.latitude, ua.latitude) AS latitude,
-        COALESCE(o.longitude, ua.longitude) AS longitude,
+        COALESCE(ua.city, 'Umuahia') AS delivery_city,
+        COALESCE(ua.state, 'Abia') AS delivery_state,
+        ua.latitude,
+        ua.longitude,
         COALESCE(
-          NULLIF(TRIM(o.customer_name), ''),
           NULLIF(TRIM(c.name), ''),
           NULLIF(TRIM(ua.receiver_name), ''),
           CASE WHEN o.source ILIKE '%pos%' OR o.source ILIKE '%physical%' THEN 'Walk-in Customer' ELSE 'Online Customer' END
         ) AS customer_name,
         COALESCE(
-          NULLIF(TRIM(o.customer_phone), ''),
           NULLIF(TRIM(c.phone), ''),
           NULLIF(TRIM(ua.receiver_phone), ''),
           ''
@@ -143,19 +141,24 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         d.id AS delivery_id, d.status AS delivery_status,
         d.attempts, d.eta_minutes,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
-        (SELECT STRING_AGG(oi.product_name, ', ' ORDER BY oi.id) FROM order_items oi WHERE oi.order_id = o.id) AS item_names,
+        (
+          SELECT STRING_AGG(COALESCE(p.name, 'Item'), ', ' ORDER BY oi.id) 
+          FROM order_items oi 
+          LEFT JOIN products p ON oi.product_id = p.id 
+          WHERE oi.order_id = o.id
+        ) AS item_names,
         COALESCE(
           (
             SELECT json_agg(json_build_object(
               'id', oi.id,
-              'name', COALESCE(oi.product_name, p.name, 'Item'),
-              'sku', COALESCE(oi.sku, p.sku, ''),
+              'name', COALESCE(p.name, 'Item'),
+              'sku', COALESCE(p.sku, ''),
               'quantity', oi.quantity,
               'qty', oi.quantity,
-              'price', COALESCE(oi.unit_price, oi.price, 0),
-              'unit_price', COALESCE(oi.unit_price, oi.price, 0),
-              'unit', COALESCE(oi.unit, p.unit, 'unit'),
-              'total', COALESCE(oi.subtotal, oi.quantity * oi.price, 0)
+              'price', oi.price,
+              'unit_price', oi.price,
+              'unit', COALESCE(p.unit, 'unit'),
+              'total', (oi.quantity * oi.price)
             ) ORDER BY oi.id)
             FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.id
@@ -164,7 +167,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
           '[]'::json
         ) AS items
       FROM orders o
-      LEFT JOIN users c ON COALESCE(o.customer_id, o.user_id) = c.id
+      LEFT JOIN users c ON o.user_id = c.id
       LEFT JOIN LATERAL (
         SELECT street_address, city, state, latitude, longitude, receiver_name, receiver_phone 
         FROM user_addresses 
@@ -768,8 +771,8 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       `
       SELECT
         o.*,
-        COALESCE(o.customer_name, c.name, 'Walk-In Customer') AS customer_name,
-        COALESCE(o.customer_phone, c.phone, '')               AS customer_phone,
+        COALESCE(c.name, 'Walk-In Customer') AS customer_name,
+        COALESCE(c.phone, '')               AS customer_phone,
         c.email AS customer_email,
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate, dr.vehicle_type,
@@ -777,10 +780,10 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         d.attempts, d.eta_minutes, d.dispatched_at, d.arrived_at, d.delivered_at,
         d.proof_photos, d.item_proofs, d.proof_note AS delivery_notes, d.failure_reason
       FROM orders o
-      LEFT JOIN users c ON o.customer_id = c.id OR o.user_id = c.id
+      LEFT JOIN users c ON o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
-      WHERE CAST(o.id AS TEXT) = $1 OR UPPER(COALESCE(o.order_ref, '')) = UPPER($1)
+      WHERE CAST(o.id AS TEXT) = $1
       LIMIT 1
     `,
       [rawId],
