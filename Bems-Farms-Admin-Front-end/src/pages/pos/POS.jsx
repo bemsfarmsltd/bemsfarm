@@ -419,6 +419,7 @@ export default function POS() {
             const mappedOrders = openOrders.map(o => {
               const rawStatus = String(o.status || '').toLowerCase()
               const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+              const isPrinted = o.invoice_printed === true || rawStatus === 'processing'
               return {
                 id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
                 rawId: o.id,
@@ -428,6 +429,7 @@ export default function POS() {
                 time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
                 status: posStatus,
                 rawStatus: o.status,
+                invoice_printed: isPrinted,
                 total: Number(o.total || 0),
                 note: o.delivery_note || o.notes || '',
                 items: (o.items || []).map(it => ({
@@ -492,6 +494,7 @@ export default function POS() {
           const mappedOrders = openOrders.map(o => {
             const rawStatus = String(o.status || '').toLowerCase()
             const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+            const isPrinted = o.invoice_printed === true || rawStatus === 'processing'
             return {
               id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
               rawId: o.id,
@@ -501,6 +504,7 @@ export default function POS() {
               time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
               status: posStatus,
               rawStatus: o.status,
+              invoice_printed: isPrinted,
               total: Number(o.total || 0),
               note: o.delivery_note || o.notes || '',
               items: (o.items || []).map(it => ({
@@ -983,8 +987,14 @@ export default function POS() {
     setTimeout(() => setActiveModal('cash'), 60)
   }
 
-  // Online orders -> cart
+  // Online orders -> cart (Strict rule: invoice must be printed first)
   function loadOnlineOrderToCart(order, isReload = false) {
+    if (!order) return
+    const isPrinted = order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing'
+    if (!isPrinted) {
+      showToast('You must print the invoice first before loading to cart!', 'warning', '⚠️')
+      return
+    }
     let loaded = 0
     const itemsToLoad = (order.items && order.items.length > 0)
       ? order.items
@@ -1112,7 +1122,7 @@ export default function POS() {
     if (targetOrderId) {
       try {
         await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
-        setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing', rawStatus: 'processing' } : o))
+        setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o))
         showToast(`Invoice printed for #${order.id} · Moved to Packaging & Auto-dispatch initiated`, 'success', '🖨️')
       } catch (err) {
         console.warn('Failed to register invoice print:', err.message)
@@ -1444,6 +1454,7 @@ export default function POS() {
         onOpenRegister={() => setViewMode('register')}
         historyList={historyList}
         onlineOrders={onlineOrders}
+        onPrintOnlineOrderInvoice={handlePrintOnlineOrderInvoice}
         onOpenOnlineOrder={(order) => {
           loadOnlineOrderToCart(order)
           setViewMode('register')
@@ -2203,31 +2214,45 @@ export default function POS() {
                             </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
-                            <button 
-                              className={`btn btn-sm ${order.status === 'processing' ? 'btn-outline-info' : 'btn-info text-white'} px-2.5 fw-bold`} 
-                              title="Print Order Invoice & Dispatch Packing Slip"
-                              onClick={() => handlePrintOnlineOrderInvoice(order)}
-                            >
-                              <i className="ri-printer-line me-1" />
-                              {order.status === 'processing' ? 'Reprint Invoice' : 'Print Invoice'}
-                            </button>
+                            {!(order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing') ? (
+                              <button 
+                                className="btn btn-sm btn-emerald-solid px-3 fw-bold" 
+                                title="Print Order Invoice first to move to Packaging and enable cart loading"
+                                onClick={() => handlePrintOnlineOrderInvoice(order)}
+                              >
+                                <i className="ri-printer-line me-1" />
+                                Print Invoice
+                              </button>
+                            ) : (
+                              <>
+                                <button 
+                                  className="btn btn-sm btn-outline-info px-2.5 fw-bold" 
+                                  title="Reprint Order Invoice"
+                                  onClick={() => handlePrintOnlineOrderInvoice(order)}
+                                >
+                                  <i className="ri-printer-line me-1" />
+                                  Reprint Invoice
+                                </button>
+                                {order.status !== 'processing' ? (
+                                  <button className="btn btn-sm btn-emerald-solid px-3 fw-bold" onClick={() => loadOnlineOrderToCart(order, false)}>
+                                    <i className="ri-shopping-cart-2-line me-1"></i> Load to Cart
+                                  </button>
+                                ) : (
+                                  <div className="d-flex align-items-center gap-2">
+                                    <span className="text-sapphire fw-bold fs-12">
+                                      <i className="ri-check-double-line me-1"></i> In Cart
+                                    </span>
+                                    <button className="btn btn-sm btn-outline-primary px-3 fw-bold" title="Reload order items into cart" onClick={() => loadOnlineOrderToCart(order, true)}>
+                                      <i className="ri-refresh-line me-1"></i> Reload
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
                             <button className="btn btn-sm btn-outline-secondary" onClick={() => setExpandedOrder(isExpanded ? null : order.id)} title="View Order Details">
                               <i className={isExpanded ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
                             </button>
-                            {order.status !== 'processing' ? (
-                              <button className="btn btn-sm btn-emerald-solid px-3 fw-bold" onClick={() => loadOnlineOrderToCart(order, false)}>
-                                <i className="ri-shopping-cart-2-line me-1"></i> Load to Cart
-                              </button>
-                            ) : (
-                              <div className="d-flex align-items-center gap-2">
-                                <span className="text-sapphire fw-bold fs-12">
-                                  <i className="ri-check-double-line me-1"></i> In Cart
-                                </span>
-                                <button className="btn btn-sm btn-outline-primary px-3 fw-bold" title="Reload order items into cart" onClick={() => loadOnlineOrderToCart(order, true)}>
-                                  <i className="ri-refresh-line me-1"></i> Reload
-                                </button>
-                              </div>
-                            )}
                           </div>
                         </div>
 

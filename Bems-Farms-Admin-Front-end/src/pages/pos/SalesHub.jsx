@@ -69,6 +69,7 @@ export default function SalesHub({
   historyList = [],
   onlineOrders = [],
   onOpenOnlineOrder,
+  onPrintOnlineOrderInvoice,
   onReprintReceipt,
   user,
 }) {
@@ -1251,13 +1252,36 @@ export default function SalesHub({
                           <span className="badge bg-light text-dark border">{ord.items.length} items</span>
                         </td>
                         <td className="text-center">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary-bf rounded-pill px-3 fs-xs fw-bold"
-                            onClick={() => onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister()}
-                          >
-                            <i className="ri-shopping-cart-2-line me-1"></i>Load to Cart
-                          </button>
+                          {!(ord.invoice_printed || ord.status === 'processing' || ord.rawStatus === 'processing') ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-emerald-solid rounded-pill px-3 fs-xs fw-bold"
+                              title="Print Order Invoice first to move to Packaging and enable cart loading"
+                              onClick={() => onPrintOnlineOrderInvoice ? onPrintOnlineOrderInvoice(ord) : (onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister())}
+                            >
+                              <i className="ri-printer-line me-1"></i>Print Invoice
+                            </button>
+                          ) : (
+                            <div className="d-flex align-items-center justify-content-center gap-2">
+                              {onPrintOnlineOrderInvoice && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2.5 fs-xs fw-bold"
+                                  title="Reprint Invoice"
+                                  onClick={() => onPrintOnlineOrderInvoice(ord)}
+                                >
+                                  <i className="ri-printer-line me-1"></i>Reprint
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary-bf rounded-pill px-3 fs-xs fw-bold"
+                                onClick={() => onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister()}
+                              >
+                                <i className="ri-shopping-cart-2-line me-1"></i>Load to Cart
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
