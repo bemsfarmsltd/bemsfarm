@@ -384,22 +384,38 @@ export default function POS() {
       }
 
       try {
-        const ordRes = await api.get('/admin/orders?status=pending&limit=15')
+        const ordRes = await api.get('/admin/orders?limit=40')
         const ords = ordRes?.data?.orders || []
         if (Array.isArray(ords) && isMounted) {
-          const mappedOrders = ords.map(o => ({
-            id: o.order_ref || `ORD-${o.id}`,
-            channel: o.channel || 'website',
-            customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
-            phone: o.customer_phone || o.phone || '—',
-            time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
-            status: o.status || 'pending',
-            note: o.delivery_note || o.notes || '',
-            items: (o.items || []).map(it => ({
-              productId: it.product_id,
-              qty: it.quantity || 1
-            }))
-          }))
+          const openOrders = ords.filter(o => 
+            !['delivered', 'completed', 'cancelled', 'refunded', 'failed'].includes(String(o.status || '').toLowerCase()) &&
+            !String(o.id).startsWith('POS-')
+          )
+          const mappedOrders = openOrders.map(o => {
+            const rawStatus = String(o.status || '').toLowerCase()
+            const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+            return {
+              id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
+              rawId: o.id,
+              channel: o.channel || o.source || 'website',
+              customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
+              phone: o.customer_phone || o.phone || '—',
+              time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+              status: posStatus,
+              rawStatus: o.status,
+              total: Number(o.total || 0),
+              note: o.delivery_note || o.notes || '',
+              items: (o.items || []).map(it => ({
+                productId: it.product_id,
+                name: it.name || it.product_name || 'Item',
+                sku: it.sku || '',
+                unit: it.unit || 'pcs',
+                price: Number(it.price || it.unit_price || 0),
+                qty: Number(it.quantity || it.qty || 1),
+                image: it.image || ''
+              }))
+            }
+          })
           setOnlineOrders(mappedOrders)
         }
       } catch (e) {
@@ -901,18 +917,44 @@ export default function POS() {
   // Online orders -> cart
   function loadOnlineOrderToCart(order) {
     let loaded = 0
-    order.items.forEach(({ productId, qty }) => {
-      const product = productsList.find(p => p.id === productId)
-      if (!product) return
+    order.items.forEach(it => {
+      const product = productsList.find(p => 
+        (it.productId && p.id === it.productId) || 
+        (it.sku && p.sku === it.sku) || 
+        (it.name && p.name.toLowerCase() === it.name.toLowerCase())
+      ) || {
+        id: it.productId || `ITEM-${Date.now()}-${loaded}`,
+        name: it.name || 'Order Item',
+        price: Number(it.price || 0),
+        sku: it.sku || '',
+        stock: 999,
+        unit: it.unit || 'pcs',
+        icon: '📦',
+      }
+
+      const qtyToAdd = Number(it.qty || 1)
       setCart(prev => {
         const ex = prev.find(i => i.id === product.id)
-        if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + qty } : i)
-        return [...prev, { ...product, qty, note: '' }]
+        if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + qtyToAdd } : i)
+        return [...prev, { ...product, qty: qtyToAdd, note: '' }]
       })
       loaded++
     })
-    const matched = customersList.find(c => c.name === order.customer)
-    if (matched) setCustomer(matched)
+    const matched = customersList.find(c => c.name === order.customer || (order.phone && c.phone === order.phone))
+    if (matched) {
+      setCustomer(matched)
+    } else if (order.customer) {
+      setCustomer({
+        id: `CUST-${Date.now()}`,
+        name: order.customer,
+        phone: order.phone || '—',
+        tier: 'Online Client',
+        points: 0,
+        wallet: 0,
+        orders: 1
+      })
+    }
+    if (order.note) setOrderNote(order.note)
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
     playBeep('success')
     showToast(`${loaded} item(s) imported to cart`, 'success', '📥')
@@ -1949,10 +1991,12 @@ export default function POS() {
                   .map(order => {
                     const ch = CHANNEL_META[order.channel] || CHANNEL_META.website
                     const st = STATUS_META[order.status] || STATUS_META.pending
-                    const orderTotal = order.items.reduce((s, { productId, qty }) => {
-                      const p = productsList.find(x => x.id === productId)
-                      return s + (p ? p.price * qty : 0)
+                    const orderTotal = Number(order.total || 0) || order.items.reduce((s, it) => {
+                      const p = productsList.find(x => (it.productId && x.id === it.productId) || (it.sku && x.sku === it.sku) || (it.name && x.name.toLowerCase() === it.name.toLowerCase()))
+                      const itemPrice = (it.price && it.price > 0) ? it.price : (p ? p.price : 0)
+                      return s + (itemPrice * Number(it.qty || 1))
                     }, 0)
+                    const totalItemsCount = order.items.reduce((s, i) => s + Number(i.qty || 1), 0)
                     const isExpanded = expandedOrder === order.id
 
                     return (
@@ -1973,7 +2017,7 @@ export default function POS() {
                               <strong>{order.customer}</strong> · <span className="text-muted">{order.phone}</span>
                             </div>
                             <div className="text-muted fs-11 mt-1">
-                              🕐 {order.time} · {order.items.reduce((s, i) => s + i.qty, 0)} items · <strong className="text-emerald">{fmt(orderTotal)}</strong>
+                              🕐 {order.time} · {totalItemsCount} items · <strong className="text-emerald">{fmt(orderTotal)}</strong>
                             </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
@@ -1999,13 +2043,14 @@ export default function POS() {
                                 <strong>Customer Note:</strong> {order.note}
                               </div>
                             )}
-                            {order.items.map(({ productId, qty }) => {
-                              const p = productsList.find(x => x.id === productId)
-                              if (!p) return null
+                            {order.items.map((it, idx) => {
+                              const p = productsList.find(x => (it.productId && x.id === it.productId) || (it.sku && x.sku === it.sku) || (it.name && x.name.toLowerCase() === it.name.toLowerCase()))
+                              const itemName = it.name || p?.name || 'Item'
+                              const itemPrice = (it.price && it.price > 0) ? it.price : (p?.price || 0)
                               return (
-                                <div key={productId} className="d-flex justify-content-between fs-12 py-1 border-bottom border-light">
-                                  <span className="pos-entry-item-title">{p.icon} {p.name} × {qty}</span>
-                                  <strong className="text-emerald">{fmt(p.price * qty)}</strong>
+                                <div key={idx} className="d-flex justify-content-between fs-12 py-1 border-bottom border-light">
+                                  <span className="pos-entry-item-title">{p?.icon || '📦'} {itemName} × {it.qty}</span>
+                                  <strong className="text-emerald">{fmt(itemPrice * it.qty)}</strong>
                                 </div>
                               )
                             })}

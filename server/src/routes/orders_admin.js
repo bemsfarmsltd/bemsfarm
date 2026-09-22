@@ -151,6 +151,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
           (
             SELECT json_agg(json_build_object(
               'id', oi.id,
+              'product_id', oi.product_id,
               'name', COALESCE(p.name, 'Item'),
               'sku', COALESCE(p.sku, ''),
               'quantity', oi.quantity,
@@ -158,6 +159,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
               'price', oi.price,
               'unit_price', oi.price,
               'unit', COALESCE(p.unit, 'unit'),
+              'image', COALESCE(p.image_url, p.image, ''),
               'total', (oi.quantity * oi.price)
             ) ORDER BY oi.id)
             FROM order_items oi
