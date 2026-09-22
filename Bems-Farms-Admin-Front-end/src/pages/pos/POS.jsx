@@ -927,29 +927,42 @@ export default function POS() {
           unit: 'pkg'
         }]
 
-    itemsToLoad.forEach(it => {
-      const product = productsList.find(p => 
+    const loadedCartItems = itemsToLoad.map(it => {
+      const baseProduct = productsList.find(p => 
         (it.productId && p.id === it.productId) || 
         (it.sku && p.sku === it.sku) || 
         (it.name && p.name.toLowerCase() === it.name.toLowerCase())
-      ) || {
-        id: it.productId || `ITEM-${Date.now()}-${loaded}`,
-        name: it.name || 'Order Item',
-        price: Number(it.price || 0),
-        sku: it.sku || '',
-        stock: 999,
-        unit: it.unit || 'pcs',
-        icon: '📦',
-      }
+      )
 
-      const qtyToAdd = Number(it.qty || 1)
-      setCart(prev => {
-        const ex = prev.find(i => i.id === product.id)
-        if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + qtyToAdd } : i)
-        return [...prev, { ...product, qty: qtyToAdd, note: '' }]
-      })
+      // Always prioritize the price recorded in the order/order_items
+      const itemPrice = (it.price != null && Number(it.price) > 0)
+        ? Number(it.price)
+        : (baseProduct ? Number(baseProduct.price || 0) : 0)
+
       loaded++
+
+      return {
+        id: baseProduct?.id || it.productId || `ITEM-${Date.now()}-${loaded}`,
+        productId: baseProduct?.id || it.productId || null,
+        name: it.name || baseProduct?.name || 'Order Item',
+        price: itemPrice,
+        base_price: itemPrice,
+        sku: it.sku || baseProduct?.sku || '',
+        stock: baseProduct?.stock ?? 999,
+        unit: it.unit || baseProduct?.unit || 'pcs',
+        icon: baseProduct?.icon || '📦',
+        image: it.image || baseProduct?.image || null,
+        qty: Number(it.qty || 1),
+        note: ''
+      }
     })
+
+    // Set cart to the loaded order's exact items and price
+    setCart(loadedCartItems)
+    if (order.id) {
+      setOrderId(order.id)
+    }
+
     const matched = customersList.find(c => c.name === order.customer || (order.phone && c.phone === order.phone))
     if (matched) {
       setCustomer(matched)
@@ -967,7 +980,7 @@ export default function POS() {
     if (order.note) setOrderNote(order.note)
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
     playBeep('success')
-    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart`, 'success', '📥')
+    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart (${order.id})`, 'success', '📥')
     closeModal()
   }
 
