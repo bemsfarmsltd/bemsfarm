@@ -1017,6 +1017,64 @@ export default function POS() {
     closeModal()
   }
 
+  // Print Invoice for Incoming/Online Orders (Prints receipt/packing slip, transitions status to Packaging, triggers driver auto-dispatch)
+  const handlePrintOnlineOrderInvoice = async (order) => {
+    if (!order) return
+    const orderTotal = Number(order.total || 0) || (order.items || []).reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 1)), 0)
+    const formattedReceipt = {
+      orderId: order.id,
+      customer: { name: order.customer, phone: order.phone },
+      cust: order.customer,
+      cart: (order.items || []).map(it => ({
+        name: it.name || 'Item',
+        price: Number(it.price || 0),
+        qty: Number(it.qty || 1),
+        unit: it.unit || 'pcs'
+      })),
+      items: (order.items || []).map(it => ({
+        name: it.name || 'Item',
+        price: Number(it.price || 0),
+        qty: Number(it.qty || 1),
+        unit: it.unit || 'pcs'
+      })),
+      subtotal: orderTotal,
+      discountAmt: 0,
+      vat: 0,
+      total: orderTotal,
+      method: 'Online / Pre-paid',
+      orderNote: order.note || '',
+      cashReceived: orderTotal,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+
+    setSuccessData(formattedReceipt)
+
+    // Hardware direct ESC/POS or browser thermal print
+    if (isPrinterConnected()) {
+      try {
+        await printReceiptESC(formattedReceipt, {})
+      } catch (err) {
+        console.warn('Direct ESC/POS print failed, using browser printer:', err)
+        printThermalReceipt()
+      }
+    } else {
+      printThermalReceipt()
+    }
+
+    // Advance order to Packaging and start auto-dispatch
+    const targetOrderId = order.rawId || order.id
+    if (targetOrderId) {
+      try {
+        await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
+        setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing', rawStatus: 'processing' } : o))
+        showToast(`Invoice printed for #${order.id} · Moved to Packaging & Auto-dispatch initiated`, 'success', '🖨️')
+      } catch (err) {
+        console.warn('Failed to register invoice print:', err.message)
+      }
+    }
+  }
+
   // Order Holding
   function doHold() {
     if (cart.length === 0) return
@@ -2094,7 +2152,15 @@ export default function POS() {
                             </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
+                            <button 
+                              className={`btn btn-sm ${order.status === 'processing' ? 'btn-outline-info' : 'btn-info text-white'} px-2.5 fw-bold`} 
+                              title="Print Order Invoice & Dispatch Packing Slip"
+                              onClick={() => handlePrintOnlineOrderInvoice(order)}
+                            >
+                              <i className="ri-printer-line me-1" />
+                              {order.status === 'processing' ? 'Reprint Invoice' : 'Print Invoice'}
+                            </button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setExpandedOrder(isExpanded ? null : order.id)} title="View Order Details">
                               <i className={isExpanded ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
                             </button>
                             {order.status !== 'processing' ? (
@@ -2107,7 +2173,7 @@ export default function POS() {
                                   <i className="ri-check-double-line me-1"></i> In Cart
                                 </span>
                                 <button className="btn btn-sm btn-outline-primary px-3 fw-bold" title="Reload order items into cart" onClick={() => loadOnlineOrderToCart(order, true)}>
-                                  <i className="ri-refresh-line me-1"></i> Reload to Cart
+                                  <i className="ri-refresh-line me-1"></i> Reload
                                 </button>
                               </div>
                             )}
