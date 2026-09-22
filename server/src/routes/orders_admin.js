@@ -159,7 +159,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
               'price', oi.price,
               'unit_price', oi.price,
               'unit', COALESCE(p.unit, 'unit'),
-              'image', COALESCE(p.image_url, p.image, ''),
+              'image', COALESCE(p.image_url, ''),
               'total', (oi.quantity * oi.price)
             ) ORDER BY oi.id)
             FROM order_items oi
