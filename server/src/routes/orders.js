@@ -531,10 +531,23 @@ router.get("/:id", protect, async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT
-         o.id, o.order_ref, o.total, o.subtotal, o.delivery_fee, o.status,
-         o.payment_method, o.payment_status, o.payment_ref, o.address,
-         o.delivery_city, o.latitude AS customer_lat, o.longitude AS customer_lng,
-         o.created_at, o.delivered_at, o.updated_at, o.cancelled_at, o.cancel_reason,
+         o.id,
+         o.order_ref,
+         o.total,
+         COALESCE(o.subtotal, o.total - COALESCE(o.delivery_fee, 1500) + COALESCE(o.discount_amount, 0)) AS subtotal,
+         COALESCE(o.delivery_fee, 1500) AS delivery_fee,
+         COALESCE(o.discount_amount, 0) AS discount_amount,
+         o.status,
+         o.payment_method,
+         COALESCE(o.payment_status, 'completed') AS payment_status,
+         o.payment_ref,
+         o.address,
+         o.delivery_city,
+         o.created_at,
+         COALESCE(delivery.delivered_at, o.updated_at) AS delivered_at,
+         o.updated_at,
+         o.cancelled_at,
+         o.cancel_reason,
          COALESCE(o.tracking_status, o.status) AS tracking_status,
          o.tracking_notes,
          delivery.delivery_id,
@@ -543,7 +556,6 @@ router.get("/:id", protect, async (req, res, next) => {
          delivery.eta_minutes,
          delivery.assigned_at,
          delivery.dispatched_at,
-         delivery.arrived_at,
          dr.id AS driver_id,
          dr.name AS driver_name,
          dr.phone AS driver_phone,
@@ -558,13 +570,12 @@ router.get("/:id", protect, async (req, res, next) => {
          dz.zone_name,
          json_agg(
            json_build_object(
-             'name', p.name,
+             'name', COALESCE(p.name, oi.product_name, 'Produce Item'),
              'quantity', oi.quantity,
-             'price', COALESCE(oi.unit_price, oi.price),
-             'total_price', COALESCE(oi.total_price, oi.quantity * COALESCE(oi.unit_price, oi.price)),
-             'product_id', p.id,
+             'price', COALESCE(oi.price, oi.unit_price, 0),
+             'product_id', COALESCE(oi.product_id, p.id),
              'image_url', p.image_url,
-             'unit', COALESCE(p.unit, 'item')
+             'unit', COALESCE(oi.unit, p.unit, 'item')
            )
          ) AS items
        FROM orders o
@@ -576,10 +587,10 @@ router.get("/:id", protect, async (req, res, next) => {
            d.delivery_ref,
            d.driver_id,
            d.status AS delivery_status,
+           d.delivered_at,
            d.eta_minutes,
            d.assigned_at,
            d.dispatched_at,
-           d.arrived_at,
            d.zone_id
          FROM deliveries d
          WHERE d.order_id = o.id
@@ -595,13 +606,13 @@ router.get("/:id", protect, async (req, res, next) => {
          LIMIT 1
        ) loc ON true
        LEFT JOIN delivery_zones dz ON dz.zone_id = delivery.zone_id
-       WHERE o.id = $1 AND (o.user_id = $2 OR o.customer_id = $2)
+       WHERE UPPER(o.id) = UPPER($1) AND (o.user_id = $2 OR o.customer_id = $2 OR $3 IN ('admin', 'superadmin', 'manager', 'delivery_manager', 'staff'))
        GROUP BY 
          o.id, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
-         delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at, delivery.arrived_at,
+         delivery.delivered_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
          dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
          loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name`,
-      [id, req.user.id],
+      [id, req.user.id, req.user.role || 'user'],
     );
 
     if (!result.rows.length) {

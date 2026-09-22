@@ -128,13 +128,15 @@ export default function OrderDetailPage() {
         const res = await ordersAPI.getById(id);
         const fetchedOrder = res.data?.order || res.data;
         setOrder(fetchedOrder);
-      } catch {
-        if (!silent) navigate("/orders");
+      } catch (err) {
+        if (!silent) {
+          showToast(err.response?.data?.message || "Could not load order details", "error");
+        }
       } finally {
         if (!silent) setLoading(false);
       }
     },
-    [id, navigate]
+    [id]
   );
 
   useEffect(() => {
@@ -242,7 +244,37 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!order) return null;
+  if (!order) {
+    return (
+      <PageWrapper>
+        <div className="w-full min-h-[65vh] flex flex-col items-center justify-center px-4 py-16 bg-[#F4F6F8]">
+          <div className="max-w-md w-full text-center bg-white p-8 sm:p-10 rounded-3xl border-2 border-slate-200/90 shadow-sm space-y-4">
+            <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-2xs">
+              📦
+            </div>
+            <h2 className="text-xl font-black text-slate-900">Order Not Found</h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              We couldn't locate details for order <span className="font-mono font-bold text-slate-800">#{id}</span>. It might belong to another account or the order ID is incorrect.
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/orders"
+                className="px-6 py-3 rounded-xl bg-[#17352a] hover:bg-[#1f4738] text-white text-xs font-black uppercase tracking-wider shadow-sm transition-all inline-flex items-center justify-center gap-1.5"
+              >
+                ← Return to My Orders
+              </Link>
+              <Link
+                to="/products"
+                className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-black uppercase tracking-wider shadow-sm transition-all inline-flex items-center justify-center"
+              >
+                Shop Fresh Produce
+              </Link>
+            </div>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
@@ -253,6 +285,7 @@ export default function OrderDetailPage() {
   const date = new Date(order.created_at || order.createdAt);
 
   const isIncomplete = !["delivered", "cancelled"].includes(String(order.status).toLowerCase());
+  const isInProgress = ["pending", "confirmed", "processing", "shipped", "en_route", "out_for_delivery"].includes(String(order.status).toLowerCase());
   const isCancelled = order.status === "cancelled";
   const isDelivered = order.status === "delivered";
   const canCancel = ["pending", "confirmed"].includes(String(order.status).toLowerCase());
