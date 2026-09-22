@@ -32,10 +32,58 @@ const getProducts = async (req, res, next) => {
       where += ` AND c.name = $${params.length}`;
     }
 
-    // Search by name
-    if (search) {
-      params.push(`%${search}%`);
-      where += ` AND p.name ILIKE $${params.length}`;
+    let orderByClause = "ORDER BY p.is_featured DESC, p.id ASC";
+
+    // Smart Multi-Token Search
+    if (search && search.trim()) {
+      const cleanSearch = search.trim();
+      const rawTokens = cleanSearch
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((t) => t.length >= 2);
+
+      const tokens = [...new Set(rawTokens)];
+
+      if (tokens.length === 0) {
+        params.push(`%${cleanSearch}%`);
+        where += ` AND p.name ILIKE $${params.length}`;
+      } else {
+        const exactPhrase = cleanSearch.toLowerCase();
+        const wildcardPhrase = `%${cleanSearch}%`;
+
+        params.push(exactPhrase, wildcardPhrase);
+        const exactParam = `$${params.length - 1}`;
+        const wildcardParam = `$${params.length}`;
+
+        const tokenConditions = [];
+        tokens.forEach((t) => {
+          params.push(`%${t}%`);
+          const ilikeParam = `$${params.length}`;
+
+          params.push(t);
+          const wordParam = `$${params.length}`;
+
+          tokenConditions.push(`(
+            p.name ILIKE ${ilikeParam}
+            OR c.name ILIKE ${ilikeParam}
+            OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(p.tags, '[]'::jsonb)) tag WHERE tag ILIKE ${ilikeParam})
+            OR p.description ~* ('\\m' || ${wordParam} || '\\M')
+          )`);
+        });
+
+        where += ` AND (${tokenConditions.join(" AND ")})`;
+        orderByClause = `
+          ORDER BY (
+            CASE WHEN LOWER(p.name) = ${exactParam} THEN 150 ELSE 0 END
+            + CASE WHEN p.name ILIKE ${wildcardParam} THEN 90 ELSE 0 END
+            + CASE WHEN LOWER(c.name) = ${exactParam} THEN 50 ELSE 0 END
+            + CASE WHEN c.name ILIKE ${wildcardParam} THEN 30 ELSE 0 END
+            + CASE WHEN COALESCE(p.stock, 0) > 0 THEN 25 ELSE 0 END
+            + CASE WHEN p.is_featured THEN 10 ELSE 0 END
+          ) DESC, COALESCE(p.stock, 0) > 0 DESC, p.is_featured DESC, p.name ASC
+        `;
+      }
     }
 
     const countResult = await pool.query(
@@ -49,13 +97,13 @@ const getProducts = async (req, res, next) => {
               COALESCE(pr.avg_rating, 0) AS avg_rating,
               COALESCE(pr.review_count, 0) AS review_count
        FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN categories c ON c.id = p.category_id
        LEFT JOIN (
          SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
          FROM product_reviews WHERE status = 'approved' GROUP BY product_id
        ) pr ON pr.product_id = p.id
        ${where}
-       ORDER BY p.is_featured DESC, p.id ASC
+       ${orderByClause}
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset],
     );

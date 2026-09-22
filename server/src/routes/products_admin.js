@@ -260,11 +260,33 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
     const params = [];
     const where = ["p.status != 'archived'"];
 
-    if (search) {
-      params.push(`%${search}%`);
-      where.push(
-        `(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`,
-      );
+    if (search && search.trim()) {
+      const cleanSearch = search.trim();
+      const rawTokens = cleanSearch
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((t) => t.length >= 2);
+      const tokens = [...new Set(rawTokens)];
+
+      if (tokens.length === 0) {
+        params.push(`%${cleanSearch}%`);
+        where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`);
+      } else {
+        const tokenConditions = [];
+        tokens.forEach((t) => {
+          params.push(`%${t}%`);
+          const ilikeParam = `$${params.length}`;
+          tokenConditions.push(`(
+            p.name ILIKE ${ilikeParam}
+            OR p.sku ILIKE ${ilikeParam}
+            OR p.barcode ILIKE ${ilikeParam}
+            OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.name ILIKE ${ilikeParam})
+            OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(p.tags, '[]'::jsonb)) tag WHERE tag ILIKE ${ilikeParam})
+          )`);
+        });
+        where.push(`(${tokenConditions.join(" AND ")})`);
+      }
     }
     if (category) {
       params.push(category);

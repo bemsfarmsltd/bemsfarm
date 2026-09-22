@@ -279,21 +279,48 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = useMemo(() => {
+    const cleanSearch = search.toLowerCase().trim();
+    const rawTokens = cleanSearch
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 2);
+    const tokens = [...new Set(rawTokens)];
+
     return products
       .filter((p) => {
         const matchCat = isProductInCategory(p, activeCat);
+        if (!matchCat) return false;
+        if (!cleanSearch) return true;
 
-        const query = search.toLowerCase().trim();
-        const prodCat = getProductCategory(p);
-        const matchSearch =
-          !query ||
-          p.name?.toLowerCase().includes(query) ||
-          prodCat?.toLowerCase().includes(query) ||
-          p.description?.toLowerCase().includes(query);
+        const pName = (p.name || "").toLowerCase();
+        const prodCat = (getProductCategory(p) || "").toLowerCase();
+        const pTags = Array.isArray(p.tags) ? p.tags.join(" ").toLowerCase() : "";
+        const pDesc = (p.description || "").toLowerCase();
 
-        return matchCat && matchSearch;
+        if (tokens.length === 0) {
+          return pName.includes(cleanSearch) || prodCat.includes(cleanSearch) || pTags.includes(cleanSearch);
+        }
+
+        // Multi-token match: every token must match name, category, tags, or word in description
+        return tokens.every((token) => {
+          const wordRegex = new RegExp(`\\b${token}\\b`, "i");
+          return (
+            pName.includes(token) ||
+            prodCat.includes(token) ||
+            pTags.includes(token) ||
+            wordRegex.test(pDesc)
+          );
+        });
       })
       .sort((a, b) => {
+        if (cleanSearch) {
+          const aName = (a.name || "").toLowerCase();
+          const bName = (b.name || "").toLowerCase();
+          const aExact = aName === cleanSearch ? 100 : aName.includes(cleanSearch) ? 50 : 0;
+          const bExact = bName === cleanSearch ? 100 : bName.includes(cleanSearch) ? 50 : 0;
+          if (aExact !== bExact) return bExact - aExact;
+        }
+
         if (sort === "price-asc") return a.price - b.price;
         if (sort === "price-desc") return b.price - a.price;
         if (sort === "name") return a.name.localeCompare(b.name);

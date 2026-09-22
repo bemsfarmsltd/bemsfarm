@@ -17,41 +17,89 @@ router.get("/", getProducts);
 // Insert BEFORE the existing "router.get('/:id', ...)" route
 // (must be before the wildcard to avoid /:id matching "search")
 //
-// This powers the Navbar's expanding search bar dropdown.
-// Called by NavSearchBar component with ?q=...&limit=6
-// ================================================================
-
+// This powers the Navbar and Search Bar autocomplete & live search.
+// Multi-token word-boundary matching with relevance scoring.
 router.get("/search", async (req, res, next) => {
   try {
     const { q, limit: limitRaw = 8 } = req.query;
     const limit = clampLimit(limitRaw, 8);
-    if (!q || !q.trim()) {
+    const cleanQ = String(q || "").trim();
+    if (!cleanQ) {
       return res.json({ products: [] });
     }
 
-    const search = `%${q.trim()}%`;
+    const rawTokens = cleanQ
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 2);
+
+    const tokens = [...new Set(rawTokens)];
     const maxResults = Math.min(parseInt(limit) || 8, 20);
 
-    const result = await pool.query(
-      `SELECT
-         p.id, p.name, p.price, p.unit, p.image_url,
-         p.stock, p.is_featured,
-         c.name as category_name
-       FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
-       WHERE
-         (LOWER(p.name) LIKE LOWER($1)
-          OR LOWER(c.name) LIKE LOWER($1)
-          OR LOWER(p.description) LIKE LOWER($1))
-         AND COALESCE(p.stock, 100) > 0
-       ORDER BY
-         CASE WHEN LOWER(p.name) LIKE LOWER($1) THEN 0 ELSE 1 END,
-         p.is_featured DESC,
-         p.name ASC
-       LIMIT $2`,
-      [search, maxResults],
-    );
+    if (tokens.length === 0) {
+      const result = await pool.query(
+        `SELECT
+           p.id, p.name, p.price, p.unit, p.image_url,
+           p.stock, p.is_featured,
+           c.name as category_name
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.status != 'archived' AND p.name ILIKE $1
+         ORDER BY p.is_featured DESC, p.name ASC
+         LIMIT $2`,
+        [`%${cleanQ}%`, maxResults],
+      );
+      return res.json({ products: result.rows });
+    }
 
+    const exactPhrase = cleanQ.toLowerCase();
+    const wildcardPhrase = `%${cleanQ}%`;
+
+    const conditions = [];
+    const params = [exactPhrase, wildcardPhrase];
+
+    tokens.forEach((t) => {
+      params.push(`%${t}%`);
+      const ilikeParam = `$${params.length}`;
+
+      params.push(t);
+      const wordParam = `$${params.length}`;
+
+      conditions.push(`(
+        p.name ILIKE ${ilikeParam}
+        OR c.name ILIKE ${ilikeParam}
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(p.tags, '[]'::jsonb)) tag WHERE tag ILIKE ${ilikeParam})
+        OR p.description ~* ('\\m' || ${wordParam} || '\\M')
+      )`);
+    });
+
+    const tokenClause = conditions.join(" AND ");
+    params.push(maxResults);
+    const limitParam = `$${params.length}`;
+
+    const querySql = `
+      SELECT
+        p.id, p.name, p.price, p.unit, p.image_url,
+        p.stock, p.is_featured,
+        c.name as category_name,
+        (
+          CASE WHEN LOWER(p.name) = $1 THEN 150 ELSE 0 END
+          + CASE WHEN p.name ILIKE $2 THEN 90 ELSE 0 END
+          + CASE WHEN LOWER(c.name) = $1 THEN 50 ELSE 0 END
+          + CASE WHEN c.name ILIKE $2 THEN 30 ELSE 0 END
+          + CASE WHEN COALESCE(p.stock, 0) > 0 THEN 25 ELSE 0 END
+          + CASE WHEN p.is_featured THEN 10 ELSE 0 END
+        ) AS rank_score
+      FROM products p
+      LEFT JOIN categories c ON c.id = p.category_id
+      WHERE p.status != 'archived'
+        AND (${tokenClause})
+      ORDER BY rank_score DESC, COALESCE(p.stock, 0) > 0 DESC, p.is_featured DESC, p.name ASC
+      LIMIT ${limitParam}
+    `;
+
+    const result = await pool.query(querySql, params);
     res.json({ products: result.rows });
   } catch (err) {
     console.error("Product search error:", err.message);
