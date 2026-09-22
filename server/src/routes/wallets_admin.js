@@ -117,7 +117,22 @@ router.get("/summary", async (req, res, next) => {
         dr.email,
         dr.vehicle_type,
         dr.vehicle_plate,
-        dr.status AS driver_status,
+        COALESCE(da.is_available, false) AS is_available,
+        COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+        CASE
+          WHEN dr.status = 'suspended' THEN 'suspended'
+          WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification', 'documents_submitted') THEN 'pending'
+          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
+          ELSE 'off_duty'
+        END AS duty_status,
+        CASE
+          WHEN dr.status = 'suspended' THEN 'suspended'
+          WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification', 'documents_submitted') THEN 'pending'
+          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
+          ELSE 'off_duty'
+        END AS driver_status,
         dr.commission_per_delivery,
         COALESCE(dr.total_earnings, 0) AS total_earnings,
         dr.wallet_account_number,
@@ -135,7 +150,16 @@ router.get("/summary", async (req, res, next) => {
         (SELECT COALESCE(SUM(amount), 0) FROM driver_wallet_ledger WHERE driver_id = dr.id AND type = 'credit' AND category = 'bonus') AS total_bonuses,
         (SELECT COALESCE(SUM(amount), 0) FROM driver_wallet_ledger WHERE driver_id = dr.id AND type = 'debit' AND category = 'penalty') AS total_penalties
       FROM drivers dr
-      ORDER BY dr.status ASC, dr.name ASC
+      LEFT JOIN driver_availability da ON dr.id = da.driver_id
+      ORDER BY 
+        CASE 
+          WHEN dr.status = 'suspended' THEN 4
+          WHEN dr.status = 'pending' THEN 3
+          WHEN COALESCE(da.is_on_delivery, false) = true THEN 1
+          WHEN COALESCE(da.is_available, false) = true THEN 0
+          ELSE 2 
+        END,
+        dr.name ASC
       `
     );
 

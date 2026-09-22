@@ -3,6 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import api from '../../lib/api'
 
+const DUTY_STATUS_CFG = {
+  active:      { label: 'Active',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line' },
+  on_delivery: { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line' },
+  off_duty:    { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line' },
+  pending:     { label: 'Pending Review', color: '#d97706', bg: '#fef3c7', icon: 'ri-time-line' },
+  suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line' },
+}
+
 export default function WalletManagement() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') || 'wallets'
@@ -705,7 +713,7 @@ export default function WalletManagement() {
                   <th>Pending Hold</th>
                   <th>Withdrawable Balance</th>
                   <th>Default Base Rate</th>
-                  <th>Status</th>
+                  <th>Duty &amp; Wallet Status</th>
                   <th className="text-end pe-3">Wallet Actions</th>
                 </tr>
               </thead>
@@ -820,11 +828,30 @@ export default function WalletManagement() {
                         </div>
                       </td>
                       <td>
-                        {driver.wallet_is_frozen ? (
-                          <span className="badge bg-danger">Frozen</span>
-                        ) : (
-                          <span className="badge bg-success bg-opacity-75">Active</span>
-                        )}
+                        <div className="d-flex flex-column gap-1 align-items-start">
+                          {(() => {
+                            const statusKey = driver.duty_status || driver.driver_status || (driver.is_available ? 'active' : 'off_duty')
+                            const dutyCfg = DUTY_STATUS_CFG[statusKey] || DUTY_STATUS_CFG.off_duty
+                            return (
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 text-xs fw-bold"
+                                style={{ background: dutyCfg.bg, color: dutyCfg.color }}
+                              >
+                                <i className={`${dutyCfg.icon} me-1`} />
+                                {dutyCfg.label}
+                              </span>
+                            )
+                          })()}
+                          {driver.wallet_is_frozen ? (
+                            <span className="badge bg-danger text-white px-2 py-0.5" style={{ fontSize: 10 }}>
+                              <i className="ri-lock-2-line me-1"></i>Wallet Frozen
+                            </span>
+                          ) : (
+                            <span className="badge bg-light text-muted border px-2 py-0.5" style={{ fontSize: 10 }}>
+                              <i className="ri-wallet-3-line me-1"></i>Wallet Active
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="text-end pe-3">
                         <div className="d-inline-flex gap-1">
