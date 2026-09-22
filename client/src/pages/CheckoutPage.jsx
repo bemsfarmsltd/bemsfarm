@@ -9,46 +9,7 @@ import { getDeliveryFee } from "../utils/delivery";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import AddressAutocomplete from "../components/ui/AddressAutocomplete";
-
-const STATES = [
-  "Abia",
-  "Adamawa",
-  "Akwa Ibom",
-  "Anambra",
-  "Bauchi",
-  "Bayelsa",
-  "Benue",
-  "Borno",
-  "Cross River",
-  "Delta",
-  "Ebonyi",
-  "Edo",
-  "Ekiti",
-  "Enugu",
-  "FCT - Abuja",
-  "Gombe",
-  "Imo",
-  "Jigawa",
-  "Kaduna",
-  "Kano",
-  "Katsina",
-  "Kebbi",
-  "Kogi",
-  "Kwara",
-  "Abia State",
-  "Nasarawa",
-  "Niger",
-  "Ogun",
-  "Ondo",
-  "Osun",
-  "Oyo",
-  "Plateau",
-  "Rivers",
-  "Sokoto",
-  "Taraba",
-  "Yobe",
-  "Zamfara",
-];
+import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
 
 const MONNIFY_API_KEY = import.meta.env.VITE_MONNIFY_API_KEY || "";
 const MONNIFY_CONTRACT_CODE = import.meta.env.VITE_MONNIFY_CONTRACT_CODE || "";
@@ -1076,11 +1037,13 @@ export default function CheckoutPage() {
                       value={form.address}
                       onChange={setField("address")}
                       onPlaceSelected={(place) => {
+                        const matchedState = normalizeNigerianState(place.state);
                         setForm((prev) => ({
                           ...prev,
-                          address: place.address,
+                          // Keep customer's typed address verbatim
+                          address: (prev.address && prev.address.trim().length >= 3) ? prev.address : (place.address || prev.address),
                           city: place.city || place.lga || prev.city,
-                          state: place.state || prev.state,
+                          state: matchedState || prev.state,
                           postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
                           latitude: place.latitude,
                           longitude: place.longitude,
@@ -1151,7 +1114,7 @@ export default function CheckoutPage() {
                         onChange={setField("state")}
                         disabled={loading}
                       >
-                        {STATES.map((s) => (
+                        {NIGERIAN_STATES.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>

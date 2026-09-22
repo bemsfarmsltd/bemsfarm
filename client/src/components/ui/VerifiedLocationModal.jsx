@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
+import { normalizeNigerianState } from "../../utils/nigerianStates";
 
 // Fix Leaflet icon URLs in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -185,7 +186,6 @@ export default function VerifiedLocationModal({
     if (!closest) return;
     const newPos = [closest.latitude, closest.longitude];
     setPosition(newPos);
-    setSearchQuery(closest.display_name);
     setFallbackSuggestion(null);
     setSearchResults([]);
     verifyCoordinates(closest.latitude, closest.longitude, closest.display_name);
@@ -245,10 +245,15 @@ export default function VerifiedLocationModal({
   const handleConfirmLocation = async () => {
     const lat = position[0];
     const lng = position[1];
-    const finalAddress = verifiedData?.formatted_address || searchQuery || "Pinned Delivery Location";
+    
+    // CRITICAL: Preserve customer's exact words in address field. Never overwrite with generic landmark.
+    const finalAddress = (initialAddress && initialAddress.trim().length > 0)
+      ? initialAddress.trim()
+      : (searchQuery && searchQuery.trim().length > 0 ? searchQuery.trim() : verifiedData?.formatted_address || "Pinned Delivery Location");
+
     const city = verifiedData?.city || verifiedData?.lga || "Umuahia";
     const lga = verifiedData?.lga || verifiedData?.city || "Umuahia North";
-    const state = verifiedData?.state || "Abia";
+    const state = normalizeNigerianState(verifiedData?.state || "Abia");
     const postalCode = verifiedData?.postal_code || verifiedData?.postcode || "440221";
     const zoneId = verifiedData?.zone?.zone_id || "ZONE001";
     const deliveryFee = verifiedData?.zone?.delivery_fee || 1000;
@@ -256,6 +261,7 @@ export default function VerifiedLocationModal({
     const payload = {
       address: finalAddress,
       street_address: finalAddress,
+      matched_area: verifiedData?.formatted_address || fallbackSuggestion?.display_name || "",
       city,
       lga,
       state,

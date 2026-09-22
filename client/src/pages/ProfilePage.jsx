@@ -9,12 +9,7 @@ import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
-
-const NIGERIAN_STATES = [
-  "Abia State", "Abuja (FCT)", "Ogun", "Oyo", "Rivers", "Delta", "Edo",
-  "Kaduna", "Kano", "Enugu", "Anambra", "Akwa Ibom", "Ondo", "Osun",
-  "Kwara", "Plateau", "Abia", "Imo", "Benue", "Bayelsa"
-];
+import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
 
 export default function ProfilePage() {
   const { user, isLoggedIn, updateUser, logout } = useAuth();
@@ -870,11 +865,13 @@ export default function ProfilePage() {
                             value={addressForm.street_address}
                             onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })}
                             onPlaceSelected={(place) => {
+                              const matchedState = normalizeNigerianState(place.state);
                               setAddressForm(prev => ({
                                 ...prev,
-                                street_address: place.address,
+                                // Preserve customer's typed street address
+                                street_address: (prev.street_address && prev.street_address.trim().length >= 3) ? prev.street_address : (place.address || prev.street_address),
                                 city: place.city || place.lga || prev.city,
-                                state: place.state || prev.state,
+                                state: matchedState || prev.state,
                                 postal_code: place.postal_code || place.postcode || prev.postal_code || "440221",
                                 latitude: place.latitude,
                                 longitude: place.longitude,

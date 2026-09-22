@@ -38,13 +38,7 @@ const AUTH_CSS = `
 }
 `;
 
-const STATES = [
-  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
-  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe",
-  "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Abia State",
-  "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto",
-  "Taraba", "Yobe", "Zamfara",
-];
+import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -54,9 +48,10 @@ export default function RegisterPage() {
     phone: "",
     address: "",
     city: "",
-    state: "Abia State",
+    state: "Abia",
     latitude: null,
     longitude: null,
+    postalCode: "440221",
     password: "",
     confirm: "",
   });
@@ -342,11 +337,13 @@ export default function RegisterPage() {
                     }));
                   }}
                   onPlaceSelected={(place) => {
+                    const matchedState = normalizeNigerianState(place.state);
                     setForm((prev) => ({
                       ...prev,
-                      address: place.address,
+                      // Preserve customer's typed address if already entered, else take selected address
+                      address: (prev.address && prev.address.trim().length >= 3) ? prev.address : (place.address || prev.address),
                       city: place.city || place.lga || prev.city,
-                      state: place.state || prev.state,
+                      state: matchedState || prev.state,
                       postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
                       latitude: place.latitude,
                       longitude: place.longitude,
@@ -402,7 +399,7 @@ export default function RegisterPage() {
                     className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none bg-gray-50/50 cursor-pointer"
                     required
                   >
-                    {STATES.map((s) => (
+                    {NIGERIAN_STATES.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
