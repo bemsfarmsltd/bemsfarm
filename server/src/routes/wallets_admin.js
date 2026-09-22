@@ -591,6 +591,23 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
   }
 });
 
+// ── POST /api/admin/wallets/payouts/trigger-auto-run ───────────────
+// Manually triggers the automated scheduled payout processor on demand
+router.post("/payouts/trigger-auto-run", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    const { processScheduledPayouts } = require("../services/payoutScheduler");
+    const result = await processScheduledPayouts();
+    res.json({
+      message: result.disbursed_count > 0 
+        ? `Automated payout completed! Disbursed ${result.disbursed_count} driver payout(s).` 
+        : `Scheduler ran: ${result.reason || 'No eligible drivers above minimum payout threshold at this time.'}`,
+      result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/wallets/gateway/overview ────────────────────────
 // Real-time Payment Gateway (Monnify Sandbox/Live) Health, Merchant Balances & Volumes
 router.get("/gateway/overview", async (req, res, next) => {

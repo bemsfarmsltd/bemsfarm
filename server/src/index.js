@@ -97,6 +97,14 @@ app.use('/api/audit', require('./routes/audit'));
       console.warn('[dispatch-worker] Failed to initialize timeout worker:', e.message);
     }
 
+    // Start automated scheduled driver payout worker
+    try {
+      const { startPayoutSchedulerWorker } = require('./services/payoutScheduler');
+      startPayoutSchedulerWorker(6);
+    } catch (e) {
+      console.warn('[payout-worker] Failed to initialize payout scheduler worker:', e.message);
+    }
+
     // Auto-record deployment audit event for Developer Audit
     const { recordDeploymentEvent } = require('./services/auditService');
     await recordDeploymentEvent();
