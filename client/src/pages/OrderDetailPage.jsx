@@ -10,88 +10,116 @@ import LiveOrderMap from "../components/ui/LiveOrderMap";
 import { getProductImage } from "../utils/productImages";
 
 const STATUS_CONFIG = {
+  // ── Order placed / awaiting payment ──
   pending: {
     label: "Order Placed",
-    bg: "#FEF3C7",
-    color: "#B45309",
-    border: "#FDE68A",
-    dot: "#F59E0B",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
     stepIndex: 0,
     desc: "Order received and awaiting warehouse processing",
   },
+  new_order: {
+    label: "Order Placed",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
+    stepIndex: 0,
+    desc: "Order received and awaiting confirmation",
+  },
+  // ── Payment confirmed ──
+  paid: {
+    label: "Confirmed & Paid",
+    bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
+    stepIndex: 1,
+    desc: "Payment confirmed, produce queued for packaging",
+  },
   confirmed: {
     label: "Confirmed & Paid",
-    bg: "#EFF6FF",
-    color: "#1D4ED8",
-    border: "#BFDBFE",
-    dot: "#3B82F6",
+    bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
     stepIndex: 1,
     desc: "Payment verified, farm produce queued for packaging",
   },
+  // ── Packaging ──
   processing: {
     label: "Packaging & Quality Inspection",
-    bg: "#F5F3FF",
-    color: "#6D28D9",
-    border: "#DDD6FE",
-    dot: "#8B5CF6",
+    bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
     stepIndex: 2,
     desc: "Items sorted, de-stoned, and sealed in tamper-proof crates",
   },
+  packed_ready: {
+    label: "Packed & Ready for Dispatch",
+    bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
+    stepIndex: 2,
+    desc: "Goods are packed and awaiting courier pickup",
+  },
+  // ── Dispatched / in transit ──
   shipped: {
     label: "Dispatched · In Transit",
-    bg: "#ECFDF5",
-    color: "#047857",
-    border: "#A7F3D0",
-    dot: "#10B981",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
     stepIndex: 3,
     desc: "Courier assigned and en route with your fresh produce",
   },
+  driver_assigned: {
+    label: "Courier Assigned",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 3,
+    desc: "A courier has been assigned and is collecting your order",
+  },
+  picked_up: {
+    label: "Order Picked Up",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 3,
+    desc: "Courier has collected your order from the store",
+  },
+  in_transit: {
+    label: "In Transit",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 3,
+    desc: "Your order is on the way to your delivery address",
+  },
   en_route: {
     label: "Out For Doorstep Delivery",
-    bg: "#ECFDF5",
-    color: "#047857",
-    border: "#A7F3D0",
-    dot: "#10B981",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
     stepIndex: 3,
     desc: "Courier is approaching your delivery destination",
   },
   out_for_delivery: {
     label: "Out For Doorstep Delivery",
-    bg: "#ECFDF5",
-    color: "#047857",
-    border: "#A7F3D0",
-    dot: "#10B981",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
     stepIndex: 3,
     desc: "Courier is nearby with your delivery",
   },
   arrived: {
     label: "Courier Arrived",
-    bg: "#D1FAE5",
-    color: "#065F46",
-    border: "#A7F3D0",
-    dot: "#10B981",
+    bg: "#D1FAE5", color: "#065F46", border: "#A7F3D0", dot: "#10B981",
     stepIndex: 3,
     desc: "Courier is at your doorstep or entrance",
   },
+  // ── Delivered ──
   delivered: {
     label: "Delivered Successfully",
-    bg: "#F0FDF4",
-    color: "#15803D",
-    border: "#BBF7D0",
-    dot: "#22C55E",
+    bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
     stepIndex: 4,
     desc: "Order has been safely delivered to your doorstep",
   },
+  completed: {
+    label: "Delivered Successfully",
+    bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
+    stepIndex: 4,
+    desc: "Order has been completed and delivered",
+  },
+  // ── Cancelled ──
   cancelled: {
     label: "Cancelled",
-    bg: "#FEF2F2",
-    color: "#B91C1C",
-    border: "#FECACA",
-    dot: "#EF4444",
+    bg: "#FEF2F2", color: "#B91C1C", border: "#FECACA", dot: "#EF4444",
     stepIndex: -1,
     desc: "This order was cancelled",
   },
+  refunded: {
+    label: "Refunded",
+    bg: "#FEF2F2", color: "#B91C1C", border: "#FECACA", dot: "#EF4444",
+    stepIndex: -1,
+    desc: "This order has been refunded",
+  },
 };
+
 
 const MILESTONE_STEPS = [
   { key: "pending", label: "Placed", desc: "Order Logged" },
@@ -276,7 +304,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+  const rawStatus = String(order.status || 'pending').toLowerCase()
+  const cfg = STATUS_CONFIG[rawStatus] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
   const total = Number(order.total || 0);
   const deliveryFee = Number(order.delivery_fee || 1500);
