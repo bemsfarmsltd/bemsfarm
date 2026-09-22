@@ -345,8 +345,9 @@ export default function RegisterPage() {
                     setForm((prev) => ({
                       ...prev,
                       address: place.address,
-                      city: place.city || prev.city,
+                      city: place.city || place.lga || prev.city,
                       state: place.state || prev.state,
+                      postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
                       latitude: place.latitude,
                       longitude: place.longitude,
                     }));
@@ -362,7 +363,7 @@ export default function RegisterPage() {
                 {form.latitude && form.longitude ? (
                   <div className="mt-1.5 px-2.5 py-1 bg-green-50 border border-green-200 text-green-800 rounded-lg text-[11px] font-semibold flex items-center justify-between animate-fadeIn">
                     <span className="flex items-center gap-1">
-                      <span>✓</span> <span>Location Verified</span>
+                      <span>✓</span> <span>Location Verified: {form.city}, {form.state} ({form.postalCode || "440221"})</span>
                     </span>
                     <span className="text-[10px] text-green-700 font-mono">
                       GPS: {Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)}
@@ -376,8 +377,8 @@ export default function RegisterPage() {
                 ) : null}
               </div>
 
-              {/* City and State Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* City/LGA, State, and Postal Code Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
                     City / LGA
@@ -386,8 +387,8 @@ export default function RegisterPage() {
                     type="text"
                     value={form.city}
                     onChange={(e) => handleInputChange("city", e.target.value)}
-                    placeholder="e.g. Lekki / Ikeja"
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    placeholder="e.g. Umuahia / Lekki"
+                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -398,13 +399,25 @@ export default function RegisterPage() {
                   <select
                     value={form.state}
                     onChange={(e) => handleInputChange("state", e.target.value)}
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none bg-gray-50/50 cursor-pointer"
+                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none bg-gray-50/50 cursor-pointer"
                     required
                   >
                     {STATES.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={form.postalCode || ""}
+                    onChange={(e) => handleInputChange("postalCode", e.target.value)}
+                    placeholder="e.g. 440221"
+                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                  />
                 </div>
               </div>
 

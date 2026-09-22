@@ -873,8 +873,9 @@ export default function ProfilePage() {
                               setAddressForm(prev => ({
                                 ...prev,
                                 street_address: place.address,
-                                city: place.city || prev.city,
+                                city: place.city || place.lga || prev.city,
                                 state: place.state || prev.state,
+                                postal_code: place.postal_code || place.postcode || prev.postal_code || "440221",
                                 latitude: place.latitude,
                                 longitude: place.longitude,
                               }));
@@ -886,14 +887,26 @@ export default function ProfilePage() {
                           />
                         </div>
 
-                        <div className="sm:col-span-2">
+                        <div>
                           <label className="block text-xs font-bold text-gray-700 mb-1">
-                            City / Town *
+                            City / LGA *
                           </label>
                           <input
                             value={addressForm.city}
                             onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                            placeholder="e.g. Umuahia, Aba, Owerri"
+                            placeholder="e.g. Umuahia / Lekki"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            Postal Code
+                          </label>
+                          <input
+                            value={addressForm.postal_code || ""}
+                            onChange={(e) => setAddressForm({ ...addressForm, postal_code: e.target.value })}
+                            placeholder="e.g. 440221"
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
                           />
                         </div>

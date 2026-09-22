@@ -246,8 +246,10 @@ export default function VerifiedLocationModal({
     const lat = position[0];
     const lng = position[1];
     const finalAddress = verifiedData?.formatted_address || searchQuery || "Pinned Delivery Location";
-    const city = verifiedData?.city || "Umuahia";
+    const city = verifiedData?.city || verifiedData?.lga || "Umuahia";
+    const lga = verifiedData?.lga || verifiedData?.city || "Umuahia North";
     const state = verifiedData?.state || "Abia";
+    const postalCode = verifiedData?.postal_code || verifiedData?.postcode || "440221";
     const zoneId = verifiedData?.zone?.zone_id || "ZONE001";
     const deliveryFee = verifiedData?.zone?.delivery_fee || 1000;
 
@@ -255,7 +257,10 @@ export default function VerifiedLocationModal({
       address: finalAddress,
       street_address: finalAddress,
       city,
+      lga,
       state,
+      postal_code: postalCode,
+      postcode: postalCode,
       latitude: lat,
       longitude: lng,
       zone_id: zoneId,
@@ -273,6 +278,7 @@ export default function VerifiedLocationModal({
           street_address: finalAddress,
           city,
           state,
+          postal_code: postalCode,
           latitude: lat,
           longitude: lng,
           is_default: true,

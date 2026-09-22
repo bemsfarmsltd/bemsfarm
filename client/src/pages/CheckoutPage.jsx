@@ -1079,8 +1079,9 @@ export default function CheckoutPage() {
                         setForm((prev) => ({
                           ...prev,
                           address: place.address,
-                          city: place.city || prev.city,
+                          city: place.city || place.lga || prev.city,
                           state: place.state || prev.state,
+                          postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
                           latitude: place.latitude,
                           longitude: place.longitude,
                         }));
@@ -1103,7 +1104,7 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "14px" }}>
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         City / LGA *
@@ -1122,7 +1123,7 @@ export default function CheckoutPage() {
                         }}
                         value={form.city}
                         onChange={setField("city")}
-                        placeholder="Ikeja / Lekki / Surulere"
+                        placeholder="Ikeja / Lekki / Umuahia"
                         disabled={loading}
                         onFocus={(e) => (e.currentTarget.style.borderColor = "#143c2d")}
                         onBlur={(e) => (e.currentTarget.style.borderColor = "#D1D5DB")}
@@ -1154,6 +1155,31 @@ export default function CheckoutPage() {
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Postal Code
+                      </label>
+                      <input
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          border: "1px solid #D1D5DB",
+                          borderRadius: "12px",
+                          fontSize: "14px",
+                          fontFamily: "var(--body-font)",
+                          outline: "none",
+                          backgroundColor: "#FFFFFF",
+                          boxSizing: "border-box",
+                        }}
+                        value={form.postalCode || ""}
+                        onChange={setField("postalCode")}
+                        placeholder="e.g. 440221"
+                        disabled={loading}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "#143c2d")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "#D1D5DB")}
+                      />
                     </div>
                   </div>
 

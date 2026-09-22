@@ -94,8 +94,11 @@ export default function AddressAutocomplete({
         onPlaceSelected({
           address,
           street_address: address,
-          city: res.data?.city || suggestion.city,
+          city: res.data?.city || suggestion.city || suggestion.lga,
+          lga: res.data?.lga || suggestion.lga || res.data?.city || suggestion.city,
           state: res.data?.state || suggestion.state,
+          postal_code: res.data?.postal_code || suggestion.postal_code || "440221",
+          postcode: res.data?.postal_code || suggestion.postal_code || "440221",
           latitude: suggestion.latitude,
           longitude: suggestion.longitude,
           zone_id: res.data?.zone?.zone_id || "ZONE001",
@@ -108,8 +111,11 @@ export default function AddressAutocomplete({
       if (onPlaceSelected) {
         onPlaceSelected({
           address,
-          city: suggestion.city,
+          city: suggestion.city || suggestion.lga,
+          lga: suggestion.lga || suggestion.city,
           state: suggestion.state,
+          postal_code: suggestion.postal_code || "440221",
+          postcode: suggestion.postal_code || "440221",
           latitude: suggestion.latitude,
           longitude: suggestion.longitude,
           verified: true,
