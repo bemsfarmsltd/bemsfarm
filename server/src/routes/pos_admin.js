@@ -273,6 +273,9 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
       notes, session_id, split_payments,
     } = req.body;
 
+    const validCustomerId = (customer_id && !isNaN(customer_id) && parseInt(customer_id) > 0) ? parseInt(customer_id) : null;
+    const validSessionId = (session_id && !isNaN(session_id) && parseInt(session_id) > 0) ? parseInt(session_id) : null;
+
     // A split sale must actually carry its per-method breakdown, and that
     // breakdown must add up to the sale total — otherwise a sale can be
     // marked "paid" with no record of what was collected, or with less
@@ -296,15 +299,18 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
 
     // Calculate totals from products — lock rows so stock can't be
     // oversold by a concurrent sale, and never trust a client-supplied price.
-    const productIds = [...new Set(items.map((i) => parseInt(i.product_id)))];
-    const prodRows = await client.query(
-      "SELECT id, name, unit_price, price, stock FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
-      [productIds]
-    );
+    const validProductIds = [...new Set(items.map((i) => parseInt(i.product_id)).filter((id) => !isNaN(id) && id > 0))];
+    let prodRows = { rows: [] };
+    if (validProductIds.length > 0) {
+      prodRows = await client.query(
+        "SELECT id, name, unit_price, price, stock, stock_quantity, cost_price FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
+        [validProductIds]
+      );
+    }
     const productsById = new Map(prodRows.rows.map((p) => [p.id, p]));
 
     // Fetch packaging units if specified
-    const pkgUnitIds = items.map((i) => parseInt(i.packaging_unit_id)).filter(Boolean);
+    const pkgUnitIds = items.map((i) => parseInt(i.packaging_unit_id)).filter((id) => !isNaN(id) && id > 0);
     let pkgUnitsMap = new Map();
     if (pkgUnitIds.length > 0) {
       const pkgRows = await client.query(
@@ -317,40 +323,54 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     let subtotal = 0;
     const lineItems = [];
     for (const item of items) {
-      const productId = parseInt(item.product_id);
-      const quantity = parseInt(item.quantity);
-      const p = productsById.get(productId);
-      if (!p || !Number.isInteger(quantity) || quantity <= 0) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: `Product ${item.product_id} is not available` });
-      }
+      const rawPid = item.product_id;
+      const productId = (!isNaN(rawPid) && parseInt(rawPid) > 0) ? parseInt(rawPid) : null;
+      const quantity = Math.max(1, parseInt(item.quantity) || 1);
 
-      const pkg = item.packaging_unit_id ? pkgUnitsMap.get(parseInt(item.packaging_unit_id)) : null;
-      const multiplier = pkg ? parseFloat(pkg.multiplier) : (parseFloat(item.multiplier) || 1);
-      const unit_price = pkg ? parseFloat(pkg.price) : (item.unit_price ? parseFloat(item.unit_price) : parseFloat(p.unit_price || p.price || 0));
-      const packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || null);
+      if (productId && productsById.has(productId)) {
+        const p = productsById.get(productId);
+        const pkg = item.packaging_unit_id ? pkgUnitsMap.get(parseInt(item.packaging_unit_id)) : null;
+        const multiplier = pkg ? parseFloat(pkg.multiplier) : (parseFloat(item.multiplier) || 1);
+        const unit_price = pkg ? parseFloat(pkg.price) : (item.unit_price ? parseFloat(item.unit_price) : parseFloat(p.unit_price || p.price || 0));
+        const packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || item.packaging_name || null);
 
-      const availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
-      const effectiveNeeded = quantity * multiplier;
-      if (p.stock != null && effectiveNeeded > availableStock && availableStock >= 0) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({
-          message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
+        const availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
+        const effectiveNeeded = quantity * multiplier;
+        if (p.stock != null && effectiveNeeded > availableStock && availableStock >= 0) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
+          });
+        }
+
+        const line_total = unit_price * quantity;
+        subtotal += line_total;
+        lineItems.push({
+          product_id: p.id,
+          name: p.name,
+          quantity,
+          unit_price,
+          line_total,
+          multiplier,
+          packaging_unit_name,
+          packaging_unit_id: pkg?.id || null,
+        });
+      } else {
+        // Custom item, order package, or non-inventory line item
+        const unit_price = Math.max(0, parseFloat(item.unit_price || item.price || 0));
+        const line_total = unit_price * quantity;
+        subtotal += line_total;
+        lineItems.push({
+          product_id: null,
+          name: item.name || item.product_name || `Order Item`,
+          quantity,
+          unit_price,
+          line_total,
+          multiplier: 1,
+          packaging_unit_name: item.packaging_unit_name || item.packaging_name || item.unit || null,
+          packaging_unit_id: null,
         });
       }
-
-      const line_total = unit_price * quantity;
-      subtotal += line_total;
-      lineItems.push({
-        product_id: p.id,
-        name: p.name,
-        quantity,
-        unit_price,
-        line_total,
-        multiplier,
-        packaging_unit_name,
-        packaging_unit_id: pkg?.id || null,
-      });
     }
 
     // Discount is never trusted as-is from the client:
@@ -362,7 +382,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     let finalDiscount = 0;
 
     if (coupon_code) {
-      const result = await validateCoupon(client, { code: coupon_code, subtotal, customerId: customer_id || null });
+      const result = await validateCoupon(client, { code: coupon_code, subtotal, customerId: validCustomerId });
       if (!result.ok) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: result.message });
@@ -407,16 +427,16 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
       `INSERT INTO orders
-         (id, order_ref, customer_id, customer_name, subtotal, discount_amount, tax_amount,
+         (id, order_ref, customer_id, user_id, customer_name, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Physical Store (POS)',$12,$13,$14,NOW(),NOW())
+       VALUES ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Physical Store (POS)',$12,$13,$14,NOW(),NOW())
        RETURNING *`,
       [
-        reference, reference, customer_id || null, customer_name,
+        reference, reference, validCustomerId, customer_name,
         subtotal, finalDiscount, tax_amount, total,
         payment_method, isPayLater ? "unpaid" : "paid", isPayLater ? "pending" : "completed",
-        session_id || null, notes || null, req.user.id,
+        validSessionId, notes || null, req.user.id,
       ]
     );
     const orderId = order.rows[0].id;
@@ -430,7 +450,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         await client.query(
           `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, metadata, paid_at, created_at, updated_at)
            VALUES ($1,$2,$3,'paid',$4,$5,NOW(),NOW(),NOW())`,
-          [`${reference}-${i + 1}`, orderId, p.amount, p.method, JSON.stringify({ pos_session_id: session_id || null, split_index: i })]
+          [`${reference}-${i + 1}`, orderId, p.amount, p.method, JSON.stringify({ pos_session_id: validSessionId, split_index: i })]
         );
       }
     }
@@ -447,42 +467,44 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
       await client.query(
         `INSERT INTO order_items (order_id, product_id, product_name, quantity, price, unit_price, subtotal)
          VALUES ($1,$2,$3,$4,$5,$5,$6)`,
-        [orderId, item.product_id, displayName, item.quantity, item.unit_price, item.line_total]
+        [orderId, item.product_id || null, displayName, item.quantity, item.unit_price, item.line_total]
       );
 
-      const prodRes = await client.query(
-        `UPDATE products
-         SET stock = GREATEST(0, COALESCE(stock,0) - $1),
-             stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
-             updated_at = NOW()
-         WHERE id=$2
-         RETURNING cost_price, unit_price, name`,
-        [effectiveDeduction, item.product_id]
-      );
+      if (item.product_id) {
+        const prodRes = await client.query(
+          `UPDATE products
+           SET stock = GREATEST(0, COALESCE(stock,0) - $1),
+               stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
+               updated_at = NOW()
+           WHERE id=$2
+           RETURNING cost_price, unit_price, name`,
+          [effectiveDeduction, item.product_id]
+        );
 
-      const itemCost = prodRes.rows[0]
-        ? parseFloat(prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0)
-        : 0;
-      const lineCogs = effectiveDeduction * itemCost;
-      totalCogsAmount += lineCogs;
+        const itemCost = prodRes.rows[0]
+          ? parseFloat(prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0)
+          : 0;
+        const lineCogs = effectiveDeduction * itemCost;
+        totalCogsAmount += lineCogs;
 
-      // Post perpetual inventory reduction for this line item
-      try {
-        await postInventoryDoubleEntry(client, {
-          event_type: "cogs",
-          product_id: item.product_id,
-          product_name: displayName,
-          warehouse_id: null,
-          quantity: effectiveDeduction,
-          unit_cost: itemCost,
-          debit_account: COA.COGS_PRODUCE,
-          credit_account: COA.INVENTORY_FINISHED_GOODS,
-          reference: reference,
-          narration: `POS Counter Sale fulfillment: ${displayName} (Qty: ${effectiveDeduction})`,
-          user_id: req.user.id,
-        });
-      } catch (finErr) {
-        console.warn("POS line COGS double-entry non-fatal warning:", finErr.message);
+        // Post perpetual inventory reduction for this line item
+        try {
+          await postInventoryDoubleEntry(client, {
+            event_type: "cogs",
+            product_id: item.product_id,
+            product_name: displayName,
+            warehouse_id: null,
+            quantity: effectiveDeduction,
+            unit_cost: itemCost,
+            debit_account: COA.COGS_PRODUCE,
+            credit_account: COA.INVENTORY_FINISHED_GOODS,
+            reference: reference,
+            narration: `POS Counter Sale fulfillment: ${displayName} (Qty: ${effectiveDeduction})`,
+            user_id: req.user.id,
+          });
+        } catch (finErr) {
+          console.warn("POS line COGS double-entry non-fatal warning:", finErr.message);
+        }
       }
     }
 

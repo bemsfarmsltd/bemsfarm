@@ -1065,9 +1065,11 @@ export default function POS() {
 
     let completedReceipt = receiptData
     try {
+      const validCustomerId = (typeof customer?.id === 'number' || (!isNaN(customer?.id) && Number(customer?.id) > 0)) ? Number(customer.id) : null
+
       const salePayload = {
         order_ref: orderId,
-        customer_id: customer?.id || null,
+        customer_id: validCustomerId || undefined,
         customer_name: customer?.name || 'Walk-in Customer',
         customer_phone: customer?.phone || '',
         payment_method: method === 'Split Tender' ? 'Split Payment' : method,
@@ -1075,7 +1077,8 @@ export default function POS() {
         discount_amount: discountAmt,
         notes: orderNote,
         items: cart.map(i => ({
-          product_id: i.id,
+          product_id: (typeof i.id === 'number' || (!isNaN(i.id) && Number(i.id) > 0)) ? Number(i.id) : null,
+          name: i.name || 'Item',
           packaging_unit_id: i.packaging_unit_id || null,
           packaging_name: i.packaging_name || i.unit || null,
           multiplier: i.multiplier || 1,

@@ -17,7 +17,7 @@ const sessionClose = z.object({
 // payment logic (DB-backed, role-aware) stays exactly as written below.
 const sale = z.object({
   items: z.array(z.record(z.string(), z.any())).min(1, "Items required"),
-  customer_id: numLike.optional(),
+  customer_id: z.any().optional(),
   customer_name: z.string().optional(),
   payment_method: z.string().optional(),
   amount_tendered: numLike.optional(),
