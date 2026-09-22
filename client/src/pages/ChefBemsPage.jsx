@@ -209,7 +209,8 @@ export default function ChefBemsPage() {
     setConversations, 
     updateConversationTitle, 
     removeConversation, 
-    clearChat 
+    clearChat,
+    syncUser,
   } = useChefStore();
 
   const [input, setInput] = useState("");
@@ -239,28 +240,33 @@ export default function ChefBemsPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Fetch initial conversations list for logged in users
+  // Fetch initial conversations list for logged in users & isolate by user ID
   useEffect(() => {
+    syncUser(user?.id || null);
+
+    if (!user) {
+      setConversations([]);
+      return;
+    }
+
     const fetchHistory = async () => {
-      if (!user) {
-        setConversations([]);
-        return;
-      }
       try {
         const res = await api.get("/ai/context/conversations?bot_type=chef&limit=50");
         const list = res.data.conversations || [];
         setConversations(list);
         
         // Auto load latest active conversation if we have past sessions
-        if (list.length > 0 && !activeConversationId) {
+        if (list.length > 0) {
           handleSelectConversation(list[0]);
+        } else {
+          clearChat();
         }
       } catch (err) {
         console.warn("Failed to load initial conversations:", err);
       }
     };
     fetchHistory();
-  }, [user]);
+  }, [user?.id]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

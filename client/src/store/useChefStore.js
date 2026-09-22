@@ -15,10 +15,24 @@ function generateSessionId() {
 export const useChefStore = create(
   persist(
     (set, get) => ({
+      currentUserId: null,
       messages: [WELCOME_MESSAGE],
       sessionId: generateSessionId(),
       conversations: [],
       activeConversationId: null,
+
+      syncUser: (userId) => {
+        const state = get();
+        if (state.currentUserId !== userId) {
+          set({
+            currentUserId: userId,
+            messages: [WELCOME_MESSAGE],
+            sessionId: generateSessionId(),
+            conversations: [],
+            activeConversationId: null,
+          });
+        }
+      },
 
       setMessages: (messages) => set({ messages }),
       addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
@@ -56,12 +70,21 @@ export const useChefStore = create(
           activeConversationId: null,
         });
       },
+
+      resetStore: () => {
+        set({
+          currentUserId: null,
+          messages: [WELCOME_MESSAGE],
+          sessionId: generateSessionId(),
+          conversations: [],
+          activeConversationId: null,
+        });
+      },
     }),
     {
       name: "chef-bems-chat-storage", // localStorage key
-      // Only persist messages, sessionId and activeConversationId for local guest experience.
-      // Conversations list is dynamically loaded from the server when logged in.
       partialize: (state) => ({
+        currentUserId: state.currentUserId,
         messages: state.messages,
         sessionId: state.sessionId,
         activeConversationId: state.activeConversationId,

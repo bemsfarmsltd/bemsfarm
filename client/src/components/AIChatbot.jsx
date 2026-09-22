@@ -61,6 +61,17 @@ export default function AIChatbot() {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
+  // Reset messages when user switches or logs out
+  useEffect(() => {
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          "Welcome to BemsFarms! I'm Chef Bems, your personal AI kitchen chef.\n\nAsk me anything — recipes, cooking tips, what to cook with your ingredients, or the best foods for your health goals. I'm here to help you eat well the Nigerian way!",
+      },
+    ]);
+  }, [user?.id]);
+
   // Scroll to bottom when opening or adding messages
   useEffect(() => {
     if (open && !isMinimized) {

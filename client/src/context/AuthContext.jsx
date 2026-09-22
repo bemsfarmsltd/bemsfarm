@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import api from "../services/api";
+import { useChefStore } from "../store/useChefStore";
 
 /*
   ROOT CAUSE OF LOGIN REDIRECT BUG:
@@ -325,6 +326,10 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("chef-bems-chat-storage");
+    try {
+      useChefStore.getState().resetStore();
+    } catch {}
   }, []);
 
   return (
