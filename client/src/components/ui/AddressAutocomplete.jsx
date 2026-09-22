@@ -130,6 +130,16 @@ export default function AddressAutocomplete({
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setSuggestions([]);
+      if (inputValue && inputValue.trim().length >= 2) {
+        setIsModalOpen(true);
+      }
+    }
+  };
+
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <div className="relative flex items-center">
@@ -137,8 +147,9 @@ export default function AddressAutocomplete({
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`${className} ${showMapButton ? "pr-24" : "pr-8"}`}
+          className={`${className} ${showMapButton ? "pr-28" : "pr-8"}`}
           style={style}
           required={required}
           disabled={disabled}

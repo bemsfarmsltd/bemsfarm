@@ -159,42 +159,158 @@ router.get("/zones", async (req, res, next) => {
 });
 
 // ── GET /api/locations/search ────────────────────────────────────────
-// Instant address search & autocomplete powered by OpenStreetMap Nominatim
+// Instant address search & autocomplete powered by OpenStreetMap Nominatim with Progressive Fallback
 router.get("/search", async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, ref_lat, ref_lng } = req.query;
     if (!q || q.trim().length < 2) {
-      return res.json({ results: [] });
+      return res.json({ results: [], exactMatch: false });
     }
 
     const cleanQuery = q.trim();
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=ng&addressdetails=1&limit=6`;
-    const data = await fetchJson(url);
+    const baseLat = parseFloat(ref_lat) || 5.5245; // Umuahia Base default
+    const baseLng = parseFloat(ref_lng) || 7.4912;
 
-    if (!Array.isArray(data)) {
-      return res.json({ results: [] });
+    const parseNominatimItems = (items) => {
+      if (!Array.isArray(items)) return [];
+      return items.map((item) => {
+        const addr = item.address || {};
+        const city = addr.city || addr.town || addr.village || addr.county || addr.state_district || "";
+        const state = addr.state || "";
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        const dist = !isNaN(lat) && !isNaN(lon) ? Math.round(calculateDistanceKm(baseLat, baseLng, lat, lon) * 10) / 10 : 0;
+        return {
+          display_name: item.display_name,
+          latitude: lat,
+          longitude: lon,
+          street: addr.road || addr.suburb || addr.neighbourhood || "",
+          city: city,
+          state: state,
+          country: addr.country || "Nigeria",
+          type: item.type,
+          distance_km: dist,
+        };
+      });
+    };
+
+    // 1. Direct Search with full input
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery + (cleanQuery.toLowerCase().includes("nigeria") ? "" : ", Nigeria"))}&countrycodes=ng&addressdetails=1&limit=6`;
+    let data = await fetchJson(url);
+    let parsedResults = parseNominatimItems(data);
+
+    if (parsedResults.length > 0) {
+      return res.json({
+        results: parsedResults,
+        exactMatch: true,
+        searchedQuery: cleanQuery,
+      });
     }
 
-    const results = data.map((item) => {
-      const addr = item.address || {};
-      const city = addr.city || addr.town || addr.village || addr.county || addr.state_district || "";
-      const state = addr.state || "";
-      return {
-        display_name: item.display_name,
-        latitude: parseFloat(item.lat),
-        longitude: parseFloat(item.lon),
-        street: addr.road || addr.suburb || addr.neighbourhood || "",
-        city: city,
-        state: state,
-        country: addr.country || "Nigeria",
-        type: item.type,
-      };
-    });
+    // 2. Progressive Fallback Decomposition:
+    // E.g., "Block 308 Bnb Mall, beside Golf bus stop, Ibeju-Lekki, Lagos state"
+    // Split by commas and remove hyper-specific descriptors to find closest recognized landmark/area
+    const parts = cleanQuery
+      .split(/[,;\n]/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
 
-    res.json({ results });
+    let closestMatch = null;
+    let fallbackResults = [];
+
+    // Try successive sub-combinations (from right to left: Area + City + State)
+    for (let i = 1; i < parts.length; i++) {
+      const subQuery = parts.slice(i).join(", ");
+      if (subQuery.length < 3) continue;
+
+      const subUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(subQuery + ", Nigeria")}&countrycodes=ng&addressdetails=1&limit=4`;
+      const subData = await fetchJson(subUrl);
+      const subParsed = parseNominatimItems(subData);
+
+      if (subParsed.length > 0) {
+        fallbackResults = subParsed;
+        const top = subParsed[0];
+        closestMatch = {
+          display_name: top.display_name,
+          latitude: top.latitude,
+          longitude: top.longitude,
+          city: top.city,
+          state: top.state,
+          distance_km: top.distance_km,
+          matched_query: subQuery,
+          reason: `Exact building or landmark "${parts[0]}" not found on map database. Closest recognized area found: "${subQuery}".`,
+        };
+        break;
+      }
+    }
+
+    // If still no result, try searching just words without common stop prefixes ("beside", "opposite", "block", "no", "flat")
+    if (!closestMatch && cleanQuery.length > 5) {
+      const simplified = cleanQuery
+        .replace(/\b(block|flat|shop|suite|no|plot|beside|opposite|behind|near|close to|along|off)\b\s*[0-9A-Za-z-]*/gi, '')
+        .trim();
+      
+      if (simplified.length >= 3 && simplified !== cleanQuery) {
+        const simUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simplified + ", Nigeria")}&countrycodes=ng&addressdetails=1&limit=3`;
+        const simData = await fetchJson(simUrl);
+        const simParsed = parseNominatimItems(simData);
+        if (simParsed.length > 0) {
+          fallbackResults = simParsed;
+          const top = simParsed[0];
+          closestMatch = {
+            display_name: top.display_name,
+            latitude: top.latitude,
+            longitude: top.longitude,
+            city: top.city,
+            state: top.state,
+            distance_km: top.distance_km,
+            matched_query: simplified,
+            reason: `Exact location not indexed. Found nearest regional landmark: "${top.display_name}".`,
+          };
+        }
+      }
+    }
+
+    // 3. Fallback to Delivery Zones table if database has configured areas
+    if (!closestMatch) {
+      const zoneCheck = await pool.query(
+        "SELECT * FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC"
+      );
+      for (const zone of zoneCheck.rows) {
+        const areas = Array.isArray(zone.coverage_areas) ? zone.coverage_areas : String(zone.areas_covered || "").split(/[,;]/);
+        for (const area of areas) {
+          const aClean = String(area).trim();
+          if (aClean.length >= 3 && cleanQuery.toLowerCase().includes(aClean.toLowerCase())) {
+            const zLat = parseFloat(zone.center_lat) || baseLat;
+            const zLng = parseFloat(zone.center_lng) || baseLng;
+            closestMatch = {
+              display_name: `${aClean}, ${zone.zone_name}, Abia State`,
+              latitude: zLat,
+              longitude: zLng,
+              city: "Umuahia",
+              state: "Abia",
+              distance_km: Math.round(calculateDistanceKm(baseLat, baseLng, zLat, zLng) * 10) / 10,
+              matched_query: aClean,
+              zone_id: zone.zone_id,
+              delivery_fee: parseFloat(zone.delivery_fee) || 1000,
+              reason: `Matched verified operational zone: "${zone.zone_name}".`,
+            };
+            break;
+          }
+        }
+        if (closestMatch) break;
+      }
+    }
+
+    res.json({
+      results: fallbackResults,
+      exactMatch: false,
+      searchedQuery: cleanQuery,
+      closestMatch: closestMatch || null,
+    });
   } catch (err) {
     console.error("Location search error:", err.message);
-    res.json({ results: [] });
+    res.json({ results: [], exactMatch: false, closestMatch: null });
   }
 });
 

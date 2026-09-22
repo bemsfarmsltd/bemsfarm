@@ -82,6 +82,7 @@ export default function VerifiedLocationModal({
   const [isLocating, setIsLocating] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedData, setVerifiedData] = useState(null);
+  const [fallbackSuggestion, setFallbackSuggestion] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [saveToAccount, setSaveToAccount] = useState(showSaveToAccount);
 
@@ -98,9 +99,6 @@ export default function VerifiedLocationModal({
 
       if (res.data && res.data.verified) {
         setVerifiedData(res.data);
-        if (!searchQuery || searchQuery.trim() === "") {
-          setSearchQuery(res.data.formatted_address || "");
-        }
       }
     } catch (err) {
       console.error("Verification failed:", err);
@@ -108,26 +106,38 @@ export default function VerifiedLocationModal({
     } finally {
       setIsVerifying(false);
     }
-  }, [searchQuery]);
+  }, []);
 
   // Initial verification on open: align by coordinates or search query
   useEffect(() => {
     if (isOpen) {
+      setFallbackSuggestion(null);
+      setErrorMsg("");
       if (initialLat && initialLng) {
         const lat = parseFloat(initialLat);
         const lng = parseFloat(initialLng);
         setPosition([lat, lng]);
         verifyCoordinates(lat, lng, initialAddress);
       } else if (initialAddress && initialAddress.trim().length >= 3) {
-        // Automatically geocode the typed address to center map on the target place
         setSearchQuery(initialAddress);
+        setIsSearching(true);
         api.get("/locations/search", { params: { q: initialAddress } })
           .then((res) => {
             const results = res.data?.results || [];
-            if (results.length > 0) {
+            if (res.data?.exactMatch && results.length > 0) {
               const first = results[0];
               const pos = [first.latitude, first.longitude];
               setPosition(pos);
+              setFallbackSuggestion(null);
+              verifyCoordinates(first.latitude, first.longitude, first.display_name);
+            } else if (res.data?.closestMatch) {
+              const closest = res.data.closestMatch;
+              setPosition([closest.latitude, closest.longitude]);
+              setFallbackSuggestion(closest);
+              verifyCoordinates(closest.latitude, closest.longitude, closest.display_name);
+            } else if (results.length > 0) {
+              const first = results[0];
+              setPosition([first.latitude, first.longitude]);
               verifyCoordinates(first.latitude, first.longitude, first.display_name);
             } else {
               verifyCoordinates(defaultCenter[0], defaultCenter[1], initialAddress);
@@ -135,9 +145,9 @@ export default function VerifiedLocationModal({
           })
           .catch(() => {
             verifyCoordinates(defaultCenter[0], defaultCenter[1], initialAddress);
-          });
+          })
+          .finally(() => setIsSearching(false));
       } else {
-        // Default center (Umuahia / Abia) — let user search or optionally use GPS
         verifyCoordinates(defaultCenter[0], defaultCenter[1]);
       }
     }
@@ -158,17 +168,27 @@ export default function VerifiedLocationModal({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setPosition([lat, lng]);
+        setFallbackSuggestion(null);
         verifyCoordinates(lat, lng);
         setIsLocating(false);
       },
       (err) => {
         console.warn("GPS error:", err.message);
         setIsLocating(false);
-        // Fallback to initial position verification
         verifyCoordinates(position[0], position[1]);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  const applyClosestSuggestion = (closest) => {
+    if (!closest) return;
+    const newPos = [closest.latitude, closest.longitude];
+    setPosition(newPos);
+    setSearchQuery(closest.display_name);
+    setFallbackSuggestion(null);
+    setSearchResults([]);
+    verifyCoordinates(closest.latitude, closest.longitude, closest.display_name);
   };
 
   // Debounced search for Nominatim OpenStreetMap
@@ -183,6 +203,11 @@ export default function VerifiedLocationModal({
       try {
         const res = await api.get(`/locations/search`, { params: { q: searchQuery } });
         setSearchResults(res.data?.results || []);
+        if (res.data?.exactMatch === false && res.data?.closestMatch) {
+          setFallbackSuggestion(res.data.closestMatch);
+        } else if (res.data?.exactMatch === true) {
+          setFallbackSuggestion(null);
+        }
       } catch (err) {
         console.error("Search error:", err);
       } finally {
@@ -198,6 +223,7 @@ export default function VerifiedLocationModal({
     setPosition(newPos);
     setSearchQuery(result.display_name);
     setSearchResults([]);
+    setFallbackSuggestion(null);
     verifyCoordinates(result.latitude, result.longitude, result.display_name);
   };
 
@@ -291,59 +317,107 @@ export default function VerifiedLocationModal({
         </div>
 
         {/* Search & GPS Action Bar */}
-        <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-2 relative">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              className="w-full px-3.5 py-2.5 pl-9 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
-              placeholder="Search street, estate, or landmark in Nigeria..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <span className="absolute left-3 top-3 text-gray-400 text-sm">🔍</span>
-            {isSearching && (
-              <span className="absolute right-3 top-3 text-xs text-gray-400 animate-spin">⏳</span>
-            )}
+        <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-2.5 relative">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                className="w-full px-3.5 py-2.5 pl-9 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
+                placeholder="Search street, estate, or landmark in Nigeria..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <span className="absolute left-3 top-3 text-gray-400 text-sm">🔍</span>
+              {isSearching && (
+                <span className="absolute right-3 top-3 text-xs text-gray-400 animate-spin">⏳</span>
+              )}
 
-            {/* Search Dropdown Results */}
-            {searchResults.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-200 z-[1000] overflow-hidden max-h-56 overflow-y-auto">
-                {searchResults.map((res, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-green-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition"
-                    onClick={() => handleSelectSearchResult(res)}
-                  >
-                    <span className="text-base mt-0.5">📍</span>
-                    <div>
-                      <div className="font-medium text-gray-900">{res.display_name}</div>
-                      <div className="text-[10px] text-gray-500">{res.city ? `${res.city}, ` : ''}{res.state}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+              {/* Search Dropdown Results */}
+              {searchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl shadow-xl border border-gray-200 z-[1000] overflow-hidden max-h-56 overflow-y-auto">
+                  {searchResults.map((res, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-green-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition"
+                      onClick={() => handleSelectSearchResult(res)}
+                    >
+                      <span className="text-base mt-0.5">📍</span>
+                      <div>
+                        <div className="font-medium text-gray-900">{res.display_name}</div>
+                        <div className="text-[10px] text-gray-500">{res.city ? `${res.city}, ` : ''}{res.state}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={detectCurrentLocation}
+              disabled={isLocating}
+              className="px-4 py-2.5 bg-white hover:bg-green-50 border border-green-300 text-green-900 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition whitespace-nowrap"
+            >
+              {isLocating ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  <span>Detecting GPS...</span>
+                </>
+              ) : (
+                <>
+                  <span>🎯</span>
+                  <span>Use My Location</span>
+                </>
+              )}
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={detectCurrentLocation}
-            disabled={isLocating}
-            className="px-4 py-2.5 bg-white hover:bg-gray-100 border border-gray-200 text-green-800 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition whitespace-nowrap"
-          >
-            {isLocating ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                <span>Detecting GPS...</span>
-              </>
-            ) : (
-              <>
-                <span>🎯</span>
-                <span>Use My Location</span>
-              </>
-            )}
-          </button>
+          {/* Smart Fallback & Distance Banner (When exact landmark not indexed) */}
+          {fallbackSuggestion && (
+            <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-xs flex flex-col gap-2 animate-fadeIn">
+              <div className="flex items-start gap-2">
+                <span className="text-base leading-none mt-0.5 text-amber-600">⚠️</span>
+                <div className="flex-1">
+                  <div className="font-bold text-amber-900">
+                    Exact building or shop name not located on map database
+                  </div>
+                  <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                    {fallbackSuggestion.reason || "We identified the closest recognized area and calculated proximity."}
+                  </p>
+                  <div className="mt-1 font-semibold text-amber-950 flex flex-wrap items-center gap-1.5">
+                    <span>📍 Closest Area:</span>
+                    <span className="underline decoration-amber-400">{fallbackSuggestion.display_name}</span>
+                    {fallbackSuggestion.distance_km > 0 && (
+                      <span className="bg-amber-200 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                        ~{fallbackSuggestion.distance_km} km
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/70 mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => applyClosestSuggestion(fallbackSuggestion)}
+                  className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white font-bold text-[11px] rounded-lg shadow-sm transition flex items-center gap-1"
+                >
+                  <span>✓ Use Closest Area</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={detectCurrentLocation}
+                  className="px-3 py-1.5 bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition flex items-center gap-1"
+                >
+                  <span>🎯 Use My Present GPS Location</span>
+                </button>
+                <span className="text-[10px] text-amber-800 italic ml-auto">
+                  (Or click / drag pin on map to your exact building)
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Interactive Map Canvas */}
