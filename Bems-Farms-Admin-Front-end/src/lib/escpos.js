@@ -475,6 +475,12 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     builder.kickDrawer()
   }
 
+  const isInvoice = receiptData.receiptType === 'invoice' || receiptData.isInvoice || String(receiptNumber || '').startsWith('ORD-')
+  const docTitle = isInvoice ? 'OFFICIAL INVOICE' : 'SALES RECEIPT'
+  const docNumberLabel = isInvoice ? 'Invoice #:' : 'Receipt #:'
+  const docFooter = isInvoice ? 'THANK YOU FOR YOUR ORDER!' : 'THANK YOU FOR SHOPPING WITH US!'
+  const docNote = isInvoice ? 'Keep this invoice for your records' : 'Freshness you can trust, every day.'
+
   // 1. Header & Store Branding
   builder.align('center')
     .bold(true).size('double').textLn(storeName).size('normal').bold(false)
@@ -482,12 +488,12 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     .textLn(storeAddress)
     .textLn('Tel: ' + storePhone)
     .dashedLine()
-    .bold(true).textLn('SALES RECEIPT').bold(false)
+    .bold(true).textLn(docTitle).bold(false)
     .dashedLine()
 
   // 2. Metadata
   builder.align('left')
-    .twoColumnRow('Receipt #:', receiptNumber, true)
+    .twoColumnRow(docNumberLabel, receiptNumber, true)
     .twoColumnRow('Date/Time:', date)
     .twoColumnRow('Customer:', customer)
     .twoColumnRow('Cashier:', cashier)
@@ -538,8 +544,8 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
   // 7. Footer & Barcode
   builder.emptyLine(1)
   builder.align('center')
-    .bold(true).textLn('THANK YOU FOR SHOPPING WITH US!').bold(false)
-    .textLn('Freshness you can trust, every day.')
+    .bold(true).textLn(docFooter).bold(false)
+    .textLn(docNote)
     .emptyLine(1)
     .barcode(receiptNumber, 36)
     .textLn(receiptNumber)

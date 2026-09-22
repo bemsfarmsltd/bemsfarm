@@ -199,14 +199,20 @@ export default function ThermalReceipt({
     }).catch(() => {})
     return () => { active = false }
   }, [settingsOverride])
-  const settings = { ...DEFAULTS, ...savedSettings, ...settingsOverride }
-  const enabled = (key) => settings[key] !== 'false'
-  const receiptTitle = settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header
-  const receiptFooter = settings[`receipt_${receiptType}_footer`] || settings.pos_receipt_footer
+  const isInvoice = receiptType === 'invoice' || receiptType === 'online'
+  const receiptTitle = isInvoice
+    ? (settings.receipt_invoice_title || settings.receipt_online_title || 'OFFICIAL INVOICE')
+    : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header)
+  const receiptFooter = isInvoice
+    ? (settings.receipt_invoice_footer || settings.receipt_online_footer || 'Thank you for your order')
+    : (settings[`receipt_${receiptType}_footer`] || settings.pos_receipt_footer)
+  const returnNote = isInvoice ? 'Keep this invoice for your records' : settings.pos_receipt_return_note
+  const numberLabel = isInvoice ? 'Invoice #' : 'Receipt #'
+
   const calculatedSubtotal = items.reduce((sum, item) => sum + Number(item.total ?? Number(item.price || 0) * Number(item.qty || 1)), 0)
   const safeSubtotal = Number(subtotal ?? calculatedSubtotal)
 
-  return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`Receipt ${receiptNumber || ''}`}>
+  return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`${isInvoice ? 'Invoice' : 'Receipt'} ${receiptNumber || ''}`}>
     <header className="thermal-receipt__brand">
       {enabled('pos_receipt_show_logo') && (
         <img
@@ -230,9 +236,9 @@ export default function ThermalReceipt({
 
     <div className="thermal-receipt__title"><span>{receiptTitle}</span></div>
     <section className="thermal-receipt__meta">
-      <ReceiptRow label="Receipt #" value={receiptNumber || '—'} strong />
+      <ReceiptRow label={numberLabel} value={receiptNumber || '—'} strong />
       <ReceiptRow label="Date/Time" value={date || new Date().toLocaleString('en-NG', { dateStyle: 'short', timeStyle: 'short' })} />
-      <ReceiptRow label="Customer" value={customer || 'Walk-in'} />
+      <ReceiptRow label="Customer" value={customer || 'Walk-in Customer'} />
       {customerPhone && customerPhone !== '—' && <ReceiptRow label="Phone" value={customerPhone} />}
       {channel && <ReceiptRow label="Channel" value={channel} />}
       {fulfillment && <ReceiptRow label="Fulfilment" value={fulfillment} />}
@@ -278,7 +284,7 @@ export default function ThermalReceipt({
       {enabled('pos_receipt_show_barcode') && (
         receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />
       )}
-      <small>{receiptNumber || 'BEMS FARMS'} · {settings.pos_receipt_return_note}</small>
+      <small>{receiptNumber || 'BEMS FARMS'} · {returnNote}</small>
     </footer>
   </article>
 }

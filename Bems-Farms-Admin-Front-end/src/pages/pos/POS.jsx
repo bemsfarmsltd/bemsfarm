@@ -1078,6 +1078,9 @@ export default function POS() {
     const orderTotal = Number(order.total || 0) || (order.items || []).reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 1)), 0)
     const formattedReceipt = {
       orderId: order.id,
+      receiptType: 'invoice',
+      isInvoice: true,
+      channel: order.channel ? (order.channel.charAt(0).toUpperCase() + order.channel.slice(1)) : 'Online Order',
       customer: { name: order.customer, phone: order.phone },
       cust: order.customer,
       cart: (order.items || []).map(it => ({
@@ -3234,12 +3237,12 @@ export default function POS() {
       {successData && activeModal !== 'receipt' && (
         <div className="pos-thermal-print-container">
           <ThermalReceipt
-            receiptType="pos"
+            receiptType={successData.receiptType || (String(successData.orderId || '').startsWith('ORD-') ? 'invoice' : 'pos')}
             receiptNumber={successData.orderId}
             date={`${successData.date} · ${successData.time}`}
             customer={successData.customer?.name || (typeof successData.cust === 'string' ? successData.cust : undefined)}
             customerPhone={successData.customer?.phone}
-            channel="POS Terminal"
+            channel={successData.channel || (String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
             cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : (successData.cashier || 'Cashier')}
             status="PAID"
             items={successData.cart || successData.items || []}
@@ -3264,12 +3267,12 @@ export default function POS() {
 
             <div className="thermal-receipt-preview thermal-receipt-preview--pos">
               <ThermalReceipt
-                receiptType="pos"
+                receiptType={successData.receiptType || (String(successData.orderId || '').startsWith('ORD-') ? 'invoice' : 'pos')}
                 receiptNumber={successData.orderId}
                 date={`${successData.date} · ${successData.time}`}
                 customer={successData.customer?.name || (typeof successData.cust === 'string' ? successData.cust : undefined)}
                 customerPhone={successData.customer?.phone}
-                channel="POS Terminal"
+                channel={successData.channel || (String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
                 cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : (successData.cashier || 'Cashier')}
                 status="PAID"
                 items={successData.cart || successData.items || []}
