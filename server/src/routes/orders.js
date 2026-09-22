@@ -666,8 +666,8 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
     // double-submitted click) could both pass the status check before
     // either commits, restoring stock twice for one order.
     const order = await client.query(
-      `SELECT * FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-      [id, req.user.id],
+      `SELECT * FROM orders WHERE id = $1 AND (user_id = $2 OR $3 = 'superadmin' OR $3 = 'admin') FOR UPDATE`,
+      [id, req.user.id, req.user.role || "customer"],
     );
 
     if (!order.rows.length) {
