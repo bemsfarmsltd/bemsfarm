@@ -107,7 +107,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
     const countRes = await pool.query(
-      `SELECT COUNT(*) FROM orders o LEFT JOIN users c ON o.customer_id = c.id ${whereClause}`,
+      `SELECT COUNT(*) FROM orders o LEFT JOIN users c ON COALESCE(o.customer_id, o.user_id) = c.id ${whereClause}`,
       params,
     );
 
@@ -117,12 +117,27 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const rows = await pool.query(
       `
       SELECT
-        o.id, o.total, o.status, o.source AS channel, o.payment_method,
+        o.id, o.total, o.status, o.source AS channel, o.payment_method, o.payment_ref,
         o.delivery_fee, o.discount_amount, o.created_at, o.notes,
-        o.address, o.delivery_city,
-        COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,
-        COALESCE(o.customer_phone, c.phone, '')       AS customer_phone,
+        COALESCE(NULLIF(TRIM(o.address), ''), ua.street_address, '') AS address,
+        COALESCE(o.delivery_city, ua.city, '') AS delivery_city,
+        COALESCE(o.delivery_state, ua.state, '') AS delivery_state,
+        COALESCE(o.latitude, ua.latitude) AS latitude,
+        COALESCE(o.longitude, ua.longitude) AS longitude,
+        COALESCE(
+          NULLIF(TRIM(o.customer_name), ''),
+          NULLIF(TRIM(c.name), ''),
+          NULLIF(TRIM(ua.receiver_name), ''),
+          CASE WHEN o.source ILIKE '%pos%' OR o.source ILIKE '%physical%' THEN 'Walk-in Customer' ELSE 'Online Customer' END
+        ) AS customer_name,
+        COALESCE(
+          NULLIF(TRIM(o.customer_phone), ''),
+          NULLIF(TRIM(c.phone), ''),
+          NULLIF(TRIM(ua.receiver_phone), ''),
+          ''
+        ) AS customer_phone,
         c.email AS customer_email,
+        c.id AS customer_id,
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate,
         d.id AS delivery_id, d.status AS delivery_status,
@@ -149,7 +164,14 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
           '[]'::json
         ) AS items
       FROM orders o
-      LEFT JOIN users c ON o.customer_id = c.id
+      LEFT JOIN users c ON COALESCE(o.customer_id, o.user_id) = c.id
+      LEFT JOIN LATERAL (
+        SELECT street_address, city, state, latitude, longitude, receiver_name, receiver_phone 
+        FROM user_addresses 
+        WHERE user_id = c.id 
+        ORDER BY is_default DESC, created_at DESC 
+        LIMIT 1
+      ) ua ON true
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
       ${whereClause}

@@ -74,6 +74,20 @@ const safeFormatDate = (d, fallback = '—') => {
   return isNaN(date.getTime()) ? fallback : date.toISOString().replace('T', ' ').slice(0, 16)
 }
 
+const getPaymentBadge = (method, source, id) => {
+  const m = String(method || '').toLowerCase().trim()
+  const s = String(source || '').toLowerCase().trim()
+  const orderId = String(id || '')
+  if (m.includes('monnify')) return { label: 'Monnify', icon: 'ri-bank-card-line', color: '#0284c7', bg: '#e0f2fe' }
+  if (m.includes('transfer') || m.includes('bank')) return { label: 'Bank Transfer', icon: 'ri-exchange-funds-line', color: '#0d9488', bg: '#ccfbf1' }
+  if (m.includes('wallet')) return { label: 'Wallet Escrow', icon: 'ri-wallet-3-line', color: '#7c3aed', bg: '#ede9fe' }
+  if (m.includes('card')) return { label: 'Debit Card', icon: 'ri-bank-card-2-line', color: '#2563eb', bg: '#dbeafe' }
+  if (m.includes('cash')) return { label: 'Cash', icon: 'ri-money-dollar-circle-line', color: '#16a34a', bg: '#dcfce7' }
+  if (m.includes('pos') || orderId.startsWith('POS-') || s.includes('pos')) return { label: 'POS Terminal', icon: 'ri-calculator-line', color: '#d97706', bg: '#fef3c7' }
+  if (m.includes('paystack')) return { label: 'Paystack', icon: 'ri-secure-payment-line', color: '#059669', bg: '#dcfce7' }
+  return { label: method ? method.toUpperCase() : (s.includes('pos') ? 'POS Terminal' : 'Online Payment'), icon: 'ri-bank-card-line', color: '#64748b', bg: '#f1f5f9' }
+}
+
 export default function OrdersList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
@@ -135,10 +149,17 @@ export default function OrdersList() {
           if (parsedStatus === 'completed') parsedStatus = 'delivered'
 
           let channelKey = 'online'
-          const src = (o.channel || o.source || '').toLowerCase()
-          if (src.includes('chef') || src.includes('ai')) channelKey = 'chef_bems'
-          else if (src.includes('mobile')) channelKey = 'mobile_app'
-          else if (src.includes('pos') || src.includes('store') || src.includes('physical')) channelKey = 'physical'
+          const src = (o.channel || o.source || '').toLowerCase().trim()
+          const orderIdStr = String(o.id || '')
+          if (src.includes('chef') || src.includes('ai')) {
+            channelKey = 'chef_bems'
+          } else if (src.includes('mobile') || src.includes('app')) {
+            channelKey = 'mobile_app'
+          } else if (src.includes('pos') || src.includes('counter') || orderIdStr.startsWith('POS-') || (src.includes('physical') && !src.includes('storefront'))) {
+            channelKey = 'physical'
+          } else if (src.includes('storefront') || src.includes('web') || src.includes('online')) {
+            channelKey = 'online'
+          }
 
           // Real item parsing
           let orderItems = []
@@ -170,26 +191,32 @@ export default function OrdersList() {
           // Delivery vs in-store detection
           const isPhysical = channelKey === 'physical'
           const hasDeliveryAddress = !!(o.address && o.address.trim().length > 3 && !isPhysical)
-          const fulfillmentType = hasDeliveryAddress ? 'delivery' : 'pickup'
+          const fulfillmentType = hasDeliveryAddress ? 'delivery' : (isPhysical ? 'in_store' : 'pickup')
+
+          const customerName = o.customer_name && o.customer_name !== 'Walk-in' && o.customer_name !== 'null'
+            ? o.customer_name
+            : (isPhysical ? 'Walk-in Customer' : 'Online Customer')
 
           return {
             id: String(o.id),
             date: safeFormatDate(o.created_at, '—'),
             channel: channelKey,
+            rawChannel: o.channel || o.source,
             status: parsedStatus,
             rawStatus: o.status,
             fulfillmentType,
             customer: {
-              name: o.customer_name || (isPhysical ? 'Walk-in Customer' : 'Customer'),
-              phone: o.customer_phone || '—',
-              email: o.customer_email || '—',
-              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : (isPhysical ? 'In-Store POS' : 'Store Pickup / Abia State'),
+              name: customerName,
+              phone: o.customer_phone || '',
+              email: o.customer_email || '',
+              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : (isPhysical ? 'In-Store POS Counter' : 'Store Pickup / Abia State'),
             },
             items: orderItems,
             itemCount: Number(o.item_count) || orderItems.length,
             deliveryFee,
             total: computedTotal,
-            payment: (o.payment_method || (isPhysical ? 'cash' : 'paystack')).toLowerCase(),
+            payment: o.payment_method || (isPhysical ? 'cash' : 'monnify'),
+            paymentRef: o.payment_ref || null,
             notes: o.notes || '',
             disputeReason: o.dispute_reason || null,
             disputeNote: o.dispute_notes || o.dispute_note || null,
@@ -725,14 +752,14 @@ export default function OrdersList() {
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th style={{ minWidth: 140 }}>Order Ref</th>
-                <th style={{ minWidth: 110 }}>Date</th>
-                <th style={{ minWidth: 160 }}>Customer</th>
-                <th style={{ minWidth: 130 }}>Channel</th>
-                <th style={{ minWidth: 180 }}>Items</th>
-                <th style={{ minWidth: 100 }}>Total</th>
-                <th style={{ minWidth: 120 }}>Driver</th>
-                <th style={{ minWidth: 120 }}>Status</th>
+                <th style={{ minWidth: 150 }}>Order & Payment</th>
+                <th style={{ minWidth: 120 }}>Date & Time</th>
+                <th style={{ minWidth: 180 }}>Customer & Destination</th>
+                <th style={{ minWidth: 140 }}>Channel / Type</th>
+                <th style={{ minWidth: 200 }}>Items Breakdown</th>
+                <th style={{ minWidth: 110 }}>Total Amount</th>
+                <th style={{ minWidth: 140 }}>Courier / Driver</th>
+                <th style={{ minWidth: 130 }}>Fulfillment Status</th>
                 <th style={{ minWidth: 120 }} className="text-end">Actions</th>
               </tr>
             </thead>
@@ -758,66 +785,125 @@ export default function OrdersList() {
               {filtered.map((order) => {
                 const cfg   = getStatusCfg(order.status)
                 const chCfg = getChannelCfg(order.channel)
+                const payCfg = getPaymentBadge(order.payment, order.rawChannel, order.id)
+                const isDelivery = order.fulfillmentType === 'delivery'
 
                 return (
                   <tr key={order.id}>
                     <td>
                       <div
-                        className="fw-bold text-primary"
+                        className="fw-bold text-primary font-monospace fs-13"
                         style={{ cursor: 'pointer' }}
                         onClick={() => openModal('view', order)}
+                        title="Click to view full order breakdown"
                       >
                         {order.id}
                       </div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>
-                        {order.payment === 'paystack' ? '💳 Paystack' : order.payment === 'cash' ? '💵 Cash' : '💳 POS Terminal'}
+                      <div className="mt-1">
+                        <span
+                          className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                          style={{
+                            fontSize: 10,
+                            background: payCfg.bg,
+                            color: payCfg.color,
+                            border: `1px solid ${payCfg.color}30`,
+                            padding: '3px 7px',
+                            borderRadius: 6
+                          }}
+                        >
+                          <i className={payCfg.icon} style={{ fontSize: 11 }} />
+                          <span>{payCfg.label}</span>
+                        </span>
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: 13 }}>{order.date.split(' ')[0]}</div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{order.date.split(' ')[1] || ''}</div>
+                      <div className="fw-medium text-dark" style={{ fontSize: 12 }}>
+                        {order.date.split(' ')[0]}
+                      </div>
+                      <div className="text-muted d-flex align-items-center gap-1" style={{ fontSize: 11 }}>
+                        <i className="ri-time-line text-muted" style={{ fontSize: 11 }} />
+                        <span>{order.date.split(' ')[1] || '12:00'}</span>
+                      </div>
                     </td>
                     <td>
-                      <div className="fw-medium">{order.customer.name}</div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{order.customer.phone}</div>
+                      <div className="fw-bold text-dark" style={{ fontSize: 13 }}>
+                        {order.customer.name}
+                      </div>
+                      {order.customer.phone && order.customer.phone !== '—' && (
+                        <div className="text-muted d-flex align-items-center gap-1 mt-0.5" style={{ fontSize: 11 }}>
+                          <i className="ri-phone-line text-primary" style={{ fontSize: 11 }} />
+                          <span>{order.customer.phone}</span>
+                        </div>
+                      )}
+                      <div className="text-muted text-truncate d-flex align-items-center gap-1 mt-0.5" style={{ fontSize: 11, maxWidth: 190 }} title={order.customer.address}>
+                        <i className={`ri-${isDelivery ? 'map-pin-2-fill text-success' : 'store-line text-secondary'}`} style={{ fontSize: 11 }} />
+                        <span className="text-truncate">{order.customer.address}</span>
+                      </div>
                     </td>
                     <td>
-                      <span className={`badge rounded-pill ${chCfg.badgeClass || ''}`} style={{ fontSize: 11 }}>
-                        <i className={`${chCfg.icon} me-1`} />{chCfg.label}
-                      </span>
+                      <div>
+                        <span className={`badge rounded-pill ${chCfg.badgeClass || ''}`} style={{ fontSize: 11, padding: '4px 9px' }}>
+                          <i className={`${chCfg.icon} me-1`} />{chCfg.label}
+                        </span>
+                      </div>
+                      <div className="mt-1">
+                        <span className={`badge ${isDelivery ? 'bg-light text-success border border-success-subtle' : 'bg-light text-secondary border'}`} style={{ fontSize: 10 }}>
+                          <i className={`ri-${isDelivery ? 'e-bike-2-line' : 'building-2-line'} me-1`} />
+                          {isDelivery ? 'Doorstep Delivery' : 'In-Store / Pickup'}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       {order.items.length > 0 ? (
                         <>
-                          <div style={{ fontSize: 13 }}>
-                            {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+                          <div className="fw-semibold text-dark d-flex align-items-center gap-1" style={{ fontSize: 12 }}>
+                            <span className="badge bg-secondary-subtle text-secondary px-1.5 py-0.5" style={{ fontSize: 10 }}>
+                              {order.itemCount} Item{order.itemCount !== 1 ? 's' : ''}
+                            </span>
                           </div>
-                          <div className="text-muted text-truncate" style={{ fontSize: 11, maxWidth: 200 }}>
-                            {order.items.slice(0, 2).map((i) => i.name).join(', ')}
+                          <div className="text-muted text-truncate mt-0.5" style={{ fontSize: 11, maxWidth: 220 }} title={order.items.map(i => `${i.qty}x ${i.name}`).join(', ')}>
+                            {order.items.slice(0, 2).map((i) => `${i.qty}x ${i.name}`).join(', ')}
                             {order.items.length > 2 ? ` +${order.items.length - 2} more` : ''}
                           </div>
                         </>
                       ) : (
-                        <span className="text-muted" style={{ fontSize: 12 }}>Direct Sale</span>
+                        <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Direct Sale</span>
                       )}
                     </td>
-                    <td className="fw-bold text-dark">{fmt(order.total)}</td>
+                    <td>
+                      <div className="fw-bolder text-dark" style={{ fontSize: 13 }}>{fmt(order.total)}</div>
+                      {order.deliveryFee > 0 && (
+                        <div className="text-muted" style={{ fontSize: 10 }}>
+                          +{fmt(order.deliveryFee)} delivery
+                        </div>
+                      )}
+                    </td>
                     <td>
                       {order.driver ? (
-                        <>
-                          <div style={{ fontSize: 13 }} className="fw-medium">{order.driver.name}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>{order.driver.phone}</div>
-                        </>
+                        <div>
+                          <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
+                            <i className="ri-user-star-line text-primary" style={{ fontSize: 12 }} />
+                            <span>{order.driver.name}</span>
+                          </div>
+                          <div className="text-muted" style={{ fontSize: 10 }}>{order.driver.phone}</div>
+                          {order.driver.bike && (
+                            <div className="text-muted font-monospace" style={{ fontSize: 9 }}>{order.driver.bike}</div>
+                          )}
+                        </div>
+                      ) : isDelivery ? (
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 10 }}>
+                          <i className="ri-truck-line me-1" />Awaiting Courier
+                        </span>
                       ) : (
-                        <span className="text-muted">—</span>
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store)</span>
                       )}
                     </td>
                     <td>
-                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
+                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11, padding: '4px 8px', borderRadius: 6 }}>
                         <i className={`${cfg.icon} me-1`} />{cfg.label}
                       </span>
                       {order.status === 'delivery_attempted' && (
-                        <div className="text-muted" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
+                        <div className="text-danger fw-medium mt-0.5" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
                       )}
                     </td>
                     <td className="text-end">
