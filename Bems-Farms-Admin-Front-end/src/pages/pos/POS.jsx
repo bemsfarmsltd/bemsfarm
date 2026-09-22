@@ -915,9 +915,19 @@ export default function POS() {
   }
 
   // Online orders -> cart
-  function loadOnlineOrderToCart(order) {
+  function loadOnlineOrderToCart(order, isReload = false) {
     let loaded = 0
-    order.items.forEach(it => {
+    const itemsToLoad = (order.items && order.items.length > 0)
+      ? order.items
+      : [{
+          productId: null,
+          name: `Order #${order.id} Package`,
+          price: Number(order.total || 0),
+          qty: 1,
+          unit: 'pkg'
+        }]
+
+    itemsToLoad.forEach(it => {
       const product = productsList.find(p => 
         (it.productId && p.id === it.productId) || 
         (it.sku && p.sku === it.sku) || 
@@ -957,7 +967,7 @@ export default function POS() {
     if (order.note) setOrderNote(order.note)
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
     playBeep('success')
-    showToast(`${loaded} item(s) imported to cart`, 'success', '📥')
+    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart`, 'success', '📥')
     closeModal()
   }
 
@@ -2025,13 +2035,18 @@ export default function POS() {
                               <i className={isExpanded ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
                             </button>
                             {order.status !== 'processing' ? (
-                              <button className="btn btn-sm btn-emerald-solid px-3 fw-bold" onClick={() => loadOnlineOrderToCart(order)}>
+                              <button className="btn btn-sm btn-emerald-solid px-3 fw-bold" onClick={() => loadOnlineOrderToCart(order, false)}>
                                 <i className="ri-shopping-cart-2-line me-1"></i> Load to Cart
                               </button>
                             ) : (
-                              <span className="text-sapphire fw-bold fs-12">
-                                <i className="ri-check-double-line me-1"></i> In Cart
-                              </span>
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="text-sapphire fw-bold fs-12">
+                                  <i className="ri-check-double-line me-1"></i> In Cart
+                                </span>
+                                <button className="btn btn-sm btn-outline-primary px-3 fw-bold" title="Reload order items into cart" onClick={() => loadOnlineOrderToCart(order, true)}>
+                                  <i className="ri-refresh-line me-1"></i> Reload to Cart
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
