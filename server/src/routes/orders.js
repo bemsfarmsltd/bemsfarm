@@ -675,6 +675,8 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       return res.status(404).json({ message: "Order not found" });
     }
 
+    const o = order.rows[0];
+
     if (o.status === "cancelled") {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Order is already cancelled" });
