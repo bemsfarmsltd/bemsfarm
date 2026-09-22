@@ -429,13 +429,24 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
          (id, order_ref, customer_id, user_id, customer_name, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Physical Store (POS)',$12,$13,$14,NOW(),NOW())
+       VALUES ($1, $2, $3::bigint, $4::int, $5, $6, $7, $8, $9, $10, $11, $12, 'Physical Store (POS)', $13, $14, $15, NOW(), NOW())
        RETURNING *`,
       [
-        reference, reference, validCustomerId, customer_name,
-        subtotal, finalDiscount, tax_amount, total,
-        payment_method, isPayLater ? "unpaid" : "paid", isPayLater ? "pending" : "completed",
-        validSessionId, notes || null, req.user.id,
+        reference,
+        reference,
+        validCustomerId,
+        validCustomerId,
+        customer_name,
+        subtotal,
+        finalDiscount,
+        tax_amount,
+        total,
+        payment_method,
+        isPayLater ? "unpaid" : "paid",
+        isPayLater ? "pending" : "completed",
+        validSessionId,
+        notes || null,
+        req.user.id,
       ]
     );
     const orderId = order.rows[0].id;
