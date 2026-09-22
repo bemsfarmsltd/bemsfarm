@@ -315,15 +315,68 @@ const getBanks = async (req, res, next) => {
   }
 };
 
+const BANK_CODES = {
+  "Access Bank": "044",
+  "Access Bank (Diamond)": "063",
+  "Citibank Nigeria": "023",
+  "Ecobank Nigeria": "050",
+  "Fidelity Bank": "070",
+  "First Bank of Nigeria": "011",
+  "First Bank": "011",
+  "First City Monument Bank": "214",
+  "First City Monument Bank (FCMB)": "214",
+  "FCMB": "214",
+  "Guaranty Trust Bank": "058",
+  "Guaranty Trust Bank (GTBank)": "058",
+  "GTBank": "058",
+  "Heritage Bank": "030",
+  "Jaiz Bank": "301",
+  "Keystone Bank": "082",
+  "Kuda Bank": "50211",
+  "Kuda Microfinance Bank": "50211",
+  "Kuda": "50211",
+  "Moniepoint MFB": "50515",
+  "Moniepoint": "50515",
+  "OPay Digital Services": "999992",
+  "OPay": "999992",
+  "Optimus Bank": "107",
+  "PalmPay": "999991",
+  "Parallex Bank": "526",
+  "Polaris Bank": "076",
+  "Premium Trust Bank": "105",
+  "Providus Bank": "101",
+  "Rubies MFB": "125",
+  "Stanbic IBTC Bank": "221",
+  "Stanbic IBTC": "221",
+  "Standard Chartered Bank": "068",
+  "Sterling Bank": "232",
+  "Suntrust Bank": "100",
+  "TAJ Bank": "302",
+  "Titan Trust Bank": "102",
+  "Union Bank of Nigeria": "032",
+  "Union Bank": "032",
+  "United Bank for Africa (UBA)": "033",
+  "United Bank for Africa": "033",
+  "UBA": "033",
+  "Unity Bank": "215",
+  "VFD Microfinance Bank": "566",
+  "Wema Bank / ALAT": "035",
+  "Wema Bank": "035",
+  "ALAT": "035",
+  "Zenith Bank": "057"
+};
+
 // ── POST /api/driver/bank/resolve ────────────────────────────────────
-// Resolve & Verify 10-digit NUBAN account number before withdrawal
+// Resolve & Verify 10-digit Nigerian NUBAN account number before withdrawal
 const resolveBankAccount = async (req, res, next) => {
   try {
     const { account_number, bank_code, bank_name } = req.body;
 
-    if (!account_number || !/^\d{10}$/.test(String(account_number).trim())) {
+    const cleanAccNumber = String(account_number || "").trim();
+    if (!cleanAccNumber || !/^\d{10}$/.test(cleanAccNumber)) {
       return res.status(400).json({
         status: "error",
+        is_valid: false,
         message: "Valid 10-digit Nigerian NUBAN account number is required",
       });
     }
@@ -331,60 +384,82 @@ const resolveBankAccount = async (req, res, next) => {
     if (!bank_code && !bank_name) {
       return res.status(400).json({
         status: "error",
+        is_valid: false,
         message: "Bank code or bank name is required for account resolution",
       });
     }
 
-    const cleanAccNumber = String(account_number).trim();
-    const cleanBankCode = String(bank_code || "").trim();
+    let targetCode = bank_code ? String(bank_code).trim() : null;
+    let matchedBankName = bank_name || null;
+
+    if (!targetCode && bank_name) {
+      const cleanBankName = String(bank_name).trim();
+      targetCode = BANK_CODES[cleanBankName] ||
+        Object.entries(BANK_CODES).find(([k]) => cleanBankName.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(cleanBankName.toLowerCase()))?.[1] ||
+        null;
+    }
+
+    if (!targetCode) {
+      targetCode = "058"; // GTBank default fallback if unidentifiable
+    }
 
     let verifiedAccountName = null;
-    let resolutionSource = "monnify_nip";
+    let rawResult = null;
+    let liveLookupError = null;
 
-    // 1. Attempt live Monnify / NIP resolution if available
+    // 1. Attempt live Monnify / NIP resolution
     try {
       const { validateMonnifyBankAccount } = require("../utils/monnify");
       if (typeof validateMonnifyBankAccount === "function") {
-        const monnifyRes = await validateMonnifyBankAccount(cleanAccNumber, cleanBankCode || "058");
+        const monnifyRes = await validateMonnifyBankAccount(cleanAccNumber, targetCode);
         if (monnifyRes?.accountName) {
           verifiedAccountName = monnifyRes.accountName;
-          resolutionSource = "monnify_live";
+          rawResult = monnifyRes;
         }
       }
     } catch (monnifyErr) {
-      console.warn("Live bank account resolution note:", monnifyErr.message);
+      liveLookupError = monnifyErr.message || "Failed to resolve account with bank";
+      console.warn("Driver bank resolution live API warning:", liveLookupError);
     }
 
-    // 2. If live network times out or sandbox fallback, resolve via driver KYC / deterministic NIP lookup
-    if (!verifiedAccountName) {
-      const driverId = req.driver?.id;
-      if (driverId) {
-        const drvRes = await pool.query("SELECT name, account_name, account_number FROM drivers WHERE id = $1", [driverId]);
+    // 2. Fallback check for driver's own registered profile if in offline/sandbox mode
+    if (!verifiedAccountName && req.driver?.id) {
+      try {
+        const drvRes = await pool.query(
+          "SELECT name, account_name, account_number, bank_name FROM drivers WHERE id = $1",
+          [req.driver.id]
+        );
         const drv = drvRes.rows[0];
         if (drv && drv.account_number === cleanAccNumber && drv.account_name) {
           verifiedAccountName = drv.account_name;
-          resolutionSource = "saved_driver_profile";
-        } else if (drv?.name) {
-          verifiedAccountName = drv.name.toUpperCase();
-          resolutionSource = "driver_kyc_match";
         }
+      } catch (dbErr) {
+        console.warn("Driver fallback lookup error:", dbErr.message);
       }
     }
 
     if (!verifiedAccountName) {
-      verifiedAccountName = "VERIFIED ACCOUNT HOLDER";
-      resolutionSource = "nip_standard_lookup";
+      return res.status(400).json({
+        status: "error",
+        is_valid: false,
+        account_number: cleanAccNumber,
+        bank_code: targetCode,
+        bank_name: matchedBankName || "Commercial Bank",
+        message: liveLookupError
+          ? `Could not verify account: ${liveLookupError}`
+          : "Invalid account number or destination bank code. Please verify details and try again."
+      });
     }
 
     res.json({
       status: "success",
-      account_number: cleanAccNumber,
-      bank_code: cleanBankCode || "058",
-      bank_name: bank_name || "Commercial Bank",
-      account_name: verifiedAccountName,
       is_valid: true,
-      resolution_source: resolutionSource,
-      message: `Account name successfully resolved: ${verifiedAccountName}`
+      account_number: cleanAccNumber,
+      bank_code: targetCode,
+      bank_name: matchedBankName || "Commercial Bank",
+      account_name: verifiedAccountName,
+      message: `Account name verified: ${verifiedAccountName}`,
+      raw: rawResult
     });
   } catch (err) {
     console.error("Driver resolveBankAccount error:", err.message);

@@ -3,7 +3,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { driverProtect } = require("../middleware/driverAuthMiddleware");
+const { driverProtect, optionalDriverProtect } = require("../middleware/driverAuthMiddleware");
 
 const driverAuthController = require("../controllers/driverAuthController");
 const driverDeliveryController = require("../controllers/driverDeliveryController");
@@ -77,8 +77,8 @@ router.post("/location", driverProtect, driverLocationController.updateLocation)
 
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
-router.get("/banks", driverProtect, driverEarningsController.getBanks);
-router.post("/bank/resolve", driverProtect, driverEarningsController.resolveBankAccount);
+router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
+router.post("/bank/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
 
 // ── 6. Push Tokens & In-App Notification Feed ────────────────────────

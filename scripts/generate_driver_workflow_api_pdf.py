@@ -444,6 +444,16 @@ def build_pdf(filename="BEMS_FARMS_DRIVER_WORKFLOW_AND_API_SPECIFICATION.pdf"):
             Paragraph("<b>Response (200 OK - Updated immediately upon delivery completion):</b><br/><code>{\"wallet\": {\"total_earned\": 64000.00, \"total_paid\": 50000.00, \"available_balance\": 14000.00, \"commission_per_delivery\": 500.00, \"bank_details\": {\"bank_name\": \"GTBank\", \"account_number\": \"0123456789\", \"account_name\": \"Ibrahim Musa\"}}, \"commissions\": [...], \"payouts\": [...]}</code>", code_style)
         ],
         [
+            Paragraph("<b>List Nigerian Banks</b><br/><code>/api/driver/banks</code>", body_style),
+            Paragraph("<font color='#065F46'><b>GET</b></font><br/>Public / Auth", body_style),
+            Paragraph("<b>Response (200 OK):</b><br/><code>{\"status\": \"success\", \"count\": 33, \"banks\": [{\"name\": \"Access Bank\", \"code\": \"044\"}, {\"name\": \"Guaranty Trust Bank (GTBank)\", \"code\": \"058\"}, {\"name\": \"Kuda Bank\", \"code\": \"50211\"}, {\"name\": \"OPay Digital Services\", \"code\": \"999992\"}, {\"name\": \"Zenith Bank\", \"code\": \"057\"}, ...]}</code>", code_style)
+        ],
+        [
+            Paragraph("<b>Verify Bank Account (Live NUBAN)</b><br/><code>/api/driver/bank/resolve</code>", body_style),
+            Paragraph("<font color='#1E40AF'><b>POST</b></font><br/>Public / Auth", body_style),
+            Paragraph("<b>Request (Validate 10-digit NUBAN live with NIP/Monnify):</b><br/><code>{\"account_number\": \"0123456789\", \"bank_code\": \"058\", \"bank_name\": \"GTBank\"}</code><br/><b>Response (200 OK):</b> <code>{\"status\": \"success\", \"is_valid\": true, \"account_number\": \"0123456789\", \"bank_code\": \"058\", \"bank_name\": \"GTBank\", \"account_name\": \"IBRAHIM MUSA\", \"message\": \"Account name verified: IBRAHIM MUSA\"}</code>", code_style)
+        ],
+        [
             Paragraph("<b>Request Bank Withdrawal (24h SLA)</b><br/><code>/api/driver/withdraw</code>", body_style),
             Paragraph("<font color='#1E40AF'><b>POST</b></font><br/>Bearer", body_style),
             Paragraph("<b>Request (Withdraw accumulated balance to driver's bank):</b><br/><code>{\"amount\": 10000, \"bank_name\": \"GTBank\", \"account_number\": \"0123456789\", \"account_name\": \"Ibrahim Musa\", \"notes\": \"Weekly payout\"}</code><br/><b>Response (201 Created):</b> <code>{\"message\": \"Withdrawal request submitted. Payout will be processed into your bank account within 24 hours.\", \"payout_ref\": \"PAY-MK91-8C3D\", \"remaining_balance\": 4000.00}</code>", code_style)

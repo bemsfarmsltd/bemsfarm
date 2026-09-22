@@ -91,4 +91,35 @@ const driverProtect = async (req, res, next) => {
   }
 };
 
-module.exports = { driverProtect };
+const optionalDriverProtect = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.driverToken || req.cookies?.token) {
+      token = req.cookies.driverToken || req.cookies.token;
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded?.id) {
+      const driverResult = await pool.query(
+        "SELECT id, name, email, phone, status, bank_name, account_number, account_name FROM drivers WHERE id = $1",
+        [decoded.id]
+      );
+      if (driverResult.rows.length > 0) {
+        req.driver = driverResult.rows[0];
+      }
+    }
+    next();
+  } catch (err) {
+    // If token invalid, still proceed as unauthenticated for public-eligible endpoints
+    next();
+  }
+};
+
+module.exports = { driverProtect, optionalDriverProtect };
+
