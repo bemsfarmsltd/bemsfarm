@@ -14,6 +14,8 @@ const STATUS_CONFIG = {
     bg: "#FEF3C7",
     border: "#FDE68A",
     dot: "#F59E0B",
+    cardAccent: "border-t-amber-500",
+    headerBg: "bg-amber-50/70",
     stepIndex: 0,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -27,6 +29,8 @@ const STATUS_CONFIG = {
     bg: "#EFF6FF",
     border: "#BFDBFE",
     dot: "#3B82F6",
+    cardAccent: "border-t-blue-500",
+    headerBg: "bg-blue-50/70",
     stepIndex: 1,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,6 +44,8 @@ const STATUS_CONFIG = {
     bg: "#F5F3FF",
     border: "#DDD6FE",
     dot: "#8B5CF6",
+    cardAccent: "border-t-purple-500",
+    headerBg: "bg-purple-50/70",
     stepIndex: 2,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,6 +59,8 @@ const STATUS_CONFIG = {
     bg: "#ECFDF5",
     border: "#A7F3D0",
     dot: "#10B981",
+    cardAccent: "border-t-emerald-600",
+    headerBg: "bg-emerald-50/80",
     stepIndex: 3,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,6 +74,8 @@ const STATUS_CONFIG = {
     bg: "#F0FDF4",
     border: "#BBF7D0",
     dot: "#22C55E",
+    cardAccent: "border-t-teal-600",
+    headerBg: "bg-teal-50/60",
     stepIndex: 4,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -79,6 +89,8 @@ const STATUS_CONFIG = {
     bg: "#FEF2F2",
     border: "#FECACA",
     dot: "#EF4444",
+    cardAccent: "border-t-rose-500",
+    headerBg: "bg-rose-50/60",
     stepIndex: -1,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,6 +111,7 @@ export default function OrdersPage() {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' (left-to-right 2 cols) or 'list'
   const [toast, setToast] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -235,10 +248,10 @@ export default function OrdersPage() {
     <PageWrapper>
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="min-h-screen bg-[#FBFBFA] pb-24 text-slate-800">
+      <div className="min-h-screen bg-[#F4F6F8] pb-28 text-slate-800">
         {/* ── TOP HERO BANNER ── */}
         <div className="bg-gradient-to-b from-[#0A2E1C] via-[#0D3B24] to-[#12462C] text-white pt-8 pb-16 px-4 sm:px-6 lg:px-8 border-b border-emerald-950/30">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             {/* Breadcrumb */}
             <div className="flex items-center gap-2 text-xs text-emerald-200/80 mb-3 font-medium">
               <span
@@ -278,30 +291,30 @@ export default function OrdersPage() {
 
             {/* ── METRIC STAT CARDS ── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 mt-8">
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 transition hover:bg-white/15">
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Total Orders</div>
-                <div className="text-2xl font-black text-white mt-1">{metrics.totalCount}</div>
+                <div className="text-2xl sm:text-3xl font-black text-white mt-1">{metrics.totalCount}</div>
                 <div className="text-[11px] text-emerald-300/70 mt-0.5">Lifetime history</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 transition hover:bg-white/15">
-                <div className="text-amber-300/90 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
+                <div className="text-amber-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   <span>In Progress</span>
                 </div>
-                <div className="text-2xl font-black text-amber-300 mt-1">{metrics.activeCount}</div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-300 mt-1">{metrics.activeCount}</div>
                 <div className="text-[11px] text-amber-200/70 mt-0.5">Active deliveries</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 transition hover:bg-white/15">
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Delivered</div>
-                <div className="text-2xl font-black text-emerald-300 mt-1">{metrics.deliveredCount}</div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-300 mt-1">{metrics.deliveredCount}</div>
                 <div className="text-[11px] text-emerald-300/70 mt-0.5">Fulfilled orders</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 transition hover:bg-white/15">
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Total Spent</div>
-                <div className="text-2xl font-black text-white mt-1 tabular-nums">
+                <div className="text-2xl sm:text-3xl font-black text-white mt-1 tabular-nums">
                   ₦{metrics.totalSpent.toLocaleString()}
                 </div>
                 <div className="text-[11px] text-emerald-300/70 mt-0.5">Gross purchases</div>
@@ -311,9 +324,9 @@ export default function OrdersPage() {
         </div>
 
         {/* ── MAIN CONTENT CONTAINER (NEGATIVE MARGIN FOR OVERLAP) ── */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
-          {/* ── FILTER & SEARCH TOOLBAR ── */}
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+          {/* ── FILTER, SEARCH & VIEW SWITCHER TOOLBAR ── */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-7 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             {/* Filter Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
               {[
@@ -328,7 +341,7 @@ export default function OrdersPage() {
                   <button
                     key={tab.key}
                     onClick={() => setFilter(tab.key)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                       isActive
                         ? "bg-[#0A2E1C] text-white shadow-md shadow-emerald-950/20"
                         : "bg-slate-100 hover:bg-slate-200/70 text-slate-600"
@@ -347,31 +360,61 @@ export default function OrdersPage() {
               })}
             </div>
 
-            {/* Search Box */}
-            <div className="relative flex-1 max-w-md">
-              <svg
-                className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by Order ID, item, or address..."
-                className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0A2E1C]/20 focus:border-[#0A2E1C] transition"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+            {/* Right toolbar: Search + Grid/List Mode Toggle */}
+            <div className="flex items-center gap-3 w-full lg:w-auto">
+              <div className="relative flex-1 lg:w-72">
+                <svg
+                  className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  ✕
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search order ID, item..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0A2E1C]/20 focus:border-[#0A2E1C] transition"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* View Layout Switcher (Grid: Left-to-Right / List) */}
+              <div className="hidden sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  title="Grid View (Left to Right)"
+                  className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                    viewMode === "grid" ? "bg-white text-[#0A2E1C] shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  title="Full Width List View"
+                  className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                    viewMode === "list" ? "bg-white text-[#0A2E1C] shadow-xs" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -394,23 +437,23 @@ export default function OrdersPage() {
             </div>
           )}
 
-          {/* ── ORDER CARDS LIST ── */}
+          {/* ── ORDER CARDS CONTAINER (LEFT TO RIGHT 2-COLUMN GRID OR LIST) ── */}
           {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm animate-pulse space-y-4"
+                  className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm animate-pulse space-y-4"
                 >
                   <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div className="h-4 bg-slate-200 rounded w-1/3" />
                     <div className="h-4 bg-slate-200 rounded w-1/4" />
-                    <div className="h-4 bg-slate-200 rounded w-1/6" />
                   </div>
                   <div className="flex gap-4 items-center">
-                    <div className="w-16 h-16 bg-slate-200 rounded-xl flex-shrink-0" />
+                    <div className="w-16 h-16 bg-slate-200 rounded-2xl flex-shrink-0" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-1/3" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className="h-4 bg-slate-200 rounded w-1/2" />
+                      <div className="h-3 bg-slate-100 rounded w-3/4" />
                     </div>
                   </div>
                 </div>
@@ -420,7 +463,7 @@ export default function OrdersPage() {
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-sm my-4"
+              className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm my-4"
             >
               <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 flex items-center justify-center text-4xl mb-4 border border-emerald-100">
                 📦
@@ -453,9 +496,15 @@ export default function OrdersPage() {
               )}
             </motion.div>
           ) : (
-            <div className="space-y-5">
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
+                  : "space-y-6"
+              }
+            >
               <AnimatePresence>
-                {filteredOrders.map((order) => {
+                {filteredOrders.map((order, orderIndex) => {
                   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
                   const formattedDate = new Date(order.created_at).toLocaleDateString("en-NG", {
                     day: "numeric",
@@ -477,29 +526,21 @@ export default function OrdersPage() {
                   return (
                     <motion.div
                       key={order.id}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.98 }}
-                      className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                      transition={{ duration: 0.2, delay: orderIndex * 0.03 }}
+                      className={`bg-white rounded-3xl border-2 border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-200 overflow-hidden flex flex-col border-t-4 ${cfg.cardAccent}`}
                     >
-                      {/* ── CARD TOP BAR ── */}
-                      <div className="bg-slate-50/80 px-5 py-4 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
-                        {/* Order Metadata */}
-                        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                              Order Placed
-                            </div>
-                            <div className="text-xs font-bold text-slate-800 mt-0.5">{formattedDate}</div>
+                      {/* ── CARD TOP HEADER STRIP (DISTINCT STATUS-COLORED BACKGROUND) ── */}
+                      <div className={`${cfg.headerBg} px-5 py-3.5 border-b border-slate-200/80 flex items-center justify-between gap-3`}>
+                        {/* Order ID & Tag */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-white/90 shadow-2xs flex items-center justify-center text-slate-700 text-xs font-black">
+                            #{orderIndex + 1}
                           </div>
-
-                          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-
                           <div>
-                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                              Order ID
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex items-center gap-1.5">
                               <span className="text-xs font-black text-slate-900 tracking-tight">
                                 #{order.id}
                               </span>
@@ -519,34 +560,21 @@ export default function OrdersPage() {
                                 )}
                               </button>
                             </div>
-                          </div>
-
-                          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-
-                          <div>
-                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                              Total Amount
-                            </div>
-                            <div className="flex items-baseline gap-1.5 mt-0.5">
-                              <span className="text-sm font-black text-emerald-800 tabular-nums">
-                                ₦{(parseFloat(order.total) || 0).toLocaleString()}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-medium">
-                                (incl. delivery)
-                              </span>
+                            <div className="text-[10px] font-semibold text-slate-500">
+                              Placed on {formattedDate}
                             </div>
                           </div>
                         </div>
 
                         {/* Status Badge */}
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                           <span
                             style={{
                               backgroundColor: cfg.bg,
                               color: cfg.color,
                               borderColor: cfg.border,
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black border shadow-xs"
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border shadow-2xs"
                           >
                             <span
                               style={{ backgroundColor: cfg.dot }}
@@ -557,18 +585,20 @@ export default function OrdersPage() {
 
                           <button
                             onClick={() => navigate(`/orders/${order.id}`)}
-                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+                            title="View Full Order Details"
+                            className="p-1 rounded-lg hover:bg-white/80 text-slate-500 hover:text-slate-900 transition"
                           >
-                            <span>Details</span>
-                            <span>→</span>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
                           </button>
                         </div>
                       </div>
 
                       {/* ── ACTIVE PROGRESS STEPPER (FOR IN PROGRESS ORDERS) ── */}
                       {isInProgress && cfg.stepIndex >= 0 && (
-                        <div className="bg-emerald-50/40 px-5 py-3 border-b border-emerald-100/60">
-                          <div className="flex items-center justify-between max-w-2xl">
+                        <div className="bg-emerald-50/50 px-5 py-2.5 border-b border-emerald-100/70">
+                          <div className="flex items-center justify-between">
                             {STEPS.map((stepName, stepIdx) => {
                               const isPassed = stepIdx <= cfg.stepIndex;
                               const isCurrent = stepIdx === cfg.stepIndex;
@@ -576,24 +606,24 @@ export default function OrdersPage() {
                                 <div key={stepName} className="flex-1 flex flex-col items-center relative">
                                   {stepIdx > 0 && (
                                     <div
-                                      className={`absolute top-2.5 -left-1/2 w-full h-1 -z-0 transition-colors ${
+                                      className={`absolute top-2 -left-1/2 w-full h-0.5 -z-0 transition-colors ${
                                         isPassed ? "bg-emerald-600" : "bg-slate-200"
                                       }`}
                                     />
                                   )}
                                   <div
-                                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black z-10 transition-all ${
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black z-10 transition-all ${
                                       isCurrent
-                                        ? "bg-emerald-600 text-white ring-4 ring-emerald-200 scale-110"
+                                        ? "bg-emerald-600 text-white ring-3 ring-emerald-200 scale-110"
                                         : isPassed
                                         ? "bg-emerald-600 text-white"
-                                        : "bg-slate-200 text-slate-500"
+                                        : "bg-slate-200 text-slate-400"
                                     }`}
                                   >
                                     {isPassed ? "✓" : stepIdx + 1}
                                   </div>
                                   <span
-                                    className={`text-[10px] mt-1 font-bold tracking-tight whitespace-nowrap ${
+                                    className={`text-[9px] mt-0.5 font-bold tracking-tight text-center ${
                                       isCurrent ? "text-emerald-800" : isPassed ? "text-slate-700" : "text-slate-400"
                                     }`}
                                   >
@@ -606,112 +636,119 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {/* ── CARD BODY (ORDER ITEMS) ── */}
-                      <div className="p-5 sm:p-6 space-y-4 divide-y divide-slate-100">
+                      {/* ── CARD BODY (ORDER ITEMS LIST) ── */}
+                      <div className="p-5 flex-1 space-y-3 divide-y divide-slate-100">
                         {(order.items || []).map((item, idx) => (
                           <div
                             key={idx}
-                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                              idx > 0 ? "pt-4" : ""
-                            }`}
+                            className={`flex items-center gap-3.5 ${idx > 0 ? "pt-3" : ""}`}
                           >
-                            {/* Product Thumbnail & Details */}
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                <img
-                                  src={getProductImage(item)}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src =
-                                      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
-                                  }}
-                                />
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <h4 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
-                                  {item.name}
-                                </h4>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  Farm-fresh produce sourced directly from Bems Farms.
-                                </p>
-                                <div className="flex flex-wrap items-center gap-2.5 mt-1.5">
-                                  <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md tabular-nums">
-                                    ₦{(parseFloat(item.price) || 0).toLocaleString()} each
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-600">
-                                    Qty: <strong className="text-slate-900">{item.quantity}</strong>
-                                  </span>
-                                  {Number(item.quantity) > 1 && (
-                                    <span className="text-xs font-semibold text-slate-500">
-                                      = ₦{((parseFloat(item.price) || 0) * Number(item.quantity)).toLocaleString()}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                            <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                              <img
+                                src={getProductImage(item)}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
+                                }}
+                              />
                             </div>
 
-                            {/* Action buttons on desktop */}
-                            <div className="flex items-center gap-2.5 self-end sm:self-center">
-                              {isInProgress && (
-                                <button
-                                  onClick={() => navigate(`/orders/${order.id}`)}
-                                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white text-xs font-black uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md shadow-emerald-900/10 transition-all active:scale-95"
-                                >
-                                  <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
-                                  <span>Track Live</span>
-                                </button>
-                              )}
-
-                              {isDelivered && (
-                                <button
-                                  onClick={() => handleReorder(order)}
-                                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95"
-                                >
-                                  <span>🛒</span>
-                                  <span>Order Again</span>
-                                </button>
-                              )}
-
-                              {canCancel && (
-                                <button
-                                  onClick={() => {
-                                    setCancelModalOrder(order);
-                                    setCancelReason("");
-                                  }}
-                                  className="inline-flex items-center gap-1 border border-red-200 hover:bg-red-50 text-red-700 text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
-                                >
-                                  <span>Cancel</span>
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => navigate(`/orders/${order.id}`)}
-                                className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3.5 py-2.5 rounded-xl transition"
-                              >
-                                <span>Receipt</span>
-                              </button>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                                {item.name}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md tabular-nums">
+                                  ₦{(parseFloat(item.price) || 0).toLocaleString()} each
+                                </span>
+                                <span className="text-xs font-bold text-slate-600">
+                                  Qty: <strong className="text-slate-900">{item.quantity}</strong>
+                                </span>
+                                {Number(item.quantity) > 1 && (
+                                  <span className="text-xs font-semibold text-slate-500 tabular-nums">
+                                    = ₦{((parseFloat(item.price) || 0) * Number(item.quantity)).toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
 
-                      {/* ── CARD FOOTER (DELIVERY DETAILS) ── */}
-                      <div className="bg-slate-50/70 px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+                      {/* ── TOTAL & BILL SUMMARY BAR ── */}
+                      <div className="bg-slate-50/90 px-5 py-3 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Order Total
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-base font-black text-emerald-900 tabular-nums">
+                              ₦{(parseFloat(order.total) || 0).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              (incl. delivery)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
                         <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-emerald-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          {isInProgress && (
+                            <button
+                              onClick={() => navigate(`/orders/${order.id}`)}
+                              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 hover:to-emerald-900 text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-xs transition-all active:scale-95"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
+                              <span>Live Map</span>
+                            </button>
+                          )}
+
+                          {isDelivered && (
+                            <button
+                              onClick={() => handleReorder(order)}
+                              className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-[11px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-xs transition-all active:scale-95"
+                            >
+                              <span>Order Again</span>
+                            </button>
+                          )}
+
+                          {canCancel && (
+                            <button
+                              onClick={() => {
+                                setCancelModalOrder(order);
+                                setCancelReason("");
+                              }}
+                              className="inline-flex items-center border border-red-200 hover:bg-red-50 text-red-700 text-[11px] font-bold px-3 py-2 rounded-xl transition"
+                            >
+                              Cancel
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => navigate(`/orders/${order.id}`)}
+                            className="inline-flex items-center bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-bold px-3 py-2 rounded-xl transition"
+                          >
+                            Details
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* ── CARD FOOTER (DELIVERY ADDRESS & ETA) ── */}
+                      <div className="bg-slate-100/60 px-5 py-2.5 border-t border-slate-200/60 flex items-center justify-between gap-3 text-[11px] text-slate-600">
+                        <div className="flex items-center gap-1.5 min-w-0 truncate">
+                          <svg className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <span className="font-medium truncate max-w-md">
+                          <span className="truncate">
                             <strong className="text-slate-800">Ship to:</strong> {order.address || "Main Store Pick-Up"}
                           </span>
                         </div>
 
                         {!isCancelled && (
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                            <span>{isDelivered ? "✅ Delivered:" : "🚚 Estimated Delivery:"}</span>
+                          <div className="flex items-center gap-1 flex-shrink-0 font-semibold text-slate-700">
+                            <span>{isDelivered ? "✅ Delivered" : "🚚 ETA:"}</span>
                             <span className="text-emerald-800 font-bold">{isDelivered ? formattedDate : estDelivery}</span>
                           </div>
                         )}
