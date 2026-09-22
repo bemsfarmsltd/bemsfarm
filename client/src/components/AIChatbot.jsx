@@ -106,6 +106,7 @@ export default function AIChatbot() {
         cartItems: [],
         userId: user?.id || null,
         email: user?.email || null,
+        name: user?.name || null,
       });
 
       const reply =

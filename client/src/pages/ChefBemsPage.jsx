@@ -402,6 +402,7 @@ export default function ChefBemsPage() {
       session_id: sessionId,
       userId: user?.id || null,
       email: user?.email || null,
+      name: user?.name || null,
     });
     return res.data;
   };

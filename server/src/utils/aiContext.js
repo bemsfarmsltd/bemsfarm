@@ -217,10 +217,9 @@ async function upsertOnboarding(userId, data = {}) {
 // ════════════════════════════════════════════════════════════════════════════
 async function buildContextString(userId) {
   try {
-    const [ctxRow, onbRow, recentActivity, convSummaries] = await Promise.all([
-
+    const [userRow, ctxRow, onbRow, recentActivity, convSummaries] = await Promise.all([
+      pool.query("SELECT id, name, email, phone, role FROM users WHERE id=$1", [userId]),
       pool.query("SELECT * FROM ai_user_context WHERE user_id=$1", [userId]),
-
       pool.query("SELECT * FROM ai_onboarding_data WHERE user_id=$1", [userId]),
 
       // Last 8 distinct activity types in the past 24 hours
@@ -240,22 +239,28 @@ async function buildContextString(userId) {
       `, [userId]),
     ]);
 
+    const u = userRow.rows[0];
     const ctx = ctxRow.rows[0];
     const onb = onbRow.rows[0];
 
-    if (!ctx && !onb) return null;
+    if (!u && !ctx && !onb) return null;
+
+    const fullName = ctx?.full_name || u?.name || "Valued Customer";
+    const firstName = fullName.split(" ")[0].trim();
+    const email = ctx?.email || u?.email || "N/A";
+    const role = ctx?.role || u?.role || "user";
 
     const lines = [];
 
     lines.push("─── USER CONTEXT (Authenticated) ───");
+    lines.push(`Customer Name: ${fullName} (First Name: ${firstName}) | Role: ${role} | Email: ${email} | Currency: ${ctx?.preferred_currency || "NGN"}`);
+    lines.push(`Personalization Instruction: Always address the user warmly by their name (${firstName}) in your greetings and advice.`);
 
-    if (ctx) {
-      lines.push(`Name: ${ctx.full_name || "Unknown"} | Role: ${ctx.role || "user"} | Currency: ${ctx.preferred_currency || "NGN"} | Theme: ${ctx.preferred_theme || "light"}`);
-      if (ctx.last_login) {
-        const minsAgo = Math.round((Date.now() - new Date(ctx.last_login)) / 60000);
-        const loginAgo = minsAgo < 60 ? `${minsAgo} min ago` : `${Math.round(minsAgo / 60)}h ago`;
-        lines.push(`Last login: ${loginAgo}`);
-      }
+    if (ctx?.last_login || u?.last_login) {
+      const lastLogin = ctx?.last_login || u?.last_login;
+      const minsAgo = Math.round((Date.now() - new Date(lastLogin)) / 60000);
+      const loginAgo = minsAgo < 60 ? `${minsAgo} min ago` : `${Math.round(minsAgo / 60)}h ago`;
+      lines.push(`Last login: ${loginAgo}`);
     }
 
     if (onb) {

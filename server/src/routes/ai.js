@@ -24,7 +24,10 @@ async function resolveUser(req) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith("Bearer ")) return null;
     const decoded = jwt.verify(auth.split(" ")[1], JWT_SECRET);
-    const row = await pool.query("SELECT id, email, role FROM users WHERE id=$1 AND status!='suspended'", [decoded.id]);
+    const row = await pool.query(
+      "SELECT id, name, email, phone, role FROM users WHERE id=$1 AND COALESCE(status, 'active') != 'suspended'",
+      [decoded.id]
+    );
     return row.rows[0] || null;
   } catch {
     return null;
@@ -201,6 +204,8 @@ router.post("/chef-chat", async (req, res, next) => {
     let contextBlock = await buildContextString(user.id);
     const customerId = user.id;
     const customerEmail = user.email;
+    const customerName = user.name || req.body.name || "Valued Customer";
+    const firstName = customerName.split(" ")[0].trim();
     const sessionId = session_id || `user-${customerId}`;
 
     // Always get or create conversation for the registered user
@@ -228,9 +233,27 @@ router.post("/chef-chat", async (req, res, next) => {
           customerId,
           customer_id: customerId,
           id: customerId,
+          name: customerName,
+          customerName,
+          customer_name: customerName,
+          userName: customerName,
+          user_name: customerName,
+          firstName,
+          first_name: firstName,
           email: customerEmail,
           customerEmail,
           customer_email: customerEmail,
+          phone: user.phone || null,
+          customer_phone: user.phone || null,
+          userContext: {
+            id: customerId,
+            name: customerName,
+            firstName,
+            first_name: firstName,
+            email: customerEmail,
+            phone: user.phone || null,
+            role: user.role || "user",
+          },
           conversationHistory: history,
           cartItems,
           userPreferences,
@@ -296,9 +319,10 @@ router.post("/chef-chat", async (req, res, next) => {
       console.warn("⚠️ n8n webhook failed or timed out. Falling back to local Gemini:", n8nErr.message);
 
       // 2. Fallback to Gemini locally (existing code)
+      const personalizationPrompt = `You are chatting with ${customerName} (First Name: ${firstName}). Always address them warmly by their name (${firstName}) in your greetings and cooking recommendations.`;
       const systemPrompt = contextBlock
-        ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}`
-        : CHEF_BEMS_PROMPT;
+        ? `${contextBlock}\n\n${personalizationPrompt}\n\n${CHEF_BEMS_PROMPT}`
+        : `${personalizationPrompt}\n\n${CHEF_BEMS_PROMPT}`;
 
       const cartContext =
         cartItems.length > 0
