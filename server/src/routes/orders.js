@@ -689,6 +689,8 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       });
     }
 
+    const effectiveReason = (req.body?.reason && String(req.body.reason).trim()) || "Cancelled by customer";
+
     await client.query(
       `UPDATE orders
        SET status='cancelled',
@@ -696,23 +698,25 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
            cancelled_at=NOW(),
            updated_at=NOW()
        WHERE id=$2`,
-      [reason.trim(), id],
+      [effectiveReason, id],
     );
 
     // Cancel any associated delivery records
-    await client.query(
-      `UPDATE deliveries SET status='cancelled', updated_at=NOW() WHERE order_id=$1`,
-      [id],
-    );
-
-    // Reject any pending driver assignments
-    await client.query(
-      `UPDATE delivery_assignments da
-       SET driver_response='rejected', notes='Order cancelled by customer'
-       FROM deliveries d
-       WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
-      [id],
-    );
+    try {
+      await client.query(
+        `UPDATE deliveries SET status='cancelled', updated_at=NOW() WHERE order_id=$1`,
+        [id],
+      );
+      await client.query(
+        `UPDATE delivery_assignments da
+         SET driver_response='rejected', notes='Order cancelled by customer'
+         FROM deliveries d
+         WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
+        [id],
+      );
+    } catch (delErr) {
+      // Non-fatal if delivery tables/columns differ
+    }
 
     await restoreOrderStock(client, id);
 
@@ -720,12 +724,12 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       await client.query(
         `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
          VALUES ($1, 'cancelled', $2, 'customer', $3, NOW())`,
-        [id, `Order cancelled by customer. Reason: ${reason.trim()}`, req.user.id]
+        [id, `Order cancelled by customer. Reason: ${effectiveReason}`, req.user.id]
       );
       await client.query(
         `INSERT INTO order_status_history (order_id, from_status, to_status, changed_by, notes, created_at)
          VALUES ($1, $2, 'cancelled', $3, $4, NOW())`,
-        [id, o.status, req.user.id, `Cancelled by customer: ${reason.trim()}`]
+        [id, o.status, req.user.id, `Cancelled by customer: ${effectiveReason}`]
       );
     } catch (logErr) {
       // Non-fatal if optional logging tables are not present

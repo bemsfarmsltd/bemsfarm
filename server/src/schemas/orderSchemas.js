@@ -51,7 +51,7 @@ const updateStatus = (validStatuses) =>
   });
 
 const cancelOrder = z.object({
-  reason: z.string({ error: "Cancellation reason is required" }).trim().min(3, "Cancellation reason is required"),
-});
+  reason: z.string().trim().optional().nullable(),
+}).passthrough();
 
 module.exports = { createOrder, createCheckoutIntent, updateStatus, cancelOrder };
