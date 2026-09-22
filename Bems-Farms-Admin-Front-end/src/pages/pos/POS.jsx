@@ -407,8 +407,82 @@ export default function POS() {
         console.error('Tax settings load failed', e)
       }
 
+      const fetchOnlineOrders = async () => {
+        try {
+          const ordRes = await api.get('/admin/orders?limit=40')
+          const ords = ordRes?.data?.orders || []
+          if (Array.isArray(ords) && isMounted) {
+            const openOrders = ords.filter(o => 
+              !['delivered', 'completed', 'cancelled', 'refunded', 'failed'].includes(String(o.status || '').toLowerCase()) &&
+              !String(o.id).startsWith('POS-')
+            )
+            const mappedOrders = openOrders.map(o => {
+              const rawStatus = String(o.status || '').toLowerCase()
+              const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+              return {
+                id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
+                rawId: o.id,
+                channel: o.channel || o.source || 'website',
+                customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
+                phone: o.customer_phone || o.phone || '—',
+                time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+                status: posStatus,
+                rawStatus: o.status,
+                total: Number(o.total || 0),
+                note: o.delivery_note || o.notes || '',
+                items: (o.items || []).map(it => ({
+                  productId: it.product_id,
+                  name: it.name || it.product_name || 'Item',
+                  sku: it.sku || '',
+                  unit: it.unit || 'pcs',
+                  price: Number(it.price || it.unit_price || 0),
+                  qty: Number(it.quantity || it.qty || 1),
+                  image: it.image || ''
+                }))
+              }
+            })
+            setOnlineOrders(mappedOrders)
+          }
+        } catch (e) {
+          console.error('Live online orders load failed', e)
+        }
+      }
+
+      await fetchOnlineOrders()
+
       try {
-        const ordRes = await api.get('/admin/orders?limit=40')
+        const rcptRes = await api.get('/admin/pos/receipts')
+        const rcpts = rcptRes?.data?.receipts || []
+        if (Array.isArray(rcpts) && isMounted) {
+          const mappedHistory = rcpts.map(r => ({
+            inv: r.receipt_number || r.id,
+            cust: r.customer_name || 'Walk-in',
+            method: r.payment_method || 'Cash',
+            time: r.paid_at ? new Date(r.paid_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+            date: r.paid_at ? new Date(r.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+            amount: Number(r.total_amount || r.total || 0),
+            subtotal: Number(r.subtotal || 0),
+            tax: Number(r.tax_amount || 0),
+            discount: Number(r.discount_amount || 0),
+            cashier: r.cashier_name || '',
+            items: (r.items || []).map((item, index) => ({
+              id: item.id || index,
+              name: item.product_name || item.name || 'Item',
+              qty: Number(item.quantity || 1),
+              price: Number(item.unit_price || item.price || 0),
+              total: Number(item.subtotal || Number(item.quantity || 1) * Number(item.unit_price || item.price || 0)),
+            })),
+          }))
+          setHistoryList(mappedHistory)
+        }
+      } catch (e) {
+        console.error('Live POS receipts load failed', e)
+      }
+    }
+
+    loadPOSData()
+    const pollInterval = setInterval(() => {
+      api.get('/admin/orders?limit=40').then(ordRes => {
         const ords = ordRes?.data?.orders || []
         if (Array.isArray(ords) && isMounted) {
           const openOrders = ords.filter(o => 
@@ -442,42 +516,13 @@ export default function POS() {
           })
           setOnlineOrders(mappedOrders)
         }
-      } catch (e) {
-        console.error('Live online orders load failed', e)
-      }
+      }).catch(() => {})
+    }, 15000)
 
-      try {
-        const rcptRes = await api.get('/admin/pos/receipts')
-        const rcpts = rcptRes?.data?.receipts || []
-        if (Array.isArray(rcpts) && isMounted) {
-          const mappedHistory = rcpts.map(r => ({
-            inv: r.receipt_number || r.id,
-            cust: r.customer_name || 'Walk-in',
-            method: r.payment_method || 'Cash',
-            time: r.paid_at ? new Date(r.paid_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
-            date: r.paid_at ? new Date(r.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
-            amount: Number(r.total_amount || r.total || 0),
-            subtotal: Number(r.subtotal || 0),
-            tax: Number(r.tax_amount || 0),
-            discount: Number(r.discount_amount || 0),
-            cashier: r.cashier_name || '',
-            items: (r.items || []).map((item, index) => ({
-              id: item.id || index,
-              name: item.product_name || item.name || 'Item',
-              qty: Number(item.quantity || 1),
-              price: Number(item.unit_price || item.price || 0),
-              total: Number(item.subtotal || Number(item.quantity || 1) * Number(item.unit_price || item.price || 0)),
-            })),
-          }))
-          setHistoryList(mappedHistory)
-        }
-      } catch (e) {
-        console.error('Live POS receipts load failed', e)
-      }
+    return () => { 
+      isMounted = false
+      clearInterval(pollInterval)
     }
-
-    loadPOSData()
-    return () => { isMounted = false }
   }, [])
 
   // Toast Helper
@@ -1465,17 +1510,23 @@ export default function POS() {
             <span className="text-dark fw-bold">Sales Hub</span>
           </button>
 
-          {/* Online Orders with Live Notification Badge */}
+          {/* Online Orders with Live Notification Badge on Order Icon */}
           {(() => {
-            const newCount = onlineOrders.filter(o => o.status === 'new').length
+            const availableCount = onlineOrders.length
             return (
               <button
                 onClick={() => setActiveModal('online')}
                 className="pos-header-online-pill"
-                title="Online & WhatsApp Orders [F3]">
-                <i className="ri-shopping-bag-3-line"></i>
+                title={`Online & WhatsApp Orders [F3] (${availableCount} available)`}>
+                <span className="pos-order-icon-badge-wrapper">
+                  <i className="ri-shopping-bag-3-line"></i>
+                  {availableCount > 0 && (
+                    <span className="pos-order-icon-badge-num">
+                      {availableCount}
+                    </span>
+                  )}
+                </span>
                 <span>Orders</span>
-                {newCount > 0 && <span className="pos-online-live-chip">{newCount}</span>}
               </button>
             )
           })()}
@@ -4343,6 +4394,32 @@ export default function POS() {
           padding: 1px 7px;
           border-radius: 10px;
           font-family: monospace;
+        }
+        .pos-order-icon-badge-wrapper {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pos-order-icon-badge-num {
+          position: absolute;
+          top: -7px;
+          right: -8px;
+          background: #ef4444;
+          color: #ffffff;
+          font-size: 9px;
+          font-weight: 800;
+          min-width: 16px;
+          height: 16px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 3px;
+          border: 1.5px solid #ffffff;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+          line-height: 1;
+          font-family: system-ui, -apple-system, sans-serif;
         }
         .pos-online-live-chip {
           background: #e11d48;
