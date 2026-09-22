@@ -672,12 +672,12 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
 
     await client.query("BEGIN");
 
-    // Lock the row and re-check status inside the transaction — without
-    // this, two concurrent cancel requests for the same order (e.g. a
-    // double-submitted click) could both pass the status check before
-    // either commits, restoring stock twice for one order.
+    // Lock the row and re-check status inside the transaction
     const order = await client.query(
-      `SELECT * FROM orders WHERE id = $1 AND (user_id = $2 OR $3 = 'superadmin' OR $3 = 'admin') FOR UPDATE`,
+      `SELECT * FROM orders 
+       WHERE (UPPER(id) = UPPER($1) OR UPPER(order_ref) = UPPER($1)) 
+         AND (user_id = $2 OR customer_id = $2 OR $3 IN ('superadmin', 'admin', 'manager', 'delivery_manager', 'staff')) 
+       FOR UPDATE`,
       [id, req.user.id, req.user.role || "customer"],
     );
 
@@ -688,12 +688,12 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
 
     const o = order.rows[0];
 
-    if (o.status === "cancelled") {
+    if (String(o.status).toLowerCase() === "cancelled") {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Order is already cancelled" });
     }
 
-    if (!["pending", "confirmed"].includes(o.status)) {
+    if (!["pending", "confirmed"].includes(String(o.status).toLowerCase())) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         message: "This order can no longer be cancelled because processing or delivery has begun",
@@ -709,41 +709,46 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
            cancelled_at=NOW(),
            updated_at=NOW()
        WHERE id=$2`,
-      [effectiveReason, id],
+      [effectiveReason, o.id],
     );
 
-    // Cancel any associated delivery records
+    // Cancel any associated delivery records safely with a SAVEPOINT
     try {
+      await client.query("SAVEPOINT delivery_cancel");
       await client.query(
         `UPDATE deliveries SET status='cancelled', updated_at=NOW() WHERE order_id=$1`,
-        [id],
+        [o.id],
       );
       await client.query(
         `UPDATE delivery_assignments da
-         SET driver_response='rejected', notes='Order cancelled by customer'
+         SET driver_response='rejected', override_note='Order cancelled by customer'
          FROM deliveries d
          WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
-        [id],
+        [o.id],
       );
+      await client.query("RELEASE SAVEPOINT delivery_cancel");
     } catch (delErr) {
-      // Non-fatal if delivery tables/columns differ
+      await client.query("ROLLBACK TO SAVEPOINT delivery_cancel");
     }
 
-    await restoreOrderStock(client, id);
+    await restoreOrderStock(client, o.id);
 
+    // Log tracking events safely with a SAVEPOINT
     try {
+      await client.query("SAVEPOINT tracking_cancel");
       await client.query(
         `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
          VALUES ($1, 'cancelled', $2, 'customer', $3, NOW())`,
-        [id, `Order cancelled by customer. Reason: ${effectiveReason}`, req.user.id]
+        [o.id, `Order cancelled by customer. Reason: ${effectiveReason}`, req.user.id]
       );
       await client.query(
         `INSERT INTO order_status_history (order_id, from_status, to_status, changed_by, notes, created_at)
          VALUES ($1, $2, 'cancelled', $3, $4, NOW())`,
-        [id, o.status, req.user.id, `Cancelled by customer: ${effectiveReason}`]
+        [o.id, o.status, req.user.id, `Cancelled by customer: ${effectiveReason}`]
       );
+      await client.query("RELEASE SAVEPOINT tracking_cancel");
     } catch (logErr) {
-      // Non-fatal if optional logging tables are not present
+      await client.query("ROLLBACK TO SAVEPOINT tracking_cancel");
     }
 
     await client.query("COMMIT");
