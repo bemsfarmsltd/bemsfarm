@@ -735,9 +735,11 @@ router.patch("/:id/confirm", protect, async (req, res, next) => {
       `
       UPDATE orders 
       SET 
+        customer_confirmed = true,
+        customer_confirmed_at = NOW(),
         status = 'delivered',
         tracking_status = 'delivered',
-        delivered_at = NOW(),
+        delivered_at = COALESCE(delivered_at, NOW()),
         updated_at = NOW()
       WHERE id = $1
       `,
@@ -749,8 +751,8 @@ router.patch("/:id/confirm", protect, async (req, res, next) => {
       `
       UPDATE deliveries 
       SET 
-        status = 'delivered',
-        delivered_at = NOW(),
+        customer_confirmed = true,
+        customer_confirmed_at = NOW(),
         updated_at = NOW()
       WHERE order_id = $1
       `,
@@ -762,6 +764,7 @@ router.patch("/:id/confirm", protect, async (req, res, next) => {
     res.json({
       message: "Delivery confirmed successfully. Thank you for shopping with Bems Farms!",
       order_id: order.id,
+      customer_confirmed: true,
       status: "delivered",
     });
   } catch (err) {
