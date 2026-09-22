@@ -412,8 +412,9 @@ export default function POS() {
           const ordRes = await api.get('/admin/orders?limit=40')
           const ords = ordRes?.data?.orders || []
           if (Array.isArray(ords) && isMounted) {
+            const EXCLUDED_STATUSES = ['delivered', 'completed', 'cancelled', 'refunded', 'failed', 'driver_assigned', 'out_for_delivery', 'picked_up', 'in_transit']
             const openOrders = ords.filter(o => 
-              !['delivered', 'completed', 'cancelled', 'refunded', 'failed'].includes(String(o.status || '').toLowerCase()) &&
+              !EXCLUDED_STATUSES.includes(String(o.status || '').toLowerCase()) &&
               !String(o.id).startsWith('POS-')
             )
             const mappedOrders = openOrders.map(o => {
@@ -487,8 +488,9 @@ export default function POS() {
       api.get('/admin/orders?limit=40').then(ordRes => {
         const ords = ordRes?.data?.orders || []
         if (Array.isArray(ords) && isMounted) {
+          const EXCLUDED_STATUSES = ['delivered', 'completed', 'cancelled', 'refunded', 'failed', 'driver_assigned', 'out_for_delivery', 'picked_up', 'in_transit']
           const openOrders = ords.filter(o => 
-            !['delivered', 'completed', 'cancelled', 'refunded', 'failed'].includes(String(o.status || '').toLowerCase()) &&
+            !EXCLUDED_STATUSES.includes(String(o.status || '').toLowerCase()) &&
             !String(o.id).startsWith('POS-')
           )
           const mappedOrders = openOrders.map(o => {
@@ -1277,6 +1279,11 @@ export default function POS() {
       showToast('Sale could not be saved. Receipt was not printed.', 'error', '⚠️')
       setIsSubmittingSale(false)
       return
+    }
+
+    // Remove processed online order from active incoming list if applicable
+    if (orderId) {
+      setOnlineOrders(prev => prev.filter(o => o.id !== orderId && o.rawId !== orderId))
     }
 
     // Set active receipt for background printing

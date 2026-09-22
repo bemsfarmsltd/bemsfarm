@@ -118,6 +118,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       `
       SELECT
         o.id, o.total, o.status, o.source AS channel, o.payment_method, o.payment_ref,
+        COALESCE(o.invoice_printed, false) AS invoice_printed, o.invoice_printed_at,
         COALESCE(o.delivery_fee, 0) AS delivery_fee, o.created_at, o.cancel_reason, o.cancelled_at,
         COALESCE(NULLIF(TRIM(o.address), ''), ua.street_address, '') AS address,
         COALESCE(ua.city, 'Umuahia') AS delivery_city,
