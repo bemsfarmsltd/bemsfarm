@@ -351,9 +351,8 @@ export default function WalletManagement() {
         bank_name: valBankName,
       })
       setBankValidationResult(res.data)
-      toast.success(res.data?.message || 'Account resolved!')
     } catch (err) {
-      toast.error('Could not resolve account name')
+      toast.error(err.response?.data?.message || 'Could not resolve account name')
     } finally {
       setValidatingBank(false)
     }

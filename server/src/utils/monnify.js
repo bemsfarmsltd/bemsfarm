@@ -147,13 +147,13 @@ async function initiateMonnifyDisbursement({
 
 /**
  * 5. Bank Account Name Resolution / Validation API
- * GET /api/v1/disbursements/account/validate
+ * GET /api/v2/disbursements/account/validate
  */
 async function validateMonnifyBankAccount(accountNumber, bankCode) {
   const token = await getMonnifyToken();
 
   const { data } = await axios.get(
-    `${MONNIFY_BASE_URL}/api/v1/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode || "058")}`,
+    `${MONNIFY_BASE_URL}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode || "058")}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
