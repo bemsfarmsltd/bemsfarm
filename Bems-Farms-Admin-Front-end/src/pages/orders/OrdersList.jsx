@@ -465,6 +465,26 @@ export default function OrdersList() {
     }
   }
 
+  const unassignDriver = async (orderToUnassign) => {
+    const target = orderToUnassign || selected
+    if (!target) return
+    const orderRef = target.id
+    if (!window.confirm(`Are you sure you want to unassign the driver from Order #${orderRef}? The order will be reset to processing.`)) {
+      return
+    }
+    setActionLoading(true)
+    try {
+      await api.post(`/admin/dispatch/unassign/${orderRef}`)
+      toast.success(`Driver unassigned from Order #${orderRef}`)
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to unassign driver')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const resolveDispute = async () => {
     if (!disputeDecision || !selected) return
     setActionLoading(true)
@@ -969,14 +989,23 @@ export default function OrdersList() {
                             <i className="ri-user-add-line" />
                           </button>
                         )}
-                        {['assigned', 'shipped', 'delivery_attempted'].includes(order.status) && order.driver && (
-                          <button
-                            className="btn btn-sm btn-outline-warning"
-                            title="Reassign Driver"
-                            onClick={() => openModal('assign', order, { assignType: 'manual_reassign' })}
-                          >
-                            <i className="ri-user-follow-line" />
-                          </button>
+                        {Boolean(order.driver || ['assigned', 'driver_assigned'].includes(order.status)) && (
+                          <>
+                            <button
+                              className="btn btn-sm btn-outline-warning"
+                              title="Reassign Driver"
+                              onClick={() => openModal('assign', order, { assignType: 'manual_reassign' })}
+                            >
+                              <i className="ri-user-follow-line" />
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline-danger"
+                              title="Unassign Driver"
+                              onClick={() => unassignDriver(order)}
+                            >
+                              <i className="ri-user-unfollow-line" />
+                            </button>
+                          </>
                         )}
                         {order.status === 'dispute' && (
                           <button
@@ -1143,7 +1172,27 @@ export default function OrdersList() {
 
                           {selected.driver && (
                             <div className="col-12 border-top pt-2 mt-2">
-                              <div className="text-muted small mb-1">Assigned Driver</div>
+                              <div className="d-flex align-items-center justify-content-between mb-1">
+                                <div className="text-muted small">Assigned Driver</div>
+                                <div className="d-flex gap-1">
+                                  <button
+                                    className="btn btn-xs btn-outline-warning"
+                                    style={{ fontSize: 11, padding: '2px 8px' }}
+                                    title="Reassign to another driver"
+                                    onClick={() => { closeModal(); openModal('assign', selected, { assignType: 'manual_reassign' }) }}
+                                  >
+                                    <i className="ri-user-follow-line me-1" />Reassign
+                                  </button>
+                                  <button
+                                    className="btn btn-xs btn-outline-danger"
+                                    style={{ fontSize: 11, padding: '2px 8px' }}
+                                    title="Unassign driver from order"
+                                    onClick={() => unassignDriver(selected)}
+                                  >
+                                    <i className="ri-user-unfollow-line me-1" />Unassign
+                                  </button>
+                                </div>
+                              </div>
                               <div className="d-flex align-items-center gap-2">
                                 <div
                                   className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"

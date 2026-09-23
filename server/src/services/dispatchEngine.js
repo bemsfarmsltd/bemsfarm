@@ -267,29 +267,35 @@ async function processUnresponsiveAssignments(
   storeCoords = { lat: 5.1065, lng: 7.3667 }
 ) {
   try {
-    // Find active deliveries assigned over timeout threshold where driver never responded
+    // Find active orders/deliveries assigned over timeout threshold where driver never accepted
     const timedOutRes = await pool.query(
       `
-      SELECT 
+      SELECT DISTINCT ON (o.id)
         d.id AS delivery_id,
         d.delivery_ref,
-        d.driver_id,
-        d.order_id,
-        d.assigned_at,
+        COALESCE(o.driver_id, d.driver_id) AS driver_id,
+        o.id AS order_id,
+        COALESCE(d.assigned_at, o.updated_at, o.created_at) AS assigned_at,
         da.id AS assignment_id,
-        da.created_at AS assignment_created_at,
+        COALESCE(da.created_at, d.assigned_at, o.updated_at) AS assignment_created_at,
         o.order_ref,
         o.customer_name,
         drv.name AS driver_name
-      FROM deliveries d
-      JOIN orders o ON d.order_id = o.id
-      JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = d.driver_id
-      LEFT JOIN drivers drv ON d.driver_id = drv.id
-      WHERE d.status = 'assigned'
-        AND d.accepted_at IS NULL
-        AND da.driver_response = 'pending'
-        AND da.created_at <= NOW() - ($1 * INTERVAL '1 minute')
-      ORDER BY da.created_at ASC
+      FROM orders o
+      LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
+      LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
+      WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
+        AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
+        AND (d.accepted_at IS NULL OR d.id IS NULL)
+        AND (d.status IS NULL OR d.status = 'assigned' OR o.status IN ('driver_assigned', 'assigned', 'processing'))
+        AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
+        AND NOT EXISTS (
+          SELECT 1 FROM dispatch_alerts al 
+          WHERE (al.order_id = o.id::text OR al.order_id = o.order_ref)
+            AND al.resolved = FALSE
+        )
+      ORDER BY o.id, COALESCE(da.created_at, o.updated_at) ASC
       `,
       [timeoutMinutes]
     );
@@ -302,46 +308,56 @@ async function processUnresponsiveAssignments(
 
     for (const item of timedOutRes.rows) {
       console.log(
-        `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to delivery ${item.delivery_ref} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
+        `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to order #${item.order_ref || item.order_id} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
       );
 
-      // 1. Mark the timed out assignment as 'timeout'
-      await pool.query(
-        `
-        UPDATE delivery_assignments
-        SET 
-          driver_response = 'timeout',
-          rejection_reason = $1,
-          response_at = NOW()
-        WHERE id = $2
-        `,
-        [
-          `Auto-timeout: Driver did not respond within ${timeoutMinutes} minutes`,
-          item.assignment_id,
-        ]
-      );
+      // 1. Mark the timed out assignment as 'timeout' if record exists
+      if (item.assignment_id) {
+        await pool.query(
+          `
+          UPDATE delivery_assignments
+          SET 
+            driver_response = 'timeout',
+            rejection_reason = $1,
+            response_at = NOW()
+          WHERE id = $2
+          `,
+          [
+            `Auto-timeout: Driver did not respond within ${timeoutMinutes} minutes`,
+            item.assignment_id,
+          ]
+        );
+      }
 
-      // 2. Notify the timed-out driver
-      await pool.query(
-        `
-        INSERT INTO driver_notifications (
-          driver_id, title, body, type, reference_type, reference_id, created_at
-        )
-        VALUES ($1, 'Delivery Assignment Timed Out', $2, 'order_cancelled', 'order', $3, NOW())
-        `,
-        [
-          item.driver_id,
-          `Delivery order #${item.order_ref || item.order_id} timed out after ${timeoutMinutes} minutes without response and has been re-assigned.`,
-          item.delivery_id,
-        ]
-      );
+      // 2. Notify the timed-out driver if driver_id is present
+      if (item.driver_id) {
+        await pool.query(
+          `
+          INSERT INTO driver_notifications (
+            driver_id, title, body, type, reference_type, reference_id, created_at
+          )
+          VALUES ($1, 'Delivery Assignment Timed Out', $2, 'order_cancelled', 'order', $3, NOW())
+          `,
+          [
+            item.driver_id,
+            `Delivery order #${item.order_ref || item.order_id} timed out after ${timeoutMinutes} minutes without response and has been re-assigned.`,
+            item.delivery_id || item.order_id,
+          ]
+        ).catch(() => {});
+      }
 
       // 3. Collect all drivers who have already rejected or timed out for this delivery
-      const previousAssignmentsRes = await pool.query(
-        `SELECT DISTINCT driver_id FROM delivery_assignments WHERE delivery_id = $1`,
-        [item.delivery_id]
-      );
-      const excludedDriverIds = previousAssignmentsRes.rows.map((r) => r.driver_id);
+      let excludedDriverIds = [];
+      if (item.delivery_id) {
+        const previousAssignmentsRes = await pool.query(
+          `SELECT DISTINCT driver_id FROM delivery_assignments WHERE delivery_id = $1`,
+          [item.delivery_id]
+        );
+        excludedDriverIds = previousAssignmentsRes.rows.map((r) => r.driver_id);
+      }
+      if (item.driver_id && !excludedDriverIds.includes(item.driver_id)) {
+        excludedDriverIds.push(item.driver_id);
+      }
 
       // 4. Map to next closest available driver
       const reassignResult = await autoAssignClosestDriver(
@@ -402,6 +418,13 @@ function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5
   if (timeoutWorkerInterval) {
     clearInterval(timeoutWorkerInterval);
   }
+
+  // Run an immediate check on startup after short delay
+  setTimeout(() => {
+    processUnresponsiveAssignments(timeoutMinutes).catch((e) => {
+      console.error("[dispatch-worker] Startup check error:", e.message);
+    });
+  }, 3000);
 
   timeoutWorkerInterval = setInterval(async () => {
     try {
