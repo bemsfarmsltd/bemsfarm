@@ -6,6 +6,70 @@ const { protect, requireRole } = require('../middleware/authMiddleware')
 // All dispatch routes require authentication
 router.use(protect)
 
+// POST /api/admin/dispatch/unassign/:ref — manually unassign driver from an order
+// Works with order_ref (e.g. BF-MUCTRIAL) or order id
+router.post('/unassign/:ref', requireRole('superadmin', 'admin', 'manager', 'cashier'), async (req, res) => {
+  const { ref } = req.params
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+
+    // Find the order by ref or id
+    const orderRes = await client.query(
+      `SELECT id, order_ref, driver_id, status FROM orders WHERE order_ref = $1 OR id::text = $1 LIMIT 1`,
+      [ref]
+    )
+    if (orderRes.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: `Order ${ref} not found` })
+    }
+
+    const order = orderRes.rows[0]
+
+    // Unassign driver from order — revert status to processing
+    await client.query(
+      `UPDATE orders SET driver_id = NULL, status = 'processing', tracking_status = 'processing', updated_at = NOW() WHERE id = $1`,
+      [order.id]
+    )
+
+    // Unassign from deliveries
+    await client.query(
+      `UPDATE deliveries SET driver_id = NULL, status = 'unassigned', updated_at = NOW() WHERE order_id = $1 AND status IN ('assigned','pending','awaiting_pickup')`,
+      [order.id]
+    )
+
+    // Cancel any pending driver assignments
+    await client.query(
+      `UPDATE delivery_assignments da
+       SET driver_response = 'cancelled', response_at = NOW()
+       FROM deliveries d
+       WHERE da.delivery_id = d.id AND d.order_id = $1 AND da.driver_response = 'pending'`,
+      [order.id]
+    )
+
+    // Resolve any open dispatch alert for this order
+    await client.query(
+      `UPDATE dispatch_alerts SET resolved = TRUE, resolution = 'unassign_driver', resolved_at = NOW()
+       WHERE order_id = $1 AND resolved = FALSE`,
+      [order.id]
+    ).catch(() => {}) // dispatch_alerts table may not exist yet — safe to ignore
+
+    await client.query('COMMIT')
+
+    res.json({
+      message: `Driver unassigned from order #${order.order_ref}. Order status reset to 'processing'.`,
+      order_id: order.id,
+      order_ref: order.order_ref,
+    })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('POST /dispatch/unassign error:', err.message)
+    res.status(500).json({ error: err.message })
+  } finally {
+    client.release()
+  }
+})
+
 // GET /api/admin/dispatch/alerts — fetch all unresolved dispatch alerts
 router.get('/alerts', requireRole('superadmin', 'admin', 'manager', 'cashier'), async (req, res) => {
   try {
