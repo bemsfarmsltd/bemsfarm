@@ -64,4 +64,55 @@ async function restoreOrderStock(client, orderId) {
   }
 }
 
-module.exports = { restoreOrderStock };
+async function deductOrderStock(client, orderId, userId = null, terminalId = 'POS-MAIN') {
+  try {
+    // Check if stock was already deducted for this order to prevent double-deduction
+    const check = await client.query(
+      "SELECT id FROM inventory_transactions WHERE order_id = $1 AND transaction_type = 'pos_packaging_stockout' LIMIT 1",
+      [String(orderId)]
+    );
+    if (check.rows.length > 0) return { alreadyDeducted: true };
+
+    const items = await client.query(
+      `SELECT oi.id, oi.product_id, oi.quantity, p.name as product_name, p.stock, p.stock_quantity 
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1
+       FOR UPDATE OF p`,
+      [String(orderId)]
+    );
+
+    for (const item of items.rows) {
+      const orderedQty = parseInt(item.quantity, 10);
+      if (orderedQty > 0) {
+        const currentStock = parseInt(item.stock ?? item.stock_quantity ?? 0, 10);
+        const newStock = Math.max(0, currentStock - orderedQty);
+
+        await client.query(
+          `UPDATE products
+           SET stock = $1, stock_quantity = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [newStock, item.product_id]
+        );
+
+        await client.query(
+          `INSERT INTO inventory_transactions
+           (order_id, product_id, quantity, previous_quantity, new_quantity, transaction_type, source_reference, notes, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'pos_packaging_stockout', $6, 'Inspected & deducted at POS packing counter', NOW())`,
+          [String(orderId), item.product_id, orderedQty, currentStock, newStock, `PACK-${orderId}`]
+        );
+
+        await client.query(
+          "UPDATE order_items SET scanned_quantity = quantity WHERE id = $1",
+          [item.id]
+        );
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("deductOrderStock warning:", err);
+    throw err;
+  }
+}
+
+module.exports = { restoreOrderStock, deductOrderStock };

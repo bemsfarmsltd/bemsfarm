@@ -9,7 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
-const { restoreOrderStock } = require("../utils/orderStock");
+const { restoreOrderStock, deductOrderStock } = require("../utils/orderStock");
 const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
 const { initiateMonnifyRefund } = require("../utils/monnify");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
@@ -1373,6 +1373,11 @@ router.patch(
           "UPDATE orders SET status=$1, tracking_status=$1, invoice_printed = CASE WHEN $1 = 'processing' THEN true ELSE invoice_printed END, updated_at=NOW() WHERE id=$2",
           [nextStatus, resolvedId],
         );
+      }
+
+      // Deduct stock when moving into packed / packed_ready at POS counter
+      if ((nextStatus === "packed" || nextStatus === "packed_ready") && fromStatus !== "packed" && fromStatus !== "packed_ready") {
+        await deductOrderStock(client, resolvedId, req.user.id);
       }
 
       // Only restore on the transition INTO cancelled
