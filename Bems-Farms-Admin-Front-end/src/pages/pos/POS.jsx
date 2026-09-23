@@ -1208,6 +1208,22 @@ export default function POS() {
     }
   }
 
+  const handleMarkOrderPacked = (order) => {
+    handleOpenPacking(order)
+  }
+
+  const handleMarkOrderDispatched = async (order) => {
+    if (!order) return
+    const targetId = order.rawId || order.id
+    try {
+      await api.patch(`/admin/orders/${targetId}/status`, { status: 'in_transit' })
+      showToast(`Order #${order.id} marked as In Transit / Dispatched`, 'success', '🚚')
+      setOnlineOrders(prev => prev.filter(o => o.id !== order.id && o.rawId !== targetId))
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to update order status', 'error', '⚠️')
+    }
+  }
+
   // Print customer-facing RECEIPT — given to the customer at delivery
   // Different from the Invoice (packing list) — this shows PAID and goes with the goods
   const handlePrintCustomerReceipt = async (order) => {
