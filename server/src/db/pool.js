@@ -1,4 +1,10 @@
-const { Pool } = require("pg");
+const pg = require("pg");
+const { Pool } = pg;
+
+// Parse INT8 (BIGINT) as integer numbers in JavaScript
+pg.types.setTypeParser(pg.types.builtins.INT8, (val) => (val === null ? null : parseInt(val, 10)));
+// Parse NUMERIC as float/double numbers in JavaScript
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val) => (val === null ? null : parseFloat(val)));
 
 const isProduction = process.env.NODE_ENV === "production";
 

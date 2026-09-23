@@ -16,6 +16,35 @@ function normalizeStatus(status) {
   return s;
 }
 
+// Format delivery row to strictly match the mobile app's Dart/Flutter types
+function formatDelivery(row) {
+  if (!row) return null;
+  const rawOrderId = row.order_id || '';
+  const orderRef = row.order_ref || String(rawOrderId);
+
+  return {
+    ...row,
+    delivery_id: parseInt(row.delivery_id, 10) || 0,
+    eta_minutes: row.eta_minutes !== null && row.eta_minutes !== undefined ? parseInt(row.eta_minutes, 10) : 0,
+    attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
+    order_id: rawOrderId,
+    order_ref: orderRef,
+    order_total: row.order_total !== null && row.order_total !== undefined ? parseFloat(row.order_total) : 0.0,
+    subtotal: row.subtotal !== null && row.subtotal !== undefined ? parseFloat(row.subtotal) : 0.0,
+    delivery_fee: row.delivery_fee !== null && row.delivery_fee !== undefined ? parseFloat(row.delivery_fee) : 0.0,
+    customer_lat: row.customer_lat !== null && row.customer_lat !== undefined ? parseFloat(row.customer_lat) : null,
+    customer_lng: row.customer_lng !== null && row.customer_lng !== undefined ? parseFloat(row.customer_lng) : null,
+    items: Array.isArray(row.items) ? row.items.map(it => ({
+      ...it,
+      id: parseInt(it.id, 10) || 0,
+      product_id: parseInt(it.product_id, 10) || 0,
+      quantity: parseInt(it.quantity, 10) || 1,
+      unit_price: it.unit_price !== null && it.unit_price !== undefined ? parseFloat(it.unit_price) : 0.0,
+      total_price: it.total_price !== null && it.total_price !== undefined ? parseFloat(it.total_price) : 0.0,
+    })) : [],
+  };
+}
+
 // ── GET /api/driver/deliveries ───────────────────────────────────────
 // List all active deliveries assigned to the logged-in driver
 const getActiveDeliveries = async (req, res, next) => {
@@ -96,11 +125,12 @@ const getActiveDeliveries = async (req, res, next) => {
       [driverId]
     );
 
+    const deliveries = result.rows.map(formatDelivery);
     res.json({
       success: true,
-      count: result.rows.length,
-      deliveries: result.rows,
-      data: result.rows,
+      count: deliveries.length,
+      deliveries,
+      data: deliveries,
     });
   } catch (err) {
     console.error("Driver getActiveDeliveries error:", err.message);
@@ -190,11 +220,12 @@ const getAvailableDeliveries = async (req, res, next) => {
       [driverId]
     );
 
+    const deliveries = result.rows.map(formatDelivery);
     res.json({
       success: true,
-      count: result.rows.length,
-      deliveries: result.rows,
-      data: result.rows,
+      count: deliveries.length,
+      deliveries,
+      data: deliveries,
     });
   } catch (err) {
     console.error("Driver getAvailableDeliveries error:", err.message);
@@ -287,12 +318,21 @@ const getDeliveryHistory = async (req, res, next) => {
       [driverId]
     );
 
+    const stats = {
+      total_delivered: parseInt(statsResult.rows[0]?.total_delivered, 10) || 0,
+      total_failed: parseInt(statsResult.rows[0]?.total_failed, 10) || 0,
+      total_history: parseInt(statsResult.rows[0]?.total_history, 10) || 0,
+    };
+    const deliveries = historyResult.rows.map(formatDelivery);
+
     res.json({
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      stats: statsResult.rows[0],
-      deliveries: historyResult.rows,
+      success: true,
+      page: parseInt(page, 10) || 1,
+      limit: parseInt(limit, 10) || 20,
+      total: parseInt(total, 10) || 0,
+      stats,
+      deliveries,
+      data: deliveries,
     });
   } catch (err) {
     console.error("Driver getDeliveryHistory error:", err.message);
@@ -382,10 +422,11 @@ const getDeliveryDetails = async (req, res, next) => {
       });
     }
 
+    const formatted = formatDelivery(result.rows[0]);
     res.json({
       success: true,
-      delivery: result.rows[0],
-      data: result.rows[0],
+      delivery: formatted,
+      data: formatted,
     });
   } catch (err) {
     console.error("Driver getDeliveryDetails error:", err.message);
