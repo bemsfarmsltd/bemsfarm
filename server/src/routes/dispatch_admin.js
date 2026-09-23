@@ -77,16 +77,39 @@ router.get('/alerts', requireRole('superadmin', 'admin', 'manager', 'cashier'), 
     const result = await pool.query(`
       SELECT
         da.*,
-        o.order_ref,
-        o.customer_name,
-        o.address,
+        o.id AS actual_order_id,
+        COALESCE(o.order_ref, o.id) AS order_display_id,
+        COALESCE(NULLIF(o.customer_name, ''), NULLIF(u.name, ''), 'Customer') AS customer_name,
+        COALESCE(NULLIF(o.customer_phone, ''), NULLIF(u.phone, ''), '—') AS customer_phone,
+        COALESCE(NULLIF(u.email, ''), '—') AS customer_email,
+        COALESCE(NULLIF(o.address, ''), NULLIF(o.delivery_city, ''), '—') AS address,
         o.total,
+        o.subtotal,
+        o.delivery_fee,
+        o.status AS order_status,
+        o.channel,
+        o.created_at AS order_created_at,
         drv.name AS driver_name,
         drv.phone AS driver_phone,
         drv.vehicle_type,
-        drv.vehicle_plate
+        drv.vehicle_plate,
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', oi.id,
+            'product_name', COALESCE(p.name, 'Item'),
+            'quantity', oi.quantity,
+            'price', oi.price
+          ))
+          FROM order_items oi
+          LEFT JOIN products p ON p.id = oi.product_id
+          WHERE oi.order_id = o.id
+        ), '[]'::json) AS items
       FROM dispatch_alerts da
-      LEFT JOIN orders o ON (o.id::text = da.order_id OR o.order_ref = da.order_id)
+      LEFT JOIN orders o ON (
+        UPPER(REPLACE(da.order_id, '#', '')) = UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', ''))
+        OR UPPER(REPLACE(da.order_id, '#', '')) = UPPER(o.id)
+      )
+      LEFT JOIN users u ON u.id = o.user_id
       LEFT JOIN drivers drv ON drv.id = da.last_driver_id
       WHERE da.resolved = FALSE
       ORDER BY da.created_at DESC
