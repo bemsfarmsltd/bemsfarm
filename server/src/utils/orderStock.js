@@ -6,23 +6,42 @@
 
 async function restoreOrderStock(client, orderId) {
   try {
-    // Check if any POS stock-out occurred for this order
+    // Check if any POS stock-out or sale occurred for this order
     const posScans = await client.query(
       `SELECT product_id, SUM(quantity) as total_scanned
        FROM inventory_transactions
-       WHERE order_id = $1 AND transaction_type = 'pos_packaging_stockout'
+       WHERE order_id = $1 AND transaction_type IN ('pos_packaging_stockout', 'pos_sale')
        GROUP BY product_id`,
       [String(orderId)]
     );
 
-    // If no POS stock-outs were recorded in inventory_transactions, fallback to check order_items.scanned_quantity
     let deductions = posScans.rows;
     if (!deductions.length) {
-      const items = await client.query(
-        "SELECT product_id, COALESCE(scanned_quantity, 0) as total_scanned FROM order_items WHERE order_id=$1",
+      // Check if order is a POS order
+      const orderRes = await client.query(
+        "SELECT id, source FROM orders WHERE id = $1",
         [String(orderId)]
       );
-      deductions = items.rows.filter(r => parseInt(r.total_scanned, 10) > 0);
+      const isPos = orderRes.rows.length && (
+        String(orderRes.rows[0].source || '').toLowerCase().includes('pos') ||
+        String(orderRes.rows[0].id).startsWith('POS-')
+      );
+
+      if (isPos) {
+        // POS sales deduct stock immediately at creation -> restore full item quantities
+        const items = await client.query(
+          "SELECT product_id, quantity as total_scanned FROM order_items WHERE order_id=$1",
+          [String(orderId)]
+        );
+        deductions = items.rows.filter(r => parseInt(r.total_scanned, 10) > 0);
+      } else {
+        // For online delivery orders, check scanned_quantity
+        const items = await client.query(
+          "SELECT product_id, COALESCE(scanned_quantity, 0) as total_scanned FROM order_items WHERE order_id=$1",
+          [String(orderId)]
+        );
+        deductions = items.rows.filter(r => parseInt(r.total_scanned, 10) > 0);
+      }
     }
 
     if (!deductions.length) {

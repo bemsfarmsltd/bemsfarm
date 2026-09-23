@@ -758,11 +758,23 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       "dispute",
     ];
 
-    if (nonCancellableStatuses.includes(String(o.status).toLowerCase())) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        message: "This order can no longer be cancelled because it is already in transit or completed",
-      });
+    const isStaffOrAdmin = ['superadmin', 'admin', 'manager', 'cashier'].includes(req.user.role);
+    const isPosOrder = String(o.source || '').toLowerCase().includes('pos') || String(o.id).startsWith('POS-');
+
+    if (!isStaffOrAdmin && !isPosOrder) {
+      if (nonCancellableStatuses.includes(String(o.status).toLowerCase())) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: "This order can no longer be cancelled because it is already in transit or completed",
+        });
+      }
+    } else {
+      if (["cancelled", "in_transit", "out_for_delivery", "delivered"].includes(String(o.status).toLowerCase()) && !isStaffOrAdmin) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: "This order can no longer be cancelled because it is already delivered or in transit",
+        });
+      }
     }
 
     if (o.driver_picked_up) {
