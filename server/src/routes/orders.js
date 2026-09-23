@@ -777,6 +777,7 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
     await client.query(
       `UPDATE orders
        SET status='cancelled',
+           tracking_status='cancelled',
            cancel_reason=$1,
            cancelled_at=NOW(),
            updated_at=NOW()

@@ -1369,7 +1369,7 @@ router.patch(
         );
       } else {
         await client.query(
-          "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
+          "UPDATE orders SET status=$1, tracking_status=$1, updated_at=NOW() WHERE id=$2",
           [nextStatus, resolvedId],
         );
       }
@@ -1960,7 +1960,7 @@ router.patch(
       }
 
       await client.query(
-        "UPDATE orders SET status='cancelled', cancel_reason=$1, cancelled_at=NOW(), updated_at=NOW() WHERE id=$2",
+        "UPDATE orders SET status='cancelled', tracking_status='cancelled', cancel_reason=$1, cancelled_at=NOW(), updated_at=NOW() WHERE id=$2",
         [reason || null, req.params.id],
       );
 

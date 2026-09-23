@@ -363,12 +363,17 @@ export default function OrderDetailPage() {
     );
   }
 
+  const isCancelled = order.status === 'cancelled' || order.tracking_status === 'cancelled';
   const isCod = ['cod', 'cashondelivery', 'payondelivery', 'cash'].includes(String(order.payment_method || '').toLowerCase().trim().replace(/[\s-_]+/g, ''));
-  let effectiveStatus = String(order.tracking_status || order.status || 'pending').toLowerCase().trim();
-  if (isCod && (effectiveStatus === 'pending_payment' || effectiveStatus === 'pending')) {
-    effectiveStatus = order.invoice_printed ? 'packaging' : 'confirmed';
-  } else if (order.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(effectiveStatus)) {
-    effectiveStatus = 'packaging';
+  let effectiveStatus = isCancelled
+    ? 'cancelled'
+    : String(order.tracking_status || order.status || 'pending').toLowerCase().trim();
+  if (!isCancelled) {
+    if (isCod && (effectiveStatus === 'pending_payment' || effectiveStatus === 'pending')) {
+      effectiveStatus = order.invoice_printed ? 'packaging' : 'confirmed';
+    } else if (order.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(effectiveStatus)) {
+      effectiveStatus = 'packaging';
+    }
   }
   const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
@@ -378,7 +383,6 @@ export default function OrderDetailPage() {
   const subtotal = computedSubtotal > 0 ? computedSubtotal : (total - deliveryFee > 0 ? total - deliveryFee : total);
   const date = new Date(order.created_at || order.createdAt);
 
-  const isCancelled = effectiveStatus === "cancelled" || order.status === "cancelled";
   const isDelivered = effectiveStatus === "delivered" || order.status === "delivered";
   const isIncomplete = !isDelivered && !isCancelled;
   const isInProgress = !isDelivered && !isCancelled;

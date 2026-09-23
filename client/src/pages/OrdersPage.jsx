@@ -720,12 +720,17 @@ export default function OrdersPage() {
             >
               <AnimatePresence>
                 {filteredOrders.map((order, orderIndex) => {
+                  const isCancelled = order.status === 'cancelled' || order.tracking_status === 'cancelled';
                   const isCod = ['cod', 'cashondelivery', 'payondelivery', 'cash'].includes(String(order.payment_method || '').toLowerCase().trim().replace(/[\s-_]+/g, ''));
-                  let effectiveStatus = String(order.tracking_status || order.status || 'pending').toLowerCase().trim();
-                  if (isCod && (effectiveStatus === 'pending_payment' || effectiveStatus === 'pending')) {
-                    effectiveStatus = order.invoice_printed ? 'packaging' : 'confirmed';
-                  } else if (order.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(effectiveStatus)) {
-                    effectiveStatus = 'packaging';
+                  let effectiveStatus = isCancelled
+                    ? 'cancelled'
+                    : String(order.tracking_status || order.status || 'pending').toLowerCase().trim();
+                  if (!isCancelled) {
+                    if (isCod && (effectiveStatus === 'pending_payment' || effectiveStatus === 'pending')) {
+                      effectiveStatus = order.invoice_printed ? 'packaging' : 'confirmed';
+                    } else if (order.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(effectiveStatus)) {
+                      effectiveStatus = 'packaging';
+                    }
                   }
                   const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
                   const formattedDate = new Date(order.created_at).toLocaleDateString("en-NG", {
@@ -741,7 +746,6 @@ export default function OrdersPage() {
                     year: "numeric",
                   });
                   const isDelivered = effectiveStatus === "delivered" || order.status === "delivered";
-                  const isCancelled = effectiveStatus === "cancelled" || order.status === "cancelled";
                   const isInProgress = !isDelivered && !isCancelled;
                   const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(effectiveStatus) && !order.driver_picked_up;
 
