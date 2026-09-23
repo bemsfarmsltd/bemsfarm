@@ -199,6 +199,10 @@ export default function ThermalReceipt({
     }).catch(() => {})
     return () => { active = false }
   }, [settingsOverride])
+
+  const settings = { ...DEFAULTS, ...(savedSettings || {}), ...(settingsOverride || {}) }
+  const enabled = (key) => settings[key] === 'true' || settings[key] === true
+
   const isInvoice = receiptType === 'invoice'
   const isCustomerReceipt = receiptType === 'online'
 
