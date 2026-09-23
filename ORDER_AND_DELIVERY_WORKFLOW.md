@@ -17,19 +17,20 @@ flowchart TD
 
     subgraph Admin [2. Admin & Store Operations]
         A5 --> B1[Admin prints Sales/Order Invoice]
-        B1 --> B2[Status = 'packaging']
+        B1 --> B2[Status = 'processing' / 'packaging']
         B2 --> B3[Delivery Manager gives Goods & Invoice to Salesperson]
-        B3 --> B4[Salesperson verifies payment & checks out items from Inventory]
-        B4 --> B5[System Proximity Dispatch Engine: autoAssignClosestDriver]
+        B3 --> B4[Salesperson verifies items & checks out inventory]
+        B4 --> B4b[Goods 100% Packed & Sealed: Status = 'packed']
+        B4b --> B5[System Proximity Dispatch Engine / Assign Driver]
         B5 --> B6[Finds closest available online driver via GPS Haversine]
         B6 --> B7[Status = 'driver_assigned' + Driver Notification Sent]
     end
 
-    subgraph Driver [3. Driver App & Store Pickup]
-        B7 --> C1[Driver accepts order / proceeds to store]
-        C1 --> C2[Driver reaches store, collects packaged goods]
-        C2 --> C3[Driver clicks 'Confirm Picked Up': PATCH /api/driver/deliveries/:orderId/status]
-        C3 --> C4[Status = 'in_transit' / 'en_route']
+    subgraph Driver [3. Driver App & Store Pickup Verification]
+        B7 --> C1[Driver accepts order & proceeds to store counter]
+        C1 --> C2[Driver arrives at store counter & verifies goods]
+        C2 --> C3[Driver taps 'Confirm Picked Up at Store' / Handover Confirmed]
+        C3 --> C4[Gatekeeper Passed: Status moves to 'in_transit' / 'en_route']
         C4 --> C5[Periodic GPS Pings: POST /api/driver/location]
     end
 
