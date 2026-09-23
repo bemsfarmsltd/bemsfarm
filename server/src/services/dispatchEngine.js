@@ -108,7 +108,7 @@ async function autoAssignClosestDriver(
 
     // Only orders that are actually packed (ready for pickup) can be dispatched to couriers.
     // Packaging must first be completed on the POS terminal.
-    if (['pending', 'pending_payment', 'confirmed', 'packaging', 'new_order', 'cancelled', 'refunded', 'delivered'].includes(order.status)) {
+    if (['pending', 'pending_payment', 'confirmed', 'packaging', 'processing', 'new_order', 'cancelled', 'refunded', 'delivered'].includes(order.status)) {
       await client.query("ROLLBACK");
       return {
         success: false,

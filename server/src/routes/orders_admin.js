@@ -1128,7 +1128,7 @@ router.post(
         return res.status(400).json({ message: "Cannot print invoice for a cancelled order" });
       }
 
-      // Mark invoice printed and advance to packaging (Section 9)
+      // Mark invoice printed and advance to processing
       const invoiceNumber = order.invoice_number || `INV-${order.order_ref || order.id}`;
       await client.query(
         `UPDATE orders
@@ -1137,11 +1137,11 @@ router.post(
              invoice_printed_by = $2,
              invoice_number = $3,
              status = CASE 
-               WHEN status IN ('pending', 'pending_payment', 'paid', 'new_order', 'confirmed') THEN 'packaging'
+               WHEN status IN ('pending', 'pending_payment', 'paid', 'new_order', 'confirmed') THEN 'processing'
                ELSE status
              END,
              tracking_status = CASE
-               WHEN tracking_status IN ('order_placed', 'pending', 'pending_payment', 'confirmed') THEN 'packaging'
+               WHEN tracking_status IN ('order_placed', 'pending', 'pending_payment', 'confirmed') THEN 'processing'
                ELSE tracking_status
              END,
              updated_at = NOW()
@@ -1154,7 +1154,7 @@ router.post(
         await client.query("SAVEPOINT print_event");
         await client.query(
           `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
-           VALUES ($1, 'invoice_printed', 'Order invoice printed. Moved to packaging.', 'admin', $2, NOW())`,
+           VALUES ($1, 'invoice_printed', 'Order invoice printed. Moved to processing.', 'admin', $2, NOW())`,
           [order.id, req.user.id]
         );
         await client.query("RELEASE SAVEPOINT print_event");
@@ -1169,7 +1169,7 @@ router.post(
         actor_role: req.user.role,
         action: 'invoice_printed',
         previous_state: order.status,
-        new_state: 'packaging',
+        new_state: 'processing',
         metadata: { invoice_number: invoiceNumber }
       });
 
@@ -1177,10 +1177,10 @@ router.post(
 
       res.json({
         success: true,
-        message: "Invoice printed successfully. Order moved to packaging.",
+        message: "Invoice printed successfully. Order moved to processing.",
         order_id: order.id,
         invoice_number: invoiceNumber,
-        status: "packaging",
+        status: "processing",
       });
     } catch (err) {
       await client.query("ROLLBACK");
