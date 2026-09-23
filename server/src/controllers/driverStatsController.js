@@ -42,9 +42,9 @@ const getDriverStats = async (req, res, next) => {
       SELECT 
         COUNT(*) AS total_all_time,
         COUNT(CASE WHEN status = 'delivered' THEN 1 END) AS total_completed,
-        COUNT(CASE WHEN status = 'delivered' AND completed_at >= CURRENT_DATE THEN 1 END) AS completed_today,
-        COUNT(CASE WHEN status = 'delivered' AND completed_at >= DATE_TRUNC('week', CURRENT_DATE) THEN 1 END) AS completed_this_week,
-        COUNT(CASE WHEN status = 'delivered' AND completed_at >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 END) AS completed_this_month,
+        COUNT(CASE WHEN status = 'delivered' AND (delivered_at >= CURRENT_DATE OR (delivered_at IS NULL AND updated_at >= CURRENT_DATE)) THEN 1 END) AS completed_today,
+        COUNT(CASE WHEN status = 'delivered' AND (delivered_at >= DATE_TRUNC('week', CURRENT_DATE) OR (delivered_at IS NULL AND updated_at >= DATE_TRUNC('week', CURRENT_DATE))) THEN 1 END) AS completed_this_week,
+        COUNT(CASE WHEN status = 'delivered' AND (delivered_at >= DATE_TRUNC('month', CURRENT_DATE) OR (delivered_at IS NULL AND updated_at >= DATE_TRUNC('month', CURRENT_DATE))) THEN 1 END) AS completed_this_month,
         COUNT(CASE WHEN status = 'delivery_attempted' OR status = 'failed' THEN 1 END) AS failed_deliveries,
         COALESCE(AVG(CASE WHEN customer_rating IS NOT NULL THEN customer_rating END), driver_rating.rating) AS computed_rating
       FROM deliveries
@@ -83,7 +83,7 @@ const getDriverStats = async (req, res, next) => {
     );
 
     // 4. Badges & Milestones
-    const completedCount = parseInt(counts.total_completed) || parseInt(driver.total_deliveries) || 0;
+    const completedCount = parseInt(counts.total_completed, 10) || parseInt(driver.total_deliveries, 10) || 0;
     const badges = [
       { id: "top_rated", name: "Top Rated Star", earned: parseFloat(driver.rating) >= 4.8, icon: "⭐" },
       { id: "century_rider", name: "100 Deliveries Club", earned: completedCount >= 100, icon: "🏆" },
@@ -95,19 +95,23 @@ const getDriverStats = async (req, res, next) => {
       status: "success",
       scorecard: {
         customer_rating: parseFloat(parseFloat(counts.computed_rating || driver.rating).toFixed(2)),
-        total_ratings_count: parseInt(driver.total_ratings_count) || Math.max(1, completedCount),
+        total_ratings_count: parseInt(driver.total_ratings_count, 10) || Math.max(1, completedCount),
         acceptance_rate: parseFloat(parseFloat(driver.acceptance_rate).toFixed(1)),
         on_time_delivery_rate: parseFloat(parseFloat(driver.on_time_rate).toFixed(1)),
         total_km_driven: parseFloat(driver.total_km_driven) || (completedCount * 8.4)
       },
       deliveries_summary: {
-        completed_today: parseInt(counts.completed_today) || 0,
-        completed_this_week: parseInt(counts.completed_this_week) || 0,
-        completed_this_month: parseInt(counts.completed_this_month) || 0,
+        completed_today: parseInt(counts.completed_today, 10) || 0,
+        completed_this_week: parseInt(counts.completed_this_week, 10) || 0,
+        completed_this_month: parseInt(counts.completed_this_month, 10) || 0,
         total_completed: completedCount,
-        failed_attempts: parseInt(counts.failed_deliveries) || 0
+        failed_attempts: parseInt(counts.failed_deliveries, 10) || 0
       },
-      zone_distribution: zoneBreakdown.rows,
+      zone_distribution: zoneBreakdown.rows.map(r => ({
+        zone_name: r.zone_name,
+        total_drops: parseInt(r.total_drops, 10) || 0,
+        total_earned: parseFloat(r.total_earned) || 0,
+      })),
       badges: badges
     });
   } catch (err) {

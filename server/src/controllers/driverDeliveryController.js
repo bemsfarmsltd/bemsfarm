@@ -21,27 +21,44 @@ function formatDelivery(row) {
   if (!row) return null;
   const rawOrderId = row.order_id || '';
   const orderRef = row.order_ref || String(rawOrderId);
+  const deliveryId = parseInt(row.delivery_id || row.id, 10) || 0;
+  const items = Array.isArray(row.items) ? row.items.map(it => ({
+    ...it,
+    id: parseInt(it.id, 10) || 0,
+    product_id: parseInt(it.product_id, 10) || 0,
+    quantity: parseInt(it.quantity, 10) || 1,
+    unit_price: it.unit_price !== null && it.unit_price !== undefined ? parseFloat(it.unit_price) : 0.0,
+    total_price: it.total_price !== null && it.total_price !== undefined ? parseFloat(it.total_price) : 0.0,
+  })) : [];
+
+  const customerLat = row.customer_lat !== null && row.customer_lat !== undefined ? parseFloat(row.customer_lat) : null;
+  const customerLng = row.customer_lng !== null && row.customer_lng !== undefined ? parseFloat(row.customer_lng) : null;
+  const etaMinutes = row.eta_minutes !== null && row.eta_minutes !== undefined ? parseInt(row.eta_minutes, 10) : 0;
 
   return {
     ...row,
-    delivery_id: parseInt(row.delivery_id, 10) || 0,
-    eta_minutes: row.eta_minutes !== null && row.eta_minutes !== undefined ? parseInt(row.eta_minutes, 10) : 0,
-    attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
+    id: deliveryId,
+    delivery_id: deliveryId,
+    deliveryId: deliveryId,
     order_id: rawOrderId,
+    orderId: rawOrderId,
     order_ref: orderRef,
+    orderRef: orderRef,
+    order_number: orderRef || rawOrderId,
+    orderNumber: orderRef || rawOrderId,
+    eta_minutes: etaMinutes,
+    estimated_duration_mins: etaMinutes,
+    attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
     order_total: row.order_total !== null && row.order_total !== undefined ? parseFloat(row.order_total) : 0.0,
     subtotal: row.subtotal !== null && row.subtotal !== undefined ? parseFloat(row.subtotal) : 0.0,
     delivery_fee: row.delivery_fee !== null && row.delivery_fee !== undefined ? parseFloat(row.delivery_fee) : 0.0,
-    customer_lat: row.customer_lat !== null && row.customer_lat !== undefined ? parseFloat(row.customer_lat) : null,
-    customer_lng: row.customer_lng !== null && row.customer_lng !== undefined ? parseFloat(row.customer_lng) : null,
-    items: Array.isArray(row.items) ? row.items.map(it => ({
-      ...it,
-      id: parseInt(it.id, 10) || 0,
-      product_id: parseInt(it.product_id, 10) || 0,
-      quantity: parseInt(it.quantity, 10) || 1,
-      unit_price: it.unit_price !== null && it.unit_price !== undefined ? parseFloat(it.unit_price) : 0.0,
-      total_price: it.total_price !== null && it.total_price !== undefined ? parseFloat(it.total_price) : 0.0,
-    })) : [],
+    customer_lat: customerLat,
+    customer_lng: customerLng,
+    delivery_lat: customerLat,
+    delivery_lng: customerLng,
+    distance_km: row.distance_km !== null && row.distance_km !== undefined ? parseFloat(row.distance_km) : 0.0,
+    items_count: items.length,
+    items: items,
   };
 }
 
@@ -834,7 +851,7 @@ const updateDeliveryStatus = async (req, res, next) => {
 
     res.json({
       message: `Delivery status updated to ${rawStatus}`,
-      delivery: updatedDeliveryResult.rows[0],
+      delivery: formatDelivery(updatedDeliveryResult.rows[0]),
       order_id: actualOrderId,
       status: rawStatus,
     });
@@ -926,7 +943,7 @@ const acceptDelivery = async (req, res, next) => {
     res.json({
       status: "success",
       message: "Delivery accepted successfully",
-      delivery_id: delivery.id,
+      delivery_id: parseInt(delivery.id, 10) || 0,
       order_id: delivery.actual_order_id,
       order_ref: delivery.order_ref,
       status: "accepted"

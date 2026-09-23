@@ -136,8 +136,19 @@ const getEarnings = async (req, res, next) => {
         estimated_eta: z.estimated_delivery_time,
         areas_covered: z.areas_covered
       })),
-      recent_commissions: commissionsResult.rows,
-      recent_payouts: payoutsResult.rows
+      recent_commissions: commissionsResult.rows.map(c => ({
+        ...c,
+        id: parseInt(c.id, 10) || 0,
+        trips: parseInt(c.trips, 10) || 0,
+        deliveries: parseInt(c.deliveries, 10) || 0,
+        commission_per_delivery: parseFloat(c.commission_per_delivery) || 0,
+        total_earned: parseFloat(c.total_earned) || 0,
+      })),
+      recent_payouts: payoutsResult.rows.map(p => ({
+        ...p,
+        id: parseInt(p.id, 10) || 0,
+        amount: parseFloat(p.amount) || 0,
+      }))
     });
   } catch (err) {
     console.error("Driver getEarnings error:", err.message);

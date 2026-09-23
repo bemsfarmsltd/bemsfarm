@@ -95,7 +95,10 @@ const getNotifications = async (req, res, next) => {
       limit,
       total,
       unread_count: unreadCount,
-      notifications: result.rows
+      notifications: result.rows.map(n => ({
+        ...n,
+        id: parseInt(n.id, 10) || 0,
+      }))
     });
   } catch (err) {
     console.error("getNotifications error:", err.message);

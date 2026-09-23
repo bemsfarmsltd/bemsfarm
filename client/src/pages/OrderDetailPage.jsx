@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
@@ -8,6 +8,31 @@ import { useCart } from "../context/CartContext";
 import Toast from "../components/ui/Toast";
 import LiveOrderMap from "../components/ui/LiveOrderMap";
 import { getProductImage } from "../utils/productImages";
+
+class MapErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.warn("LiveOrderMap error captured:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-64 bg-slate-100 rounded-2xl flex flex-col items-center justify-center p-4 text-center border border-slate-200">
+          <span className="text-3xl mb-2">🗺️</span>
+          <p className="text-sm font-bold text-slate-700">Live Map Telemetry View</p>
+          <p className="text-xs text-slate-500 mt-1">Delivery details and status updates are continuing in real-time.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const STATUS_CONFIG = {
   // ── Order placed / awaiting payment ──
@@ -381,16 +406,18 @@ export default function OrderDetailPage() {
   const deliveryFee = Number(order.delivery_fee || 1500);
   const computedSubtotal = items.reduce((acc, it) => acc + Number(it.price || it.unit_price || 0) * Number(it.quantity || 1), 0);
   const subtotal = computedSubtotal > 0 ? computedSubtotal : (total - deliveryFee > 0 ? total - deliveryFee : total);
-  const date = new Date(order.created_at || order.createdAt);
+  const parsedDate = new Date(order.created_at || order.createdAt);
+  const date = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
   const isDelivered = effectiveStatus === "delivered" || order.status === "delivered";
   const isIncomplete = !isDelivered && !isCancelled;
   const isInProgress = !isDelivered && !isCancelled;
   const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(effectiveStatus) && !order.driver_picked_up;
 
-  const updatedAt = new Date(
+  const parsedUpdate = new Date(
     order.delivered_at || order.updated_at || order.updatedAt || order.created_at
   );
+  const updatedAt = isNaN(parsedUpdate.getTime()) ? new Date() : parsedUpdate;
   const daysSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
   const canReturn = order.status === "delivered" && daysSinceUpdate <= 7;
 
@@ -591,20 +618,22 @@ export default function OrderDetailPage() {
                   </div>
 
                   <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
-                    <LiveOrderMap
-                      customerLat={order.customer_lat}
-                      customerLng={order.customer_lng}
-                      driverLat={order.driver_lat}
-                      driverLng={order.driver_lng}
-                      driverName={order.driver_name}
-                      driverPhone={order.driver_phone}
-                      vehicleType={order.vehicle_type}
-                      vehiclePlate={order.vehicle_plate}
-                      etaMinutes={order.eta_minutes}
-                      deliveryAddress={order.address}
-                      orderStatus={order.status}
-                      height="360px"
-                    />
+                    <MapErrorBoundary>
+                      <LiveOrderMap
+                        customerLat={order.customer_lat || order.latitude}
+                        customerLng={order.customer_lng || order.longitude}
+                        driverLat={order.driver_lat}
+                        driverLng={order.driver_lng}
+                        driverName={order.driver_name}
+                        driverPhone={order.driver_phone}
+                        vehicleType={order.vehicle_type}
+                        vehiclePlate={order.vehicle_plate}
+                        etaMinutes={order.eta_minutes}
+                        deliveryAddress={order.address}
+                        orderStatus={order.status}
+                        height="360px"
+                      />
+                    </MapErrorBoundary>
                   </div>
 
                   {/* Courier Banner */}

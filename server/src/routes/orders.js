@@ -593,6 +593,8 @@ router.get("/:id", protect, async (req, res, next) => {
          o.payment_ref,
          o.address,
          o.delivery_city,
+         o.latitude AS customer_lat,
+         o.longitude AS customer_lng,
          o.created_at,
          COALESCE(delivery.delivered_at, o.updated_at) AS delivered_at,
          o.updated_at,
@@ -658,7 +660,7 @@ router.get("/:id", protect, async (req, res, next) => {
        LEFT JOIN delivery_zones dz ON dz.zone_id = delivery.zone_id
        WHERE UPPER(o.id) = UPPER($1) AND (o.user_id = $2 OR o.customer_id = $2 OR $3 IN ('admin', 'superadmin', 'manager', 'delivery_manager', 'staff'))
        GROUP BY 
-         o.id, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
+         o.id, o.latitude, o.longitude, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
          delivery.delivered_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
          dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
          loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name`,
