@@ -204,6 +204,7 @@ export default function POS() {
   const [packingItems, setPackingItems]         = useState([])
   const [scanBarcodeInput, setScanBarcodeInput] = useState('')
   const [packingLoading, setPackingLoading]     = useState(false)
+  const [packingSearch, setPackingSearch]       = useState('')
 
   // Tax configuration (dynamically loaded from Settings → Tax)
   const [taxConfig, setTaxConfig]           = useState({ enabled: false, rate: 7.5, inclusive: false, label: 'VAT' })
@@ -1205,6 +1206,77 @@ export default function POS() {
       const msg = err.response?.data?.message || 'Barcode scan failed'
       showToast(msg, 'error', '⚠️')
       setScanBarcodeInput('')
+    }
+  }
+
+  const handleInspectAndPackItem = async (item) => {
+    if (!item || !packingOrder) return
+    const code = item.barcode || item.sku || String(item.product_id)
+    const qtyToPack = item.remaining_quantity || 1
+    try {
+      const res = await api.post('/admin/pos/pack-scan', {
+        order_id: packingOrder.id,
+        barcode: code,
+        quantity: qtyToPack,
+        terminal_id: 'POS-MAIN'
+      })
+
+      if (res.data.success) {
+        showToast(`Item "${item.product_name}" inspected & packed!`, 'success', '✓')
+        const refreshed = await api.get(`/admin/pos/packing/${packingOrder.id}`)
+        setPackingOrder(refreshed.data.order)
+        setPackingItems(refreshed.data.items)
+
+        setOnlineOrders(prev => prev.map(o => {
+          if (o.id === packingOrder.id || o.rawId === packingOrder.id) {
+            return {
+              ...o,
+              status: res.data.order_status,
+              rawStatus: res.data.order_status,
+            }
+          }
+          return o
+        }))
+
+        if (res.data.is_order_packed) {
+          showToast(`Order #${packingOrder.id} is 100% PACKED! Ready for dispatch.`, 'success', '🚀')
+        }
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Inspection packing failed', 'error', '⚠️')
+    }
+  }
+
+  const handlePackAllDirect = async () => {
+    if (!packingOrder) return
+    setPackingLoading(true)
+    try {
+      const res = await api.post('/admin/pos/pack-all', {
+        order_id: packingOrder.id,
+        terminal_id: 'POS-MAIN'
+      })
+
+      if (res.data.success) {
+        showToast(res.data.message || 'All items inspected & packed!', 'success', '📦')
+        const refreshed = await api.get(`/admin/pos/packing/${packingOrder.id}`)
+        setPackingOrder(refreshed.data.order)
+        setPackingItems(refreshed.data.items)
+
+        setOnlineOrders(prev => prev.map(o => {
+          if (o.id === packingOrder.id || o.rawId === packingOrder.id) {
+            return {
+              ...o,
+              status: 'packed',
+              rawStatus: 'packed',
+            }
+          }
+          return o
+        }))
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to pack all items', 'error', '⚠️')
+    } finally {
+      setPackingLoading(false)
     }
   }
 
@@ -2445,146 +2517,195 @@ export default function POS() {
         </div>
       )}
 
-      {/* ── POS ORDER PACKING & BARCODE VERIFICATION MODAL (Sections 11 - 17) ── */}
+      {/* ── POS ORDER PACKING & FULFILLMENT MODAL ── */}
       {activeModal === 'packing' && packingOrder && (
-        <div className="modal fade show d-block pos-custom-modal-backdrop" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content shadow-lg border-0" style={{ borderRadius: 16, overflow: 'hidden' }}>
-              {/* Header */}
-              <div className="modal-header px-4 py-3" style={{ background: 'linear-gradient(135deg, #065f46 0%, #047857 100%)' }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 780 }}>
+            <div className="modal-content shadow-2xl border-0" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              {/* Header: High-contrast Dark Emerald */}
+              <div className="modal-header px-4 py-3 d-flex align-items-center justify-content-between" style={{ background: '#064e3b', color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 <div className="d-flex align-items-center gap-3">
-                  <div className="pos-modal-header-icon" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                    <i className="ri-barcode-box-line" />
+                  <div style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                    <i className="ri-box-3-line" />
                   </div>
                   <div>
-                    <h5 className="modal-title mb-0 text-white fw-bold">
-                      Pack Order #{packingOrder.order_ref || packingOrder.id}
+                    <h5 className="modal-title mb-0 fw-bold" style={{ color: '#ffffff', fontSize: 17 }}>
+                      Fulfill & Pack Order #{packingOrder.order_ref || packingOrder.id}
                     </h5>
                     <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, marginTop: 2 }}>
-                      Customer: <strong>{packingOrder.customer_name || 'Walk-in / Online'}</strong> · Status: <span className="badge bg-white text-dark fw-bold">{packingOrder.status?.toUpperCase()}</span>
+                      Customer: <strong>{packingOrder.customer_name || 'Walk-in / Online'}</strong> · Status: <span className="badge bg-white text-dark fw-bold ms-1" style={{ fontSize: 10.5 }}>{packingOrder.status?.toUpperCase()}</span>
                     </div>
                   </div>
                 </div>
-                <button className="btn-close btn-close-white ms-auto" onClick={() => setActiveModal('online')}></button>
+
+                <div className="d-flex align-items-center gap-2">
+                  {!packingOrder.is_all_packed && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light fw-bold text-success shadow-sm"
+                      onClick={handlePackAllDirect}
+                      disabled={packingLoading}
+                      title="Inspect and pass all items immediately without barcode scanning"
+                    >
+                      {packingLoading ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-check-double-line me-1" />}
+                      Inspect & Pass All
+                    </button>
+                  )}
+                  <button className="btn-close btn-close-white" onClick={() => setActiveModal('online')}></button>
+                </div>
               </div>
 
               {/* Body */}
-              <div className="modal-body p-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                {/* Progress bar */}
-                <div className="p-3 mb-4 rounded-3" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <div className="modal-body p-4" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+                {/* Progress bar card */}
+                <div className="p-3 mb-3 rounded-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-bold fs-13 text-emerald-900">
-                      Packing Progress: {packingOrder.total_scanned} of {packingOrder.total_ordered} units scanned
+                    <span className="fw-bold fs-13 text-dark">
+                      Packing Progress: <strong>{packingOrder.total_scanned} of {packingOrder.total_ordered} units packed</strong>
                     </span>
-                    <span className="badge bg-emerald text-white fw-bold">
+                    <span className="badge bg-success text-white fw-bold px-2 py-1">
                       {Math.round(((packingOrder.total_scanned || 0) / (packingOrder.total_ordered || 1)) * 100)}% Complete
                     </span>
                   </div>
-                  <div className="progress" style={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.06)' }}>
+                  <div className="progress" style={{ height: 8, borderRadius: 4, background: '#e2e8f0' }}>
                     <div
                       className="progress-bar bg-success"
                       role="progressbar"
-                      style={{ width: `${Math.min(100, Math.round(((packingOrder.total_scanned || 0) / (packingOrder.total_ordered || 1)) * 100))}%` }}
+                      style={{ width: `${Math.min(100, Math.round(((packingOrder.total_scanned || 0) / (packingOrder.total_ordered || 1)) * 100))}%`, transition: 'width 0.3s ease' }}
                     />
                   </div>
-                  <div className="mt-2 text-muted fs-11">
-                    <i className="ri-information-line me-1 text-primary" />
-                    <strong>Section 12 Rule:</strong> Inventory is deducted exclusively upon successful barcode scan. Stock remains untouched until scanned.
+                  <div className="mt-2 text-muted" style={{ fontSize: 11 }}>
+                    <i className="ri-shield-check-line me-1 text-success"/>
+                    Scanning is optional. You can scan barcodes or click <strong>"Inspect & Pack"</strong> on each item to pass directly.
                   </div>
                 </div>
 
-                {/* Barcode scanner input */}
+                {/* Search / Scan Controls */}
                 {!packingOrder.is_all_packed && (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      handleScanPackBarcode(scanBarcodeInput)
-                    }}
-                    className="mb-4"
-                  >
-                    <div className="input-group input-group-lg shadow-sm">
-                      <span className="input-group-text bg-white border-end-0">
-                        <i className="ri-barcode-line text-emerald fs-20" />
-                      </span>
-                      <input
-                        type="text"
-                        className="form-control border-start-0 ps-0 fs-15"
-                        placeholder="Scan item barcode with hardware scanner, or type SKU/barcode..."
-                        value={scanBarcodeInput}
-                        onChange={(e) => setScanBarcodeInput(e.target.value)}
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        className="btn btn-emerald-solid px-4 fw-bold"
-                        disabled={!scanBarcodeInput.trim()}
+                  <div className="row g-2 mb-3">
+                    <div className="col-8">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          handleScanPackBarcode(scanBarcodeInput)
+                        }}
                       >
-                        <i className="ri-qr-scan-line me-1" /> Scan
-                      </button>
+                        <div className="input-group input-group-sm shadow-sm">
+                          <span className="input-group-text bg-white border-end-0">
+                            <i className="ri-barcode-line text-success fs-16" />
+                          </span>
+                          <input
+                            type="text"
+                            className="form-control border-start-0 ps-0"
+                            placeholder="Optional: Scan item barcode with hardware scanner..."
+                            value={scanBarcodeInput}
+                            onChange={(e) => setScanBarcodeInput(e.target.value)}
+                          />
+                          <button
+                            type="submit"
+                            className="btn btn-outline-success fw-bold"
+                            disabled={!scanBarcodeInput.trim()}
+                          >
+                            <i className="ri-qr-scan-line me-1" /> Scan
+                          </button>
+                        </div>
+                      </form>
                     </div>
-                  </form>
+
+                    <div className="col-4">
+                      <div className="input-group input-group-sm shadow-sm">
+                        <span className="input-group-text bg-white border-end-0">
+                          <i className="ri-search-line text-muted fs-14" />
+                        </span>
+                        <input
+                          type="text"
+                          className="form-control border-start-0 ps-0"
+                          placeholder="Search items..."
+                          value={packingSearch}
+                          onChange={(e) => setPackingSearch(e.target.value)}
+                        />
+                        {packingSearch && (
+                          <button className="btn btn-outline-secondary" onClick={() => setPackingSearch('')}>
+                            <i className="ri-close-line" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {packingOrder.is_all_packed && (
-                  <div className="alert alert-success d-flex align-items-center gap-3 p-3 mb-4 rounded-3 border-0 shadow-sm" style={{ background: '#ecfdf5', color: '#065f46' }}>
-                    <i className="ri-checkbox-circle-fill fs-28 text-success" />
-                    <div>
-                      <div className="fw-bold fs-15">Order 100% Packed & Verified!</div>
-                      <div className="fs-12 text-muted">All physical items scanned. Stock movements recorded in inventory ledger. Proximity courier auto-dispatch triggered.</div>
+                  <div className="alert alert-success d-flex align-items-center justify-content-between p-3 mb-3 rounded-3 border-0 shadow-sm" style={{ background: '#ecfdf5', color: '#065f46' }}>
+                    <div className="d-flex align-items-center gap-3">
+                      <i className="ri-checkbox-circle-fill fs-24 text-success" />
+                      <div>
+                        <div className="fw-bold fs-14">Order 100% Packed & Verified!</div>
+                        <div className="text-muted" style={{ fontSize: 11.5 }}>Stock deducted from inventory. Ready for driver pickup / customer handover.</div>
+                      </div>
                     </div>
+                    <button
+                      className="btn btn-success fw-bold px-3 py-1.5 shadow-sm"
+                      onClick={() => {
+                        setActiveModal(null)
+                        showToast(`Order #${packingOrder.order_ref || packingOrder.id} ready!`, 'success', '📦')
+                      }}
+                    >
+                      <i className="ri-check-line me-1"/> Complete
+                    </button>
                   </div>
                 )}
 
                 {/* Items Checklist Table */}
-                <div className="table-responsive">
-                  <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light fs-12 text-uppercase text-muted">
+                <div className="table-responsive rounded border" style={{ borderColor: '#e2e8f0' }}>
+                  <table className="table table-hover align-middle mb-0" style={{ fontSize: 12.5 }}>
+                    <thead className="table-light fs-11 text-uppercase text-muted" style={{ letterSpacing: '0.5px' }}>
                       <tr>
-                        <th>Product</th>
-                        <th>Barcode / SKU</th>
-                        <th className="text-center">Stock</th>
-                        <th className="text-center">Ordered</th>
-                        <th className="text-center">Scanned</th>
-                        <th className="text-center">Remaining</th>
-                        <th className="text-end">Action</th>
+                        <th className="py-2.5 px-3">Product Item</th>
+                        <th className="py-2.5 text-center" style={{ width: 80 }}>Stock</th>
+                        <th className="py-2.5 text-center" style={{ width: 70 }}>Ordered</th>
+                        <th className="py-2.5 text-center" style={{ width: 70 }}>Packed</th>
+                        <th className="py-2.5 text-center" style={{ width: 80 }}>Remaining</th>
+                        <th className="py-2.5 px-3 text-end" style={{ width: 160 }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {packingItems.map((item) => (
+                      {packingItems
+                        .filter(it => !packingSearch.trim() || (it.product_name || '').toLowerCase().includes(packingSearch.toLowerCase()) || (it.barcode || '').includes(packingSearch) || (it.sku || '').toLowerCase().includes(packingSearch.toLowerCase()))
+                        .map((item) => (
                         <tr key={item.id} className={item.is_completed ? 'table-success-subtle' : ''}>
-                          <td>
+                          <td className="py-2.5 px-3">
                             <div className="d-flex align-items-center gap-2">
                               {item.image_url ? (
-                                <img src={item.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} />
+                                <img src={item.image_url} alt="" style={{ width: 38, height: 38, borderRadius: 6, objectFit: 'cover' }} />
                               ) : (
-                                <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📦</div>
+                                <div style={{ width: 38, height: 38, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📦</div>
                               )}
                               <div>
-                                <div className="fw-bold fs-13 pos-entry-item-title">{item.product_name}</div>
+                                <div className="fw-bold text-dark">{item.product_name}</div>
+                                <div className="text-muted font-monospace" style={{ fontSize: 10.5 }}>SKU: {item.barcode || item.sku || 'N/A'}</div>
                                 {item.current_stock < (item.remaining_quantity || 1) && !item.is_completed && (
-                                  <span className="badge bg-danger-subtle text-danger fs-10">Low stock alert</span>
+                                  <span className="badge bg-danger-subtle text-danger fs-10 mt-0.5">Low Stock</span>
                                 )}
                               </div>
                             </div>
                           </td>
-                          <td className="fs-12 font-monospace text-muted">{item.barcode || item.sku || 'N/A'}</td>
-                          <td className="text-center fs-12 fw-bold">{item.current_stock}</td>
-                          <td className="text-center fs-13 fw-bold">{item.ordered_quantity}</td>
-                          <td className="text-center fs-13 fw-bold text-success">{item.scanned_quantity}</td>
-                          <td className="text-center fs-13 fw-bold text-danger">{item.remaining_quantity}</td>
-                          <td className="text-end">
+                          <td className="text-center font-monospace fw-semibold">{item.current_stock}</td>
+                          <td className="text-center font-monospace fw-bold">{item.ordered_quantity}</td>
+                          <td className="text-center font-monospace fw-bold text-success">{item.scanned_quantity}</td>
+                          <td className="text-center font-monospace fw-bold text-danger">{item.remaining_quantity}</td>
+                          <td className="text-end px-3">
                             {item.is_completed ? (
-                              <span className="badge bg-success px-2 py-1 fs-11">
+                              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fs-11 fw-bold">
                                 <i className="ri-check-line me-1" /> Packed
                               </span>
                             ) : (
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-success px-2.5 py-1 fw-bold fs-11"
-                                title="Simulate scanning this item"
-                                onClick={() => handleScanPackBarcode(item.barcode || item.sku || String(item.product_id))}
+                                className="btn btn-sm btn-success px-2.5 py-1 fw-bold fs-11 text-nowrap shadow-sm"
+                                title="Inspect and pass this item immediately without scanning"
+                                onClick={() => handleInspectAndPackItem(item)}
                               >
-                                <i className="ri-qr-scan-line me-1" /> Scan 1
+                                <i className="ri-check-line me-1" /> Inspect & Pack
                               </button>
                             )}
                           </td>
@@ -2596,30 +2717,40 @@ export default function POS() {
               </div>
 
               {/* Footer */}
-              <div className="modal-footer px-4 py-3 bg-light d-flex justify-content-between">
+              <div className="modal-footer px-4 py-3 bg-light d-flex justify-content-between align-items-center">
                 <button
                   type="button"
-                  className="btn btn-outline-secondary px-4 fw-bold"
+                  className="btn btn-sm btn-outline-secondary px-3 fw-semibold"
                   onClick={() => setActiveModal('online')}
                 >
                   Back to Orders
                 </button>
-                {packingOrder.is_all_packed ? (
-                  <button
-                    type="button"
-                    className="btn btn-success px-4 fw-bold"
-                    onClick={() => {
-                      setActiveModal(null)
-                      showToast(`Order #${packingOrder.order_ref || packingOrder.id} ready for courier pickup!`, 'success', '📦')
-                    }}
-                  >
-                    <i className="ri-check-double-line me-1" /> Done
-                  </button>
-                ) : (
-                  <div className="text-muted fs-12">
-                    <i className="ri-time-line me-1" /> Order remains in <strong>{packingOrder.status}</strong> until all items are scanned.
-                  </div>
-                )}
+
+                <div className="d-flex align-items-center gap-2">
+                  {!packingOrder.is_all_packed && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success px-3.5 py-1.5 fw-bold shadow-sm"
+                      onClick={handlePackAllDirect}
+                      disabled={packingLoading}
+                    >
+                      {packingLoading ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-check-double-line me-1" />}
+                      Inspect & Pack All ({packingOrder.total_ordered - packingOrder.total_scanned} remaining)
+                    </button>
+                  )}
+                  {packingOrder.is_all_packed && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success px-4 py-1.5 fw-bold shadow-sm"
+                      onClick={() => {
+                        setActiveModal(null)
+                        showToast(`Order #${packingOrder.order_ref || packingOrder.id} ready!`, 'success', '📦')
+                      }}
+                    >
+                      <i className="ri-check-double-line me-1" /> Done
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

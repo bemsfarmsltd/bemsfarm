@@ -1706,4 +1706,132 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
   }
 });
 
+// ── POST /api/admin/pos/pack-all ───────────────────────────────────────────
+// Directly inspects & packs ALL items in an order (no scanning required), deducts stock, and marks order as packed
+router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { order_id, terminal_id = "POS-MAIN" } = req.body;
+
+    if (!order_id) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Order ID is required" });
+    }
+
+    const orderRes = await client.query(
+      `SELECT o.id, o.order_ref, o.status, o.tracking_status
+       FROM orders o
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+       FOR UPDATE OF o`,
+      [order_id]
+    );
+
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    // Fetch all items for this order
+    const itemsRes = await client.query(
+      `SELECT oi.id, oi.product_id, oi.quantity, COALESCE(oi.scanned_quantity, 0) as scanned_quantity,
+              p.name as product_name, p.stock, p.stock_quantity
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1
+       FOR UPDATE OF p`,
+      [order.id]
+    );
+
+    for (const item of itemsRes.rows) {
+      const orderedQty = parseInt(item.quantity, 10);
+      const prevScannedQty = parseInt(item.scanned_quantity, 10);
+      const remainingQty = Math.max(0, orderedQty - prevScannedQty);
+
+      if (remainingQty > 0) {
+        const currentStock = parseInt(item.stock ?? item.stock_quantity ?? 0, 10);
+        const newStock = Math.max(0, currentStock - remainingQty);
+
+        // Update product stock
+        await client.query(
+          `UPDATE products
+           SET stock = $1, stock_quantity = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [newStock, item.product_id]
+        );
+
+        // Log inventory transaction
+        await logInventoryTransaction(client, {
+          order_id: order.id,
+          product_id: item.product_id,
+          quantity: remainingQty,
+          previous_quantity: currentStock,
+          new_quantity: newStock,
+          pos_terminal: terminal_id,
+          pos_operator_id: req.user.id,
+          transaction_type: 'pos_packaging_stockout',
+          source_reference: `POS-PACKALL-${order.id}`,
+          notes: `Batch inspected & packed at POS for order #${order.order_ref || order.id}`
+        });
+
+        // Update order_items
+        await client.query(
+          `UPDATE order_items
+           SET scanned_quantity = quantity
+           WHERE id = $1`,
+          [item.id]
+        );
+      }
+    }
+
+    // Mark order as packed
+    await client.query(
+      `UPDATE orders
+       SET status = 'packed',
+           tracking_status = 'packed_ready',
+           packed_at = NOW(),
+           packed_by = $2,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [order.id, req.user.id]
+    );
+
+    await logOrderAudit(client, {
+      order_id: order.id,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: req.user.role,
+      action: 'order_packed_direct',
+      previous_state: order.status,
+      new_state: 'packed',
+      metadata: { packed_by: req.user.name, method: 'direct_inspection', terminal_id }
+    });
+
+    await client.query("COMMIT");
+
+    // Trigger auto-dispatch
+    let dispatchResult = null;
+    try {
+      dispatchResult = await autoAssignClosestDriver(order.id);
+    } catch (dispErr) {
+      console.warn(`[dispatchEngine] Non-fatal auto-dispatch error on pack-all:`, dispErr.message);
+    }
+
+    return res.json({
+      success: true,
+      message: `All items for Order #${order.order_ref || order.id} marked as inspected & packed!`,
+      order_status: "packed",
+      is_order_packed: true,
+      dispatch: dispatchResult
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
