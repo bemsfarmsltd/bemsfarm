@@ -72,6 +72,7 @@ export default function Invoices() {
         let items = []
         if (Array.isArray(inv.items)) {
           items = inv.items.map(it => ({
+            product_id: it.product_id || null,
             name: it.name || it.product_name || 'Item',
             qty: Number(it.qty || it.quantity || 1),
             unit: it.unit || 'kg',
@@ -93,6 +94,9 @@ export default function Invoices() {
           issuedDate: (inv.date_issued || inv.created_at || '').slice(0, 10),
           dueDate: (inv.due_date || inv.dueDate || '').slice(0, 10),
           status: inv.status || 'draft',
+          fulfillmentStatus: inv.fulfillment_status || 'unfulfilled',
+          fulfilledAt: inv.fulfilled_at ? String(inv.fulfilled_at).slice(0, 16).replace('T', ' ') : null,
+          fulfilledBy: inv.fulfilled_by || null,
           channel: inv.channel || (inv.type === 'manual' ? 'manual' : 'online'),
           customer: inv.customer || {
             name: inv.customer_name || 'Customer',
@@ -200,14 +204,23 @@ export default function Invoices() {
   }
 
   const handleProductSelect = (idx, prodName) => {
-    const prod = products.find(p => p.name === prodName)
+    const prod = products.find(p => p.name === prodName || String(p.id) === String(prodName))
     if (prod) {
       const unitPrice = parseFloat(prod.unit_price || prod.price || 0)
       const unit = prod.unit || 'kg'
+      const stock = parseInt(prod.stock ?? prod.stock_quantity ?? 0, 10)
       setForm(prev => {
         const items = prev.items.map((it, i) => {
           if (i !== idx) return it
-          return { ...it, name: prod.name, unit, price: unitPrice, total: unitPrice * Number(it.qty || 1) }
+          return {
+            ...it,
+            product_id: prod.id,
+            name: prod.name,
+            unit,
+            price: unitPrice,
+            stock,
+            total: unitPrice * Number(it.qty || 1)
+          }
         })
         return { ...prev, items }
       })
@@ -216,12 +229,60 @@ export default function Invoices() {
     }
   }
 
-  const addItem    = () => setForm(p => ({ ...p, items: [...p.items, { name: '', qty: 1, unit: 'kg', price: 0, total: 0 }] }))
+  const addItem    = () => setForm(p => ({ ...p, items: [...p.items, { product_id: null, name: '', qty: 1, unit: 'kg', price: 0, total: 0, stock: null }] }))
   const removeItem = (idx) => setForm(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }))
 
   const formTotal = calcTotal(form.items, form.deliveryFee, form.discount)
 
   // ── API Actions ────────────────────────────────────────────────────────────
+
+  const fulfillInvoice = async (invToFulfill) => {
+    const target = invToFulfill || selected
+    if (!target) return
+    const idOrRef = target.numericId || target.id
+    try {
+      setSubmitting(true)
+      const res = await api.post(`/admin/orders/invoices/${idOrRef}/fulfill`)
+      toast.success(res.data?.message || `Invoice ${target.id} fulfilled! Stock deducted.`)
+      if (selected && (selected.id === target.id || selected.numericId === target.numericId)) {
+        setSelected(prev => ({
+          ...prev,
+          fulfillmentStatus: 'fulfilled',
+          fulfilledAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        }))
+      }
+      fetchInvoices()
+    } catch (err) {
+      console.error('Failed to fulfill invoice:', err)
+      toast.error(err.response?.data?.message || 'Failed to fulfill invoice')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const unfulfillInvoice = async (invToUnfulfill) => {
+    const target = invToUnfulfill || selected
+    if (!target) return
+    const idOrRef = target.numericId || target.id
+    try {
+      setSubmitting(true)
+      const res = await api.post(`/admin/orders/invoices/${idOrRef}/unfulfill`)
+      toast.success(res.data?.message || `Invoice ${target.id} unfulfilled! Stock restored.`)
+      if (selected && (selected.id === target.id || selected.numericId === target.numericId)) {
+        setSelected(prev => ({
+          ...prev,
+          fulfillmentStatus: 'unfulfilled',
+          fulfilledAt: null
+        }))
+      }
+      fetchInvoices()
+    } catch (err) {
+      console.error('Failed to unfulfill invoice:', err)
+      toast.error(err.response?.data?.message || 'Failed to unfulfill invoice')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const createInvoice = async (asDraft) => {
     const custName = form.customer || form.customName
@@ -248,6 +309,7 @@ export default function Invoices() {
         payment_method: form.paymentMethod || 'Bank Transfer',
         notes: form.notes || undefined,
         items: validItems.map(it => ({
+          product_id: it.product_id || undefined,
           name: it.name,
           qty: Number(it.qty),
           unit: it.unit || 'kg',
@@ -526,13 +588,14 @@ export default function Invoices() {
                 <th>Amount</th>
                 <th>Payment Method</th>
                 <th>Status</th>
+                <th>Fulfillment</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-5">
+                  <td colSpan={10} className="text-center text-muted py-5">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"/>
                     Loading live invoices...
                   </td>
@@ -540,7 +603,7 @@ export default function Invoices() {
               )}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-5">
+                  <td colSpan={10} className="text-center text-muted py-5">
                     <i className="ri-file-text-line fs-32 text-muted d-block mb-2"/>
                     No invoices found. Click "Create Invoice" to issue a new commercial invoice.
                   </td>
@@ -598,10 +661,43 @@ export default function Invoices() {
                       </span>
                       {inv.paidDate && <div className="text-muted" style={{ fontSize: 10 }}>{inv.paidDate}</div>}
                     </td>
+                    <td>
+                      {inv.fulfillmentStatus === 'fulfilled' ? (
+                        <div>
+                          <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: 11 }}>
+                            <i className="ri-checkbox-circle-fill me-1"/>Stock Deducted
+                          </span>
+                          {inv.fulfilledAt && (
+                            <div className="text-muted" style={{ fontSize: 10 }}>{inv.fulfilledAt}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 11 }}>
+                            <i className="ri-time-line me-1"/>Unfulfilled
+                          </span>
+                          {inv.status !== 'cancelled' && (
+                            <div>
+                              <button
+                                className="btn btn-link btn-sm text-primary p-0 text-decoration-none"
+                                style={{ fontSize: 11 }}
+                                onClick={() => fulfillInvoice(inv)}
+                                title="Deduct stock from farm inventory"
+                              >
+                                <i className="ri-truck-line me-1"/>Fulfill now
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="text-end">
                       <div className="d-inline-flex gap-1">
                         <button className="btn btn-sm btn-outline-secondary py-0 px-2" title="View Details" onClick={() => openModal('view', inv)}>
                           <i className="ri-eye-line"/>
+                        </button>
+                        <button className="btn btn-sm btn-outline-info py-0 px-2" title="Delivery Waybill" onClick={() => openModal('waybill', inv)}>
+                          <i className="ri-file-paper-2-line"/>
                         </button>
                         {inv.status === 'draft' && (
                           <button className="btn btn-sm btn-outline-primary py-0 px-2" title="Send Invoice" onClick={() => openModal('send', inv)}>
@@ -703,6 +799,35 @@ export default function Invoices() {
                     </div>
                   </div>
 
+                  {/* Fulfillment Status Banner */}
+                  <div className={`p-3 rounded-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2 ${selected.fulfillmentStatus === 'fulfilled' ? 'bg-success-subtle border border-success-subtle text-success-emphasis' : 'bg-warning-subtle border border-warning-subtle text-warning-emphasis'}`}>
+                    <div>
+                      <div className="fw-bold d-flex align-items-center gap-2">
+                        <i className={selected.fulfillmentStatus === 'fulfilled' ? 'ri-checkbox-circle-fill fs-18 text-success' : 'ri-time-line fs-18 text-warning'}/>
+                        <span>{selected.fulfillmentStatus === 'fulfilled' ? 'Stock Dispatched & Deducted' : 'Pending Inventory Fulfillment'}</span>
+                      </div>
+                      <div className="small mt-1 opacity-75">
+                        {selected.fulfillmentStatus === 'fulfilled'
+                          ? `Goods were deducted from live farm inventory on ${selected.fulfilledAt || 'earlier date'}.`
+                          : 'Stock has NOT been deducted yet. Click "Fulfill & Deduct Stock" when dispatching goods to the hotel/marketer.'}
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2">
+                      {selected.fulfillmentStatus !== 'fulfilled' && selected.status !== 'cancelled' && (
+                        <button className="btn btn-success btn-sm fw-medium shadow-sm" onClick={() => fulfillInvoice(selected)} disabled={submitting}>
+                          {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-truck-line me-1"/>}
+                          Fulfill & Deduct Stock
+                        </button>
+                      )}
+                      {selected.fulfillmentStatus === 'fulfilled' && (
+                        <button className="btn btn-outline-danger btn-sm" onClick={() => unfulfillInvoice(selected)} disabled={submitting}>
+                          {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-restart-line me-1"/>}
+                          Reverse Stock Deduction
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Line items */}
                   <table className="table table-sm mb-0 border">
                     <thead style={{ background: '#f8fafc' }}>
@@ -770,6 +895,9 @@ export default function Invoices() {
                   <div className="border-top pt-3 mt-3 d-flex gap-2 flex-wrap align-items-center">
                     <button className="btn btn-outline-secondary btn-sm" onClick={handlePrint}>
                       <i className="ri-printer-line me-1"/>Print / Save PDF
+                    </button>
+                    <button className="btn btn-outline-primary btn-sm" onClick={() => openModal('waybill', selected)}>
+                      <i className="ri-file-paper-2-line me-1"/>Delivery Waybill
                     </button>
                     {selected.status === 'draft' && (
                       <button className="btn btn-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('send', selected), 100) }}>
@@ -858,10 +986,15 @@ export default function Invoices() {
                         <datalist id={`product-options-${idx}`}>
                           {products.map(p => (
                             <option key={p.id} value={p.name}>
-                              ₦{Number(p.unit_price || p.price || 0).toLocaleString()} / {p.unit || 'kg'}
+                              ₦{Number(p.unit_price || p.price || 0).toLocaleString()} / {p.unit || 'kg'} (Stock: {p.stock ?? p.stock_quantity ?? 0})
                             </option>
                           ))}
                         </datalist>
+                        {item.stock !== undefined && item.stock !== null && (
+                          <div style={{ fontSize: 10, color: item.stock > 0 ? '#15803d' : '#b91c1c' }} className="mt-0.5">
+                            <i className="ri-archive-line me-1"/>Live Stock: <strong>{item.stock} {item.unit}</strong>
+                          </div>
+                        )}
                       </div>
                       <div className="col-2">
                         <input
@@ -1057,6 +1190,107 @@ export default function Invoices() {
                     {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-delete-bin-line me-1"/>}
                     Delete
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── DELIVERY WAYBILL MODAL ────────────────── */}
+          {activeModal === 'waybill' && selected && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 760, maxHeight: '92vh', overflowY: 'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-light">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="ri-file-paper-2-fill fs-20 text-primary"/>
+                  <h6 className="mb-0 fw-bold">Official Delivery Note & Waybill</h6>
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-primary btn-sm" onClick={handlePrint}>
+                    <i className="ri-printer-line me-1"/>Print Waybill
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+              
+              <div className="p-4" style={{ color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                {/* Waybill Document Header */}
+                <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                  <div>
+                    <h4 className="fw-bolder mb-1 text-success">BEMS FARMS LIMITED</h4>
+                    <div className="small text-muted">Premium Farm Produce, Fish & Poultry · Wholesale & B2B Division</div>
+                    <div className="small text-muted">Km 5, Farm Settlement Road, Umuahia, Abia State · Tel: +234 800 000 2367</div>
+                  </div>
+                  <div className="text-end">
+                    <div className="badge bg-dark text-white fs-12 px-3 py-1 text-uppercase tracking-wider">DELIVERY NOTE / WAYBILL</div>
+                    <div className="fw-bold fs-16 mt-2">WB-{selected.id.replace('INV-', '')}</div>
+                    <div className="small text-muted">Ref Inv: {selected.id}</div>
+                    <div className="small text-muted">Date: {new Date().toLocaleDateString('en-GB')}</div>
+                  </div>
+                </div>
+
+                {/* Consignee & Dispatch Details */}
+                <div className="row g-3 mb-3 p-3 bg-light rounded-3">
+                  <div className="col-6 border-end">
+                    <div className="text-uppercase fw-bold text-muted fs-11 tracking-wider mb-1">CONSIGNEE / DELIVER TO:</div>
+                    <div className="fw-bold fs-15">{selected.customer?.name || 'Walk-in / Institutional Client'}</div>
+                    {selected.customer?.address && <div className="small text-dark mt-1"><i className="ri-map-pin-line me-1 text-muted"/>{selected.customer.address}</div>}
+                    {selected.customer?.phone && <div className="small text-dark"><i className="ri-phone-line me-1 text-muted"/>{selected.customer.phone}</div>}
+                  </div>
+                  <div className="col-6 ps-3">
+                    <div className="text-uppercase fw-bold text-muted fs-11 tracking-wider mb-1">DISPATCH SPECIFICATIONS:</div>
+                    <div className="small"><strong>Dispatch Status:</strong> {selected.fulfillmentStatus === 'fulfilled' ? 'Stock Dispatched' : 'Pending Dispatch'}</div>
+                    <div className="small"><strong>Dispatch Date:</strong> {selected.fulfilledAt || '—'}</div>
+                    <div className="small"><strong>Channel:</strong> {selected.channel?.toUpperCase() || 'DIRECT B2B'}</div>
+                    <div className="small"><strong>Payment Terms:</strong> {selected.paymentMethod} ({selected.status?.toUpperCase()})</div>
+                    {selected.notes && <div className="small text-muted mt-1"><strong>Instructions:</strong> {selected.notes}</div>}
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <table className="table table-bordered mb-4">
+                  <thead className="table-light">
+                    <tr style={{ fontSize: 12 }}>
+                      <th style={{ width: 40 }} className="text-center">#</th>
+                      <th>Item Description</th>
+                      <th className="text-center" style={{ width: 120 }}>Qty Ordered</th>
+                      <th className="text-center" style={{ width: 140 }}>Qty Delivered</th>
+                      <th style={{ width: 120 }} className="text-center">Packaging / Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.items.map((it, idx) => (
+                      <tr key={idx} style={{ fontSize: 13 }}>
+                        <td className="text-center text-muted">{idx + 1}</td>
+                        <td className="fw-medium">{it.name}</td>
+                        <td className="text-center">{it.qty}</td>
+                        <td className="text-center fw-bold">{it.qty}</td>
+                        <td className="text-center text-muted">{it.unit || 'kg'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Handling & Receiving Notes */}
+                <div className="alert alert-secondary py-2 px-3 small mb-4">
+                  <strong>Goods Received in Good Order:</strong> The receiver agrees that all perishable goods listed above have been inspected upon arrival, found fresh and in sound condition, matching specifications.
+                </div>
+
+                {/* Three-party Signatures Section */}
+                <div className="row g-3 pt-3 border-top text-center" style={{ fontSize: 11 }}>
+                  <div className="col-4 border-end">
+                    <div className="fw-bold mb-4">DISPATCHED BY (FARM)</div>
+                    <div className="border-bottom mx-3 mb-1" style={{ height: 32 }}></div>
+                    <div>Authorized Sign & Date</div>
+                  </div>
+                  <div className="col-4 border-end">
+                    <div className="fw-bold mb-4">DRIVER / CARRIER</div>
+                    <div className="border-bottom mx-3 mb-1" style={{ height: 32 }}></div>
+                    <div>Driver Name & Vehicle Reg</div>
+                  </div>
+                  <div className="col-4">
+                    <div className="fw-bold mb-4">RECEIVED BY (HOTEL / CLIENT)</div>
+                    <div className="border-bottom mx-3 mb-1" style={{ height: 32 }}></div>
+                    <div>Receiver Name, Stamp & Sign</div>
+                  </div>
                 </div>
               </div>
             </div>

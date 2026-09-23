@@ -33,6 +33,7 @@ const assignDriver = z.object({
 });
 
 const invoiceItem = z.object({
+  product_id: z.union([z.string(), z.number()]).optional(),
   name: z.string().trim().min(1, "Item name is required"),
   qty: z.coerce.number().optional(),
   quantity: z.coerce.number().optional(),

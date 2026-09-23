@@ -10,7 +10,7 @@ const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
 const { restoreOrderStock } = require("../utils/orderStock");
-const { logOrderAudit } = require("../utils/workflowAudit");
+const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
 const { initiateMonnifyRefund } = require("../utils/monnify");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
@@ -433,6 +433,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
       const itemTotal = qty * price;
       subtotal += itemTotal;
       cleanItems.push({
+        product_id: item.product_id ? parseInt(item.product_id) : null,
         name: item.name,
         qty,
         unit: item.unit || "kg",
@@ -525,6 +526,219 @@ router.delete("/invoices/:id", requireRole("superadmin", "manager", "admin"), as
     res.json({ message: "Invoice deleted" });
   } catch (err) {
     next(err);
+  }
+});
+
+// ── POST /api/admin/orders/invoices/:id/fulfill (B2B Inventory Fulfillment) ──
+router.post("/invoices/:id/fulfill", requireRole("superadmin", "manager", "admin", "kitchen_staff", "cashier"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const invRes = await client.query(
+      `SELECT * FROM invoices WHERE id::text = $1 OR invoice_ref = $1 FOR UPDATE`,
+      [String(req.params.id)]
+    );
+    if (!invRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    const invoice = invRes.rows[0];
+    if (invoice.fulfillment_status === "fulfilled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Invoice has already been fulfilled and inventory deducted" });
+    }
+    if (invoice.status === "cancelled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Cannot fulfill a cancelled invoice" });
+    }
+
+    const rawItems = invoice.items;
+    const items = Array.isArray(rawItems) ? rawItems : (typeof rawItems === "string" ? JSON.parse(rawItems) : []);
+    if (!items.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Invoice has no items to fulfill" });
+    }
+
+    const deductions = [];
+
+    for (const item of items) {
+      const qty = parseInt(item.qty || item.quantity || 1, 10);
+      if (qty <= 0) continue;
+
+      let product = null;
+      if (item.product_id) {
+        const prodRes = await client.query(
+          `SELECT id, name, stock, stock_quantity FROM products WHERE id = $1 FOR UPDATE`,
+          [item.product_id]
+        );
+        if (prodRes.rows.length) product = prodRes.rows[0];
+      }
+
+      // Fallback: match by product name if product_id was not explicitly stored
+      if (!product && item.name) {
+        const prodRes = await client.query(
+          `SELECT id, name, stock, stock_quantity FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1 FOR UPDATE`,
+          [item.name.trim()]
+        );
+        if (prodRes.rows.length) product = prodRes.rows[0];
+      }
+
+      if (product) {
+        const prevQty = parseInt(product.stock ?? product.stock_quantity ?? 0, 10);
+        const newQty = Math.max(0, prevQty - qty);
+
+        await client.query(
+          `UPDATE products 
+           SET stock = $1, stock_quantity = $1, updated_at = NOW() 
+           WHERE id = $2`,
+          [newQty, product.id]
+        );
+
+        await logInventoryTransaction(client, {
+          order_id: invoice.order_id || null,
+          product_id: product.id,
+          quantity: -qty,
+          previous_quantity: prevQty,
+          new_quantity: newQty,
+          pos_terminal: "B2B_INVOICE",
+          pos_operator_id: req.user.id,
+          transaction_type: "b2b_invoice_stockout",
+          source_reference: invoice.invoice_ref,
+          notes: `B2B dispatch for invoice ${invoice.invoice_ref} to ${invoice.customer_name} (${qty} ${item.unit || "unit"})`
+        });
+
+        deductions.push({
+          product_id: product.id,
+          name: product.name,
+          deducted: qty,
+          remaining: newQty
+        });
+      }
+    }
+
+    await client.query(
+      `UPDATE invoices 
+       SET fulfillment_status = 'fulfilled',
+           fulfilled_at = NOW(),
+           fulfilled_by = $1
+       WHERE id = $2`,
+      [req.user.id, invoice.id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: `Invoice ${invoice.invoice_ref} fulfilled. Stock successfully deducted.`,
+      deductions,
+      fulfilled_at: new Date().toISOString()
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── POST /api/admin/orders/invoices/:id/unfulfill (Reverse Stock Movement) ──
+router.post("/invoices/:id/unfulfill", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const invRes = await client.query(
+      `SELECT * FROM invoices WHERE id::text = $1 OR invoice_ref = $1 FOR UPDATE`,
+      [String(req.params.id)]
+    );
+    if (!invRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    const invoice = invRes.rows[0];
+    if (invoice.fulfillment_status !== "fulfilled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Invoice is not currently fulfilled" });
+    }
+
+    const rawItems = invoice.items;
+    const items = Array.isArray(rawItems) ? rawItems : (typeof rawItems === "string" ? JSON.parse(rawItems) : []);
+    const reversals = [];
+
+    for (const item of items) {
+      const qty = parseInt(item.qty || item.quantity || 1, 10);
+      if (qty <= 0) continue;
+
+      let product = null;
+      if (item.product_id) {
+        const prodRes = await client.query(
+          `SELECT id, name, stock, stock_quantity FROM products WHERE id = $1 FOR UPDATE`,
+          [item.product_id]
+        );
+        if (prodRes.rows.length) product = prodRes.rows[0];
+      }
+
+      if (!product && item.name) {
+        const prodRes = await client.query(
+          `SELECT id, name, stock, stock_quantity FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1 FOR UPDATE`,
+          [item.name.trim()]
+        );
+        if (prodRes.rows.length) product = prodRes.rows[0];
+      }
+
+      if (product) {
+        const prevQty = parseInt(product.stock ?? product.stock_quantity ?? 0, 10);
+        const newQty = prevQty + qty;
+
+        await client.query(
+          `UPDATE products 
+           SET stock = $1, stock_quantity = $1, updated_at = NOW() 
+           WHERE id = $2`,
+          [newQty, product.id]
+        );
+
+        await logInventoryTransaction(client, {
+          order_id: invoice.order_id || null,
+          product_id: product.id,
+          quantity: qty,
+          previous_quantity: prevQty,
+          new_quantity: newQty,
+          pos_terminal: "B2B_INVOICE",
+          pos_operator_id: req.user.id,
+          transaction_type: "b2b_invoice_reversal",
+          source_reference: invoice.invoice_ref,
+          notes: `Reversed fulfillment for invoice ${invoice.invoice_ref} (${qty} ${item.unit || "unit"} restocked)`
+        });
+
+        reversals.push({
+          product_id: product.id,
+          name: product.name,
+          restocked: qty,
+          new_total: newQty
+        });
+      }
+    }
+
+    await client.query(
+      `UPDATE invoices 
+       SET fulfillment_status = 'unfulfilled',
+           fulfilled_at = NULL,
+           fulfilled_by = NULL
+       WHERE id = $2`,
+      [invoice.id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: `Invoice ${invoice.invoice_ref} unfulfilled. Stock restored to inventory.`,
+      reversals
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
   }
 });
 
