@@ -152,11 +152,13 @@ async function autoAssignClosestDriver(
       );
     }
 
-    // Update order status
+    // Update order with assigned driver_id but keep status as 'processing' (or current status).
+    // The status will only advance to 'driver_assigned' when the driver accepts in the driver app.
+    // This prevents showing a false 'Driver Assigned' status to the customer before acceptance.
     await client.query(
       `
       UPDATE orders
-      SET driver_id = $1, status = 'driver_assigned', tracking_status = 'driver_assigned', updated_at = NOW()
+      SET driver_id = $1, updated_at = NOW()
       WHERE id = $2
       `,
       [bestDriver.id, order.id]
