@@ -1639,12 +1639,90 @@ export default function POS() {
     printThermalReceipt()
   }, [successData])
 
-  // Payment Confirmation
+  // Payment Confirmation / Online Order Packing
   async function confirmPayment(method) {
     if (cart.length === 0) return
     setIsSubmittingSale(true)
     playBeep('success')
 
+    const fulfilledOnlineId = activeOnlineOrderRawId
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CASE 1: PACKING AN INCOMING ONLINE ORDER AT POS COUNTER
+    // Do NOT generate a new duplicate walk-in POS sale! Mark the online order as packed!
+    // ──────────────────────────────────────────────────────────────────────────
+    if (fulfilledOnlineId) {
+      try {
+        let packedSuccessfully = false
+
+        // Attempt 1: Call dedicated POS pack-all (inspects items, deducts stock, sets packed_ready, triggers proximity dispatch)
+        try {
+          const res = await api.post('/admin/pos/pack-all', { order_id: fulfilledOnlineId })
+          if (res.data?.success) packedSuccessfully = true
+        } catch (e1) {
+          console.warn('pos/pack-all endpoint notice, trying status update:', e1.response?.data?.message || e1.message)
+        }
+
+        // Attempt 2: Fallback to status update
+        if (!packedSuccessfully) {
+          await api.patch(`/admin/orders/${fulfilledOnlineId}/status`, {
+            status: 'packed_ready',
+            notes: `Order completed & packed at POS counter by ${user?.name || 'cashier'}`
+          })
+        }
+
+        const completedReceipt = {
+          orderId: orderId || fulfilledOnlineId,
+          isOnlineFulfillment: true,
+          customer,
+          cart: [...cart],
+          subtotal,
+          discountPct,
+          discountAmt,
+          vat,
+          total,
+          method: 'Online Order (Packed)',
+          orderNote,
+          change: 0,
+          cashReceived: total,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+        }
+
+        setActiveOnlineOrderRawId(null)
+        setSuccessData(completedReceipt)
+        setCheckoutStep('success')
+        setIsSubmittingSale(false)
+        clearCart()
+
+        // Move order to Packed in local state
+        setOnlineOrders(prev => prev.map(o => {
+          const match = o.id === fulfilledOnlineId || o.rawId === fulfilledOnlineId || String(o.id).replace(/^ORD-/i, '') === fulfilledOnlineId
+          return match ? { ...o, status: 'packed', rawStatus: 'packed_ready' } : o
+        }))
+
+        // Auto-switch modal filter to 'packed' so the cashier sees it in the Packed tab
+        setOnlineFilter('packed')
+
+        showToast(`Order #${fulfilledOnlineId} Packed & Ready! Driver auto-mapping initiated.`, 'success', '📦')
+
+        if (autoPrintReceipt) {
+          setTimeout(() => {
+            handlePrintReceipt(completedReceipt)
+          }, 120)
+        }
+        return
+      } catch (err) {
+        console.error('Online order pack completion failed:', err)
+        showToast(`Could not complete packing: ${err.response?.data?.message || err.message}`, 'error', '⚠️')
+        setIsSubmittingSale(false)
+        return
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CASE 2: REGULAR IN-STORE WALK-IN RETAIL SALE
+    // ──────────────────────────────────────────────────────────────────────────
     const change = method === 'Cash' && cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
     const receiptData = {
       orderId,
@@ -1722,24 +1800,7 @@ export default function POS() {
       return
     }
 
-    // If this POS sale packed an online delivery order, mark it as packed_ready in backend,
-    // which triggers courier proximity auto-assignment!
-    const fulfilledOnlineId = activeOnlineOrderRawId
-    if (fulfilledOnlineId) {
-      setActiveOnlineOrderRawId(null)
-      api.patch(`/admin/orders/${fulfilledOnlineId}/status`, {
-        status: 'packed_ready',
-        notes: `Order completed & packed at POS counter by ${user?.name || 'cashier'} — POS sale #${completedReceipt.orderId}`
-      }).then(() => {
-        showToast(`Order #${fulfilledOnlineId} Packed & Ready! Driver auto-mapping initiated.`, 'success', '🚀')
-        setOnlineOrders(prev => prev.map(o => {
-          const match = o.id === fulfilledOnlineId || o.rawId === fulfilledOnlineId || String(o.id).replace(/^ORD-/i, '') === fulfilledOnlineId
-          return match ? { ...o, status: 'packed', rawStatus: 'packed_ready' } : o
-        }))
-      }).catch(err => {
-        console.warn('Could not update online order to packed_ready after POS sale:', err.message)
-      })
-    } else if (orderId) {
+    if (orderId) {
       setOnlineOrders(prev => prev.filter(o => o.id !== orderId && o.rawId !== orderId))
     }
 
@@ -2264,6 +2325,24 @@ export default function POS() {
             </div>
           )}
 
+          {/* Active Online Order Packing Banner */}
+          {activeOnlineOrderRawId && (
+            <div className="d-flex align-items-center justify-content-between px-3 py-2 bg-primary-subtle text-primary border-bottom border-primary-subtle fs-12 fw-bold">
+              <div className="d-flex align-items-center gap-1.5">
+                <i className="ri-box-3-fill fs-15 text-primary" />
+                <span>Packing Online Order #{activeOnlineOrderRawId}</span>
+              </div>
+              <button 
+                type="button"
+                className="btn btn-sm btn-link text-danger p-0 fs-11 text-decoration-none fw-semibold"
+                onClick={() => { setActiveOnlineOrderRawId(null); clearCart(); }}
+                title="Cancel packing and clear register cart"
+              >
+                ✕ Cancel Packing
+              </button>
+            </div>
+          )}
+
           {/* Active Customer Strip */}
           {customer && !showCustPanel && (
             <div className="pos-active-customer-bar">
@@ -2440,19 +2519,30 @@ export default function POS() {
               disabled={cart.length === 0}
               onClick={() => {
                 if (cart.length > 0) {
-                  setCashReceived(String(total))
-                  setActiveModal('checkout')
+                  if (activeOnlineOrderRawId) {
+                    confirmPayment('Online Order')
+                  } else {
+                    setCashReceived(String(total))
+                    setActiveModal('checkout')
+                  }
                 }
               }}
               className="pos-single-pay-btn"
+              style={activeOnlineOrderRawId ? { background: 'linear-gradient(135deg, #059669, #047857)', border: 'none' } : {}}
             >
               <div className="d-flex align-items-center gap-3">
                 <div className="pos-single-pay-icon">
-                  <i className="ri-secure-payment-line"></i>
+                  <i className={activeOnlineOrderRawId ? "ri-box-3-line" : "ri-secure-payment-line"}></i>
                 </div>
                 <div className="text-start">
-                  <div className="pos-single-pay-title">PAY / COMPLETE SALE [F8]</div>
-                  <div className="pos-single-pay-sub">{itemCount} {itemCount === 1 ? 'item' : 'items'} · Tap to choose tender & print</div>
+                  <div className="pos-single-pay-title">
+                    {activeOnlineOrderRawId ? 'COMPLETE & MARK PACKED [F8]' : 'PAY / COMPLETE SALE [F8]'}
+                  </div>
+                  <div className="pos-single-pay-sub">
+                    {activeOnlineOrderRawId 
+                      ? `Packing Order #${activeOnlineOrderRawId} · Tap to complete & dispatch driver` 
+                      : `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · Tap to choose tender & print`}
+                  </div>
                 </div>
               </div>
               <div className="pos-single-pay-amount">
@@ -4078,26 +4168,34 @@ export default function POS() {
                   </div>
                 )}
 
-                {/* ── STEP 3: PAYMENT COMPLETED SCREEN ── */}
+                {/* ── STEP 3: PAYMENT / PACKING COMPLETED SCREEN ── */}
                 {checkoutStep === 'success' && successData && (
                   <div className="text-center py-2">
                     <div
                       className="avatar-lg mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
                       style={{ width: 68, height: 68, background: '#dcfce7', color: '#16a34a' }}
                     >
-                      <i className="ri-checkbox-circle-fill" style={{ fontSize: 40 }} />
+                      <i className={successData.isOnlineFulfillment ? "ri-box-3-fill" : "ri-checkbox-circle-fill"} style={{ fontSize: 40 }} />
                     </div>
-                    <h4 className="fw-bold mb-1 text-dark">Payment Confirmed!</h4>
-                    <p className="text-muted small mb-3">Order #{successData.orderId} recorded successfully</p>
+                    <h4 className="fw-bold mb-1 text-dark">
+                      {successData.isOnlineFulfillment ? 'Order Packed & Ready!' : 'Payment Confirmed!'}
+                    </h4>
+                    <p className="text-muted small mb-3">
+                      {successData.isOnlineFulfillment 
+                        ? `Order #${successData.orderId} is packed · Proximity courier auto-dispatch initiated` 
+                        : `Order #${successData.orderId} recorded successfully`}
+                    </p>
 
                     <div className="p-3 rounded-3 bg-light border mb-3 text-start">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-muted">Total Amount Paid:</span>
+                        <span className="text-muted">Total Order Value:</span>
                         <span className="fs-18 fw-bold text-dark">{fmt(successData.total)}</span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="text-muted">Payment Method:</span>
-                        <span className="badge bg-success-subtle text-success">{successData.method}</span>
+                        <span className="text-muted">Fulfillment Status:</span>
+                        <span className="badge bg-success text-white fw-bold">
+                          {successData.isOnlineFulfillment ? '📦 Packed & Dispatched' : successData.method}
+                        </span>
                       </div>
                       {successData.change > 0 && (
                         <div className="d-flex justify-content-between align-items-center pt-2 border-top">
@@ -4113,7 +4211,7 @@ export default function POS() {
                         className="btn btn-outline-secondary flex-fill py-2 d-flex align-items-center justify-content-center gap-1"
                         onClick={() => handlePrintReceipt(successData)}
                       >
-                        <i className="ri-printer-line" /> Print Receipt
+                        <i className="ri-printer-line" /> Print Packing Slip
                       </button>
                       <button
                         type="button"
@@ -4121,7 +4219,7 @@ export default function POS() {
                         onClick={newOrder}
                         style={{ background: '#059669', borderColor: '#059669' }}
                       >
-                        <i className="ri-add-circle-line" /> Next Sale [Enter]
+                        <i className="ri-arrow-right-line" /> Done / Next Order
                       </button>
                     </div>
                   </div>
