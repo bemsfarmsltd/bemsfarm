@@ -1689,6 +1689,16 @@ export default function POS() {
           date: new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
         }
 
+        // Immediately deduct packed items from local productsList in UI
+        setProductsList(prev => prev.map(p => {
+          const cartItem = cart.find(ci => ci.id === p.id || ci.productId === p.id || (ci.sku && ci.sku === p.sku))
+          if (cartItem) {
+            const deductQty = Number(cartItem.qty || 1)
+            return { ...p, stock: Math.max(0, (p.stock || 0) - deductQty) }
+          }
+          return p
+        }))
+
         setActiveOnlineOrderRawId(null)
         setSuccessData(completedReceipt)
         setCheckoutStep('success')
@@ -1703,6 +1713,51 @@ export default function POS() {
 
         // Auto-switch modal filter to 'packed' so the cashier sees it in the Packed tab
         setOnlineFilter('packed')
+
+        // Fresh background sync from server
+        api.get('/admin/orders?limit=40').then(ordRes => {
+          const ords = ordRes?.data?.orders || []
+          if (Array.isArray(ords)) {
+            const EXCLUDED_STATUSES = ['delivered', 'completed', 'cancelled', 'refunded', 'failed', 'driver_assigned', 'out_for_delivery', 'picked_up', 'in_transit']
+            const openOrders = ords.filter(o => 
+              !EXCLUDED_STATUSES.includes(String(o.status || '').toLowerCase()) &&
+              !String(o.id).startsWith('POS-')
+            )
+            const mappedOrders = openOrders.map(o => {
+              const rawStatus = String(o.status || '').toLowerCase()
+              const posStatus = (rawStatus === 'awaiting_driver_confirmation')
+                ? 'awaiting_driver_confirmation'
+                : (rawStatus === 'packed' || rawStatus === 'packed_ready')
+                ? 'packed'
+                : (rawStatus === 'processing' || rawStatus === 'packaging')
+                ? 'processing'
+                : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+              return {
+                id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
+                rawId: o.id,
+                channel: o.channel || o.source || 'website',
+                customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
+                phone: o.customer_phone || o.phone || '—',
+                time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+                status: posStatus,
+                rawStatus: o.status,
+                invoice_printed: true,
+                total: Number(o.total || 0),
+                note: o.delivery_note || o.notes || '',
+                items: (o.items || []).map(it => ({
+                  productId: it.product_id,
+                  name: it.name || it.product_name || 'Item',
+                  sku: it.sku || '',
+                  unit: it.unit || 'pcs',
+                  price: Number(it.price || it.unit_price || 0),
+                  qty: Number(it.quantity || it.qty || 1),
+                  image: it.image || ''
+                }))
+              }
+            })
+            setOnlineOrders(mappedOrders)
+          }
+        }).catch(() => {})
 
         showToast(`Order #${fulfilledOnlineId} Packed & Ready! Driver auto-mapping initiated.`, 'success', '📦')
 

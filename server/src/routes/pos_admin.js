@@ -1553,6 +1553,7 @@ router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "c
 // Scans a single physical item barcode at POS, validates, deducts inventory, and updates packing progress
 router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
   const client = await pool.connect();
+  let clientReleased = false;
   try {
     await client.query("BEGIN");
     const { order_id, barcode, quantity = 1, terminal_id = "POS-MAIN" } = req.body;
@@ -1561,6 +1562,8 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
 
     if (!order_id || !barcode) {
       await client.query("ROLLBACK");
+      client.release();
+      clientReleased = true;
       return res.status(400).json({ message: "Order ID and barcode are required for packing scan" });
     }
 
@@ -1778,6 +1781,8 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
     }
 
     await client.query("COMMIT");
+    client.release();
+    clientReleased = true;
 
     // 8. Auto-dispatch gate: Trigger driver assignment ONLY when order becomes PACKED (Section 20)
     let dispatchResult = null;
@@ -1808,10 +1813,14 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
       dispatch: dispatchResult
     });
   } catch (err) {
-    await client.query("ROLLBACK");
+    if (!clientReleased) {
+      await client.query("ROLLBACK");
+    }
     next(err);
   } finally {
-    client.release();
+    if (!clientReleased) {
+      client.release();
+    }
   }
 });
 
@@ -1819,12 +1828,15 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
 // Directly inspects & packs ALL items in an order (no scanning required), deducts stock, and marks order as packed
 router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
   const client = await pool.connect();
+  let clientReleased = false;
   try {
     await client.query("BEGIN");
     const { order_id, terminal_id = "POS-MAIN" } = req.body;
 
     if (!order_id) {
       await client.query("ROLLBACK");
+      client.release();
+      clientReleased = true;
       return res.status(400).json({ message: "Order ID is required" });
     }
 
@@ -1838,6 +1850,8 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
 
     if (!orderRes.rows.length) {
       await client.query("ROLLBACK");
+      client.release();
+      clientReleased = true;
       return res.status(404).json({ message: "Order not found" });
     }
 
@@ -1919,6 +1933,8 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
     });
 
     await client.query("COMMIT");
+    client.release();
+    clientReleased = true;
 
     // Trigger auto-dispatch
     let dispatchResult = null;
@@ -1936,10 +1952,14 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
       dispatch: dispatchResult
     });
   } catch (err) {
-    await client.query("ROLLBACK");
+    if (!clientReleased) {
+      await client.query("ROLLBACK");
+    }
     next(err);
   } finally {
-    client.release();
+    if (!clientReleased) {
+      client.release();
+    }
   }
 });
 

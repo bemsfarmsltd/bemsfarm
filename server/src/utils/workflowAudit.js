@@ -16,35 +16,76 @@ async function logOrderAudit(clientOrPool, {
 }) {
   try {
     const executor = clientOrPool || pool;
-    await executor.query(
-      `INSERT INTO order_audit_logs 
-       (order_id, actor_id, actor_name, actor_role, action, previous_state, new_state, metadata, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [
-        String(order_id),
-        actor_id,
-        actor_name,
-        actor_role,
-        action,
-        previous_state,
-        new_state,
-        JSON.stringify(metadata || {})
-      ]
-    );
 
-    // Also record to order_tracking_events for backwards compatibility with customer timeline
-    await executor.query(
-      `INSERT INTO order_tracking_events 
-       (order_id, event_type, description, actor_type, actor_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [
-        String(order_id),
-        action,
-        metadata?.description || `Order transitioned: ${previous_state || 'none'} -> ${new_state || action}`,
-        actor_role || 'system',
-        actor_id
-      ]
-    ).catch(e => console.warn('[logOrderAudit] order_tracking_events warning:', e.message));
+    let normalizedActorType = 'system';
+    const roleLower = String(actor_role || '').toLowerCase().trim();
+    if (['admin', 'superadmin', 'manager', 'cashier', 'staff', 'delivery_manager'].includes(roleLower)) {
+      normalizedActorType = 'admin';
+    } else if (roleLower === 'driver') {
+      normalizedActorType = 'driver';
+    } else if (roleLower === 'customer' || roleLower === 'user') {
+      normalizedActorType = 'customer';
+    } else if (roleLower === 'kitchen') {
+      normalizedActorType = 'kitchen';
+    }
+
+    try {
+      await executor.query(
+        `INSERT INTO order_audit_logs 
+         (order_id, actor_id, actor_name, actor_role, action, previous_state, new_state, metadata, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+        [
+          String(order_id),
+          actor_id,
+          actor_name,
+          actor_role,
+          action,
+          previous_state,
+          new_state,
+          JSON.stringify(metadata || {})
+        ]
+      );
+    } catch (auditErr) {
+      console.warn("[logOrderAudit] order_audit_logs warning:", auditErr.message);
+    }
+
+    // Record to order_tracking_events using the SAME executor (prevents foreign-key deadlock with FOR UPDATE)
+    // Protected by SAVEPOINT so it never aborts an outer transaction
+    const isTransaction = clientOrPool && typeof clientOrPool.query === 'function';
+    if (isTransaction) {
+      try {
+        await executor.query("SAVEPOINT tracking_event_sp");
+        await executor.query(
+          `INSERT INTO order_tracking_events 
+           (order_id, event_type, description, actor_type, actor_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [
+            String(order_id),
+            action,
+            metadata?.description || `Order transitioned: ${previous_state || 'none'} -> ${new_state || action}`,
+            normalizedActorType,
+            actor_id
+          ]
+        );
+        await executor.query("RELEASE SAVEPOINT tracking_event_sp");
+      } catch (trackErr) {
+        await executor.query("ROLLBACK TO SAVEPOINT tracking_event_sp").catch(() => {});
+        console.warn("[logOrderAudit] order_tracking_events warning:", trackErr.message);
+      }
+    } else {
+      await pool.query(
+        `INSERT INTO order_tracking_events 
+         (order_id, event_type, description, actor_type, actor_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [
+          String(order_id),
+          action,
+          metadata?.description || `Order transitioned: ${previous_state || 'none'} -> ${new_state || action}`,
+          normalizedActorType,
+          actor_id
+        ]
+      ).catch(e => console.warn('[logOrderAudit] order_tracking_events warning:', e.message));
+    }
 
   } catch (err) {
     console.error("[logOrderAudit] Error writing audit log:", err.message);
