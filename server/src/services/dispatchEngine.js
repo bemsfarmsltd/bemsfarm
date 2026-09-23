@@ -141,6 +141,14 @@ async function autoAssignClosestDriver(
 
     if (driversRes.rows.length === 0) {
       await client.query("ROLLBACK");
+      // Create dispatch alert so admin dashboard pops up notification
+      await insertDispatchAlert({
+        order_id: order.id,
+        order_ref: order.order_ref,
+        delivery_id: order.delivery_id,
+        message: `No available driver found for order #${order.order_ref || order.id}. Please assign a driver manually or wait for couriers to come online.`,
+      }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+
       return {
         success: false,
         message: "No available online drivers found at this moment",
@@ -267,35 +275,62 @@ async function processUnresponsiveAssignments(
   storeCoords = { lat: 5.1065, lng: 7.3667 }
 ) {
   try {
-    // Find active orders/deliveries assigned over timeout threshold where driver never accepted
+    // Find active orders/deliveries:
+    // 1. Where a driver was assigned but never accepted within timeoutMinutes
+    // 2. Where order has been awaiting courier (driver_id IS NULL) for over timeoutMinutes
     const timedOutRes = await pool.query(
       `
-      SELECT DISTINCT ON (o.id)
-        d.id AS delivery_id,
-        d.delivery_ref,
-        COALESCE(o.driver_id, d.driver_id) AS driver_id,
-        o.id AS order_id,
-        COALESCE(d.assigned_at, o.updated_at, o.created_at) AS assigned_at,
-        da.id AS assignment_id,
-        COALESCE(da.created_at, d.assigned_at, o.updated_at) AS assignment_created_at,
-        o.order_ref,
-        o.customer_name,
-        drv.name AS driver_name
-      FROM orders o
-      LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
-      LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
-      LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
-      WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
-        AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
-        AND (d.accepted_at IS NULL OR d.id IS NULL)
-        AND (d.status IS NULL OR d.status = 'assigned' OR o.status IN ('driver_assigned', 'assigned', 'processing'))
-        AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
-        AND NOT EXISTS (
-          SELECT 1 FROM dispatch_alerts al 
-          WHERE (al.order_id = o.id::text OR al.order_id = o.order_ref)
-            AND al.resolved = FALSE
-        )
-      ORDER BY o.id, COALESCE(da.created_at, o.updated_at) ASC
+      SELECT DISTINCT ON (order_id) * FROM (
+        -- Category 1: Driver assigned but never accepted within threshold
+        SELECT 
+          d.id AS delivery_id,
+          d.delivery_ref,
+          COALESCE(o.driver_id, d.driver_id) AS driver_id,
+          o.id AS order_id,
+          COALESCE(d.assigned_at, o.updated_at, o.created_at) AS assigned_at,
+          da.id AS assignment_id,
+          COALESCE(da.created_at, d.assigned_at, o.updated_at) AS assignment_created_at,
+          o.order_ref,
+          o.customer_name,
+          drv.name AS driver_name,
+          'driver_unresponsive' AS alert_case
+        FROM orders o
+        LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+        LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
+        LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
+        WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
+          AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
+          AND (d.accepted_at IS NULL OR d.id IS NULL)
+          AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
+
+        UNION ALL
+
+        -- Category 2: Awaiting Courier (no driver assigned) for over threshold
+        SELECT
+          d.id AS delivery_id,
+          d.delivery_ref,
+          NULL AS driver_id,
+          o.id AS order_id,
+          o.created_at AS assigned_at,
+          NULL AS assignment_id,
+          o.created_at AS assignment_created_at,
+          o.order_ref,
+          o.customer_name,
+          NULL AS driver_name,
+          'no_driver_assigned' AS alert_case
+        FROM orders o
+        LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+        WHERE o.driver_id IS NULL
+          AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
+          AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%')
+          AND COALESCE(o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
+      ) sub
+      WHERE NOT EXISTS (
+        SELECT 1 FROM dispatch_alerts al 
+        WHERE (al.order_id = sub.order_id::text OR al.order_id = sub.order_ref)
+          AND al.resolved = FALSE
+      )
+      ORDER BY order_id, assignment_created_at ASC
       `,
       [timeoutMinutes]
     );
@@ -307,6 +342,29 @@ async function processUnresponsiveAssignments(
     const reassignments = [];
 
     for (const item of timedOutRes.rows) {
+      if (item.alert_case === 'no_driver_assigned') {
+        console.log(
+          `⏱️ Order #${item.order_ref || item.order_id} has been awaiting courier for over ${timeoutMinutes} mins. Attempting dispatch...`
+        );
+        const autoResult = await autoAssignClosestDriver(item.order_id, storeCoords);
+        if (autoResult.success) {
+          console.log(`✅ Assigned order #${item.order_ref || item.order_id} to ${autoResult.driver?.name}`);
+          reassignments.push({ order_id: item.order_id, new_driver: autoResult.driver, status: 'reassigned' });
+        } else {
+          console.warn(`⚠️ No available drivers for order #${item.order_ref || item.order_id} — triggering admin popup alert.`);
+          await insertDispatchAlert({
+            order_id: item.order_id,
+            order_ref: item.order_ref,
+            delivery_id: item.delivery_id,
+            last_driver_id: null,
+            last_driver_name: null,
+            message: `Order #${item.order_ref || item.order_id} has been awaiting courier for over ${timeoutMinutes} minutes and no drivers are available. Please assign a driver manually or contact available riders.`,
+          });
+          reassignments.push({ order_id: item.order_id, status: 'unassigned_no_drivers', message: autoResult.message });
+        }
+        continue;
+      }
+
       console.log(
         `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to order #${item.order_ref || item.order_id} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
       );

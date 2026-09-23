@@ -121,11 +121,11 @@ export default function DispatchAlertBanner() {
             <div><span style={{ color: '#9ca3af' }}>Customer</span><br />
               <strong style={{ color: '#111827' }}>{activeAlert.customer_name || '—'}</strong>
             </div>
-            <div><span style={{ color: '#9ca3af' }}>Last Driver</span><br />
-              <strong style={{ color: '#111827' }}>{activeAlert.driver_name || activeAlert.last_driver_name || '—'}</strong>
+            <div><span style={{ color: '#9ca3af' }}>{activeAlert.driver_name || activeAlert.last_driver_name ? 'Last Driver' : 'Courier Status'}</span><br />
+              <strong style={{ color: '#111827' }}>{activeAlert.driver_name || activeAlert.last_driver_name || 'Awaiting Courier'}</strong>
             </div>
             <div><span style={{ color: '#9ca3af' }}>Phone</span><br />
-              <strong style={{ color: '#111827' }}>{activeAlert.driver_phone || '—'}</strong>
+              <strong style={{ color: '#111827' }}>{activeAlert.driver_phone || 'None assigned'}</strong>
             </div>
           </div>
 
@@ -135,37 +135,78 @@ export default function DispatchAlertBanner() {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              disabled={loading}
-              onClick={() => resolve('keep_driver')}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
-                background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
-                color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              📞 Keep Driver
-              <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
-                Leave order with {activeAlert.driver_name || 'driver'}
-              </div>
-            </button>
+            {activeAlert.driver_name || activeAlert.last_driver_name ? (
+              <>
+                <button
+                  disabled={loading}
+                  onClick={() => resolve('keep_driver')}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg,#3b82f6,#2563eb)',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  📞 Keep Driver
+                  <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
+                    Leave order with {activeAlert.driver_name || 'driver'}
+                  </div>
+                </button>
 
-            <button
-              disabled={loading}
-              onClick={() => resolve('unassign_driver')}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
-                background: 'linear-gradient(135deg,#ef4444,#dc2626)',
-                color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              ❌ Unassign Driver
-              <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
-                Remove &amp; return to queue
-              </div>
-            </button>
+                <button
+                  disabled={loading}
+                  onClick={() => resolve('unassign_driver')}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  ❌ Unassign Driver
+                  <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
+                    Remove &amp; return to queue
+                  </div>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  disabled={loading}
+                  onClick={() => resolve('keep_driver')}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg,#6b7280,#4b5563)',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  ⏳ Dismiss Alert
+                  <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
+                    Keep order in queue
+                  </div>
+                </button>
+
+                <button
+                  disabled={loading}
+                  onClick={() => {
+                    resolve('keep_driver');
+                    window.location.href = `/admin/orders?search=${encodeURIComponent(activeAlert.order_ref || activeAlert.order_id)}`;
+                  }}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg,#10b981,#059669)',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  🛵 Assign Driver Now
+                  <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>
+                    Open order to select courier
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
