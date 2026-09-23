@@ -1,10 +1,13 @@
 const express = require('express')
 const router = express.Router()
 const pool = require('../db/pool')
-const { requireAuth } = require('../middleware/auth')
+const { protect, requireRole } = require('../middleware/authMiddleware')
+
+// All dispatch routes require authentication
+router.use(protect)
 
 // GET /api/admin/dispatch/alerts — fetch all unresolved dispatch alerts
-router.get('/alerts', requireAuth, async (req, res) => {
+router.get('/alerts', requireRole('superadmin', 'admin', 'manager', 'cashier'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -32,7 +35,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
 
 // POST /api/admin/dispatch/alerts/:id/resolve — admin resolves an alert
 // body: { resolution: 'keep_driver' | 'unassign_driver' }
-router.post('/alerts/:id/resolve', requireAuth, async (req, res) => {
+router.post('/alerts/:id/resolve', requireRole('superadmin', 'admin', 'manager', 'cashier'), async (req, res) => {
   const { id } = req.params
   const { resolution } = req.body
   const adminId = req.user?.id
