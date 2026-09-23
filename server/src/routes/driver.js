@@ -61,8 +61,11 @@ router.post("/upload/kyc", driverUploadController.uploadDoc.single("document"), 
 router.post("/upload/document", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
 
 // ── 2. Deliveries / Orders (Automated Mapping & Dispatch) ───────────
-router.get("/deliveries", driverProtect, driverDeliveryController.getActiveDeliveries);
+router.get("/deliveries/available", driverProtect, driverDeliveryController.getAvailableDeliveries);
+router.get("/deliveries/new", driverProtect, driverDeliveryController.getAvailableDeliveries);
+router.get("/deliveries/active", driverProtect, driverDeliveryController.getActiveDeliveries);
 router.get("/deliveries/history", driverProtect, driverDeliveryController.getDeliveryHistory);
+router.get("/deliveries", driverProtect, driverDeliveryController.getActiveDeliveries);
 router.get("/deliveries/:orderId", driverProtect, driverDeliveryController.getDeliveryDetails);
 router.post("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
 router.post("/deliveries/:orderId/decline", driverProtect, driverDeliveryController.declineDelivery);

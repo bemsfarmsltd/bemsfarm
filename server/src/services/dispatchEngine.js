@@ -124,7 +124,7 @@ async function autoAssignClosestDriver(
     // 2. driver_availability.is_available = true and is_on_delivery = false
     // 3. No open deliveries currently in progress (assigned, awaiting_pickup, en_route, arrived)
     // 4. Not in excludedDriverIds (e.g. drivers who timed out for this specific order)
-    const params = [];
+    const params = [order.id];
     let excludedCondition = "";
     if (Array.isArray(excludedDriverIds) && excludedDriverIds.length > 0) {
       const validIds = excludedDriverIds.map((id) => parseInt(id)).filter((id) => !isNaN(id));
@@ -156,6 +156,7 @@ async function autoAssignClosestDriver(
         AND NOT EXISTS (
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
+            AND del.order_id != $1
             AND del.status IN ('assigned', 'awaiting_pickup', 'en_route', 'arrived')
         )
         ${excludedCondition}
@@ -493,6 +494,15 @@ async function processUnresponsiveAssignments(
                updated_at = NOW()
            WHERE id = $1`,
           [item.order_id]
+        );
+        // Clear driver from delivery record so driver is not perpetually blocked as 'busy'
+        await pool.query(
+          `UPDATE deliveries
+           SET driver_id = NULL,
+               status = 'awaiting_pickup',
+               updated_at = NOW()
+           WHERE order_id = $1 OR id = $2`,
+          [item.order_id, item.delivery_id || -1]
         );
         // Create a DB alert so the admin gets the Driver Availability Modal popup
         await insertDispatchAlert({

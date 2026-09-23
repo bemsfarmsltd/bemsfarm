@@ -97,11 +97,107 @@ const getActiveDeliveries = async (req, res, next) => {
     );
 
     res.json({
+      success: true,
       count: result.rows.length,
       deliveries: result.rows,
+      data: result.rows,
     });
   } catch (err) {
     console.error("Driver getActiveDeliveries error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/deliveries/available (or /deliveries/new) ─────────
+// List all new assigned or available deliveries for this driver
+const getAvailableDeliveries = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+
+    const result = await pool.query(
+      `
+      SELECT 
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.status AS delivery_status,
+        d.assigned_at,
+        d.accepted_at,
+        d.dispatched_at,
+        d.eta_minutes,
+        d.attempts,
+        COALESCE(d.delivery_address, o.address) AS delivery_address,
+        d.proof_note,
+        d.proof_photo,
+        d.proof_photos,
+        d.item_proofs,
+        d.arrived_at,
+        d.failure_reason,
+        COALESCE(d.customer_confirmed, false) AS customer_confirmed,
+        d.customer_confirmed_at,
+        (COALESCE(d.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
+        o.id AS order_id,
+        o.order_ref,
+        o.status AS order_status,
+        o.tracking_status,
+        o.total AS order_total,
+        o.subtotal,
+        o.delivery_fee,
+        o.payment_method,
+        o.payment_status,
+        o.notes AS order_notes,
+        o.created_at AS order_created_at,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        u.email AS customer_email,
+        o.delivery_city,
+        o.latitude AS customer_lat,
+        o.longitude AS customer_lng,
+        dz.zone_name,
+        (
+          SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', oi.id,
+              'product_id', oi.product_id,
+              'product_name', COALESCE(oi.product_name, p.name),
+              'quantity', oi.quantity,
+              'unit_price', oi.unit_price,
+              'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
+              'unit', COALESCE(p.unit, 'item'),
+              'image_url', p.image_url
+            )
+          )
+          FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = o.id
+        ) AS items
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      WHERE (
+        (d.driver_id = $1 AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
+        OR (d.driver_id IS NULL AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
+      )
+      AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted')
+      ORDER BY 
+        CASE 
+          WHEN d.driver_id = $1 THEN 1
+          ELSE 2
+        END,
+        d.assigned_at DESC, 
+        d.id DESC
+      `,
+      [driverId]
+    );
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      deliveries: result.rows,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("Driver getAvailableDeliveries error:", err.message);
     next(err);
   }
 };
@@ -287,7 +383,9 @@ const getDeliveryDetails = async (req, res, next) => {
     }
 
     res.json({
+      success: true,
       delivery: result.rows[0],
+      data: result.rows[0],
     });
   } catch (err) {
     console.error("Driver getDeliveryDetails error:", err.message);
@@ -723,7 +821,7 @@ const acceptDelivery = async (req, res, next) => {
       SELECT d.*, o.order_ref, o.id as actual_order_id
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      WHERE (d.order_id = $1 OR o.order_ref = $1)
+      WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
         AND d.driver_id = $2
       FOR UPDATE
       `,
@@ -817,7 +915,7 @@ const declineDelivery = async (req, res, next) => {
       SELECT d.*, o.order_ref, o.id as actual_order_id
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      WHERE (d.order_id = $1 OR o.order_ref = $1)
+      WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
         AND d.driver_id = $2
       FOR UPDATE
       `,
@@ -971,6 +1069,7 @@ const confirmPickup = async (req, res, next) => {
 
 module.exports = {
   getActiveDeliveries,
+  getAvailableDeliveries,
   getDeliveryHistory,
   getDeliveryDetails,
   updateDeliveryStatus,
