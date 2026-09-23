@@ -730,7 +730,7 @@ export default function OrdersPage() {
                   const isDelivered = order.status === "delivered";
                   const isCancelled = order.status === "cancelled";
                   const isInProgress = !isDelivered && !isCancelled;
-                  const canCancel = ["pending", "confirmed"].includes(order.status);
+                  const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(String(order.status).toLowerCase()) && !order.driver_picked_up;
 
                   return (
                     <motion.div
@@ -929,9 +929,12 @@ export default function OrdersPage() {
                                 setCancelModalOrder(order);
                                 setCancelReason("");
                               }}
-                              className="inline-flex items-center border border-red-200 hover:bg-red-50 text-red-700 text-[11px] font-bold px-3 py-2 rounded-xl transition"
+                              className="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold px-3 py-2 rounded-xl transition shadow-xs"
                             >
-                              Cancel
+                              <svg className="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              <span>Cancel</span>
                             </button>
                           )}
 

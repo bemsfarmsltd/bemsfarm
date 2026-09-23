@@ -714,10 +714,32 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       return res.status(400).json({ message: "Order is already cancelled" });
     }
 
-    if (!["pending", "confirmed"].includes(String(o.status).toLowerCase())) {
+    const nonCancellableStatuses = [
+      "in_transit",
+      "shipped",
+      "out_for_delivery",
+      "arrived",
+      "driver_arrived",
+      "delivered",
+      "completed",
+      "cancelled",
+      "returned",
+      "return_requested",
+      "return_approved",
+      "dispute",
+    ];
+
+    if (nonCancellableStatuses.includes(String(o.status).toLowerCase())) {
       await client.query("ROLLBACK");
       return res.status(400).json({
-        message: "This order can no longer be cancelled because processing or delivery has begun",
+        message: "This order can no longer be cancelled because it is already in transit or completed",
+      });
+    }
+
+    if (o.driver_picked_up) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "This order can no longer be cancelled because the courier has already picked up the goods from the store",
       });
     }
 
@@ -732,6 +754,14 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
        WHERE id=$2`,
       [effectiveReason, o.id],
     );
+
+    // Auto-resolve any active dispatch alerts for this order
+    await client.query(
+      `UPDATE dispatch_alerts 
+       SET resolved = TRUE, resolution = 'cancelled', resolved_at = NOW()
+       WHERE (order_id = $1::text OR order_id = $2::text) AND resolved = FALSE`,
+      [o.id, o.order_ref || o.id]
+    ).catch(() => {});
 
     // Cancel any associated delivery records safely with a SAVEPOINT
     try {

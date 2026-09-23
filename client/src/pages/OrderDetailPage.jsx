@@ -376,7 +376,7 @@ export default function OrderDetailPage() {
   const isInProgress = ["pending", "confirmed", "processing", "shipped", "en_route", "out_for_delivery"].includes(String(order.status).toLowerCase());
   const isCancelled = order.status === "cancelled";
   const isDelivered = order.status === "delivered";
-  const canCancel = ["pending", "confirmed"].includes(String(order.status).toLowerCase());
+  const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(String(order.status).toLowerCase()) && !order.driver_picked_up;
 
   const updatedAt = new Date(
     order.delivered_at || order.updated_at || order.updatedAt || order.created_at
