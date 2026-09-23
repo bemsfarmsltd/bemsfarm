@@ -48,16 +48,16 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       SELECT
         d.id, d.delivery_ref, d.status, d.attempts,
         d.eta_minutes, d.assigned_at, d.dispatched_at,
-        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), '14 Factory Road, Aba, Abia State') AS delivery_address,
+        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), '—') AS delivery_address,
         o.id AS order_id, o.total AS order_total, o.notes, o.source AS order_source,
         o.payment_method, o.payment_status, o.delivery_fee, o.created_at AS order_created_at,
         COALESCE(
           NULLIF(o.customer_name, ''),
           NULLIF(c.name, ''),
-          'Amara Kalu (Online Delivery)'
+          'Customer'
         ) AS customer_name,
-        COALESCE(NULLIF(o.customer_phone, ''), NULLIF(c.phone, ''), '') AS customer_phone,
-        COALESCE(NULLIF(c.email, ''), '') AS customer_email,
+        COALESCE(NULLIF(o.customer_phone, ''), NULLIF(c.phone, ''), '—') AS customer_phone,
+        COALESCE(NULLIF(c.email, ''), '—') AS customer_email,
         dr.id AS driver_id, dr.name AS driver_name,
         dr.phone AS driver_phone, dr.vehicle_plate AS driver_plate,
         dr.vehicle_type,
@@ -76,8 +76,8 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
           WHERE oi.order_id = o.id
         ) AS items
       FROM deliveries d
-      JOIN orders o ON d.order_id = o.id
-      LEFT JOIN users c ON o.customer_id = c.id
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN users c ON (c.id = o.user_id OR c.id = o.customer_id)
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
@@ -125,8 +125,8 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
         ov.overridden_by_name, ov.override_note
       FROM delivery_assignments da
       JOIN deliveries d ON da.delivery_id = d.id
-      JOIN orders o ON d.order_id = o.id
-      LEFT JOIN users c ON o.customer_id = c.id
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN users c ON (c.id = o.user_id OR c.id = o.customer_id)
       LEFT JOIN drivers dr ON da.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN (
