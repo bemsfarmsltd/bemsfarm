@@ -8,12 +8,14 @@ const { getStats, getSubscribers } = require("../controllers/adminController");
 const {
   getAllReturns,
   updateReturn,
+  setItemDisposition,
 } = require("../controllers/returnsController");
 
 router.get("/stats", protect, adminOnly, getStats);
 router.get("/subscribers", protect, adminOnly, getSubscribers);
 router.get("/returns", protect, adminOnly, getAllReturns);
 router.patch("/returns/:id", protect, adminOnly, updateReturn);
+router.post("/returns/items/:itemId/disposition", protect, adminOnly, setItemDisposition);
 
 // ── GET /api/admin/search?q= ── global topbar search across products, orders, customers, staff
 router.get("/search", protect, async (req, res, next) => {

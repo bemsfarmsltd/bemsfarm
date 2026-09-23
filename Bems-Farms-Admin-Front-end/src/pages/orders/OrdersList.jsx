@@ -9,24 +9,34 @@ import AdminOrderMap from '../../components/ui/AdminOrderMap'
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
-  paid:               { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
-  new_order:          { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
-  pending:            { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
-  confirmed:          { label: 'Confirmed',          color: '#0284c7', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
-  processing:         { label: 'Processing',         color: '#d97706', bg: '#fef3c7', icon: 'ri-loader-line'              },
-  packed:             { label: 'Packed & Ready',     color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
-  packed_ready:       { label: 'Packed & Ready',     color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
-  assigned:           { label: 'Driver Assigned',    color: '#0891b2', bg: '#cffafe', icon: 'ri-user-location-line'       },
-  driver_assigned:    { label: 'Driver Assigned',    color: '#0891b2', bg: '#cffafe', icon: 'ri-user-location-line'       },
-  shipped:            { label: 'Out for Delivery',   color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
-  out_for_delivery:   { label: 'Out for Delivery',   color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
-  delivery_attempted: { label: 'Delivery Attempted', color: '#ea580c', bg: '#ffedd5', icon: 'ri-route-line'               },
-  delivered:          { label: 'Delivered',          color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
-  completed:          { label: 'Delivered',          color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
-  dispute:            { label: 'Dispute',            color: '#dc2626', bg: '#fee2e2', icon: 'ri-alert-line'               },
-  cancelled:          { label: 'Cancelled',          color: '#4b5563', bg: '#f3f4f6', icon: 'ri-close-circle-line'        },
-  refunded:           { label: 'Refunded',           color: '#4b5563', bg: '#f3f4f6', icon: 'ri-refund-2-line'            },
-  failed:             { label: 'Failed',             color: '#dc2626', bg: '#fee2e2', icon: 'ri-close-circle-line'        },
+  paid:                         { label: 'Confirmed',                  color: '#0284c7', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
+  new_order:                    { label: 'Confirmed',                  color: '#0284c7', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
+  pending:                      { label: 'Pending Payment',            color: '#64748b', bg: '#f1f5f9', icon: 'ri-time-line'                },
+  pending_payment:              { label: 'Pending Payment',            color: '#64748b', bg: '#f1f5f9', icon: 'ri-time-line'                },
+  confirmed:                    { label: 'Confirmed',                  color: '#0284c7', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
+  packaging:                    { label: 'Packaging',                  color: '#d97706', bg: '#fef3c7', icon: 'ri-box-3-line'               },
+  processing:                   { label: 'Packaging',                  color: '#d97706', bg: '#fef3c7', icon: 'ri-box-3-line'               },
+  partially_packed:             { label: 'Partially Packed',           color: '#d97706', bg: '#fef3c7', icon: 'ri-loader-4-line'            },
+  packaging_exception:          { label: 'Packaging Exception',        color: '#dc2626', bg: '#fee2e2', icon: 'ri-error-warning-line'       },
+  packed:                       { label: 'Packed & Ready',             color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
+  packed_ready:                 { label: 'Packed & Ready',             color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
+  awaiting_driver_confirmation: { label: 'Awaiting Driver',            color: '#e11d48', bg: '#ffe4e6', icon: 'ri-user-search-line'         },
+  assigned:                     { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  driver_assigned:              { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  in_transit:                   { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  shipped:                      { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  out_for_delivery:             { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  delivery_attempted:           { label: 'Delivery Exception',         color: '#ea580c', bg: '#ffedd5', icon: 'ri-route-line'               },
+  delivery_exception:           { label: 'Delivery Exception',         color: '#ea580c', bg: '#ffedd5', icon: 'ri-alert-line'               },
+  customer_unreachable:         { label: 'Customer Unreachable',       color: '#ea580c', bg: '#ffedd5', icon: 'ri-phone-missed-line'        },
+  delivered:                    { label: 'Delivered',                  color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
+  completed:                    { label: 'Delivered',                  color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
+  return_requested:             { label: 'Return Requested',           color: '#ea580c', bg: '#ffedd5', icon: 'ri-arrow-go-back-line'        },
+  return_approved:              { label: 'Return Approved',            color: '#0284c7', bg: '#e0f2fe', icon: 'ri-check-line'               },
+  dispute:                      { label: 'Dispute',                    color: '#dc2626', bg: '#fee2e2', icon: 'ri-alert-line'               },
+  cancelled:                    { label: 'Cancelled',                  color: '#4b5563', bg: '#f3f4f6', icon: 'ri-close-circle-line'        },
+  refunded:                     { label: 'Refunded',                   color: '#4b5563', bg: '#f3f4f6', icon: 'ri-refund-2-line'            },
+  failed:                       { label: 'Failed',                     color: '#dc2626', bg: '#fee2e2', icon: 'ri-close-circle-line'        },
 }
 
 const DEFAULT_STATUS_CFG = { label: 'Order Placed', color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-shopping-bag-3-line' }
@@ -51,15 +61,15 @@ const getChannelCfg = (channel) => (channel && CHANNEL_CFG[String(channel).toLow
 // Distinct status tabs (prevents duplicate labels)
 const ORDER_STATUS_TABS = [
   { key: 'all',                label: 'All Orders' },
-  { key: 'paid',               label: 'New Orders',         statuses: ['paid', 'new_order', 'pending'] },
-  { key: 'confirmed',          label: 'Confirmed',          statuses: ['confirmed'] },
-  { key: 'processing',         label: 'Processing',         statuses: ['processing'] },
+  { key: 'pending',            label: 'Pending Payment',    statuses: ['pending', 'pending_payment'] },
+  { key: 'confirmed',          label: 'Confirmed',          statuses: ['confirmed', 'paid', 'new_order'] },
+  { key: 'packaging',          label: 'Packaging',          statuses: ['packaging', 'processing', 'partially_packed', 'packaging_exception'] },
   { key: 'packed',             label: 'Packed & Ready',     statuses: ['packed', 'packed_ready'] },
-  { key: 'assigned',           label: 'Driver Assigned',    statuses: ['assigned', 'driver_assigned'] },
-  { key: 'shipped',            label: 'Out for Delivery',   statuses: ['shipped', 'out_for_delivery'] },
-  { key: 'delivery_attempted', label: 'Delivery Attempted', statuses: ['delivery_attempted'] },
+  { key: 'awaiting_driver',    label: 'Awaiting Driver',    statuses: ['awaiting_driver_confirmation'] },
+  { key: 'in_transit',         label: 'In Transit',         statuses: ['in_transit', 'assigned', 'driver_assigned', 'shipped', 'out_for_delivery'] },
+  { key: 'delivery_exception', label: 'Delivery Exception', statuses: ['delivery_exception', 'customer_unreachable', 'delivery_attempted'] },
   { key: 'delivered',          label: 'Delivered',          statuses: ['delivered', 'completed'] },
-  { key: 'dispute',            label: 'Disputes',           statuses: ['dispute'] },
+  { key: 'returns',            label: 'Returns',            statuses: ['return_requested', 'return_approved'] },
   { key: 'cancelled',          label: 'Cancelled',          statuses: ['cancelled', 'refunded', 'failed'] },
 ]
 
@@ -461,6 +471,27 @@ export default function OrdersList() {
       fetchOrders()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to assign driver')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleAdminDeliveryOverride = async (order) => {
+    const target = order || selected
+    if (!target) return
+    const reason = window.prompt(
+      `Authorized Delivery Override (Section 41)\n` +
+      `Enter operational reason to confirm delivery on behalf of customer for Order #${target.order_ref || target.id}:`
+    )
+    if (!reason || !reason.trim()) return
+    setActionLoading(true)
+    try {
+      await api.post(`/admin/orders/${target.id}/override-delivery`, { reason: reason.trim() })
+      toast.success(`Order #${target.order_ref || target.id} marked as DELIVERED via override.`)
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to apply delivery override')
     } finally {
       setActionLoading(false)
     }
@@ -1020,7 +1051,7 @@ export default function OrdersList() {
                             <i className="ri-user-add-line" />
                           </button>
                         )}
-                        {Boolean(order.driver || ['assigned', 'driver_assigned'].includes(order.status)) && (
+                        {Boolean(order.driver || ['assigned', 'driver_assigned', 'in_transit', 'shipped', 'out_for_delivery'].includes(order.status)) && (
                           <>
                             <button
                               className="btn btn-sm btn-outline-warning"
@@ -1037,6 +1068,24 @@ export default function OrdersList() {
                               <i className="ri-user-unfollow-line" />
                             </button>
                           </>
+                        )}
+                        {['in_transit', 'assigned', 'driver_assigned', 'shipped', 'out_for_delivery', 'delivery_attempted', 'delivery_exception'].includes(order.status) && (
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="Override Delivery (Section 41)"
+                            onClick={() => handleAdminDeliveryOverride(order)}
+                          >
+                            <i className="ri-shield-check-line" />
+                          </button>
+                        )}
+                        {order.status === 'awaiting_driver_confirmation' && (
+                          <button
+                            className="btn btn-sm btn-danger fw-bold px-2"
+                            title="Driver Availability Modal (Section 28)"
+                            onClick={() => openModal('assign', order, { assignType: 'manual_reassign' })}
+                          >
+                            <i className="ri-user-search-line me-1" />Assign Driver
+                          </button>
                         )}
                         {order.status === 'dispute' && (
                           <button

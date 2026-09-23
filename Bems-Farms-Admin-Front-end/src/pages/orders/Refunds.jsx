@@ -291,13 +291,26 @@ export default function Refunds() {
   async function saveInspection() {
     try {
       setSubmitting(true)
+      // Call authoritative item disposition API (Section 49-51 of spec)
+      if (selected?.id) {
+        try {
+          const disp = procForm.condition === 'resalable' ? 'return_to_stock' : 'dispose'
+          await api.post(`/admin/returns/items/${selected.id}/disposition`, {
+            disposition: disp,
+            notes: procForm.inspectionNotes || undefined,
+          })
+        } catch (dispErr) {
+          console.warn('Disposition API notice:', dispErr)
+        }
+      }
+
       await api.patch(`/admin/orders/returns/${selected.id}/status`, {
         status: 'inspecting',
         description: procForm.inspectionNotes || undefined,
         refund_amount: Number(procForm.refundAmount || 0),
         refund_method: procForm.refundMethod,
       })
-      toast.success('Inspection notes saved')
+      toast.success('Inspection notes and stock disposition saved')
       setProcessTab('refund')
       fetchReturns()
     } catch (err) {
@@ -318,6 +331,18 @@ export default function Refunds() {
       }
       const newStatus = statusMap[decision] || decision
       const finalAmount = decision === 'reject' ? 0 : Number(procForm.refundAmount || 0)
+
+      if ((decision === 'approve' || decision === 'refunded') && selected?.id) {
+        try {
+          const disp = procForm.condition === 'resalable' ? 'return_to_stock' : 'dispose'
+          await api.post(`/admin/returns/items/${selected.id}/disposition`, {
+            disposition: disp,
+            notes: procForm.inspectionNotes || undefined,
+          })
+        } catch (dispErr) {
+          console.warn('Disposition API notice on refund decision:', dispErr)
+        }
+      }
 
       await api.patch(`/admin/orders/returns/${selected.id}/status`, {
         status: newStatus,

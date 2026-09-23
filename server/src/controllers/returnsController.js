@@ -1,5 +1,6 @@
 const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
+const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
 
 // Ensure return_items table exists (runs once on first call, safe to repeat)
 async function ensureReturnItemsTable(client) {
@@ -116,6 +117,22 @@ const submitReturn = async (req, res, next) => {
       );
     }
 
+    await client.query(
+      `UPDATE orders SET status = 'return_requested', tracking_status = 'return_requested', updated_at = NOW() WHERE id = $1`,
+      [order_id]
+    );
+
+    await logOrderAudit(client, {
+      order_id: order_id,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: 'customer',
+      action: 'return_requested',
+      previous_state: 'delivered',
+      new_state: 'return_requested',
+      metadata: { return_id: returnId, reason, items_count: items.length }
+    });
+
     await client.query("COMMIT");
     res.status(201).json({
       message:  "Return request submitted! We'll review within 24 hours.",
@@ -198,21 +215,208 @@ const getAllReturns = async (req, res, next) => {
 const RETURN_STATUSES = ["pending", "approved", "rejected", "resolved"];
 
 const updateReturn = async (req, res, next) => {
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
     const { id } = req.params;
     const { status, resolution } = req.body;
     if (status && !RETURN_STATUSES.includes(status)) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: `status must be one of: ${RETURN_STATUSES.join(", ")}` });
     }
-    const result = await pool.query(
-      "UPDATE returns SET status=COALESCE($1,status), resolution=$2, resolved_at=NOW() WHERE id=$3 RETURNING id",
+
+    const retRes = await client.query(
+      "SELECT * FROM returns WHERE id=$1 FOR UPDATE",
+      [id]
+    );
+    if (!retRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Return not found" });
+    }
+
+    const returnRow = retRes.rows[0];
+
+    await client.query(
+      "UPDATE returns SET status=COALESCE($1,status), resolution=$2, resolved_at=NOW() WHERE id=$3",
       [status || null, resolution, id]
     );
-    if (!result.rows.length) return res.status(404).json({ message: "Return not found" });
-    res.json({ message: "Return updated" });
+
+    if (status === "approved") {
+      // Section 45: Transition to RETURN_APPROVED (DO NOT restock inventory automatically!)
+      await client.query(
+        "UPDATE orders SET status = 'return_approved', tracking_status = 'return_approved', updated_at = NOW() WHERE id = $1",
+        [returnRow.order_id]
+      );
+      await logOrderAudit(client, {
+        order_id: returnRow.order_id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role || 'admin',
+        action: 'return_approved',
+        previous_state: 'return_requested',
+        new_state: 'return_approved',
+        metadata: { return_id: id, resolution }
+      });
+    } else if (status === "rejected") {
+      // Section 44: Return rejected, record reason, no inventory modification
+      await client.query(
+        "UPDATE orders SET status = 'delivered', tracking_status = 'delivered', updated_at = NOW() WHERE id = $1",
+        [returnRow.order_id]
+      );
+      await logOrderAudit(client, {
+        order_id: returnRow.order_id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role || 'admin',
+        action: 'return_rejected',
+        previous_state: 'return_requested',
+        new_state: 'delivered',
+        metadata: { return_id: id, reason: resolution }
+      });
+    }
+
+    await client.query("COMMIT");
+    res.json({ message: `Return ${status || 'updated'}` });
   } catch (err) {
+    await client.query("ROLLBACK");
     next(err);
+  } finally {
+    client.release();
   }
 };
 
-module.exports = { submitReturn, getUserReturns, getAllReturns, updateReturn };
+// ── POST /api/admin/returns/items/:itemId/disposition ───────────────────────
+// Section 49-51: Admin inventory disposition decision for returned items: RETURN TO STOCK vs DISPOSE
+const setItemDisposition = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { itemId } = req.params;
+    const { disposition, notes } = req.body;
+
+    if (!["return_to_stock", "dispose"].includes(disposition)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "disposition must be either 'return_to_stock' or 'dispose'" });
+    }
+
+    const itemRes = await client.query(
+      `SELECT ri.*, r.order_id, r.status as return_status
+       FROM return_items ri
+       JOIN returns r ON ri.return_id = r.id
+       WHERE ri.id = $1
+       FOR UPDATE OF ri`,
+      [itemId]
+    );
+
+    if (!itemRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Return item not found" });
+    }
+
+    const item = itemRes.rows[0];
+
+    if (item.disposition && item.disposition !== 'pending') {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `This item has already been actioned as '${item.disposition}'. Duplicate disposition prohibited.`
+      });
+    }
+
+    const qty = parseInt(item.returned_quantity, 10);
+
+    if (disposition === "return_to_stock") {
+      // Section 50: Product is acceptable for resale -> add approved quantity back into inventory
+      const prodRes = await client.query(
+        "SELECT stock, stock_quantity, name FROM products WHERE id = $1 FOR UPDATE",
+        [item.product_id]
+      );
+      if (!prodRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const prevStock = prodRes.rows[0].stock ?? 0;
+      const newStock = prevStock + qty;
+
+      await client.query(
+        `UPDATE products
+         SET stock = stock + $1,
+             stock_quantity = stock_quantity + $1,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [qty, item.product_id]
+      );
+
+      // Record inventory transaction
+      await logInventoryTransaction(client, {
+        order_id: item.order_id,
+        product_id: item.product_id,
+        quantity: qty,
+        previous_quantity: prevStock,
+        new_quantity: newStock,
+        pos_operator_id: req.user.id,
+        transaction_type: 'return_to_stock',
+        source_reference: `RET-${item.return_id}-ITEM-${item.id}`,
+        notes: notes || "Returned produce inspected and restocked"
+      });
+    } else if (disposition === "dispose") {
+      // Section 51: Product cannot be resold -> do NOT return to available inventory, write disposal record
+      const prodRes = await client.query(
+        "SELECT stock, stock_quantity, name FROM products WHERE id = $1",
+        [item.product_id]
+      );
+      const curStock = prodRes.rows[0]?.stock ?? 0;
+
+      await logInventoryTransaction(client, {
+        order_id: item.order_id,
+        product_id: item.product_id,
+        quantity: qty,
+        previous_quantity: curStock,
+        new_quantity: curStock,
+        pos_operator_id: req.user.id,
+        transaction_type: 'disposal',
+        source_reference: `DISPOSE-RET-${item.return_id}`,
+        notes: notes || "Returned produce condemned/disposed (damaged or expired)"
+      });
+    }
+
+    await client.query(
+      `UPDATE return_items
+       SET disposition = $1,
+           disposed_by = $2,
+           disposed_at = NOW(),
+           disposition_notes = $3
+       WHERE id = $4`,
+      [disposition, req.user.id, notes || null, item.id]
+    );
+
+    await logOrderAudit(client, {
+      order_id: item.order_id,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: req.user.role || 'admin',
+      action: `return_item_${disposition}`,
+      previous_state: 'return_approved',
+      new_state: disposition,
+      metadata: { item_id: item.id, product_id: item.product_id, quantity: qty, disposition, notes }
+    });
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: disposition === "return_to_stock"
+        ? `Successfully restocked ${qty} units of "${item.product_name || 'item'}" to active inventory.`
+        : `Disposal recorded for ${qty} units of "${item.product_name || 'item'}". Item was NOT returned to inventory.`,
+      disposition,
+      item_id: item.id
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+module.exports = { submitReturn, getUserReturns, getAllReturns, updateReturn, setItemDisposition };

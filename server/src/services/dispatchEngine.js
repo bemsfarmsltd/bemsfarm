@@ -140,20 +140,31 @@ async function autoAssignClosestDriver(
     );
 
     if (driversRes.rows.length === 0) {
-      await client.query("ROLLBACK");
-      // Only create dispatch alert if order is already packed and awaiting collection!
-      if (order.status === 'packed_ready') {
+      // Sections 26 & 27: No driver available / No driver accepts -> Status AWAITING_DRIVER_CONFIRMATION
+      if (['packed', 'packed_ready', 'awaiting_driver_confirmation'].includes(order.status)) {
+        await client.query(
+          `UPDATE orders
+           SET status = 'awaiting_driver_confirmation',
+               tracking_status = 'awaiting_driver_confirmation',
+               driver_id = NULL,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [order.id]
+        );
+
         await insertDispatchAlert({
           order_id: order.id,
           order_ref: order.order_ref,
           delivery_id: order.delivery_id,
-          message: `No available driver found for order #${order.order_ref || order.id}. Please assign a driver manually or wait for couriers to come online.`,
+          message: `No available driver found for order #${order.order_ref || order.id}. Action required in Driver Availability Modal.`,
         }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
       }
 
+      await client.query("COMMIT");
       return {
         success: false,
-        message: "No available online drivers found at this moment",
+        status: "awaiting_driver_confirmation",
+        message: "No available online drivers found at this moment. Order placed in AWAITING_DRIVER_CONFIRMATION.",
       };
     }
 
@@ -439,16 +450,25 @@ async function processUnresponsiveAssignments(
         });
       } else {
         console.warn(
-          `⚠️ No available driver for order #${item.order_ref || item.order_id} — creating admin alert.`
+          `⚠️ No available driver for order #${item.order_ref || item.order_id} — moving to AWAITING_DRIVER_CONFIRMATION.`
         );
-        // Create a DB alert so the admin gets a popup notification
+        await pool.query(
+          `UPDATE orders
+           SET status = 'awaiting_driver_confirmation',
+               tracking_status = 'awaiting_driver_confirmation',
+               driver_id = NULL,
+               updated_at = NOW()
+           WHERE id = $1`,
+          [item.order_id]
+        );
+        // Create a DB alert so the admin gets the Driver Availability Modal popup
         await insertDispatchAlert({
           order_id: item.order_id,
           order_ref: item.order_ref,
           delivery_id: item.delivery_id,
           last_driver_id: item.driver_id,
           last_driver_name: item.driver_name,
-          message: `No available driver found for order #${item.order_ref || item.order_id} after ${timeoutMinutes} minutes. Last assigned driver: ${item.driver_name || item.driver_id}. Please keep or unassign the driver manually.`,
+          message: `No available driver found for order #${item.order_ref || item.order_id} after ${timeoutMinutes} minutes. Order placed in Awaiting Driver Confirmation. Action required in Driver Availability Modal.`,
         });
         reassignments.push({
           order_id: item.order_id,

@@ -4,6 +4,7 @@ const pool = require("../db/pool");
 const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail } = require("../services/emailService");
 const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
 const { restoreOrderStock } = require("../utils/orderStock");
+const { logOrderAudit } = require("../utils/workflowAudit");
 const crypto = require("crypto");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -307,8 +308,19 @@ router.post(
           const orderTotal = parseFloat(linkedOrder.total) || 0;
           if (Math.abs(amount - orderTotal) > 0.01) {
             console.warn(
-              `⚠️ Amount mismatch for order ${orderId}: paid ₦${amount} vs order total ₦${orderTotal}. Not auto-confirming — flagged for manual review.`
+              `⚠️ Amount mismatch for order ${orderId}: paid ₦${amount} vs order total ₦${orderTotal}. Flagged as PAYMENT_VERIFICATION_PENDING.`
             );
+            await pool.query(
+              "UPDATE orders SET status = 'payment_verification_pending', updated_at = NOW() WHERE id = $1",
+              [orderId]
+            );
+            await logOrderAudit(pool, {
+              order_id: orderId,
+              action: 'payment_verification_failed',
+              previous_state: linkedOrder.status,
+              new_state: 'payment_verification_pending',
+              metadata: { paid_amount: amount, expected_amount: orderTotal, payment_ref: reference }
+            });
             await pool.query(
               `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status, error_message)
                VALUES ($1, $2, $3, true, 'error', $4)`,
@@ -316,16 +328,24 @@ router.post(
             );
             return res.status(200).json({
               success: false,
-              message: "Amount mismatch — order not auto-confirmed, flagged for manual review",
+              message: "Amount mismatch — order set to payment_verification_pending, flagged for manual review",
             });
           }
 
-          // Reconcile order as 'confirmed'
+          // Section 4: Transition to CONFIRMED (DO NOT deduct inventory)
           await pool.query(
             "UPDATE orders SET status = 'confirmed', payment_method = $1, payment_ref = $2, updated_at = NOW() WHERE id = $3",
             [paymentMethod || "transfer", reference, orderId]
           );
-          console.log(`✅ Order ${orderId} successfully reconciled automatically with payment ref ${reference}`);
+          console.log(`✅ Order ${orderId} successfully reconciled as CONFIRMED with payment ref ${reference}`);
+
+          await logOrderAudit(pool, {
+            order_id: orderId,
+            action: 'payment_confirmed',
+            previous_state: linkedOrder.status,
+            new_state: 'confirmed',
+            metadata: { payment_ref: reference, amount, payment_method: paymentMethod }
+          });
 
           // Fetch system user for ledger attribution
           let systemUserId = null;
@@ -346,6 +366,21 @@ router.post(
         } else {
           console.log(`⚠️ Payment ref ${reference} received but no matching order ID was found in DB metadata.`);
         }
+      } else if (status === "failed") {
+        // Section 5: PAYMENT_FAILED
+        if (orderId) {
+          await pool.query(
+            "UPDATE orders SET status = 'payment_failed', updated_at = NOW() WHERE id = $1",
+            [orderId]
+          );
+          await logOrderAudit(pool, {
+            order_id: orderId,
+            action: 'payment_failed',
+            previous_state: linkedOrder?.status,
+            new_state: 'payment_failed',
+            metadata: { payment_ref: reference, error: eventData?.message || 'Payment provider reported failure' }
+          });
+        }
       } else if (status === "reversed") {
         if (orderId) {
           const prevOrder = await pool.query("SELECT status FROM orders WHERE id = $1", [orderId]);
@@ -361,9 +396,7 @@ router.post(
             "UPDATE income SET status = 'reversed' WHERE order_id = $1",
             [String(orderId)]
           );
-          // Restore stock deducted at order creation — same as every other
-          // order-cancellation path. Guard against a duplicate webhook
-          // delivery double-restoring stock for an order already cancelled.
+          // Restore stock only if deducted at POS
           if (!alreadyCancelled) {
             await restoreOrderStock(pool, orderId);
           }

@@ -24,5 +24,6 @@ npm-debug.log*
 .claude/worktrees/
 # Local API docs and PDFs
 *.pdf
+*.zip
 CLIENT_API_SPECIFICATION.md
 scripts/generate_pdf.js

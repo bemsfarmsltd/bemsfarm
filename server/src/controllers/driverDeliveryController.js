@@ -1,5 +1,7 @@
 const pool = require("../db/pool");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
+const { logOrderAudit } = require("../utils/workflowAudit");
+const { autoAssignClosestDriver } = require("../services/dispatchEngine");
 
 // Normalize driver status string input
 function normalizeStatus(status) {
@@ -687,7 +689,14 @@ const acceptDelivery = async (req, res, next) => {
     );
 
     await client.query(
-      `UPDATE orders SET status = 'driver_assigned', tracking_status = 'driver_assigned', driver_id = $2, updated_at = NOW() WHERE id = $1`,
+      `UPDATE orders 
+       SET status = 'in_transit',
+           tracking_status = 'in_transit',
+           driver_id = $2,
+           driver_accepted_at = NOW(),
+           driver_response = 'accepted',
+           updated_at = NOW() 
+       WHERE id = $1`,
       [delivery.actual_order_id, driverId]
     );
 
@@ -700,6 +709,17 @@ const acceptDelivery = async (req, res, next) => {
       `,
       [delivery.id, driverId]
     );
+
+    await logOrderAudit(client, {
+      order_id: delivery.actual_order_id,
+      actor_id: driverId,
+      actor_name: req.driver.name,
+      actor_role: 'driver',
+      action: 'driver_accepted_delivery',
+      previous_state: 'packed',
+      new_state: 'in_transit',
+      metadata: { delivery_id: delivery.id }
+    });
 
     await client.query("COMMIT");
 
@@ -777,6 +797,13 @@ const declineDelivery = async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    // Section 23: Re-dispatch to next eligible driver immediately, excluding this driver
+    try {
+      autoAssignClosestDriver(delivery.actual_order_id, undefined, [driverId]).catch(e =>
+        console.warn(`[declineDelivery] Immediate next-driver dispatch warning:`, e.message)
+      );
+    } catch (e) {}
 
     res.json({
       status: "success",

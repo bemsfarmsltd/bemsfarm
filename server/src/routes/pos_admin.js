@@ -40,6 +40,8 @@ const validate = require("../middleware/validate");
 const posSchemas = require("../schemas/posSchemas");
 const { notifyAdmin } = require("../services/notificationService");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
+const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
+const { autoAssignClosestDriver } = require("../services/dispatchEngine");
 
 router.use(protect);
 
@@ -1374,6 +1376,333 @@ router.get("/analytics", requireRole("superadmin", "manager", "admin", "cashier"
     });
   } catch (err) {
     next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// POS ONLINE ORDER PACKING & INVENTORY DEDUCTION (Sections 11 - 17)
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── GET /api/admin/pos/packing/:orderId ──────────────────────────────────────
+// Returns item-by-item packing progress for an order
+router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+
+    const orderRes = await pool.query(
+      `SELECT o.id, o.order_ref, o.status, o.tracking_status, o.customer_name, o.customer_phone,
+              o.address, o.invoice_printed, o.invoice_number, o.packed_at, o.packed_by
+       FROM orders o
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))`,
+      [orderId]
+    );
+
+    if (!orderRes.rows.length) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    const itemsRes = await pool.query(
+      `SELECT oi.id, oi.product_id, COALESCE(oi.product_name, p.name) as product_name,
+              oi.quantity as ordered_quantity,
+              COALESCE(oi.scanned_quantity, 0) as scanned_quantity,
+              GREATEST(0, oi.quantity - COALESCE(oi.scanned_quantity, 0)) as remaining_quantity,
+              p.barcode, p.sku, p.image_url, COALESCE(p.stock, p.stock_quantity, 0) as current_stock,
+              (COALESCE(oi.scanned_quantity, 0) >= oi.quantity) as is_completed
+       FROM order_items oi
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id ASC`,
+      [order.id]
+    );
+
+    const totalOrdered = itemsRes.rows.reduce((sum, r) => sum + parseInt(r.ordered_quantity, 10), 0);
+    const totalScanned = itemsRes.rows.reduce((sum, r) => sum + parseInt(r.scanned_quantity, 10), 0);
+    const allCompleted = itemsRes.rows.length > 0 && itemsRes.rows.every(r => r.is_completed);
+
+    res.json({
+      order: {
+        id: order.id,
+        order_ref: order.order_ref,
+        status: order.status,
+        tracking_status: order.tracking_status,
+        customer_name: order.customer_name,
+        invoice_printed: order.invoice_printed,
+        invoice_number: order.invoice_number,
+        total_ordered: totalOrdered,
+        total_scanned: totalScanned,
+        is_all_packed: allCompleted,
+      },
+      items: itemsRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/pos/pack-scan ───────────────────────────────────────────
+// Scans a single physical item barcode at POS, validates, deducts inventory, and updates packing progress
+router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { order_id, barcode, quantity = 1, terminal_id = "POS-MAIN" } = req.body;
+    const scanQty = Math.max(1, parseInt(quantity, 10) || 1);
+
+    if (!order_id || !barcode) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Order ID and barcode are required for packing scan" });
+    }
+
+    // 1. Fetch Order with lock
+    const orderRes = await client.query(
+      `SELECT o.id, o.order_ref, o.status, o.tracking_status
+       FROM orders o
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+       FOR UPDATE OF o`,
+      [order_id]
+    );
+
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    // Must be in packaging or partially_packed (or processing)
+    const allowedPackingStatuses = ["packaging", "partially_packed", "processing", "confirmed"];
+    if (!allowedPackingStatuses.includes(order.status)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `Order #${order.order_ref || order.id} is in status '${order.status}' and cannot be packed at POS.`
+      });
+    }
+
+    // 2. Identify Product by barcode (or SKU/ID)
+    const cleanCode = String(barcode).trim();
+    const productRes = await client.query(
+      `SELECT p.id, p.name, p.barcode, p.sku, p.stock, p.stock_quantity
+       FROM products p
+       WHERE p.barcode = $1 OR p.sku = $1 OR p.id::text = $1
+       LIMIT 1
+       FOR UPDATE`,
+      [cleanCode]
+    );
+
+    if (!productRes.rows.length) {
+      await client.query("ROLLBACK");
+      // Section 14: Wrong item scanned -> reject immediately
+      return res.status(400).json({
+        success: false,
+        error_type: "WRONG_ITEM",
+        message: `Scanned code "${cleanCode}" does not match any catalog product.`
+      });
+    }
+
+    const product = productRes.rows[0];
+
+    // 3. Verify Product belongs to this order
+    const itemRes = await client.query(
+      `SELECT oi.id, oi.product_id, oi.quantity, COALESCE(oi.scanned_quantity, 0) as scanned_quantity
+       FROM order_items oi
+       WHERE oi.order_id = $1 AND oi.product_id = $2
+       LIMIT 1
+       FOR UPDATE`,
+      [order.id, product.id]
+    );
+
+    if (!itemRes.rows.length) {
+      await client.query("ROLLBACK");
+      // Section 14: Item does not belong to this order
+      return res.status(400).json({
+        success: false,
+        error_type: "WRONG_ITEM",
+        message: `Product "${product.name}" (${cleanCode}) is not part of Order #${order.order_ref || order.id}.`
+      });
+    }
+
+    const orderItem = itemRes.rows[0];
+    const orderedQty = parseInt(orderItem.quantity, 10);
+    const prevScannedQty = parseInt(orderItem.scanned_quantity, 10);
+
+    // 4. Duplicate scan protection (Section 13)
+    if (prevScannedQty >= orderedQty) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        error_type: "DUPLICATE_SCAN",
+        message: `Required quantity (${orderedQty}) for "${product.name}" has already been completely packed. Duplicate scan rejected.`
+      });
+    }
+
+    if (prevScannedQty + scanQty > orderedQty) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        success: false,
+        error_type: "OVER_SCAN",
+        message: `Scanning ${scanQty} exceeds required remaining quantity (${orderedQty - prevScannedQty}) for "${product.name}".`
+      });
+    }
+
+    // 5. Check physical stock availability (Section 15)
+    const currentStock = parseInt(product.stock ?? product.stock_quantity ?? 0, 10);
+    if (currentStock < scanQty) {
+      // Prevent negative stock, set PACKAGING_EXCEPTION
+      await client.query(
+        `UPDATE orders
+         SET status = 'packaging_exception',
+             tracking_status = 'packaging_exception',
+             notes = COALESCE(notes || ' | ', '') || $1,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [`Insufficient stock at POS for ${product.name} (Available: ${currentStock}, Required: ${scanQty})`, order.id]
+      );
+
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role,
+        action: 'packaging_exception',
+        previous_state: order.status,
+        new_state: 'packaging_exception',
+        metadata: { product_id: product.id, product_name: product.name, available_stock: currentStock, required: scanQty }
+      });
+
+      await client.query("COMMIT");
+
+      return res.status(400).json({
+        success: false,
+        error_type: "INSUFFICIENT_STOCK",
+        order_status: "packaging_exception",
+        message: `Available inventory (${currentStock}) is insufficient for "${product.name}". Order moved to PACKAGING_EXCEPTION.`
+      });
+    }
+
+    // 6. Mandatory Rule (Section 12): Deduct stock AT POS PACKING
+    const newStock = currentStock - scanQty;
+    await client.query(
+      `UPDATE products
+       SET stock = $1,
+           stock_quantity = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [newStock, product.id]
+    );
+
+    // Record inventory transaction audit
+    await logInventoryTransaction(client, {
+      order_id: order.id,
+      product_id: product.id,
+      quantity: scanQty,
+      previous_quantity: currentStock,
+      new_quantity: newStock,
+      pos_terminal: terminal_id,
+      pos_operator_id: req.user.id,
+      transaction_type: 'pos_packaging_stockout',
+      source_reference: `POS-PACK-${order.id}`,
+      notes: `Physical item packed for order #${order.order_ref || order.id}`
+    });
+
+    // Record scan entry in order_item_scans
+    await client.query(
+      `INSERT INTO order_item_scans 
+       (order_id, order_item_id, product_id, scanned_barcode, scanned_quantity, operator_id, terminal_id, scanned_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+      [order.id, orderItem.id, product.id, cleanCode, scanQty, req.user.id, terminal_id]
+    );
+
+    // Update scanned quantity on order_item
+    const updatedScannedQty = prevScannedQty + scanQty;
+    await client.query(
+      `UPDATE order_items
+       SET scanned_quantity = $1
+       WHERE id = $2`,
+      [updatedScannedQty, orderItem.id]
+    );
+
+    // 7. Verify overall order completeness (Sections 16 & 17)
+    const checkAllItems = await client.query(
+      `SELECT oi.id, oi.quantity, oi.scanned_quantity
+       FROM order_items oi
+       WHERE oi.order_id = $1`,
+      [order.id]
+    );
+
+    const isFullyPacked = checkAllItems.rows.every(r => parseInt(r.scanned_quantity, 10) >= parseInt(r.quantity, 10));
+
+    let nextOrderStatus = "partially_packed";
+    if (isFullyPacked) {
+      nextOrderStatus = "packed";
+      await client.query(
+        `UPDATE orders
+         SET status = 'packed',
+             tracking_status = 'packed_ready',
+             packed_at = NOW(),
+             packed_by = $2,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.id, req.user.id]
+      );
+
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role,
+        action: 'order_packed',
+        previous_state: order.status,
+        new_state: 'packed',
+        metadata: { packed_by: req.user.name, terminal_id }
+      });
+    } else {
+      await client.query(
+        `UPDATE orders
+         SET status = 'partially_packed',
+             tracking_status = 'processing',
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.id]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    // 8. Auto-dispatch gate: Trigger driver assignment ONLY when order becomes PACKED (Section 20)
+    let dispatchResult = null;
+    if (isFullyPacked) {
+      try {
+        console.log(`📦 Order #${order.id} 100% packed at POS. Initiating auto-dispatch...`);
+        dispatchResult = await autoAssignClosestDriver(order.id);
+      } catch (dispErr) {
+        console.warn(`[dispatchEngine] Non-fatal auto-dispatch error on pack completion:`, dispErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: isFullyPacked
+        ? `"${product.name}" scanned. Order #${order.order_ref || order.id} is 100% PACKED! Queued for courier dispatch.`
+        : `"${product.name}" scanned successfully (${updatedScannedQty}/${orderedQty}).`,
+      product: {
+        id: product.id,
+        name: product.name,
+        scanned_quantity: updatedScannedQty,
+        ordered_quantity: orderedQty,
+        remaining_quantity: orderedQty - updatedScannedQty,
+        is_completed: updatedScannedQty >= orderedQty
+      },
+      order_status: nextOrderStatus,
+      is_order_packed: isFullyPacked,
+      dispatch: dispatchResult
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
   }
 });
 

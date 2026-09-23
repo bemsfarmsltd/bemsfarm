@@ -6,20 +6,35 @@ import ThermalReceipt, { printThermalReceipt } from '../../components/ui/Thermal
 import { useAuth } from '../../context/AuthContext'
 
 const STATUS_COLOR = {
-  paid: 'info',
-  new_order: 'info',
+  pending_payment: 'warning',
+  payment_failed: 'danger',
+  payment_cancelled: 'secondary',
+  payment_verification_pending: 'warning',
+  paid: 'primary',
+  new_order: 'primary',
   pending: 'warning',
   confirmed: 'primary',
+  packaging: 'warning',
   processing: 'warning',
+  partially_packed: 'warning',
+  packaging_exception: 'danger',
   packed: 'info',
   packed_ready: 'info',
+  awaiting_driver_confirmation: 'danger',
   assigned: 'info',
   driver_assigned: 'info',
+  in_transit: 'primary',
   shipped: 'primary',
   out_for_delivery: 'primary',
+  arrived: 'info',
   delivery_attempted: 'warning',
+  delivery_exception: 'danger',
+  customer_unreachable: 'warning',
   delivered: 'success',
   completed: 'success',
+  return_requested: 'warning',
+  return_approved: 'info',
+  return_rejected: 'secondary',
   cancelled: 'danger',
   dispute: 'danger',
 }
@@ -105,6 +120,22 @@ export default function OrderDetail() {
     setPrintModalType(null)
   }
 
+  const handleAdminDeliveryOverride = async () => {
+    if (!order) return
+    const reason = window.prompt('Enter reason for administrative delivery override (required for audit):')
+    if (!reason || !reason.trim()) return
+    setUpdating(true)
+    try {
+      await api.post(`/admin/orders/${id}/override-delivery`, { reason: reason.trim() })
+      toast.success('Order marked as Delivered via authorized administrative override.')
+      fetchOrder()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delivery override failed.')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="container-fluid py-5 text-center">
@@ -158,6 +189,18 @@ export default function OrderDetail() {
           <span className={`badge bg-${color}-subtle text-${color} px-3 py-2 text-uppercase fs-xs`}>
             {order.status}
           </span>
+
+          {['in_transit', 'shipped', 'out_for_delivery', 'delivery_attempted', 'delivery_exception', 'customer_unreachable'].includes(statusKey) && (
+            <button
+              className="btn btn-warning btn-sm fw-bold d-inline-flex align-items-center gap-1 shadow-sm"
+              onClick={handleAdminDeliveryOverride}
+              disabled={updating}
+              title="Audited Administrative Override to mark Order as Delivered"
+            >
+              <i className="ri-shield-check-line" />
+              <span>Override Delivery</span>
+            </button>
+          )}
 
           {isInvoicePrinted ? (
             <>
@@ -231,6 +274,73 @@ export default function OrderDetail() {
           >
             <i className="ri-printer-line me-1" />Print Invoice Now
           </button>
+        </div>
+      )}
+
+      {/* Advisory Banner: Order in Packaging / POS Barcode Verification */}
+      {['packaging', 'processing', 'partially_packed', 'packaging_exception'].includes(statusKey) && (
+        <div
+          className="alert alert-info border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
+          style={{ background: '#eff6ff', borderLeft: '4px solid #3b82f6' }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 36, height: 36, background: '#dbeafe', color: '#1d4ed8' }}
+            >
+              <i className="ri-barcode-box-line fs-18" />
+            </div>
+            <div>
+              <div className="fw-bold text-dark fs-14">Order in Physical Packaging (POS Verification)</div>
+              <div className="text-muted fs-12">
+                Under the strict BEMS Farms specification, inventory is <strong>only deducted when scanned at the POS packing terminal</strong>. Once all items are scanned, the order is automatically marked <code>PACKED</code> and courier dispatch begins.
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/pos"
+            className="btn btn-sm btn-primary px-3 fw-bold text-nowrap ms-3 shadow-sm"
+          >
+            <i className="ri-qr-scan-line me-1" />Open POS Packing
+          </Link>
+        </div>
+      )}
+
+      {/* Advisory Banner: Awaiting Driver Confirmation (Exception Modal Trigger) */}
+      {statusKey === 'awaiting_driver_confirmation' && (
+        <div
+          className="alert alert-danger border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
+          style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444' }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 36, height: 36, background: '#fee2e2', color: '#b91c1c' }}
+            >
+              <i className="ri-e-bike-2-line fs-18" />
+            </div>
+            <div>
+              <div className="fw-bold text-danger fs-14">Action Required: Awaiting Driver Confirmation</div>
+              <div className="text-muted fs-12">
+                All automatic driver assignment attempts timed out or were declined. The order requires manual administrative assignment or a proximity dispatch restart.
+              </div>
+            </div>
+          </div>
+          <div className="d-flex gap-2 ms-3 flex-shrink-0">
+            <button
+              className="btn btn-sm btn-primary fw-bold text-nowrap"
+              onClick={handleAutoAssignDriver}
+              disabled={updating}
+            >
+              <i className="ri-restart-line me-1" />Restart Dispatch
+            </button>
+            <Link
+              to="/fleet/dispatch"
+              className="btn btn-sm btn-outline-danger fw-bold text-nowrap"
+            >
+              <i className="ri-user-follow-line me-1" />Manual Assignment
+            </Link>
+          </div>
         </div>
       )}
 
@@ -410,15 +520,56 @@ export default function OrderDetail() {
                 </div>
               )}
 
-              <button
-                type="button"
-                className="btn btn-sm btn-primary w-100 mt-2 d-flex align-items-center justify-content-center gap-1.5"
-                onClick={handleAutoAssignDriver}
-                disabled={updating}
-              >
-                <i className="ri-gps-line" />
-                <span>⚡ Auto-Assign Closest Driver</span>
-              </button>
+              {/* Specification Dual Confirmation Badges */}
+              <div className="pt-2 border-top mt-1">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-muted">Customer Confirmation</span>
+                  {order.customer_confirmed ? (
+                    <span className="badge bg-success-subtle text-success">✓ Confirmed</span>
+                  ) : (
+                    <span className="badge bg-secondary-subtle text-secondary">Awaiting</span>
+                  )}
+                </div>
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-muted">Driver Handover</span>
+                  {order.driver_confirmed ? (
+                    <span className="badge bg-success-subtle text-success">✓ Confirmed</span>
+                  ) : (
+                    <span className="badge bg-secondary-subtle text-secondary">Awaiting</span>
+                  )}
+                </div>
+                {order.delivery_override_by && (
+                  <div className="p-2 rounded bg-warning-subtle text-warning-emphasis fs-xs mt-2 border border-warning-subtle">
+                    <div className="fw-bold">⚡ Administrative Override</div>
+                    <div>By: {order.delivery_override_by}</div>
+                    <div>Reason: "{order.delivery_override_reason || 'Manual Verification'}"</div>
+                  </div>
+                )}
+              </div>
+
+              {['in_transit', 'shipped', 'out_for_delivery', 'delivery_attempted', 'delivery_exception', 'customer_unreachable'].includes(statusKey) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-warning w-100 mt-2 d-flex align-items-center justify-content-center gap-1.5 fw-bold"
+                  onClick={handleAdminDeliveryOverride}
+                  disabled={updating}
+                >
+                  <i className="ri-shield-check-line" />
+                  <span>Authorized Delivery Override</span>
+                </button>
+              )}
+
+              {['packed', 'awaiting_driver_confirmation'].includes(statusKey) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary w-100 mt-2 d-flex align-items-center justify-content-center gap-1.5"
+                  onClick={handleAutoAssignDriver}
+                  disabled={updating}
+                >
+                  <i className="ri-gps-line" />
+                  <span>⚡ Auto-Assign Closest Driver</span>
+                </button>
+              )}
             </div>
           </div>
 

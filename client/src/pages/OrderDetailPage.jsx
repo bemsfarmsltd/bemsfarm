@@ -11,6 +11,12 @@ import { getProductImage } from "../utils/productImages";
 
 const STATUS_CONFIG = {
   // ── Order placed / awaiting payment ──
+  pending_payment: {
+    label: "Pending Payment",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
+    stepIndex: 0,
+    desc: "Awaiting payment verification",
+  },
   pending: {
     label: "Order Placed",
     bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
@@ -37,11 +43,41 @@ const STATUS_CONFIG = {
     desc: "Payment verified, farm produce queued for packaging",
   },
   // ── Packaging ──
+  packaging: {
+    label: "Packaging & Quality Inspection",
+    bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
+    stepIndex: 2,
+    desc: "Items picked and undergoing POS barcode verification",
+  },
+  partially_packed: {
+    label: "Partially Packed",
+    bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
+    stepIndex: 2,
+    desc: "Items are currently being scanned and packed",
+  },
+  packaging_exception: {
+    label: "Packaging Review",
+    bg: "#FEF2F2", color: "#B91C1C", border: "#FECACA", dot: "#EF4444",
+    stepIndex: 2,
+    desc: "Packaging exception under review by warehouse manager",
+  },
   processing: {
     label: "Packaging & Quality Inspection",
     bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
     stepIndex: 2,
     desc: "Items sorted, de-stoned, and sealed in tamper-proof crates",
+  },
+  packed: {
+    label: "Packed & Sealed",
+    bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
+    stepIndex: 2,
+    desc: "Items 100% verified and packed. Dispatching nearest driver.",
+  },
+  awaiting_driver_confirmation: {
+    label: "Dispatching Courier",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
+    stepIndex: 2,
+    desc: "Locating and confirming the closest available delivery driver",
   },
   packed_ready: {
     label: "Packed & Ready for Dispatch",
@@ -143,10 +179,25 @@ export default function OrderDetailPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleConfirmReceipt = async () => {
+    if (!order) return;
+    setConfirmingReceipt(true);
+    try {
+      const res = await api.post(`/orders/${order.id}/confirm-receipt`);
+      showToast(res.data?.message || "Delivery confirmed! Thank you for shopping with Bems Farms.");
+      loadOrder(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to confirm delivery receipt", "error");
+    } finally {
+      setConfirmingReceipt(false);
+    }
   };
 
   const loadOrder = useCallback(
@@ -688,6 +739,27 @@ export default function OrderDetailPage() {
 
               {/* ── ACTION BUTTONS CARD ── */}
               <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-slate-200/90 shadow-sm space-y-3">
+                {/* Specification Section 38: Customer Confirm Delivery Received */}
+                {!isDelivered && ["in_transit", "en_route", "out_for_delivery", "arrived", "shipped", "delivery_attempted"].includes(rawStatus) && (
+                  <>
+                    {order.customer_confirmed ? (
+                      <div className="w-full py-3 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
+                        <span className="text-base">✓</span>
+                        <span>You confirmed delivery receipt</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleConfirmReceipt}
+                        disabled={confirmingReceipt}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-700/20 transition hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <span className="text-base">✅</span>
+                        <span>{confirmingReceipt ? "Confirming Receipt..." : "Confirm Delivery Received"}</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
                 {isDelivered && (
                   <button
                     onClick={handleReorder}

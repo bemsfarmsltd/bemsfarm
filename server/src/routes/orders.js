@@ -13,17 +13,34 @@ const { restoreOrderStock } = require("../utils/orderStock");
 const { submitReturn, getUserReturns } = require("../controllers/returnsController");
 const { detectChannel } = require("../utils/channel");
 const { notifyAdmin } = require("../services/notificationService");
+const { logOrderAudit } = require("../utils/workflowAudit");
 
 // ─────────────────────────────────────────────
-// CONFIG
+// CONFIG (Order-to-Delivery Workflow Statuses)
 // ─────────────────────────────────────────────
 const VALID_STATUSES = [
   "pending",
+  "pending_payment",
   "confirmed",
+  "packaging",
   "processing",
+  "partially_packed",
+  "packaging_exception",
+  "packed",
+  "packed_ready",
+  "awaiting_driver_confirmation",
+  "in_transit",
+  "driver_assigned",
   "shipped",
+  "out_for_delivery",
+  "delivery_exception",
+  "customer_unreachable",
   "delivered",
   "cancelled",
+  "return_requested",
+  "return_approved",
+  "refunded",
+  "dispute"
 ];
 
 const VALID_PAYMENT_METHODS = ["monnify", "cod"];
@@ -299,7 +316,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     }
 
     const orderId = "BF-" + Date.now().toString(36).toUpperCase();
-    const status = method === "monnify" ? "confirmed" : "pending";
+    const status = method === "monnify" ? "confirmed" : "pending_payment";
 
     await client.query(
       `INSERT INTO orders
@@ -320,21 +337,25 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       ],
     );
 
+    // Section 2 & 62: Stock is strictly NOT deducted at order creation or payment.
+    // Stock deduction occurs ONLY when items are scanned at POS during packing.
     for (const item of orderItemRows) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price)
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO order_items (order_id, product_id, quantity, price, scanned_quantity)
+         VALUES ($1, $2, $3, $4, 0)`,
         [orderId, item.productId, item.quantity, item.unitPrice],
       );
-
-      await client.query(
-        `UPDATE products
-         SET stock = GREATEST(0, COALESCE(stock, 0) - $1),
-             stock_quantity = GREATEST(0, COALESCE(stock_quantity, 0) - $1)
-         WHERE id = $2`,
-        [item.quantity, item.productId],
-      );
     }
+
+    await logOrderAudit(client, {
+      order_id: orderId,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: 'customer',
+      action: 'order_created',
+      new_state: status,
+      metadata: { total, payment_method: method, items_count: orderItemRows.length }
+    });
 
     if (appliedCoupon) {
       await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, userId: req.user.id, orderId });
@@ -922,6 +943,136 @@ router.post(
     }
   }
 );
+
+// ─────────────────────────────────────────────
+// CUSTOMER DELIVERY CONFIRMATION (Sections 38 & 40)
+// ─────────────────────────────────────────────
+router.post("/:id/confirm-receipt", protect, async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { id } = req.params;
+
+    const orderRes = await client.query(
+      `SELECT o.*, d.id as delivery_id, d.driver_id, d.status as delivery_status,
+              d.driver_confirmed as del_driver_confirmed
+       FROM orders o
+       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+         AND o.user_id = $2
+       FOR UPDATE OF o`,
+      [id, req.user.id]
+    );
+
+    if (!orderRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    // Must be in transit or driver arrived
+    const validStatuses = ["in_transit", "driver_assigned", "shipped", "out_for_delivery"];
+    if (!validStatuses.includes(order.status) && !validStatuses.includes(order.tracking_status)) {
+      if (order.status === "delivered") {
+        await client.query("ROLLBACK");
+        return res.json({ message: "Delivery already confirmed as delivered", status: "delivered" });
+      }
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Cannot confirm delivery for order currently in '${order.status}' status` });
+    }
+
+    // Record customer confirmation
+    await client.query(
+      `UPDATE orders
+       SET customer_confirmed = true,
+           customer_confirmed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [order.id]
+    );
+
+    if (order.delivery_id) {
+      await client.query(
+        `UPDATE deliveries
+         SET customer_confirmed = true,
+             customer_confirmed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.delivery_id]
+      );
+    }
+
+    // Check if driver has already confirmed or admin override exists
+    const driverHasConfirmed = Boolean(order.driver_confirmed || order.del_driver_confirmed || order.delivery_override_by);
+    let finalStatus = order.status;
+
+    if (driverHasConfirmed) {
+      // Both confirmed -> transition to DELIVERED
+      finalStatus = "delivered";
+      await client.query(
+        `UPDATE orders
+         SET status = 'delivered',
+             tracking_status = 'delivered',
+             delivered_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.id]
+      );
+
+      if (order.delivery_id) {
+        await client.query(
+          `UPDATE deliveries
+           SET status = 'delivered',
+               delivered_at = NOW(),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [order.delivery_id]
+        );
+      }
+
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: 'customer',
+        action: 'delivery_completed',
+        previous_state: order.status,
+        new_state: 'delivered',
+        metadata: { customer_confirmed: true, driver_confirmed: true }
+      });
+    } else {
+      // Customer confirmed, awaiting driver confirmation
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: 'customer',
+        action: 'customer_delivery_confirmed',
+        previous_state: order.status,
+        new_state: order.status,
+        metadata: { customer_confirmed: true, driver_confirmed: false }
+      });
+    }
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: driverHasConfirmed
+        ? "Delivery completed and confirmed successfully! Thank you for choosing BEMS Farms."
+        : "Receipt confirmed! Awaiting final courier drop-off confirmation.",
+      status: finalStatus,
+      customer_confirmed: true,
+      driver_confirmed: driverHasConfirmed
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
 
 module.exports = router;
 

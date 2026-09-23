@@ -8,6 +8,21 @@ import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 
 const STATUS_CONFIG = {
+  pending_payment: {
+    label: "Pending Payment",
+    color: "#B45309",
+    bg: "#FEF3C7",
+    border: "#FDE68A",
+    dot: "#F59E0B",
+    cardAccent: "border-t-amber-500",
+    headerBg: "bg-amber-50/70",
+    stepIndex: 0,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
   pending: {
     label: "Pending",
     color: "#B45309",
@@ -38,6 +53,36 @@ const STATUS_CONFIG = {
       </svg>
     ),
   },
+  packaging: {
+    label: "Packaging",
+    color: "#6D28D9",
+    bg: "#F5F3FF",
+    border: "#DDD6FE",
+    dot: "#8B5CF6",
+    cardAccent: "border-t-purple-500",
+    headerBg: "bg-purple-50/70",
+    stepIndex: 2,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
+  partially_packed: {
+    label: "Partially Packed",
+    color: "#6D28D9",
+    bg: "#F5F3FF",
+    border: "#DDD6FE",
+    dot: "#8B5CF6",
+    cardAccent: "border-t-purple-500",
+    headerBg: "bg-purple-50/70",
+    stepIndex: 2,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
   processing: {
     label: "Packaging",
     color: "#6D28D9",
@@ -53,7 +98,67 @@ const STATUS_CONFIG = {
       </svg>
     ),
   },
+  packed: {
+    label: "Packed & Sealed",
+    color: "#1D4ED8",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
+    dot: "#3B82F6",
+    cardAccent: "border-t-blue-600",
+    headerBg: "bg-blue-50/80",
+    stepIndex: 2,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+      </svg>
+    ),
+  },
+  awaiting_driver_confirmation: {
+    label: "Dispatching Courier",
+    color: "#B45309",
+    bg: "#FEF3C7",
+    border: "#FDE68A",
+    dot: "#F59E0B",
+    cardAccent: "border-t-amber-500",
+    headerBg: "bg-amber-50/70",
+    stepIndex: 2,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  in_transit: {
+    label: "In Transit",
+    color: "#047857",
+    bg: "#ECFDF5",
+    border: "#A7F3D0",
+    dot: "#10B981",
+    cardAccent: "border-t-emerald-600",
+    headerBg: "bg-emerald-50/80",
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+  },
   shipped: {
+    label: "In Transit",
+    color: "#047857",
+    bg: "#ECFDF5",
+    border: "#A7F3D0",
+    dot: "#10B981",
+    cardAccent: "border-t-emerald-600",
+    headerBg: "bg-emerald-50/80",
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+  },
+  out_for_delivery: {
     label: "Out for Delivery",
     color: "#047857",
     bg: "#ECFDF5",
@@ -65,6 +170,21 @@ const STATUS_CONFIG = {
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+  },
+  delivery_exception: {
+    label: "Delivery Notice",
+    color: "#B91C1C",
+    bg: "#FEF2F2",
+    border: "#FECACA",
+    dot: "#EF4444",
+    cardAccent: "border-t-rose-500",
+    headerBg: "bg-rose-50/60",
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
     ),
   },
@@ -100,7 +220,7 @@ const STATUS_CONFIG = {
   },
 };
 
-const STEPS = ["Placed", "Confirmed", "Packaging", "Out for Delivery", "Delivered"];
+const STEPS = ["Placed", "Confirmed", "Packaging", "In Transit", "Delivered"];
 
 export default function OrdersPage() {
   const navigate = useNavigate();

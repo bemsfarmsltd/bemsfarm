@@ -10,6 +10,7 @@ const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
 const { restoreOrderStock } = require("../utils/orderStock");
+const { logOrderAudit } = require("../utils/workflowAudit");
 const { initiateMonnifyRefund } = require("../utils/monnify");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 
@@ -911,22 +912,25 @@ router.post(
         return res.status(400).json({ message: "Cannot print invoice for a cancelled order" });
       }
 
-      // Mark invoice printed and advance to processing / packaging
+      // Mark invoice printed and advance to packaging (Section 9)
+      const invoiceNumber = order.invoice_number || `INV-${order.order_ref || order.id}`;
       await client.query(
         `UPDATE orders
          SET invoice_printed = true,
              invoice_printed_at = NOW(),
+             invoice_printed_by = $2,
+             invoice_number = $3,
              status = CASE 
-               WHEN status IN ('pending', 'paid', 'new_order', 'confirmed') THEN 'processing'
+               WHEN status IN ('pending', 'pending_payment', 'paid', 'new_order', 'confirmed') THEN 'packaging'
                ELSE status
              END,
              tracking_status = CASE
-               WHEN tracking_status IN ('order_placed', 'pending', 'confirmed') THEN 'processing'
+               WHEN tracking_status IN ('order_placed', 'pending', 'pending_payment', 'confirmed') THEN 'packaging'
                ELSE tracking_status
              END,
              updated_at = NOW()
          WHERE id = $1`,
-        [order.id]
+        [order.id, req.user.id, invoiceNumber]
       );
 
       // Log tracking event safely with savepoint
@@ -934,7 +938,7 @@ router.post(
         await client.query("SAVEPOINT print_event");
         await client.query(
           `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
-           VALUES ($1, 'invoice_printed', 'Order invoice printed. Moved to packaging & queued for dispatch.', 'admin', $2, NOW())`,
+           VALUES ($1, 'invoice_printed', 'Order invoice printed. Moved to packaging.', 'admin', $2, NOW())`,
           [order.id, req.user.id]
         );
         await client.query("RELEASE SAVEPOINT print_event");
@@ -942,16 +946,118 @@ router.post(
         await client.query("ROLLBACK TO SAVEPOINT print_event");
       }
 
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role,
+        action: 'invoice_printed',
+        previous_state: order.status,
+        new_state: 'packaging',
+        metadata: { invoice_number: invoiceNumber }
+      });
+
       await client.query("COMMIT");
 
       res.json({
         success: true,
         message: "Invoice printed successfully. Order moved to packaging.",
         order_id: order.id,
-        status: "processing",
+        invoice_number: invoiceNumber,
+        status: "packaging",
       });
     } catch (err) {
       await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ── POST /api/admin/orders/:id/override-delivery ───────────────────
+// Section 41: Authorized administrative delivery override with full audit trail.
+router.post(
+  "/:id/override-delivery",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      if (!reason || !reason.trim()) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "A clear operational override reason is required." });
+      }
+
+      const orderRes = await client.query(
+        "SELECT id, order_ref, status, total, driver_id FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1)) FOR UPDATE",
+        [id]
+      );
+      if (!orderRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const order = orderRes.rows[0];
+
+      await client.query(
+        `UPDATE orders
+         SET status = 'delivered',
+             tracking_status = 'delivered',
+             delivered_at = NOW(),
+             delivery_override_by = $1,
+             delivery_override_reason = $2,
+             delivery_override_at = NOW(),
+             customer_confirmed = true,
+             customer_confirmed_at = COALESCE(customer_confirmed_at, NOW()),
+             driver_confirmed = true,
+             driver_confirmed_at = COALESCE(driver_confirmed_at, NOW()),
+             updated_at = NOW()
+         WHERE id = $3`,
+        [req.user.id, reason.trim(), order.id]
+      );
+
+      await client.query(
+        `UPDATE deliveries
+         SET status = 'delivered',
+             delivered_at = NOW(),
+             customer_confirmed = true,
+             customer_confirmed_at = COALESCE(customer_confirmed_at, NOW()),
+             updated_at = NOW()
+         WHERE order_id = $1::text`,
+        [order.id]
+      );
+
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role,
+        action: 'administrative_delivery_override',
+        previous_state: order.status,
+        new_state: 'delivered',
+        metadata: { reason: reason.trim() }
+      });
+
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        message: `Order #${order.order_ref || order.id} marked as DELIVERED via administrative override.`,
+        order_id: order.id,
+        status: 'delivered'
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
       next(err);
     } finally {
       client.release();
