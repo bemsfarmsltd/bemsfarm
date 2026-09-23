@@ -1,5 +1,47 @@
 const pool = require("../db/pool");
 
+// Bootstrap dispatch_alerts table (auto-created on first server start)
+async function ensureDispatchAlertsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dispatch_alerts (
+      id            SERIAL PRIMARY KEY,
+      order_id      TEXT NOT NULL,
+      order_ref     TEXT,
+      delivery_id   INTEGER,
+      last_driver_id INTEGER,
+      last_driver_name TEXT,
+      alert_type    TEXT NOT NULL DEFAULT 'no_driver_available',
+      message       TEXT,
+      resolved      BOOLEAN NOT NULL DEFAULT FALSE,
+      resolution    TEXT,   -- 'keep_driver' | 'unassign_driver'
+      resolved_by   INTEGER,
+      resolved_at   TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+ensureDispatchAlertsTable().catch(err => console.warn('[dispatch-alerts] Table bootstrap warning:', err.message));
+
+/**
+ * Insert a dispatch alert for the admin to action.
+ * Called when auto-reassignment fails (no available drivers).
+ */
+async function insertDispatchAlert({ order_id, order_ref, delivery_id, last_driver_id, last_driver_name, message }) {
+  // Avoid duplicate unresolved alerts for same order
+  const existing = await pool.query(
+    `SELECT id FROM dispatch_alerts WHERE order_id=$1 AND resolved=FALSE AND alert_type='no_driver_available'`,
+    [order_id]
+  );
+  if (existing.rows.length > 0) return; // Already has an active alert
+
+  await pool.query(
+    `INSERT INTO dispatch_alerts (order_id, order_ref, delivery_id, last_driver_id, last_driver_name, message)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [order_id, order_ref || null, delivery_id || null, last_driver_id || null, last_driver_name || null, message || null]
+  );
+  console.log(`🔔 Dispatch alert created for order ${order_ref || order_id} — admin action required.`);
+}
+
 // Haversine formula: calculate distance between two coordinates in km
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371; // Earth's radius in km
@@ -321,8 +363,17 @@ async function processUnresponsiveAssignments(
         });
       } else {
         console.warn(
-          `⚠️ Could not find next available driver for order #${item.order_ref || item.order_id}: ${reassignResult.message}`
+          `⚠️ No available driver for order #${item.order_ref || item.order_id} — creating admin alert.`
         );
+        // Create a DB alert so the admin gets a popup notification
+        await insertDispatchAlert({
+          order_id: item.order_id,
+          order_ref: item.order_ref,
+          delivery_id: item.delivery_id,
+          last_driver_id: item.driver_id,
+          last_driver_name: item.driver_name,
+          message: `No available driver found for order #${item.order_ref || item.order_id} after ${timeoutMinutes} minutes. Last assigned driver: ${item.driver_name || item.driver_id}. Please keep or unassign the driver manually.`,
+        });
         reassignments.push({
           order_id: item.order_id,
           delivery_id: item.delivery_id,
@@ -370,5 +421,6 @@ module.exports = {
   autoAssignClosestDriver,
   processUnresponsiveAssignments,
   startAutoDispatchTimeoutWorker,
+  insertDispatchAlert,
 };
 

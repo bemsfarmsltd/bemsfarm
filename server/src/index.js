@@ -217,6 +217,7 @@ const customerChatRoutes = require("./routes/customer_chat");
 const broadcastsRoutes = require("./routes/broadcasts");
 const driverRoutes = require("./routes/driver");
 const locationRoutes = require("./routes/locations");
+const dispatchAdminRoutes = require("./routes/dispatch_admin");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/driver", driverRoutes);
@@ -248,6 +249,7 @@ app.use("/api/admin/coupons", couponsAdminRoutes);
 app.use("/api/admin/pos", posAdminRoutes);
 app.use("/api/admin/chef-bems", chefBemsAdminRoutes);
 app.use("/api/admin/payments", paymentsAdminRoutes);
+app.use("/api/admin/dispatch", dispatchAdminRoutes);
 
 // Legacy fallback admin route
 app.use("/api/admin", adminRoutes);

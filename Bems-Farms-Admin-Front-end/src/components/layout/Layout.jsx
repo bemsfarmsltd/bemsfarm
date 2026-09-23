@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Topbar from './Topbar'
 import Sidebar from './Sidebar'
+import DispatchAlertBanner from '../ui/DispatchAlertBanner'
 
 /**
  * GotPOS two-column layout shell.
@@ -99,6 +100,9 @@ export default function Layout() {
 
   return (
     <div className="wrapper">
+      {/* Dispatch alert popup — shown on any page when no driver is available */}
+      <DispatchAlertBanner />
+
       {/* Sidebar overlay for mobile */}
       <div
         className="sidebar-overlay"
