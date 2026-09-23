@@ -1390,9 +1390,32 @@ router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "c
     const { orderId } = req.params;
 
     const orderRes = await pool.query(
-      `SELECT o.id, o.order_ref, o.status, o.tracking_status, o.customer_name, o.customer_phone,
-              o.address, o.invoice_printed, o.invoice_number, o.packed_at, o.packed_by
+      `SELECT o.id, o.order_ref, o.status, o.tracking_status,
+              COALESCE(
+                NULLIF(TRIM(o.customer_name), ''),
+                NULLIF(TRIM(c.name), ''),
+                NULLIF(TRIM(ua.receiver_name), ''),
+                'Online Customer'
+              ) AS customer_name,
+              COALESCE(
+                NULLIF(TRIM(o.customer_phone), ''),
+                NULLIF(TRIM(c.phone), ''),
+                NULLIF(TRIM(ua.receiver_phone), ''),
+                ''
+              ) AS customer_phone,
+              COALESCE(
+                NULLIF(TRIM(o.delivery_address), ''),
+                NULLIF(TRIM(o.address), ''),
+                NULLIF(TRIM(ua.street_address), ''),
+                'Store pickup / In-store delivery'
+              ) AS delivery_address,
+              o.notes, o.payment_method, o.total, o.created_at, o.driver_id,
+              o.invoice_printed, o.invoice_number, o.packed_at, o.packed_by,
+              dr.name AS driver_name, dr.phone AS driver_phone
        FROM orders o
+       LEFT JOIN users c ON c.id = o.user_id
+       LEFT JOIN user_addresses ua ON ua.id = o.shipping_address_id
+       LEFT JOIN drivers dr ON dr.id = o.driver_id
        WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))`,
       [orderId]
     );
@@ -1428,6 +1451,15 @@ router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "c
         status: order.status,
         tracking_status: order.tracking_status,
         customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        delivery_address: order.delivery_address,
+        notes: order.notes,
+        payment_method: order.payment_method,
+        total: order.total,
+        created_at: order.created_at,
+        driver_id: order.driver_id,
+        driver_name: order.driver_name,
+        driver_phone: order.driver_phone,
         invoice_printed: order.invoice_printed,
         invoice_number: order.invoice_number,
         total_ordered: totalOrdered,

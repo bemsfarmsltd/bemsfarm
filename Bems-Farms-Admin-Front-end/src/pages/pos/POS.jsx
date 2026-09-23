@@ -50,9 +50,12 @@ const CHANNEL_META = {
 }
 
 const STATUS_META = {
-  new:        { label: 'New Incoming', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
-  pending:    { label: 'Pending Pack', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  processing: { label: 'Loaded in Cart',color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  new:                          { label: 'New Incoming', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
+  pending:                      { label: 'Pending Pack', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+  processing:                   { label: 'Packaging',    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  packed:                       { label: 'Packed & Ready', color: '#059669', bg: '#ecfdf5', border: '#10b981' },
+  awaiting_driver_confirmation: { label: 'Awaiting Driver', color: '#dc2626', bg: '#fef2f2', border: '#f87171' },
+  driver_assigned:              { label: 'Driver Assigned', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
 }
 
 const TIER_COLOR = {
@@ -205,6 +208,13 @@ export default function POS() {
   const [scanBarcodeInput, setScanBarcodeInput] = useState('')
   const [packingLoading, setPackingLoading]     = useState(false)
   const [packingSearch, setPackingSearch]       = useState('')
+
+  // Section 8: No Driver Available / Administrative Coordination State
+  const [driverCoordinationOrder, setDriverCoordinationOrder] = useState(null)
+  const [fleetDrivers, setFleetDrivers]                       = useState([])
+  const [loadingDrivers, setLoadingDrivers]                   = useState(false)
+  const [assigningDriverId, setAssigningDriverId]             = useState(null)
+  const [driverSearch, setDriverSearch]                       = useState('')
 
   // Tax configuration (dynamically loaded from Settings → Tax)
   const [taxConfig, setTaxConfig]           = useState({ enabled: false, rate: 7.5, inclusive: false, label: 'VAT' })
@@ -430,14 +440,31 @@ export default function POS() {
             )
             const mappedOrders = openOrders.map(o => {
               const rawStatus = String(o.status || '').toLowerCase()
-              const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+              const posStatus = (rawStatus === 'awaiting_driver_confirmation')
+                ? 'awaiting_driver_confirmation'
+                : (rawStatus === 'packed' || rawStatus === 'packed_ready')
+                ? 'packed'
+                : (rawStatus === 'processing')
+                ? 'processing'
+                : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
               const isPrinted = o.invoice_printed === true || rawStatus === 'processing'
+              const custName = o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer'
+              const custPhone = o.customer_phone || o.phone || '—'
+              const delAddress = o.delivery_address || o.address || 'Store Pickup / In-store fulfillment'
               return {
                 id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
                 rawId: o.id,
                 channel: o.channel || o.source || 'website',
-                customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
-                phone: o.customer_phone || o.phone || '—',
+                customer: custName,
+                customer_name: custName,
+                phone: custPhone,
+                customer_phone: custPhone,
+                delivery_address: delAddress,
+                address: delAddress,
+                order_ref: o.order_ref || o.id,
+                driver_id: o.driver_id || null,
+                driver_name: o.driver_name || null,
+                driver_phone: o.driver_phone || null,
                 time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
                 status: posStatus,
                 rawStatus: o.status,
@@ -1199,7 +1226,19 @@ export default function POS() {
         }))
 
         if (res.data.is_order_packed) {
-          showToast(`Order #${packingOrder.id} is 100% PACKED! Auto-dispatch initiated.`, 'success', '🚀')
+          showToast(`Order #${packingOrder.id} is 100% PACKED!`, 'success', '🚀')
+          if (res.data.dispatch && (!res.data.dispatch.success || res.data.dispatch.status === 'awaiting_driver_confirmation')) {
+            showToast('No active driver available. Opening Section 8 Driver Coordination...', 'warning', '⚠️')
+            handleOpenDriverCoordination({
+              ...refreshed.data.order,
+              id: packingOrder.id,
+              order_ref: packingOrder.order_ref,
+              customer_name: refreshed.data.order.customer_name || packingOrder.customer_name,
+              customer_phone: refreshed.data.order.customer_phone || packingOrder.customer_phone,
+              delivery_address: refreshed.data.order.delivery_address || packingOrder.delivery_address,
+              total: refreshed.data.order.total || packingOrder.total,
+            })
+          }
         }
       }
     } catch (err) {
@@ -1239,7 +1278,19 @@ export default function POS() {
         }))
 
         if (res.data.is_order_packed) {
-          showToast(`Order #${packingOrder.id} is 100% PACKED! Ready for dispatch.`, 'success', '🚀')
+          showToast(`Order #${packingOrder.id} is 100% PACKED!`, 'success', '🚀')
+          if (res.data.dispatch && (!res.data.dispatch.success || res.data.dispatch.status === 'awaiting_driver_confirmation')) {
+            showToast('No active driver available. Opening Section 8 Driver Coordination...', 'warning', '⚠️')
+            handleOpenDriverCoordination({
+              ...refreshed.data.order,
+              id: packingOrder.id,
+              order_ref: packingOrder.order_ref,
+              customer_name: refreshed.data.order.customer_name || packingOrder.customer_name,
+              customer_phone: refreshed.data.order.customer_phone || packingOrder.customer_phone,
+              delivery_address: refreshed.data.order.delivery_address || packingOrder.delivery_address,
+              total: refreshed.data.order.total || packingOrder.total,
+            })
+          }
         }
       }
     } catch (err) {
@@ -1266,17 +1317,144 @@ export default function POS() {
           if (o.id === packingOrder.id || o.rawId === packingOrder.id) {
             return {
               ...o,
-              status: 'packed',
-              rawStatus: 'packed',
+              status: res.data.dispatch?.status === 'awaiting_driver_confirmation' ? 'awaiting_driver_confirmation' : 'packed',
+              rawStatus: res.data.dispatch?.status === 'awaiting_driver_confirmation' ? 'awaiting_driver_confirmation' : 'packed',
             }
           }
           return o
         }))
+
+        if (res.data.dispatch && (!res.data.dispatch.success || res.data.dispatch.status === 'awaiting_driver_confirmation')) {
+          showToast('No active driver available. Opening Section 8 Driver Coordination...', 'warning', '⚠️')
+          handleOpenDriverCoordination({
+            ...refreshed.data.order,
+            id: packingOrder.id,
+            order_ref: packingOrder.order_ref,
+            customer_name: refreshed.data.order.customer_name || packingOrder.customer_name,
+            customer_phone: refreshed.data.order.customer_phone || packingOrder.customer_phone,
+            delivery_address: refreshed.data.order.delivery_address || packingOrder.delivery_address,
+            total: refreshed.data.order.total || packingOrder.total,
+          })
+        }
       }
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to pack all items', 'error', '⚠️')
     } finally {
       setPackingLoading(false)
+    }
+  }
+
+  // Section 8: No Driver Available / Administrative Coordination Handlers
+  const handleOpenDriverCoordination = async (order) => {
+    if (!order) return
+    const orderData = {
+      id: order.id,
+      rawId: order.rawId || order.id,
+      order_ref: order.order_ref || order.id,
+      customer_name: order.customer_name || order.customer || 'Online Customer',
+      customer_phone: order.customer_phone || order.phone || '—',
+      delivery_address: order.delivery_address || order.address || 'Store Pickup / In-store fulfillment',
+      total: order.total || 0,
+      notes: order.notes || order.note || '',
+      status: order.status || 'awaiting_driver_confirmation',
+      driver_id: order.driver_id || null,
+      driver_name: order.driver_name || null,
+      driver_phone: order.driver_phone || null
+    }
+    setDriverCoordinationOrder(orderData)
+    setActiveModal('awaiting_driver')
+    setLoadingDrivers(true)
+    try {
+      const res = await api.get('/admin/deliveries/drivers')
+      const drvs = Array.isArray(res.data) ? res.data : (res.data?.drivers || [])
+      setFleetDrivers(drvs)
+    } catch (err) {
+      console.warn('Deliveries drivers endpoint failed, trying orders form-data/drivers:', err)
+      try {
+        const fallbackRes = await api.get('/admin/orders/form-data/drivers')
+        const fallbackDrivers = Array.isArray(fallbackRes.data) ? fallbackRes.data : (fallbackRes.data?.drivers || [])
+        setFleetDrivers(fallbackDrivers)
+      } catch (fErr) {
+        showToast('Could not load fleet drivers list', 'error', '⚠️')
+      }
+    } finally {
+      setLoadingDrivers(false)
+    }
+  }
+
+  const handleManualAssignDriver = async (driver) => {
+    if (!driverCoordinationOrder || !driver) return
+    const targetOrderId = driverCoordinationOrder.rawId || driverCoordinationOrder.id
+    setAssigningDriverId(driver.id)
+    try {
+      await api.patch(`/admin/orders/${targetOrderId}/assign-driver`, {
+        driver_id: driver.id
+      })
+      showToast(`Driver ${driver.name} manually assigned to Order #${driverCoordinationOrder.order_ref || driverCoordinationOrder.id}!`, 'success', '🚗')
+
+      // Update onlineOrders list
+      setOnlineOrders(prev => prev.map(o => {
+        if (o.id === driverCoordinationOrder.id || o.rawId === targetOrderId) {
+          return {
+            ...o,
+            status: 'driver_assigned',
+            rawStatus: 'driver_assigned',
+            driver_id: driver.id,
+            driver_name: driver.name,
+            driver_phone: driver.phone
+          }
+        }
+        return o
+      }))
+
+      // Also update packingOrder if active
+      if (packingOrder && (packingOrder.id === driverCoordinationOrder.id || packingOrder.id === targetOrderId)) {
+        setPackingOrder(prev => ({
+          ...prev,
+          driver_id: driver.id,
+          driver_name: driver.name,
+          driver_phone: driver.phone
+        }))
+      }
+
+      setActiveModal(null)
+      setDriverCoordinationOrder(null)
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to assign driver', 'error', '⚠️')
+    } finally {
+      setAssigningDriverId(null)
+    }
+  }
+
+  const handleRetryAutoAssign = async () => {
+    if (!driverCoordinationOrder) return
+    const targetOrderId = driverCoordinationOrder.rawId || driverCoordinationOrder.id
+    try {
+      showToast('Searching for closest active driver...', 'info', '🔍')
+      const res = await api.post(`/orders/${targetOrderId}/auto-assign-driver`)
+      if (res.data?.assignment?.success) {
+        const assignedDriver = res.data.assignment.driver
+        showToast(`Auto-assigned to ${assignedDriver.name} (${assignedDriver.distanceKm}km away)!`, 'success', '🚀')
+        setOnlineOrders(prev => prev.map(o => {
+          if (o.id === driverCoordinationOrder.id || o.rawId === targetOrderId) {
+            return {
+              ...o,
+              status: 'driver_assigned',
+              rawStatus: 'driver_assigned',
+              driver_id: assignedDriver.id,
+              driver_name: assignedDriver.name,
+              driver_phone: assignedDriver.phone
+            }
+          }
+          return o
+        }))
+        setActiveModal(null)
+        setDriverCoordinationOrder(null)
+      } else {
+        showToast(res.data?.message || 'No available active drivers accepted.', 'warning', '⚠️')
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Auto-dispatch retry returned no available drivers.', 'warning', '⚠️')
     }
   }
 
@@ -2396,10 +2574,11 @@ export default function POS() {
               {/* Tabs */}
               <div className="pos-online-tabs-bar">
                 {[
-                  { key: 'all',        label: 'All Orders',  count: onlineOrders.length },
-                  { key: 'new',        label: '🔴 New',       count: onlineOrders.filter(o => o.status === 'new').length },
-                  { key: 'pending',    label: '🟡 Pending',   count: onlineOrders.filter(o => o.status === 'pending').length },
-                  { key: 'processing', label: '🔵 Loaded',    count: onlineOrders.filter(o => o.status === 'processing').length },
+                  { key: 'all',                          label: 'All Orders',      count: onlineOrders.length },
+                  { key: 'new',                          label: '🔴 New',           count: onlineOrders.filter(o => o.status === 'new').length },
+                  { key: 'pending',                      label: '🟡 Pending',       count: onlineOrders.filter(o => o.status === 'pending').length },
+                  { key: 'processing',                   label: '🔵 Packaging',     count: onlineOrders.filter(o => o.status === 'processing').length },
+                  { key: 'awaiting_driver_confirmation', label: '⚠️ No Driver (Sec 8)', count: onlineOrders.filter(o => o.status === 'awaiting_driver_confirmation' || o.rawStatus === 'awaiting_driver_confirmation').length },
                 ].map(tab => (
                   <button
                     key={tab.key}
@@ -2412,7 +2591,7 @@ export default function POS() {
 
               <div style={{ overflowY: 'auto', maxHeight: '55vh', padding: '14px 20px' }}>
                 {onlineOrders
-                  .filter(o => onlineFilter === 'all' || o.status === onlineFilter)
+                  .filter(o => onlineFilter === 'all' || o.status === onlineFilter || (onlineFilter === 'awaiting_driver_confirmation' && (o.status === 'awaiting_driver_confirmation' || o.rawStatus === 'awaiting_driver_confirmation')))
                   .map(order => {
                     const ch = CHANNEL_META[order.channel] || CHANNEL_META.website
                     const st = STATUS_META[order.status] || STATUS_META.pending
@@ -2446,7 +2625,7 @@ export default function POS() {
                             </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
-                            {!(order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing') ? (
+                            {!(order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing' || order.status === 'awaiting_driver_confirmation' || order.rawStatus === 'awaiting_driver_confirmation') ? (
                               <button 
                                 className="btn btn-sm btn-emerald-solid px-3 fw-bold" 
                                 title="Print Order Invoice first to move to Packaging and enable cart loading"
@@ -2465,10 +2644,35 @@ export default function POS() {
                                   <i className="ri-printer-line me-1" />
                                   Reprint Invoice
                                 </button>
-                                {order.status === 'packed' || order.status === 'packed_ready' ? (
-                                  <span className="badge bg-success text-white px-2.5 py-1.5 fw-bold fs-12">
-                                    <i className="ri-check-line me-1" /> Packed
-                                  </span>
+                                {order.status === 'awaiting_driver_confirmation' || order.rawStatus === 'awaiting_driver_confirmation' ? (
+                                  <button
+                                    className="btn btn-sm btn-danger fw-bold px-3 py-1.5 shadow-sm d-flex align-items-center gap-1"
+                                    style={{ background: '#dc2626', borderColor: '#b91c1c', color: '#ffffff' }}
+                                    title="Section 8: No active driver available or accepted. Click to coordinate driver manually."
+                                    onClick={() => handleOpenDriverCoordination(order)}
+                                  >
+                                    <i className="ri-user-unfollow-line fs-14" />
+                                    Coordinate Driver
+                                  </button>
+                                ) : order.status === 'packed' || order.status === 'packed_ready' ? (
+                                  <div className="d-flex align-items-center gap-1">
+                                    <span className="badge bg-success text-white px-2.5 py-1.5 fw-bold fs-12">
+                                      <i className="ri-check-line me-1" /> Packed
+                                    </span>
+                                    {!order.driver_id ? (
+                                      <button
+                                        className="btn btn-sm btn-outline-danger fw-bold px-2 py-1 fs-11"
+                                        title="No driver assigned yet. Open Section 8 coordination modal."
+                                        onClick={() => handleOpenDriverCoordination(order)}
+                                      >
+                                        <i className="ri-steering-2-line me-1" /> Assign Driver
+                                      </button>
+                                    ) : (
+                                      <span className="badge bg-light text-dark border px-2 py-1 fs-11">
+                                        <i className="ri-steering-line text-success me-1"/>Driver Assigned
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
                                   <button
                                     className="btn btn-sm btn-emerald-solid px-3 fw-bold"
@@ -2520,12 +2724,12 @@ export default function POS() {
       {/* ── POS ORDER PACKING & FULFILLMENT MODAL ── */}
       {activeModal === 'packing' && packingOrder && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1060 }}>
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 780 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 980 }}>
             <div className="modal-content shadow-2xl border-0" style={{ borderRadius: 16, overflow: 'hidden' }}>
               {/* Header: High-contrast Dark Emerald */}
               <div className="modal-header px-4 py-3 d-flex align-items-center justify-content-between" style={{ background: '#064e3b', color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 <div className="d-flex align-items-center gap-3">
-                  <div style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', width: 42, height: 42, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
                     <i className="ri-box-3-line" />
                   </div>
                   <div>
@@ -2556,7 +2760,112 @@ export default function POS() {
               </div>
 
               {/* Body */}
-              <div className="modal-body p-4" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+              <div className="modal-body p-4" style={{ maxHeight: '74vh', overflowY: 'auto' }}>
+                {/* ── Prominent Customer & Delivery Information Card ── */}
+                <div className="p-3 mb-3 rounded-3 shadow-xs" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style={{ borderColor: '#e2e8f0' }}>
+                    <div className="d-flex align-items-center gap-2">
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                        <i className="ri-user-location-line" />
+                      </div>
+                      <span className="fw-bold fs-13 text-dark">Customer & Delivery Information</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-white text-secondary border fs-11">
+                        Order Ref: <strong>#{packingOrder.order_ref || packingOrder.id}</strong>
+                      </span>
+                      {packingOrder.driver_id ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle fs-11">
+                          <i className="ri-steering-line me-1" />
+                          Driver: {packingOrder.driver_name || `#${packingOrder.driver_id}`}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-danger fw-bold py-0.5 px-2 fs-11"
+                          onClick={() => handleOpenDriverCoordination(packingOrder)}
+                          title="Open Section 8 Driver Coordination Modal"
+                        >
+                          <i className="ri-user-unfollow-line me-1" />
+                          Coordinate Driver (Section 8)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <div className="text-muted fs-11 fw-semibold text-uppercase">Customer Name</div>
+                      <div className="fw-bold fs-14 text-dark d-flex align-items-center gap-1.5 mt-0.5">
+                        <i className="ri-user-3-line text-primary fs-14" />
+                        <span>{packingOrder.customer_name || 'Walk-in / Online Customer'}</span>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div className="text-muted fs-11 fw-semibold text-uppercase">Customer Phone</div>
+                      <div className="fw-bold fs-14 text-dark d-flex align-items-center gap-1.5 mt-0.5">
+                        <i className="ri-phone-line text-success fs-14" />
+                        {packingOrder.customer_phone ? (
+                          <div className="d-flex align-items-center gap-2">
+                            <a href={`tel:${packingOrder.customer_phone}`} className="text-decoration-none text-success" title="Click to call customer">
+                              {packingOrder.customer_phone}
+                            </a>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-light border py-0 px-1 text-muted"
+                              title="Copy phone"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(packingOrder.customer_phone)
+                                showToast('Phone number copied to clipboard', 'info', '📋')
+                              }}
+                            >
+                              <i className="ri-file-copy-line fs-11" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-muted fs-12">Not provided</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div className="text-muted fs-11 fw-semibold text-uppercase">Total & Payment</div>
+                      <div className="fw-bold fs-13 text-dark mt-0.5">
+                        <span className="text-emerald fs-14">{fmt(packingOrder.total || 0)}</span>
+                        <span className="text-muted fw-normal fs-11 ms-1.5">({packingOrder.payment_method || 'Pre-paid / Online'})</span>
+                      </div>
+                    </div>
+
+                    <div className="col-md-8">
+                      <div className="text-muted fs-11 fw-semibold text-uppercase">Delivery Address</div>
+                      <div className="fs-12 text-secondary d-flex align-items-start gap-1.5 mt-0.5">
+                        <i className="ri-map-pin-2-line text-danger mt-0.5 fs-13 flex-shrink-0" />
+                        <span className="fw-medium text-dark">{packingOrder.delivery_address || 'Store Pickup / In-store fulfillment'}</span>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div className="text-muted fs-11 fw-semibold text-uppercase">Packaging Status</div>
+                      <div className="mt-0.5">
+                        <span className={`badge ${packingOrder.is_all_packed ? 'bg-success' : 'bg-warning text-dark'} fw-bold px-2 py-1 fs-11`}>
+                          {packingOrder.is_all_packed ? '100% PACKED' : `${packingOrder.total_scanned || 0} OF ${packingOrder.total_ordered || 0} UNITS`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {packingOrder.notes && (
+                      <div className="col-12 pt-1 border-top" style={{ borderColor: '#e2e8f0' }}>
+                        <div className="text-muted fs-11 fw-semibold text-uppercase">Customer / Packaging Note</div>
+                        <div className="fs-12 text-dark bg-white p-2 rounded border mt-0.5">
+                          <i className="ri-information-line text-warning me-1" />
+                          {packingOrder.notes}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Progress bar card */}
                 <div className="p-3 mb-3 rounded-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                   <div className="d-flex justify-content-between align-items-center mb-2">
@@ -2640,18 +2949,31 @@ export default function POS() {
                       <i className="ri-checkbox-circle-fill fs-24 text-success" />
                       <div>
                         <div className="fw-bold fs-14">Order 100% Packed & Verified!</div>
-                        <div className="text-muted" style={{ fontSize: 11.5 }}>Stock deducted from inventory. Ready for driver pickup / customer handover.</div>
+                        <div className="text-muted" style={{ fontSize: 11.5 }}>
+                          Stock deducted from inventory. {packingOrder.driver_id ? `Assigned to driver #${packingOrder.driver_id}.` : 'Ready for courier dispatch / handover.'}
+                        </div>
                       </div>
                     </div>
-                    <button
-                      className="btn btn-success fw-bold px-3 py-1.5 shadow-sm"
-                      onClick={() => {
-                        setActiveModal(null)
-                        showToast(`Order #${packingOrder.order_ref || packingOrder.id} ready!`, 'success', '📦')
-                      }}
-                    >
-                      <i className="ri-check-line me-1"/> Complete
-                    </button>
+                    <div className="d-flex align-items-center gap-2">
+                      {!packingOrder.driver_id && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger fw-bold px-3 py-1.5 shadow-sm"
+                          onClick={() => handleOpenDriverCoordination(packingOrder)}
+                        >
+                          <i className="ri-user-unfollow-line me-1" /> Coordinate Driver
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-success fw-bold px-3 py-1.5 shadow-sm"
+                        onClick={() => {
+                          setActiveModal(null)
+                          showToast(`Order #${packingOrder.order_ref || packingOrder.id} ready!`, 'success', '📦')
+                        }}
+                      >
+                        <i className="ri-check-line me-1"/> Complete
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -2750,6 +3072,350 @@ export default function POS() {
                       <i className="ri-check-double-line me-1" /> Done
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 8. NO DRIVER AVAILABLE / NO DRIVER ACCEPTS (Section 8 Large Modal) ── */}
+      {activeModal === 'awaiting_driver' && driverCoordinationOrder && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(5px)', zIndex: 1070 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 1060 }}>
+            <div className="modal-content shadow-2xl border-0" style={{ borderRadius: 18, overflow: 'hidden' }}>
+              {/* Header: High-visibility Red / Amber warning styling */}
+              <div className="modal-header px-4 py-3 d-flex align-items-center justify-content-between" style={{ background: 'linear-gradient(135deg, #7f1d1d, #991b1b)', color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ background: 'rgba(255,255,255,0.2)', color: '#ffffff', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    <i className="ri-user-unfollow-line" />
+                  </div>
+                  <div>
+                    <div className="d-flex align-items-center gap-2">
+                      <h5 className="modal-title mb-0 fw-bold" style={{ color: '#ffffff', fontSize: 18 }}>
+                        8. NO DRIVER AVAILABLE / NO DRIVER ACCEPTS
+                      </h5>
+                      <span className="badge bg-black text-warning border border-warning px-2.5 py-1 fw-bold fs-11">
+                        AWAITING_DRIVER_CONFIRMATION
+                      </span>
+                    </div>
+                    <div style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 12, marginTop: 3 }}>
+                      Administrative Coordination Interface · Order Reference: <strong>#{driverCoordinationOrder.order_ref || driverCoordinationOrder.id}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <button className="btn-close btn-close-white" onClick={() => setActiveModal('online')}></button>
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4" style={{ maxHeight: '76vh', overflowY: 'auto', background: '#f8fafc' }}>
+                {/* Prominent Banner as specified in Section 8 */}
+                <div className="p-3 mb-4 rounded-3 text-white d-flex align-items-start gap-3 shadow-sm" style={{ background: 'linear-gradient(135deg, #991b1b, #b91c1c)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <i className="ri-error-warning-fill fs-24 text-warning flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h6 className="fw-bold mb-1 fs-15 text-white">
+                      No active driver is currently available or no available driver has accepted the delivery.
+                    </h6>
+                    <p className="mb-0 fs-12 text-white-50" style={{ lineHeight: 1.5 }}>
+                      If no active drivers are available, or every eligible driver rejects or fails to respond, the automatic assignment process stops.
+                      The order remains under <strong>administrative attention</strong> for manual coordination. Contact the customer or manually assign an available driver below.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="row g-4">
+                  {/* Left Column: Customer's Relevant Delivery Information */}
+                  <div className="col-lg-5">
+                    <div className="bg-white p-3.5 rounded-3 shadow-sm border h-100" style={{ borderColor: '#e2e8f0' }}>
+                      <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2">
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                            <i className="ri-user-star-line" />
+                          </div>
+                          <h6 className="fw-bold fs-14 mb-0 text-dark">Customer Delivery Information</h6>
+                        </div>
+                        <span className="badge bg-secondary-subtle text-secondary fs-11">Section 8 Detail</span>
+                      </div>
+
+                      <div className="vstack gap-3">
+                        {/* 1. Customer Name */}
+                        <div>
+                          <label className="text-muted fs-11 fw-semibold text-uppercase d-block mb-1">Customer Name</label>
+                          <div className="fw-bold fs-15 text-dark d-flex align-items-center gap-2">
+                            <i className="ri-user-3-fill text-primary" />
+                            <span>{driverCoordinationOrder.customer_name || 'Online Customer'}</span>
+                          </div>
+                        </div>
+
+                        {/* 2. Customer Phone Number */}
+                        <div>
+                          <label className="text-muted fs-11 fw-semibold text-uppercase d-block mb-1">Customer Phone Number</label>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="fw-bold fs-15 text-success d-flex align-items-center gap-2 flex-grow-1">
+                              <i className="ri-phone-fill" />
+                              <span>{driverCoordinationOrder.customer_phone || 'Not provided'}</span>
+                            </div>
+                            {driverCoordinationOrder.customer_phone && driverCoordinationOrder.customer_phone !== '—' && (
+                              <div className="d-flex gap-1">
+                                <a
+                                  href={`tel:${driverCoordinationOrder.customer_phone}`}
+                                  className="btn btn-sm btn-success fw-bold px-2 py-1 fs-12 text-decoration-none shadow-xs d-flex align-items-center gap-1"
+                                >
+                                  <i className="ri-phone-line" /> Call
+                                </a>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-light border py-1 px-2 text-muted"
+                                  title="Copy phone"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(driverCoordinationOrder.customer_phone)
+                                    showToast('Customer phone copied', 'info', '📋')
+                                  }}
+                                >
+                                  <i className="ri-file-copy-line" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. Delivery Address */}
+                        <div>
+                          <label className="text-muted fs-11 fw-semibold text-uppercase d-block mb-1">Delivery Address</label>
+                          <div className="p-2.5 rounded bg-light border text-dark fs-13 d-flex align-items-start gap-2">
+                            <i className="ri-map-pin-2-fill text-danger mt-0.5 fs-15 flex-shrink-0" />
+                            <div style={{ wordBreak: 'break-word', lineHeight: 1.4 }}>
+                              {driverCoordinationOrder.delivery_address || 'Store Pickup / In-store fulfillment'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4. Order Reference & Summary */}
+                        <div className="pt-2 border-top">
+                          <label className="text-muted fs-11 fw-semibold text-uppercase d-block mb-1">Order Reference & Value</label>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span className="badge bg-dark text-white px-2 py-1 fs-12">
+                              #{driverCoordinationOrder.order_ref || driverCoordinationOrder.id}
+                            </span>
+                            <span className="fw-bold fs-15 text-emerald">
+                              {fmt(driverCoordinationOrder.total || 0)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {driverCoordinationOrder.notes && (
+                          <div className="p-2.5 rounded bg-amber-50 border border-amber-200 fs-12 text-amber-900">
+                            <strong>Note:</strong> {driverCoordinationOrder.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Relevant Available Drivers & Fleet Details */}
+                  <div className="col-lg-7">
+                    <div className="bg-white p-3.5 rounded-3 shadow-sm border h-100 d-flex flex-column" style={{ borderColor: '#e2e8f0' }}>
+                      <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2">
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                            <i className="ri-steering-2-line" />
+                          </div>
+                          <h6 className="fw-bold fs-14 mb-0 text-dark">Available Drivers & Coordination Status</h6>
+                        </div>
+                        <span className="badge bg-primary-subtle text-primary fs-11">
+                          {fleetDrivers.length} Drivers Found
+                        </span>
+                      </div>
+
+                      {/* Driver Search */}
+                      <div className="input-group input-group-sm mb-3 shadow-xs">
+                        <span className="input-group-text bg-white border-end-0">
+                          <i className="ri-search-line text-muted" />
+                        </span>
+                        <input
+                          type="text"
+                          className="form-control border-start-0 ps-0"
+                          placeholder="Search drivers by name, phone, or zone..."
+                          value={driverSearch}
+                          onChange={(e) => setDriverSearch(e.target.value)}
+                        />
+                        {driverSearch && (
+                          <button className="btn btn-outline-secondary" onClick={() => setDriverSearch('')}>
+                            <i className="ri-close-line" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Drivers Table / Cards List */}
+                      <div className="flex-grow-1" style={{ overflowY: 'auto', maxHeight: '42vh' }}>
+                        {loadingDrivers ? (
+                          <div className="text-center py-4 text-muted">
+                            <span className="spinner-border spinner-border-sm me-2 text-primary" />
+                            Loading fleet drivers status...
+                          </div>
+                        ) : fleetDrivers.length === 0 ? (
+                          <div className="text-center py-4 text-muted">
+                            <i className="ri-steering-line fs-32 d-block text-secondary mb-1" />
+                            No drivers registered in the fleet.
+                          </div>
+                        ) : (
+                          <div className="vstack gap-2">
+                            {fleetDrivers
+                              .filter(d => {
+                                if (!driverSearch.trim()) return true
+                                const q = driverSearch.toLowerCase()
+                                return (
+                                  (d.name && d.name.toLowerCase().includes(q)) ||
+                                  (d.phone && d.phone.toLowerCase().includes(q)) ||
+                                  (d.zone && d.zone.toLowerCase().includes(q)) ||
+                                  (d.status && d.status.toLowerCase().includes(q))
+                                )
+                              })
+                              .map(drv => {
+                                const isAssigning = assigningDriverId === drv.id
+                                const isBusy = drv.status === 'on_delivery' || drv.status === 'busy' || drv.is_on_delivery
+                                const isSuspended = drv.status === 'suspended' || drv.status === 'off_duty'
+                                return (
+                                  <div
+                                    key={drv.id}
+                                    className="p-3 rounded border transition-all"
+                                    style={{
+                                      background: isBusy ? '#fafaf9' : '#ffffff',
+                                      borderColor: isBusy ? '#e7e5e4' : '#e2e8f0',
+                                    }}
+                                  >
+                                    <div className="d-flex align-items-center justify-content-between">
+                                      <div className="d-flex align-items-center gap-2.5">
+                                        <div
+                                          style={{
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: 8,
+                                            background: isBusy ? '#f1f5f9' : '#ecfdf5',
+                                            color: isBusy ? '#64748b' : '#059669',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontWeight: 'bold',
+                                            fontSize: 14,
+                                          }}
+                                        >
+                                          {drv.name ? drv.name.slice(0, 2).toUpperCase() : 'DR'}
+                                        </div>
+                                        <div>
+                                          <div className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
+                                            <span>{drv.name}</span>
+                                            <span
+                                              className={`badge ${
+                                                drv.status === 'active' || drv.is_available
+                                                  ? 'bg-success text-white'
+                                                  : isBusy
+                                                  ? 'bg-warning text-dark'
+                                                  : 'bg-secondary text-white'
+                                              } fw-semibold`}
+                                              style={{ fontSize: 9.5 }}
+                                            >
+                                              {drv.status?.toUpperCase() || (drv.is_available ? 'ACTIVE' : 'OFFLINE')}
+                                            </span>
+                                          </div>
+                                          <div className="text-muted fs-11 mt-0.5 d-flex align-items-center gap-2">
+                                            <span>
+                                              <i className="ri-phone-line text-success me-0.5" />
+                                              <a href={`tel:${drv.phone}`} className="text-decoration-none text-muted">{drv.phone || 'No phone'}</a>
+                                            </span>
+                                            <span>·</span>
+                                            <span>
+                                              <i className="ri-map-pin-line text-danger me-0.5" />
+                                              {drv.zone || drv.location || 'Store Vicinity'}
+                                            </span>
+                                            {drv.distanceKm && (
+                                              <>
+                                                <span>·</span>
+                                                <span className="text-primary fw-medium">{drv.distanceKm} km</span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="d-flex align-items-center gap-2">
+                                        {drv.phone && (
+                                          <a
+                                            href={`tel:${drv.phone}`}
+                                            className="btn btn-sm btn-outline-success px-2 py-1 fs-11 fw-semibold text-decoration-none"
+                                            title={`Call driver ${drv.name}`}
+                                          >
+                                            <i className="ri-phone-fill me-0.5" /> Call
+                                          </a>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-primary px-2.5 py-1 fs-11 fw-bold shadow-xs"
+                                          onClick={() => handleManualAssignDriver(drv)}
+                                          disabled={isAssigning || isSuspended}
+                                          title="Force-assign this driver manually"
+                                        >
+                                          {isAssigning ? (
+                                            <span className="spinner-border spinner-border-sm me-1" />
+                                          ) : (
+                                            <i className="ri-check-line me-1" />
+                                          )}
+                                          Assign
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Response status note */}
+                                    <div className="mt-2 pt-2 border-top d-flex justify-content-between align-items-center" style={{ fontSize: 10.5 }}>
+                                      <span className="text-muted">
+                                        Vehicle: <strong>{drv.vehicle_type || 'Motorcycle'} ({drv.vehicle_plate || 'No plate'})</strong>
+                                      </span>
+                                      <span className="text-secondary">
+                                        Status: {drv.current_order ? 'Currently on delivery' : 'Ready for dispatch'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer / Action Bar */}
+              <div className="modal-footer px-4 py-3 bg-light d-flex justify-content-between align-items-center">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary fw-bold px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5"
+                  onClick={handleRetryAutoAssign}
+                  title="Run dispatch proximity algorithm again"
+                >
+                  <i className="ri-refresh-line fs-14" />
+                  Retry Auto-Assign Closest Driver
+                </button>
+
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary px-3 py-1.5 fw-semibold"
+                    onClick={() => setActiveModal('online')}
+                  >
+                    Back to Orders
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger fw-bold px-4 py-1.5 shadow-sm"
+                    onClick={() => {
+                      setActiveModal(null)
+                      showToast(`Order #${driverCoordinationOrder.order_ref || driverCoordinationOrder.id} remains under Administrative Attention.`, 'info', '📋')
+                    }}
+                  >
+                    Keep Under Administrative Attention
+                  </button>
                 </div>
               </div>
             </div>
