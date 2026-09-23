@@ -1282,22 +1282,23 @@ router.patch(
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      let { status, notes, picking_staff } = req.body;
+      let { status, notes, picking_staff, confirm_pickup, force } = req.body;
       let nextStatus = String(status || '').toLowerCase().trim();
       if (nextStatus === 'packed') nextStatus = 'packed_ready';
       if (nextStatus === 'assigned') nextStatus = 'driver_assigned';
-      if (nextStatus === 'shipped') nextStatus = 'out_for_delivery';
+      if (nextStatus === 'picked_up' || nextStatus === 'picking_up') nextStatus = 'picked_up';
+      if (nextStatus === 'shipped' || nextStatus === 'in_transit') nextStatus = 'out_for_delivery';
       if (nextStatus === 'completed') nextStatus = 'delivered';
       if (nextStatus === 'new_order' || nextStatus === 'pending') nextStatus = 'paid';
 
-      const VALID_STATUSES = ["paid", "confirmed", "processing", "packed_ready", "driver_assigned", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
+      const VALID_STATUSES = ["paid", "confirmed", "processing", "packed_ready", "driver_assigned", "picked_up", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
       if (!VALID_STATUSES.includes(nextStatus)) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
       }
 
       const current = await client.query(
-        "SELECT id, status, driver_id FROM orders WHERE UPPER(id::text)=UPPER($1) OR UPPER(order_ref)=UPPER($1)",
+        "SELECT id, status, driver_id, driver_picked_up, picked_up_at FROM orders WHERE UPPER(id::text)=UPPER($1) OR UPPER(order_ref)=UPPER($1)",
         [req.params.id],
       );
       if (!current.rows.length) {
@@ -1318,15 +1319,58 @@ router.patch(
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "This order is disputed — use the dispute resolution flow instead" });
       }
-      if (["driver_assigned", "out_for_delivery"].includes(nextStatus) && !current.rows[0].driver_id) {
+
+      if (["driver_assigned", "picked_up", "out_for_delivery"].includes(nextStatus) && !current.rows[0].driver_id) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ message: "Assign a driver first" });
+        return res.status(400).json({ message: "Assign a driver first before moving to " + nextStatus });
       }
 
-      await client.query(
-        "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
-        [nextStatus, resolvedId],
-      );
+      // ── Enforce: Goods pickup by driver must be confirmed before moving to out_for_delivery / in_transit! ──
+      if (nextStatus === "out_for_delivery") {
+        const delCheck = await client.query(
+          "SELECT id, status, goods_confirmed_by_driver, picked_up_at FROM deliveries WHERE order_id = $1",
+          [resolvedId]
+        );
+        const hasPickedUp = current.rows[0].driver_picked_up || (delCheck.rows.length > 0 && delCheck.rows[0].goods_confirmed_by_driver);
+
+        if (!hasPickedUp && !force && !confirm_pickup) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            success: false,
+            error_code: "DRIVER_PICKUP_REQUIRED",
+            message: "Driver has not yet confirmed pickup of goods from the store counter. The driver must confirm goods collection before moving to In Transit.",
+            requires_pickup_confirmation: true
+          });
+        }
+
+        // If admin/cashier confirms pickup or driver confirmed
+        const pickupTime = new Date();
+        await client.query(
+          "UPDATE orders SET driver_picked_up = true, picked_up_at = COALESCE(picked_up_at, $1) WHERE id = $2",
+          [pickupTime, resolvedId]
+        );
+        await client.query(
+          "UPDATE deliveries SET goods_confirmed_by_driver = true, picked_up_at = COALESCE(picked_up_at, $1), status = 'en_route', dispatched_at = COALESCE(dispatched_at, NOW()) WHERE order_id = $2",
+          [pickupTime, resolvedId]
+        );
+      }
+
+      if (nextStatus === "picked_up") {
+        const pickupTime = new Date();
+        await client.query(
+          "UPDATE orders SET driver_picked_up = true, picked_up_at = $1, status = 'picked_up', updated_at=NOW() WHERE id = $2",
+          [pickupTime, resolvedId]
+        );
+        await client.query(
+          "UPDATE deliveries SET goods_confirmed_by_driver = true, picked_up_at = $1, status = 'picked_up', updated_at=NOW() WHERE order_id = $2",
+          [pickupTime, resolvedId]
+        );
+      } else {
+        await client.query(
+          "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
+          [nextStatus, resolvedId],
+        );
+      }
 
       // Only restore on the transition INTO cancelled
       if (nextStatus === "cancelled" && fromStatus !== "cancelled") {
@@ -1494,6 +1538,97 @@ router.patch(
       client.release();
     }
   },
+);
+
+// ── POST /api/admin/orders/:id/confirm-driver-pickup ──────────────
+// Admin or POS cashier confirms physical handover of goods to assigned driver
+router.post(
+  "/:id/confirm-driver-pickup",
+  requireRole("superadmin", "manager", "admin", "delivery_manager", "cashier"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { id } = req.params;
+      const { notes } = req.body;
+
+      const orderRes = await client.query(
+        `SELECT o.*, d.id as delivery_id, dr.name as driver_name, dr.phone as driver_phone
+         FROM orders o
+         LEFT JOIN deliveries d ON d.order_id = o.id
+         LEFT JOIN drivers dr ON dr.id = o.driver_id
+         WHERE UPPER(o.id::text) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1)
+         FOR UPDATE OF o`,
+        [id]
+      );
+
+      if (!orderRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const order = orderRes.rows[0];
+
+      if (!order.driver_id) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot confirm pickup: No driver assigned to this order yet." });
+      }
+
+      const pickupTime = new Date();
+
+      // Update orders
+      await client.query(
+        `UPDATE orders
+         SET driver_picked_up = true,
+             picked_up_at = $1,
+             status = 'picked_up',
+             tracking_status = 'picked_up',
+             updated_at = NOW()
+         WHERE id = $2`,
+        [pickupTime, order.id]
+      );
+
+      // Update deliveries
+      if (order.delivery_id) {
+        await client.query(
+          `UPDATE deliveries
+           SET status = 'picked_up',
+               picked_up_at = $1,
+               goods_confirmed_by_driver = true,
+               picked_up_by = $2,
+               updated_at = NOW()
+           WHERE id = $3`,
+          [pickupTime, order.driver_id, order.delivery_id]
+        );
+      }
+
+      await logOrderAudit(client, {
+        order_id: order.id,
+        actor_id: req.user.id,
+        actor_name: req.user.name,
+        actor_role: req.user.role,
+        action: 'admin_confirmed_driver_goods_pickup',
+        previous_state: order.status,
+        new_state: 'picked_up',
+        metadata: { driver_id: order.driver_id, driver_name: order.driver_name, notes }
+      });
+
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        message: `Goods handover confirmed for driver ${order.driver_name || ''} on Order #${order.order_ref || order.id}. Ready for In Transit.`,
+        order_status: "picked_up",
+        picked_up_at: pickupTime,
+        driver_picked_up: true
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
 );
 
 // ── PATCH /api/admin/orders/:id/assign-driver ─────────────────────

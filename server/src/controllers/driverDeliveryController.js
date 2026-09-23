@@ -7,7 +7,8 @@ const { autoAssignClosestDriver } = require("../services/dispatchEngine");
 function normalizeStatus(status) {
   const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
   if (s === "accepted") return "assigned";
-  if (s === "out_for_delivery" || s === "en_route" || s === "on_the_way" || s === "picked_up") return "en_route";
+  if (s === "picked_up" || s === "picking_up" || s === "goods_collected" || s === "pickup_confirmed" || s === "at_store") return "picked_up";
+  if (s === "out_for_delivery" || s === "en_route" || s === "on_the_way" || s === "in_transit") return "en_route";
   if (s === "arrived" || s === "driver_arrived" || s === "at_location") return "arrived";
   if (s === "delivered" || s === "completed") return "delivered";
   if (s === "failed" || s === "undelivered" || s === "delivery_attempted" || s === "customer_unavailable") return "delivery_attempted";
@@ -365,10 +366,70 @@ const updateDeliveryStatus = async (req, res, next) => {
     } else if (deliveryStatus === "awaiting_pickup") {
       orderStatus = "packed_ready";
       trackingStatus = "packed_ready";
+    } else if (deliveryStatus === "picked_up") {
+      // Driver confirms they have physically collected/picked up goods at the store
+      const pickupTime = new Date();
+      await client.query(
+        `UPDATE deliveries 
+         SET picked_up_at = $1, 
+             goods_confirmed_by_driver = true,
+             picked_up_by = $2,
+             status = 'picked_up',
+             updated_at = NOW()
+         WHERE id = $3`,
+        [pickupTime, driverId, delivery.id]
+      );
+      await client.query(
+        `UPDATE orders
+         SET driver_picked_up = true,
+             picked_up_at = $1,
+             status = 'picked_up',
+             tracking_status = 'picked_up',
+             updated_at = NOW()
+         WHERE id = $2`,
+        [pickupTime, actualOrderId]
+      );
+      await logOrderAudit(client, {
+        order_id: actualOrderId,
+        actor_id: driverId,
+        actor_name: req.driver.name,
+        actor_role: 'driver',
+        action: 'driver_picked_up_goods',
+        previous_state: delivery.status,
+        new_state: 'picked_up',
+        metadata: { delivery_id: delivery.id, confirmed_at: pickupTime }
+      });
+      orderStatus = "picked_up";
+      trackingStatus = "picked_up";
     } else if (deliveryStatus === "en_route") {
+      // Order moves to In Transit: ensure driver pickup of goods is recorded
+      const pickupTime = delivery.picked_up_at || new Date();
       dispatchedAt = dispatchedAt || new Date();
       orderStatus = "shipped";
       trackingStatus = "out_for_delivery";
+
+      await client.query(
+        `UPDATE deliveries 
+         SET picked_up_at = COALESCE(picked_up_at, $1), 
+             goods_confirmed_by_driver = true,
+             picked_up_by = COALESCE(picked_up_by, $2),
+             dispatched_at = COALESCE(dispatched_at, $3),
+             status = 'en_route',
+             updated_at = NOW()
+         WHERE id = $4`,
+        [pickupTime, driverId, dispatchedAt, delivery.id]
+      );
+      await client.query(
+        `UPDATE orders
+         SET driver_picked_up = true,
+             picked_up_at = COALESCE(picked_up_at, $1),
+             status = 'shipped',
+             tracking_status = 'out_for_delivery',
+             updated_at = NOW()
+         WHERE id = $2`,
+        [pickupTime, actualOrderId]
+      );
+
       // Mark driver as currently on active delivery
       await client.query(
         "UPDATE driver_availability SET is_on_delivery = true, last_toggled_at = NOW() WHERE driver_id = $1",
@@ -820,6 +881,94 @@ const declineDelivery = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/deliveries/:orderId/confirm-pickup ──────────────
+// Driver confirms they have arrived at store and physically collected/picked up goods
+const confirmPickup = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+    const { note } = req.body;
+
+    await client.query("BEGIN");
+
+    const deliveryCheck = await client.query(
+      `
+      SELECT d.*, o.id AS actual_order_id, o.order_ref, o.status AS current_order_status
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      WHERE d.driver_id = $1
+        AND (d.order_id = $2 OR d.id::text = $2 OR d.delivery_ref = $2 OR o.order_ref = $2)
+      FOR UPDATE OF d
+      `,
+      [driverId, orderId]
+    );
+
+    if (deliveryCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Delivery not found or not assigned to you" });
+    }
+
+    const delivery = deliveryCheck.rows[0];
+    const actualOrderId = delivery.actual_order_id;
+    const pickupTime = new Date();
+
+    // Update delivery record
+    await client.query(
+      `UPDATE deliveries
+       SET status = 'picked_up',
+           picked_up_at = $1,
+           goods_confirmed_by_driver = true,
+           picked_up_by = $2,
+           proof_note = COALESCE($3, proof_note),
+           updated_at = NOW()
+       WHERE id = $4`,
+      [pickupTime, driverId, note || null, delivery.id]
+    );
+
+    // Update order record
+    await client.query(
+      `UPDATE orders
+       SET driver_picked_up = true,
+           picked_up_at = $1,
+           status = 'picked_up',
+           tracking_status = 'picked_up',
+           updated_at = NOW()
+       WHERE id = $2`,
+      [pickupTime, actualOrderId]
+    );
+
+    // Log workflow audit
+    await logOrderAudit(client, {
+      order_id: actualOrderId,
+      actor_id: driverId,
+      actor_name: req.driver.name,
+      actor_role: 'driver',
+      action: 'driver_confirmed_goods_pickup',
+      previous_state: delivery.status,
+      new_state: 'picked_up',
+      metadata: { delivery_id: delivery.id, confirmed_at: pickupTime, note }
+    });
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: `Goods pickup confirmed for Order #${delivery.order_ref || actualOrderId}. Ready to proceed with transit.`,
+      delivery_status: "picked_up",
+      order_status: "picked_up",
+      picked_up_at: pickupTime,
+      goods_confirmed: true
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Driver confirmPickup error:", err.message);
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getActiveDeliveries,
   getDeliveryHistory,
@@ -827,5 +976,6 @@ module.exports = {
   updateDeliveryStatus,
   acceptDelivery,
   declineDelivery,
+  confirmPickup,
 };
 

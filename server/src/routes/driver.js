@@ -66,6 +66,7 @@ router.get("/deliveries/history", driverProtect, driverDeliveryController.getDel
 router.get("/deliveries/:orderId", driverProtect, driverDeliveryController.getDeliveryDetails);
 router.post("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
 router.post("/deliveries/:orderId/decline", driverProtect, driverDeliveryController.declineDelivery);
+router.post("/deliveries/:orderId/confirm-pickup", driverProtect, driverDeliveryController.confirmPickup);
 router.patch("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 

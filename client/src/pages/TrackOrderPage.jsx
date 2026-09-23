@@ -72,9 +72,10 @@ function DeliveryVideoSlider() {
 
 const STEPS = [
   { key: "confirmed", stepNumber: "01", label: "Confirmed", desc: "Order queued & verified" },
-  { key: "processing", stepNumber: "02", label: "Packaging", desc: "Inspected & sealed" },
-  { key: "shipped", stepNumber: "03", label: "In Transit", desc: "With dispatch courier" },
-  { key: "delivered", stepNumber: "04", label: "Delivered", desc: "Delivered to doorstep" },
+  { key: "processing", stepNumber: "02", label: "Processing", desc: "Inspected & sorted" },
+  { key: "packed", stepNumber: "03", label: "Packed", desc: "Sealed & ready at store" },
+  { key: "shipped", stepNumber: "04", label: "In Transit", desc: "Courier confirmed pickup" },
+  { key: "delivered", stepNumber: "05", label: "Delivered", desc: "Delivered to doorstep" },
 ];
 
 const STATUS_INDEX = {
@@ -83,25 +84,28 @@ const STATUS_INDEX = {
   pending: 0,
   order_placed: 0,
   confirmed: 0,
+  paid: 0,
   packaging: 1,
   processing: 1,
   partially_packed: 1,
   packaging_exception: 1,
-  packed: 1,
-  ready_for_pickup: 1,
+  packed: 2,
+  packed_ready: 2,
+  ready_for_pickup: 2,
   awaiting_driver_confirmation: 2,
   driver_assigned: 2,
   awaiting_pickup: 2,
-  in_transit: 2,
-  shipped: 2,
-  en_route: 2,
-  out_for_delivery: 2,
-  arrived: 2,
-  delivery_attempted: 2,
-  delivery_exception: 2,
-  customer_unreachable: 2,
-  delivered: 3,
-  completed: 3,
+  picked_up: 3,
+  in_transit: 3,
+  shipped: 3,
+  en_route: 3,
+  out_for_delivery: 3,
+  arrived: 3,
+  delivery_attempted: 3,
+  delivery_exception: 3,
+  customer_unreachable: 3,
+  delivered: 4,
+  completed: 4,
 };
 
 const STATUS_COPY = {
@@ -110,15 +114,18 @@ const STATUS_COPY = {
   pending: ["Order Received", "Your order has been logged and is awaiting confirmation."],
   order_placed: ["Order Received", "Your farm produce order has been received."],
   confirmed: ["Order Confirmed", "Your payment is confirmed. Farm produce is queued for packing."],
-  packaging: ["Packaging & Inspection", "Our warehouse team is picking, verifying, and packaging your items."],
-  processing: ["Packaging & Inspection", "Our warehouse team is picking, verifying, and packaging your items."],
+  paid: ["Order Confirmed", "Payment verified. Produce queued for packaging."],
+  packaging: ["Processing & Inspection", "Our warehouse team is picking, verifying, and packaging your items."],
+  processing: ["Processing & Inspection", "Our warehouse team is picking, verifying, and packaging your items."],
   partially_packed: ["Partially Packed", "Items are currently being scanned and packed at the store terminal."],
   packaging_exception: ["Packaging Notice", "An item in your order is being reviewed by the warehouse team."],
-  packed: ["Packed & Sealed", "Your produce is sealed with freshness tamper-proof packaging."],
-  ready_for_pickup: ["Awaiting Dispatch", "Order is staged at the dispatch hub ready for courier pickup."],
-  awaiting_driver_confirmation: ["Finding Courier", "Looking for the nearest available courier driver to deliver your order."],
-  driver_assigned: ["Courier Assigned", "A dedicated BemsFarms delivery driver has been assigned."],
-  awaiting_pickup: ["Courier Arriving", "Courier is collecting your parcel from our central dispatch hub."],
+  packed: ["Packed & Sealed", "Your produce is sealed and staged at store counter, awaiting courier pickup."],
+  packed_ready: ["Packed & Ready", "Your order is sealed and verified at the store counter."],
+  ready_for_pickup: ["Awaiting Pickup", "Order is staged at the store dispatch counter ready for courier pickup."],
+  awaiting_driver_confirmation: ["Finding Courier", "Looking for the nearest available courier driver to collect your order."],
+  driver_assigned: ["Courier Assigned", "Courier has been assigned and is heading to the store to collect your goods."],
+  awaiting_pickup: ["Courier Arriving at Store", "Courier is arriving at the store counter to verify and collect your goods."],
+  picked_up: ["Goods Picked Up", "Courier has confirmed pickup of goods at the store and is heading to your address."],
   in_transit: ["In Transit", "Your delivery driver is en route with your fresh produce."],
   shipped: ["In Transit", "Your order has departed our logistics center."],
   en_route: ["On The Way", "Your delivery driver is en route to your destination."],
@@ -429,10 +436,10 @@ export default function TrackOrderPage() {
                   </button>
                 </div>
 
-                {/* 4-Step Milestone Progress Bar */}
+                {/* 5-Step Milestone Progress Bar */}
                 {!isCancelled && (
                   <div className="px-6 py-6 sm:px-8 bg-gradient-to-b from-white to-slate-50 border-b border-slate-100">
-                    <div className="grid grid-cols-4 gap-2 relative">
+                    <div className="grid grid-cols-5 gap-2 relative">
                       {STEPS.map((step, index) => {
                         const isDone = index < activeIndex;
                         const isCurrent = index === activeIndex;

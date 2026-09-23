@@ -106,7 +106,22 @@ const STATUS_CONFIG = {
     dot: "#3B82F6",
     cardAccent: "border-t-blue-600",
     headerBg: "bg-blue-50/80",
-    stepIndex: 2,
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+      </svg>
+    ),
+  },
+  packed_ready: {
+    label: "Packed · Ready for Pickup",
+    color: "#1D4ED8",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
+    dot: "#3B82F6",
+    cardAccent: "border-t-blue-600",
+    headerBg: "bg-blue-50/80",
+    stepIndex: 3,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -121,10 +136,55 @@ const STATUS_CONFIG = {
     dot: "#F59E0B",
     cardAccent: "border-t-amber-500",
     headerBg: "bg-amber-50/70",
-    stepIndex: 2,
+    stepIndex: 3,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  driver_assigned: {
+    label: "Courier Assigned",
+    color: "#B45309",
+    bg: "#FEF3C7",
+    border: "#FDE68A",
+    dot: "#F59E0B",
+    cardAccent: "border-t-amber-500",
+    headerBg: "bg-amber-50/70",
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  awaiting_pickup: {
+    label: "Awaiting Store Pickup",
+    color: "#B45309",
+    bg: "#FEF3C7",
+    border: "#FDE68A",
+    dot: "#F59E0B",
+    cardAccent: "border-t-amber-500",
+    headerBg: "bg-amber-50/70",
+    stepIndex: 3,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  picked_up: {
+    label: "Goods Picked Up",
+    color: "#047857",
+    bg: "#ECFDF5",
+    border: "#A7F3D0",
+    dot: "#10B981",
+    cardAccent: "border-t-emerald-600",
+    headerBg: "bg-emerald-50/80",
+    stepIndex: 4,
+    icon: (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
     ),
   },
@@ -136,7 +196,7 @@ const STATUS_CONFIG = {
     dot: "#10B981",
     cardAccent: "border-t-emerald-600",
     headerBg: "bg-emerald-50/80",
-    stepIndex: 3,
+    stepIndex: 4,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -151,7 +211,7 @@ const STATUS_CONFIG = {
     dot: "#10B981",
     cardAccent: "border-t-emerald-600",
     headerBg: "bg-emerald-50/80",
-    stepIndex: 3,
+    stepIndex: 4,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -166,7 +226,7 @@ const STATUS_CONFIG = {
     dot: "#10B981",
     cardAccent: "border-t-emerald-600",
     headerBg: "bg-emerald-50/80",
-    stepIndex: 3,
+    stepIndex: 4,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -181,7 +241,7 @@ const STATUS_CONFIG = {
     dot: "#EF4444",
     cardAccent: "border-t-rose-500",
     headerBg: "bg-rose-50/60",
-    stepIndex: 3,
+    stepIndex: 4,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -196,7 +256,7 @@ const STATUS_CONFIG = {
     dot: "#22C55E",
     cardAccent: "border-t-teal-600",
     headerBg: "bg-teal-50/60",
-    stepIndex: 4,
+    stepIndex: 5,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -220,7 +280,7 @@ const STATUS_CONFIG = {
   },
 };
 
-const STEPS = ["Placed", "Confirmed", "Packaging", "In Transit", "Delivered"];
+const STEPS = ["Placed", "Confirmed", "Processing", "Packed", "In Transit", "Delivered"];
 
 export default function OrdersPage() {
   const navigate = useNavigate();
@@ -335,18 +395,22 @@ export default function OrdersPage() {
     const totalCount = orders.length;
     // Orders in warehouse queue / packaging:
     const packagingCount = orders.filter((o) =>
-      ["pending", "paid", "new_order", "confirmed", "processing", "packed_ready"].includes(o.status)
+      ["pending", "paid", "new_order", "confirmed", "processing", "packaging", "partially_packed"].includes(o.status)
     ).length;
-    // Orders actively with courier on the road:
+    // Orders packed & sealed at store awaiting pickup:
+    const packedCount = orders.filter((o) =>
+      ["packed", "packed_ready", "awaiting_driver_confirmation", "driver_assigned", "awaiting_pickup"].includes(o.status)
+    ).length;
+    // Orders actively with courier on the road (driver picked up):
     const inTransitCount = orders.filter((o) =>
-      ["driver_assigned", "shipped", "out_for_delivery"].includes(o.status)
+      ["picked_up", "shipped", "in_transit", "en_route", "out_for_delivery", "arrived"].includes(o.status)
     ).length;
     const deliveredCount = orders.filter((o) => ["delivered", "completed"].includes(o.status)).length;
     const cancelledCount = orders.filter((o) => o.status === "cancelled").length;
     const totalSpent = orders
       .filter((o) => o.status !== "cancelled")
       .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-    return { totalCount, packagingCount, inTransitCount, deliveredCount, cancelledCount, totalSpent };
+    return { totalCount, packagingCount, packedCount, inTransitCount, deliveredCount, cancelledCount, totalSpent };
   }, [orders]);
 
   // Filtered and Searched Orders
@@ -354,9 +418,11 @@ export default function OrdersPage() {
     return orders.filter((o) => {
       // Status tab filter
       if (filter === "packaging") {
-        if (!["pending", "paid", "new_order", "confirmed", "processing", "packed_ready"].includes(o.status)) return false;
+        if (!["pending", "paid", "new_order", "confirmed", "processing", "packaging", "partially_packed"].includes(o.status)) return false;
+      } else if (filter === "packed") {
+        if (!["packed", "packed_ready", "awaiting_driver_confirmation", "driver_assigned", "awaiting_pickup"].includes(o.status)) return false;
       } else if (filter === "in_transit") {
-        if (!["driver_assigned", "shipped", "out_for_delivery"].includes(o.status)) return false;
+        if (!["picked_up", "shipped", "in_transit", "en_route", "out_for_delivery", "arrived"].includes(o.status)) return false;
       } else if (filter === "delivered") {
         if (!["delivered", "completed"].includes(o.status)) return false;
       } else if (filter === "cancelled") {
@@ -422,7 +488,7 @@ export default function OrdersPage() {
             </div>
 
             {/* ── METRIC STAT CARDS ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-5 mt-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mt-8">
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Total Orders</div>
                 <div className="text-2xl sm:text-3xl font-black text-white mt-1">{metrics.totalCount}</div>
@@ -432,22 +498,31 @@ export default function OrdersPage() {
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-amber-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span>In Packaging</span>
+                  <span>Processing</span>
                 </div>
                 <div className="text-2xl sm:text-3xl font-black text-amber-300 mt-1">{metrics.packagingCount}</div>
                 <div className="text-[11px] text-amber-200/70 mt-0.5">Order picking & pack</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
-                <div className="text-blue-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <i className="ri-truck-line text-blue-300" />
-                  <span>In Transit</span>
+                <div className="text-blue-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  <span>Packed</span>
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-blue-300 mt-1">{metrics.inTransitCount}</div>
-                <div className="text-[11px] text-blue-200/70 mt-0.5">Courier on the road</div>
+                <div className="text-2xl sm:text-3xl font-black text-blue-200 mt-1">{metrics.packedCount}</div>
+                <div className="text-[11px] text-blue-200/70 mt-0.5">Awaiting store pickup</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
+                <div className="text-emerald-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>In Transit</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-300 mt-1">{metrics.inTransitCount}</div>
+                <div className="text-[11px] text-emerald-200/70 mt-0.5">Courier on the road</div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm col-span-2 sm:col-span-1">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Delivered</div>
                 <div className="text-2xl sm:text-3xl font-black text-emerald-300 mt-1">{metrics.deliveredCount}</div>
                 <div className="text-[11px] text-emerald-300/70 mt-0.5">Fulfilled orders</div>
@@ -464,7 +539,8 @@ export default function OrdersPage() {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
               {[
                 { key: "all", label: "All Orders", count: metrics.totalCount },
-                { key: "packaging", label: "In Packaging", count: metrics.packagingCount },
+                { key: "packaging", label: "Processing", count: metrics.packagingCount },
+                { key: "packed", label: "Packed", count: metrics.packedCount },
                 { key: "in_transit", label: "In Transit", count: metrics.inTransitCount },
                 { key: "delivered", label: "Delivered", count: metrics.deliveredCount },
                 { key: "cancelled", label: "Cancelled", count: metrics.cancelledCount },

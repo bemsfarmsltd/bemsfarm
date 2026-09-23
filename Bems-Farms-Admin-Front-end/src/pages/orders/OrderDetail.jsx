@@ -98,6 +98,22 @@ export default function OrderDetail() {
     }
   }
 
+  const handleConfirmDriverPickup = async () => {
+    if (!order) return
+    setUpdating(true)
+    try {
+      const res = await api.post(`/admin/orders/${id}/confirm-driver-pickup`, {
+        notes: 'Handover verified at store counter by admin / dispatch supervisor',
+      })
+      toast.success(res.data?.message || 'Driver pickup confirmed successfully!')
+      fetchOrder()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to confirm driver pickup')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const handlePrintInvoice = async () => {
     printThermalReceipt()
     try {
@@ -432,6 +448,7 @@ export default function OrderDetail() {
                 {[
                   { key: 'processing', label: 'Processing' },
                   { key: 'packed_ready', label: 'Packed & Ready' },
+                  { key: 'picked_up', label: 'Driver Picked Up' },
                   { key: 'out_for_delivery', label: 'Out for Delivery' },
                   { key: 'delivered', label: 'Delivered' },
                   { key: 'cancelled', label: 'Cancelled' },
@@ -523,6 +540,14 @@ export default function OrderDetail() {
               {/* Specification Dual Confirmation Badges */}
               <div className="pt-2 border-top mt-1">
                 <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-muted">Store Goods Pickup</span>
+                  {order.driver_picked_up || order.picked_up_at ? (
+                    <span className="badge bg-success-subtle text-success">✓ Picked Up at Store</span>
+                  ) : (
+                    <span className="badge bg-warning-subtle text-warning-emphasis">Awaiting Store Handover</span>
+                  )}
+                </div>
+                <div className="d-flex justify-content-between align-items-center mb-1">
                   <span className="text-muted">Customer Confirmation</span>
                   {order.customer_confirmed ? (
                     <span className="badge bg-success-subtle text-success">✓ Confirmed</span>
@@ -531,7 +556,7 @@ export default function OrderDetail() {
                   )}
                 </div>
                 <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="text-muted">Driver Handover</span>
+                  <span className="text-muted">Driver Delivery Handover</span>
                   {order.driver_confirmed ? (
                     <span className="badge bg-success-subtle text-success">✓ Confirmed</span>
                   ) : (
@@ -546,6 +571,19 @@ export default function OrderDetail() {
                   </div>
                 )}
               </div>
+
+              {order.driver_id && !order.driver_picked_up && order.status !== 'delivered' && order.status !== 'cancelled' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success w-100 mt-2 d-flex align-items-center justify-content-center gap-1.5 fw-bold"
+                  onClick={handleConfirmDriverPickup}
+                  disabled={updating}
+                  title="Confirm driver has arrived at the store and collected the packed goods"
+                >
+                  <i className="ri-hand-coin-line" />
+                  <span>Confirm Driver Store Handover</span>
+                </button>
+              )}
 
               {['in_transit', 'shipped', 'out_for_delivery', 'delivery_attempted', 'delivery_exception', 'customer_unreachable'].includes(statusKey) && (
                 <button

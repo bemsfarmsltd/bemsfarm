@@ -362,16 +362,30 @@ Updates the status of an active delivery. Automatically updates order state, cus
 #### Allowed Status Codes & Actions:
 | Input `status` | Normalized Action | Customer Tracking State | Driver Commission |
 | :--- | :--- | :--- | :--- |
-| `accepted` | Driver accepts assignment | `driver_assigned` | — |
-| `awaiting_pickup` | Driver at farm/store loading goods | `packed_ready` | — |
-| `en_route` / `out_for_delivery` | Driver picked up package & left | `out_for_delivery` | — |
+| `accepted` | Driver accepts assignment | `driver_assigned` (Courier Assigned) | — |
+| `awaiting_pickup` / `at_store` | Driver at farm/store counter | `packed` (Packed & Staged at Store) | — |
+| `picked_up` / `confirm-pickup` | **Driver confirms goods pickup at store** | `picked_up` / `in_transit` | — |
+| `en_route` / `out_for_delivery` | Driver departs store & en route | `out_for_delivery` | — |
 | `arrived` | Driver arrived at destination | `driver_arrived` | — |
 | `delivered` | Successfully delivered to customer | `delivered` | **+₦500 Credited to Wallet** |
 | `failed` / `delivery_attempted` | Delivery could not be completed | `delivery_attempted` | — |
 
+> **IMPORTANT:** An order **cannot** move to `out_for_delivery` or `in_transit` until the driver confirms goods pickup at the store counter.
+
 #### Request Payloads:
 
-**1. Mark Out for Delivery (En Route):**
+**1. Confirm Physical Goods Pickup at Store (Dedicated or via Status):**
+* **Method:** `POST`
+* **Path:** `/api/driver/deliveries/:orderId/confirm-pickup`
+*(Or `PATCH /api/driver/deliveries/:orderId/status` with `{"status": "picked_up"}`)*
+```json
+{
+  "notes": "Verified 3 crates with cashier, seals intact",
+  "eta_minutes": 25
+}
+```
+
+**2. Mark Out for Delivery (En Route):**
 ```json
 {
   "status": "en_route",

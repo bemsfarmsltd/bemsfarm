@@ -15,6 +15,8 @@ const STATUS_CFG = {
   driver_assigned:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   awaiting_pickup:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   packed_ready:       { label: 'Packed & Ready',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-archive-line'         },
+  picked_up:          { label: 'Goods Picked Up',   color: '#10b981', bg: '#d1fae5', icon: 'ri-hand-coin-line'       },
+  in_transit:         { label: 'In Transit',        color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
   shipped:            { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
   out_for_delivery:   { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
   en_route:           { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
@@ -72,7 +74,9 @@ export default function ActiveDeliveries() {
       const mapped = rawDeliveries.map((d) => {
         let s = d.status
         if (s === 'driver_assigned') s = 'assigned'
+        if (s === 'picked_up') s = 'picked_up'
         if (s === 'out_for_delivery') s = 'shipped'
+        if (s === 'in_transit') s = 'shipped'
 
         return {
           id: d.delivery_ref || `DEL-${d.id}`,
@@ -225,6 +229,20 @@ export default function ActiveDeliveries() {
       toast.error('Failed to update status')
     }
     closeModal()
+  }
+
+  const confirmPickupHandover = async (del) => {
+    const target = del || selected
+    if (!target) return
+    try {
+      const res = await api.post(`/admin/orders/${target.orderId}/confirm-driver-pickup`, {
+        notes: 'Driver store pickup handover confirmed via Active Deliveries',
+      })
+      toast.success(res.data?.message || `Goods pickup confirmed for ${target.orderId}! Order is now In Transit.`)
+      fetchActiveDeliveries()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to confirm driver pickup')
+    }
   }
 
   const scheduleRetry = async () => {
@@ -650,23 +668,32 @@ export default function ActiveDeliveries() {
                       <i className="ri-eye-line me-1" />Details
                     </button>
 
-                    {/* En Route actions */}
-                    {del.status === 'shipped' && (
+                    {/* En Route or Picked Up actions */}
+                    {['shipped', 'picked_up', 'in_transit'].includes(del.status) && (
                       <button className="btn btn-sm btn-outline-warning flex-fill" onClick={() => openModal('attempted', del)}>
                         <i className="ri-route-line me-1" />Mark Attempted
                       </button>
                     )}
-                    {del.status === 'shipped' && (
+                    {['shipped', 'picked_up', 'in_transit'].includes(del.status) && (
                       <button className="btn btn-sm btn-success flex-fill" onClick={() => openModal('delivered', del)}>
                         <i className="ri-checkbox-circle-line me-1" />Delivered
                       </button>
                     )}
 
-                    {/* Awaiting pickup — reassign only */}
+                    {/* Awaiting pickup — Confirm Handover or Reassign */}
                     {del.status === 'assigned' && (
-                      <button className="btn btn-sm btn-outline-primary flex-fill" onClick={() => openModal('reassign', del)}>
-                        <i className="ri-user-follow-line me-1" />Reassign Driver
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-sm btn-outline-success flex-fill fw-bold"
+                          onClick={() => confirmPickupHandover(del)}
+                          title="Confirm driver is at the store picking up the goods"
+                        >
+                          <i className="ri-hand-coin-line me-1" />Confirm Pickup
+                        </button>
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => openModal('reassign', del)} title="Reassign Driver">
+                          <i className="ri-user-follow-line" />
+                        </button>
+                      </>
                     )}
 
                     {/* Delivery attempted — Schedule Retry or Cancel */}

@@ -1462,11 +1462,25 @@ export default function POS() {
     handleOpenPacking(order)
   }
 
+  const handleConfirmDriverHandover = async (order) => {
+    if (!order) return
+    const targetId = order.rawId || order.id
+    try {
+      const res = await api.post(`/admin/orders/${targetId}/confirm-driver-pickup`, {
+        notes: 'Driver store pickup handover confirmed at POS station',
+      })
+      showToast(res.data?.message || `Order #${order.id} handed over to driver! Now in transit.`, 'success', '🤝')
+      setOnlineOrders(prev => prev.filter(o => o.id !== order.id && o.rawId !== targetId))
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to confirm driver handover', 'error', '⚠️')
+    }
+  }
+
   const handleMarkOrderDispatched = async (order) => {
     if (!order) return
     const targetId = order.rawId || order.id
     try {
-      await api.patch(`/admin/orders/${targetId}/status`, { status: 'in_transit' })
+      await api.patch(`/admin/orders/${targetId}/status`, { status: 'in_transit', confirm_pickup: true })
       showToast(`Order #${order.id} marked as In Transit / Dispatched`, 'success', '🚚')
       setOnlineOrders(prev => prev.filter(o => o.id !== order.id && o.rawId !== targetId))
     } catch (err) {
@@ -2668,9 +2682,18 @@ export default function POS() {
                                         <i className="ri-steering-2-line me-1" /> Assign Driver
                                       </button>
                                     ) : (
-                                      <span className="badge bg-light text-dark border px-2 py-1 fs-11">
-                                        <i className="ri-steering-line text-success me-1"/>Driver Assigned
-                                      </span>
+                                      <div className="d-flex align-items-center gap-1">
+                                        <span className="badge bg-light text-dark border px-2 py-1 fs-11">
+                                          <i className="ri-steering-line text-success me-1"/>Driver Assigned
+                                        </span>
+                                        <button
+                                          className="btn btn-sm btn-outline-success fw-bold px-2 py-1 fs-11"
+                                          title="Confirm driver is at the store picking up the goods"
+                                          onClick={() => handleConfirmDriverHandover(order)}
+                                        >
+                                          <i className="ri-hand-coin-line me-1" /> Handover
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 ) : (

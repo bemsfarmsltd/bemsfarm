@@ -78,31 +78,36 @@ flowchart TD
 
 ---
 
-### Phase 2: Store Processing & Warehouse Checkout
+### Phase 2: Store Processing, Packing & Staging
 1. **Invoice Generation & Packaging Trigger**:
-   - The Store Admin or Kitchen Staff opens the order in the Admin Portal and prints the **Sales / Packing Invoice**.
-   - Order status transitions to **Packaging** (`'packaging'` / `'packed_ready'`).
-2. **Salesperson Verification & Inventory Checkout**:
-   - The Delivery Manager hands the printed invoice and physical goods to the Salesperson.
-   - The Salesperson verifies payment clearance and checks the items out of the system, deducting from warehouse inventory/batches.
+   - The Store Admin, Kitchen Staff, or POS cashier opens the order in the Admin Portal and prints the **Sales / Packing Invoice**.
+   - Order status transitions to **Processing** (`'processing'` / `'packaging'`).
+2. **Salesperson Verification, Packing & Inventory Checkout**:
+   - Items are verified, inspected, and packed.
+   - When 100% of items are verified and sealed, order status transitions to **Packed** (`'packed'` / `'packed_ready'`).
+   - Customer frontend tracking prominently displays: **"03 Packed — Sealed & ready at store"**.
 3. **Proximity Auto-Dispatching**:
-   - Once packaging is verified, the backend proximity dispatch engine (`autoAssignClosestDriver`) activates.
-   - The algorithm:
-     - Identifies all active drivers with `driver_availability.is_available = true` and `is_on_delivery = false`.
-     - Calculates the geodesic distance (Haversine formula) between the store location (`lat: 5.1065, lng: 7.3667`) and each driver's latest coordinates in `driver_locations`.
-     - Selects the closest available driver and inserts a `delivery_assignments` record.
-     - Sets `orders.status` = `'driver_assigned'`, `deliveries.status` = `'assigned'`.
-     - Sends a high-priority push notification to the driver's device via `driver_notifications`.
+   - Once packaging is verified, the backend proximity dispatch engine (`autoAssignClosestDriver`) activates (or manual driver assignment via Section 8 / POS).
+   - The algorithm selects the closest available driver and inserts a `delivery_assignments` record.
+   - Sets `orders.status` = `'driver_assigned'`, `deliveries.status` = `'assigned'`.
+   - Sends a high-priority push notification to the driver's device via `driver_notifications`.
+   - Customer frontend indicates: **"Courier Assigned — Courier is heading to the store to collect your goods"**.
 
 ---
 
-### Phase 3: Driver Store Pickup & Transit
-1. **Store Pickup**:
-   - The mapped driver receives the pickup notification with the store address and order items.
-   - Upon arriving at the store, the driver collects the packaged goods and clicks **"Confirm Picked Up"** (`PATCH /api/driver/deliveries/{orderId}/status` with `status: 'en_route'`).
-2. **In Transit**:
-   - System updates `orders.status` = `'shipped'`, `orders.tracking_status` = `'out_for_delivery'`.
+### Phase 3: Driver Store Pickup Verification & Transit Initiation
+1. **Physical Store Arrival & Goods Verification**:
+   - The assigned driver arrives at the Bems Farms store / dispatch hub counter.
+   - The driver and store dispatcher review the physical order package and invoice.
+2. **Mandatory Store Pickup Confirmation (Gatekeeper)**:
+   - **Driver Action**: The driver taps **"Confirm Goods Picked Up at Store"** (`POST /api/driver/deliveries/:orderId/confirm-pickup` or `PATCH /api/driver/deliveries/:orderId/status` with `status: 'picked_up'`).
+   - **Store Dispatcher Action (POS / Admin)**: Alternatively, the store cashier or dispatcher can confirm the handover in POS / Admin (`POST /api/admin/orders/:id/confirm-driver-pickup`).
+   - **Enforcement Rule**: The backend strictly blocks any transition to `out_for_delivery` or `in_transit` if driver pickup has not been verified (`driver_picked_up = true` and `goods_confirmed_by_driver = true`).
+3. **Transition to In Transit**:
+   - Once verified, the order moves to **In Transit** (`orders.status = 'in_transit'` / `'picked_up'`).
+   - `deliveries.picked_up_at` is stamped with `NOW()`.
    - `driver_availability.is_on_delivery` is set to `true`.
+   - Customer frontend tracking moves to: **"04 In Transit — Courier confirmed pickup & en route"**.
    - Driver's mobile device periodically reports GPS coordinates (`POST /api/driver/location`), powering real-time tracking on the customer's map (`GET /api/orders/track/:code`).
 
 ---

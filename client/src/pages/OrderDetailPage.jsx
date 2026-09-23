@@ -42,9 +42,9 @@ const STATUS_CONFIG = {
     stepIndex: 1,
     desc: "Payment verified, farm produce queued for packaging",
   },
-  // ── Packaging ──
+  // ── Packaging & Processing ──
   packaging: {
-    label: "Packaging & Quality Inspection",
+    label: "Processing & Packaging",
     bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
     stepIndex: 2,
     desc: "Items picked and undergoing POS barcode verification",
@@ -62,83 +62,90 @@ const STATUS_CONFIG = {
     desc: "Packaging exception under review by warehouse manager",
   },
   processing: {
-    label: "Packaging & Quality Inspection",
+    label: "Processing & Inspection",
     bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
     stepIndex: 2,
     desc: "Items sorted, de-stoned, and sealed in tamper-proof crates",
   },
+  // ── Packed & Ready for Driver Pickup ──
   packed: {
     label: "Packed & Sealed",
     bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
-    stepIndex: 2,
-    desc: "Items 100% verified and packed. Dispatching nearest driver.",
+    stepIndex: 3,
+    desc: "Items 100% verified and packed at store. Awaiting driver pickup.",
+  },
+  packed_ready: {
+    label: "Packed & Ready",
+    bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
+    stepIndex: 3,
+    desc: "Goods are packed and awaiting courier store pickup",
   },
   awaiting_driver_confirmation: {
     label: "Dispatching Courier",
     bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
-    stepIndex: 2,
-    desc: "Locating and confirming the closest available delivery driver",
-  },
-  packed_ready: {
-    label: "Packed & Ready for Dispatch",
-    bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE", dot: "#8B5CF6",
-    stepIndex: 2,
-    desc: "Goods are packed and awaiting courier pickup",
-  },
-  // ── Dispatched / in transit ──
-  shipped: {
-    label: "Dispatched · In Transit",
-    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
     stepIndex: 3,
-    desc: "Courier assigned and en route with your fresh produce",
+    desc: "Locating and assigning the closest available delivery driver",
   },
   driver_assigned: {
     label: "Courier Assigned",
-    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
     stepIndex: 3,
-    desc: "A courier has been assigned and is collecting your order",
+    desc: "Courier assigned and heading to store counter for goods pickup",
   },
-  picked_up: {
-    label: "Order Picked Up",
-    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+  awaiting_pickup: {
+    label: "Awaiting Store Pickup",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
     stepIndex: 3,
-    desc: "Courier has collected your order from the store",
+    desc: "Courier is at the store counter collecting your order",
+  },
+  // ── Picked Up & In Transit (Driver Confirmed Pickup) ──
+  picked_up: {
+    label: "Goods Picked Up",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 4,
+    desc: "Courier confirmed goods pickup at store and is on the way to you",
+  },
+  shipped: {
+    label: "Dispatched · In Transit",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 4,
+    desc: "Courier departed store and is en route with your fresh produce",
   },
   in_transit: {
     label: "In Transit",
     bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 3,
+    stepIndex: 4,
     desc: "Your order is on the way to your delivery address",
   },
   en_route: {
     label: "Out For Doorstep Delivery",
     bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 3,
+    stepIndex: 4,
     desc: "Courier is approaching your delivery destination",
   },
   out_for_delivery: {
     label: "Out For Doorstep Delivery",
     bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 3,
+    stepIndex: 4,
     desc: "Courier is nearby with your delivery",
   },
   arrived: {
     label: "Courier Arrived",
     bg: "#D1FAE5", color: "#065F46", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 3,
+    stepIndex: 4,
     desc: "Courier is at your doorstep or entrance",
   },
   // ── Delivered ──
   delivered: {
     label: "Delivered Successfully",
     bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
-    stepIndex: 4,
+    stepIndex: 5,
     desc: "Order has been safely delivered to your doorstep",
   },
   completed: {
     label: "Delivered Successfully",
     bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
-    stepIndex: 4,
+    stepIndex: 5,
     desc: "Order has been completed and delivered",
   },
   // ── Cancelled ──
@@ -160,8 +167,9 @@ const STATUS_CONFIG = {
 const MILESTONE_STEPS = [
   { key: "pending", label: "Placed", desc: "Order Logged" },
   { key: "confirmed", label: "Confirmed", desc: "Payment Verified" },
-  { key: "processing", label: "Packaging", desc: "Sealed & Inspected" },
-  { key: "shipped", label: "Out for Delivery", desc: "En Route on Map" },
+  { key: "processing", label: "Processing", desc: "Inspected & Packed" },
+  { key: "packed", label: "Packed", desc: "Ready at Store" },
+  { key: "shipped", label: "In Transit", desc: "Driver Picked Up" },
   { key: "delivered", label: "Delivered", desc: "Doorstep Arrival" },
 ];
 
