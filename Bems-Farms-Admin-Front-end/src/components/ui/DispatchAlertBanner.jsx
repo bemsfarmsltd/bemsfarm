@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
@@ -12,6 +13,7 @@ import toast from 'react-hot-toast'
  * order items, retry proximity auto-dispatch, or manually assign any courier.
  */
 export default function DispatchAlertBanner() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [alerts, setAlerts] = useState([])
   const [activeIndex, setActiveIndex] = useState(0)
@@ -946,10 +948,12 @@ export default function DispatchAlertBanner() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* Direct Order Manager Link */}
-            <a
-              href={`/admin/orders?search=${encodeURIComponent(targetOrderId)}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => {
+                resolveAlert('keep_driver')
+                navigate(`/orders/${targetOrderId}`)
+              }}
               style={{
                 background: '#ffffff',
                 border: '1px solid #cbd5e1',
@@ -958,7 +962,7 @@ export default function DispatchAlertBanner() {
                 borderRadius: 10,
                 fontSize: 12,
                 fontWeight: 700,
-                textDecoration: 'none',
+                cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
@@ -966,7 +970,7 @@ export default function DispatchAlertBanner() {
             >
               <i className="ri-external-link-line" />
               Open Order in Manager
-            </a>
+            </button>
 
             {/* Dismiss / Keep in queue */}
             <button

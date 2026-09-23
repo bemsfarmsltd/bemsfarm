@@ -1019,7 +1019,8 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         ORDER BY created_at DESC
         LIMIT 1
       ) da ON true
-      WHERE CAST(o.id AS TEXT) = $1
+      WHERE UPPER(REPLACE(CAST(o.id AS TEXT), '#', '')) = UPPER(REPLACE($1, '#', ''))
+         OR UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', '')) = UPPER(REPLACE($1, '#', ''))
       LIMIT 1
     `,
       [rawId],
