@@ -140,6 +140,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate,
         d.id AS delivery_id, d.status AS delivery_status,
+        d.accepted_at AS driver_accepted_at,
+        da.driver_response,
         d.attempts, d.eta_minutes,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
         (
@@ -180,6 +182,13 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       ) ua ON true
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
+      LEFT JOIN LATERAL (
+        SELECT driver_response, created_at, response_at
+        FROM delivery_assignments
+        WHERE delivery_id = d.id AND driver_id = dr.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) da ON true
       ${whereClause}
       ORDER BY o.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -780,12 +789,21 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate, dr.vehicle_type,
         d.id AS delivery_id, d.status AS delivery_status,
+        d.accepted_at AS driver_accepted_at,
+        da.driver_response,
         d.attempts, d.eta_minutes, d.dispatched_at, d.arrived_at, d.delivered_at,
         d.proof_photos, d.item_proofs, d.proof_note AS delivery_notes, d.failure_reason
       FROM orders o
       LEFT JOIN users c ON o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
+      LEFT JOIN LATERAL (
+        SELECT driver_response, created_at, response_at
+        FROM delivery_assignments
+        WHERE delivery_id = d.id AND driver_id = dr.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) da ON true
       WHERE CAST(o.id AS TEXT) = $1
       LIMIT 1
     `,
@@ -926,23 +944,11 @@ router.post(
 
       await client.query("COMMIT");
 
-      // Trigger autoAssignClosestDriver if driver not yet assigned
-      let dispatchResult = null;
-      if (!order.driver_id) {
-        try {
-          const { autoAssignClosestDriver } = require("../services/dispatchEngine");
-          dispatchResult = await autoAssignClosestDriver(order.id);
-        } catch (dispErr) {
-          console.warn("Auto-dispatch on invoice print notice:", dispErr.message);
-        }
-      }
-
       res.json({
         success: true,
         message: "Invoice printed successfully. Order moved to packaging.",
         order_id: order.id,
         status: "processing",
-        dispatch: dispatchResult,
       });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -1148,9 +1154,21 @@ router.patch(
             ev ? ev.type : nextStatus
           );
           console.log("Email sent to:", orderInfo.email);
-        }
       } catch (emailErr) {
         console.error("Email failed:", emailErr.message);
+      }
+
+      // When order status is updated to packed_ready (packed & ready for collection),
+      // trigger courier proximity auto-assignment.
+      if (nextStatus === 'packed_ready') {
+        try {
+          const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+          autoAssignClosestDriver(resolvedId).catch((err) => {
+            console.warn("Auto-dispatch on packed_ready notice:", err.message);
+          });
+        } catch (dispErr) {
+          console.warn("Auto-dispatch service load error:", dispErr.message);
+        }
       }
 
       res.json({ message: "Status updated", status: nextStatus });

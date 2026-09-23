@@ -220,8 +220,9 @@ export default function OrdersList() {
             notes: o.notes || '',
             disputeReason: o.dispute_reason || null,
             disputeNote: o.dispute_notes || o.dispute_note || null,
-            cancelReason: o.cancel_reason || null,
             driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'Vehicle', active: true } : null,
+            driverAccepted: Boolean(o.driver_accepted_at || o.driver_response === 'accepted'),
+            driverResponse: o.driver_response || (o.driver_accepted_at ? 'accepted' : 'pending'),
             attempts: o.attempts || 0,
             timeline: [
               { status: parsedStatus, time: safeFormatDate(o.created_at, ''), note: `Order placed via ${getChannelCfg(channelKey).label}`, by: 'System' }
@@ -922,24 +923,37 @@ export default function OrdersList() {
                     </td>
                     <td>
                       {order.driver ? (
-                        <div>
-                          <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
-                            <i className="ri-user-star-line text-primary" style={{ fontSize: 12 }} />
-                            <span>{order.driver.name}</span>
+                        order.driverAccepted || ['driver_assigned', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) ? (
+                          <div>
+                            <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
+                              <i className="ri-user-star-line text-success" style={{ fontSize: 12 }} />
+                              <span>{order.driver.name}</span>
+                            </div>
+                            <div className="text-muted" style={{ fontSize: 10 }}>{order.driver.phone}</div>
+                            {order.driver.bike && (
+                              <div className="text-muted font-monospace" style={{ fontSize: 9 }}>{order.driver.bike}</div>
+                            )}
                           </div>
-                          <div className="text-muted" style={{ fontSize: 10 }}>{order.driver.phone}</div>
-                          {order.driver.bike && (
-                            <div className="text-muted font-monospace" style={{ fontSize: 9 }}>{order.driver.bike}</div>
-                          )}
-                        </div>
+                        ) : (
+                          <div>
+                            <span className="badge bg-info-subtle text-info border border-info-subtle" style={{ fontSize: 10 }}>
+                              <i className="ri-time-line me-1" />Offered: {order.driver.name}
+                            </span>
+                            <div className="text-muted mt-0.5" style={{ fontSize: 10 }}>Pending Acceptance</div>
+                          </div>
+                        )
                       ) : order.status === 'cancelled' ? (
                         <span className="text-muted" style={{ fontSize: 11 }}>— (Cancelled)</span>
-                      ) : isDelivery ? (
+                      ) : !isDelivery ? (
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
+                      ) : ['paid', 'new_order', 'pending', 'confirmed', 'processing'].includes(order.status) ? (
+                        <span className="badge bg-light text-secondary border" style={{ fontSize: 10 }}>
+                          <i className="ri-archive-line me-1" />In Packaging
+                        </span>
+                      ) : (
                         <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 10 }}>
                           <i className="ri-truck-line me-1" />Awaiting Courier
                         </span>
-                      ) : (
-                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
                       )}
                     </td>
                     <td>

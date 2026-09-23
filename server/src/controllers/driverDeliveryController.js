@@ -687,8 +687,8 @@ const acceptDelivery = async (req, res, next) => {
     );
 
     await client.query(
-      `UPDATE orders SET tracking_status = 'driver_assigned', updated_at = NOW() WHERE id = $1`,
-      [delivery.actual_order_id]
+      `UPDATE orders SET status = 'driver_assigned', tracking_status = 'driver_assigned', driver_id = $2, updated_at = NOW() WHERE id = $1`,
+      [delivery.actual_order_id, driverId]
     );
 
     // Update assignment record if exists

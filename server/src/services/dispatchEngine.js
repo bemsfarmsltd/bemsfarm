@@ -141,13 +141,15 @@ async function autoAssignClosestDriver(
 
     if (driversRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      // Create dispatch alert so admin dashboard pops up notification
-      await insertDispatchAlert({
-        order_id: order.id,
-        order_ref: order.order_ref,
-        delivery_id: order.delivery_id,
-        message: `No available driver found for order #${order.order_ref || order.id}. Please assign a driver manually or wait for couriers to come online.`,
-      }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+      // Only create dispatch alert if order is already packed and awaiting collection!
+      if (order.status === 'packed_ready') {
+        await insertDispatchAlert({
+          order_id: order.id,
+          order_ref: order.order_ref,
+          delivery_id: order.delivery_id,
+          message: `No available driver found for order #${order.order_ref || order.id}. Please assign a driver manually or wait for couriers to come online.`,
+        }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+      }
 
       return {
         success: false,
@@ -305,7 +307,7 @@ async function processUnresponsiveAssignments(
 
         UNION ALL
 
-        -- Category 2: Awaiting Courier (no driver assigned) for over threshold
+        -- Category 2: Awaiting Courier (no driver assigned) for orders that are PACKED & READY
         SELECT
           d.id AS delivery_id,
           d.delivery_ref,
@@ -321,7 +323,7 @@ async function processUnresponsiveAssignments(
         FROM orders o
         LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
         WHERE o.driver_id IS NULL
-          AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
+          AND o.status = 'packed_ready'
           AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%')
           AND COALESCE(o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
       ) sub

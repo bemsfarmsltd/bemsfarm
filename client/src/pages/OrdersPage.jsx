@@ -213,22 +213,34 @@ export default function OrdersPage() {
   // Metrics summary
   const metrics = useMemo(() => {
     const totalCount = orders.length;
-    const activeCount = orders.filter((o) =>
-      ["pending", "confirmed", "processing", "shipped"].includes(o.status)
+    // Orders in warehouse queue / packaging:
+    const packagingCount = orders.filter((o) =>
+      ["pending", "paid", "new_order", "confirmed", "processing", "packed_ready"].includes(o.status)
     ).length;
-    const deliveredCount = orders.filter((o) => o.status === "delivered").length;
+    // Orders actively with courier on the road:
+    const inTransitCount = orders.filter((o) =>
+      ["driver_assigned", "shipped", "out_for_delivery"].includes(o.status)
+    ).length;
+    const deliveredCount = orders.filter((o) => ["delivered", "completed"].includes(o.status)).length;
+    const cancelledCount = orders.filter((o) => o.status === "cancelled").length;
     const totalSpent = orders
       .filter((o) => o.status !== "cancelled")
       .reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-    return { totalCount, activeCount, deliveredCount, totalSpent };
+    return { totalCount, packagingCount, inTransitCount, deliveredCount, cancelledCount, totalSpent };
   }, [orders]);
 
   // Filtered and Searched Orders
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       // Status tab filter
-      if (filter === "active") {
-        if (!["pending", "confirmed", "processing", "shipped"].includes(o.status)) return false;
+      if (filter === "packaging") {
+        if (!["pending", "paid", "new_order", "confirmed", "processing", "packed_ready"].includes(o.status)) return false;
+      } else if (filter === "in_transit") {
+        if (!["driver_assigned", "shipped", "out_for_delivery"].includes(o.status)) return false;
+      } else if (filter === "delivered") {
+        if (!["delivered", "completed"].includes(o.status)) return false;
+      } else if (filter === "cancelled") {
+        if (o.status !== "cancelled") return false;
       } else if (filter !== "all" && o.status !== filter) {
         return false;
       }
@@ -300,24 +312,25 @@ export default function OrdersPage() {
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-amber-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span>In Progress</span>
+                  <span>In Packaging</span>
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-amber-300 mt-1">{metrics.activeCount}</div>
-                <div className="text-[11px] text-amber-200/70 mt-0.5">Active deliveries</div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-300 mt-1">{metrics.packagingCount}</div>
+                <div className="text-[11px] text-amber-200/70 mt-0.5">Order picking & pack</div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
+                <div className="text-blue-200 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <i className="ri-truck-line text-blue-300" />
+                  <span>In Transit</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-blue-300 mt-1">{metrics.inTransitCount}</div>
+                <div className="text-[11px] text-blue-200/70 mt-0.5">Courier on the road</div>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
                 <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Delivered</div>
                 <div className="text-2xl sm:text-3xl font-black text-emerald-300 mt-1">{metrics.deliveredCount}</div>
                 <div className="text-[11px] text-emerald-300/70 mt-0.5">Fulfilled orders</div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 transition hover:bg-white/15 shadow-sm">
-                <div className="text-emerald-200/80 text-xs font-bold uppercase tracking-wider">Total Spent</div>
-                <div className="text-2xl sm:text-3xl font-black text-white mt-1 tabular-nums">
-                  ₦{metrics.totalSpent.toLocaleString()}
-                </div>
-                <div className="text-[11px] text-emerald-300/70 mt-0.5">Gross purchases</div>
               </div>
             </div>
           </div>
@@ -330,11 +343,11 @@ export default function OrdersPage() {
             {/* Filter Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
               {[
-                { key: "all", label: "All Orders", count: orders.length },
-                { key: "active", label: "In Transit", count: metrics.activeCount },
-                { key: "confirmed", label: "Confirmed", count: orders.filter((o) => o.status === "confirmed").length },
+                { key: "all", label: "All Orders", count: metrics.totalCount },
+                { key: "packaging", label: "In Packaging", count: metrics.packagingCount },
+                { key: "in_transit", label: "In Transit", count: metrics.inTransitCount },
                 { key: "delivered", label: "Delivered", count: metrics.deliveredCount },
-                { key: "cancelled", label: "Cancelled", count: orders.filter((o) => o.status === "cancelled").length },
+                { key: "cancelled", label: "Cancelled", count: metrics.cancelledCount },
               ].map((tab) => {
                 const isActive = filter === tab.key;
                 return (
