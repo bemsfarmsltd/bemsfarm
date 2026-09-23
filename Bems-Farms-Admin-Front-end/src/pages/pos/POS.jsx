@@ -53,6 +53,7 @@ const STATUS_META = {
   new:                          { label: 'New Incoming', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
   pending:                      { label: 'Pending Pack', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
   processing:                   { label: 'Packaging',    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  packaging:                    { label: 'Packaging',    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
   packed:                       { label: 'Packed & Ready', color: '#059669', bg: '#ecfdf5', border: '#10b981' },
   awaiting_driver_confirmation: { label: 'Awaiting Driver', color: '#dc2626', bg: '#fef2f2', border: '#f87171' },
   driver_assigned:              { label: 'Driver Assigned', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
@@ -444,10 +445,10 @@ export default function POS() {
                 ? 'awaiting_driver_confirmation'
                 : (rawStatus === 'packed' || rawStatus === 'packed_ready')
                 ? 'packed'
-                : (rawStatus === 'processing')
+                : (rawStatus === 'processing' || rawStatus === 'packaging')
                 ? 'processing'
                 : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
-              const isPrinted = o.invoice_printed === true || rawStatus === 'processing'
+              const isPrinted = o.invoice_printed === true || rawStatus === 'processing' || rawStatus === 'packaging'
               const custName = o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer'
               const custPhone = o.customer_phone || o.phone || '—'
               const delAddress = o.delivery_address || o.address || 'Store Pickup / In-store fulfillment'
@@ -533,8 +534,14 @@ export default function POS() {
           )
           const mappedOrders = openOrders.map(o => {
             const rawStatus = String(o.status || '').toLowerCase()
-            const posStatus = (rawStatus === 'processing') ? 'processing' : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
-            const isPrinted = o.invoice_printed === true || rawStatus === 'processing'
+            const posStatus = (rawStatus === 'awaiting_driver_confirmation')
+              ? 'awaiting_driver_confirmation'
+              : (rawStatus === 'packed' || rawStatus === 'packed_ready')
+              ? 'packed'
+              : (rawStatus === 'processing' || rawStatus === 'packaging')
+              ? 'processing'
+              : (rawStatus === 'new_order' || rawStatus === 'paid' ? 'new' : 'pending')
+            const isPrinted = o.invoice_printed === true || rawStatus === 'processing' || rawStatus === 'packaging'
             return {
               id: o.order_ref || (String(o.id).startsWith('ORD-') ? o.id : `ORD-${o.id}`),
               rawId: o.id,
@@ -1028,14 +1035,9 @@ export default function POS() {
     setTimeout(() => setActiveModal('cash'), 60)
   }
 
-  // Online orders -> cart (Strict rule: invoice must be printed first)
+  // Online orders -> cart (Load to POS cart to process or checkout)
   function loadOnlineOrderToCart(order, isReload = false) {
     if (!order) return
-    const isPrinted = order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing'
-    if (!isPrinted) {
-      showToast('You must print the invoice first before loading to cart!', 'warning', '⚠️')
-      return
-    }
     let loaded = 0
     const itemsToLoad = (order.items && order.items.length > 0)
       ? order.items
@@ -1083,7 +1085,8 @@ export default function POS() {
       setOrderId(order.id)
     }
     // Store the DB raw ID so confirmPayment can mark this order as fulfilled
-    setActiveOnlineOrderRawId(order.rawId || order.id || null)
+    const cleanRawId = String(order.rawId || order.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim()
+    setActiveOnlineOrderRawId(cleanRawId)
 
     const matched = customersList.find(c => c.name === order.customer || (order.phone && c.phone === order.phone))
     if (matched) {
@@ -1100,18 +1103,20 @@ export default function POS() {
       })
     }
     if (order.note) setOrderNote(order.note)
-    setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
+    setOnlineOrders(prev => prev.map(o => {
+      const match = o.id === order.id || o.rawId === cleanRawId || String(o.id).replace(/^ORD-/i, '') === cleanRawId
+      return match ? { ...o, status: 'processing', rawStatus: 'packaging', invoice_printed: true } : o
+    }))
     
     // Automatically register invoice print, transition order to packaging, and trigger driver dispatch
-    const targetOrderId = order.rawId || order.id
-    if (targetOrderId) {
-      api.post(`/admin/orders/${targetOrderId}/print-invoice`).catch(err => {
+    if (cleanRawId) {
+      api.post(`/admin/orders/${cleanRawId}/print-invoice`).catch(err => {
         console.warn('POS invoice print registration notice:', err.message)
       })
     }
 
     playBeep('success')
-    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart (${order.id}) · Moved to Packaging`, 'success', '📥')
+    showToast(`${loaded} item(s) ${isReload ? 'reloaded' : 'imported'} to cart (${order.id}) · Ready to process`, 'success', '📥')
     closeModal()
   }
 
@@ -1164,14 +1169,18 @@ export default function POS() {
     }
 
     // Advance order to Packaging and start auto-dispatch
-    const targetOrderId = order.rawId || order.id
+    const targetOrderId = String(order.rawId || order.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim()
     if (targetOrderId) {
       try {
         await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
-        setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o))
-        showToast(`Invoice printed for #${order.id} · Ready to pack`, 'success', '🖨️')
+        setOnlineOrders(prev => prev.map(o => {
+          const match = o.id === order.id || o.rawId === targetOrderId || o.id === targetOrderId || String(o.id).replace(/^ORD-/i, '') === targetOrderId
+          return match ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'packaging' } : o
+        }))
+        showToast(`Invoice printed for #${order.id} · Moved to Packaging`, 'success', '🖨️')
       } catch (err) {
         console.warn('Failed to register invoice print:', err.message)
+        showToast(`Invoice printed, but status update failed: ${err.response?.data?.message || err.message}`, 'warning', '⚠️')
       }
     }
   }
@@ -1179,7 +1188,7 @@ export default function POS() {
   // Open Packing Scanner Modal (Sections 11 - 17)
   const handleOpenPacking = async (order) => {
     if (!order) return
-    const targetId = order.rawId || order.id
+    const targetId = String(order.rawId || order.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim()
     setPackingLoading(true)
     try {
       const res = await api.get(`/admin/pos/packing/${targetId}`)
@@ -2638,16 +2647,26 @@ export default function POS() {
                               🕐 {order.time} · {totalItemsCount} items · <strong className="text-emerald">{fmt(orderTotal)}</strong>
                             </div>
                           </div>
-                          <div className="d-flex align-items-center gap-2">
-                            {!(order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing' || order.status === 'awaiting_driver_confirmation' || order.rawStatus === 'awaiting_driver_confirmation') ? (
-                              <button 
-                                className="btn btn-sm btn-emerald-solid px-3 fw-bold" 
-                                title="Print Order Invoice first to move to Packaging and enable cart loading"
-                                onClick={() => handlePrintOnlineOrderInvoice(order)}
-                              >
-                                <i className="ri-printer-line me-1" />
-                                Print Invoice
-                              </button>
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            {!(order.invoice_printed || order.status === 'processing' || order.rawStatus === 'processing' || order.status === 'packaging' || order.rawStatus === 'packaging' || order.status === 'awaiting_driver_confirmation' || order.rawStatus === 'awaiting_driver_confirmation' || order.status === 'packed' || order.rawStatus === 'packed' || order.status === 'packed_ready' || order.rawStatus === 'packed_ready') ? (
+                              <div className="d-flex align-items-center gap-1.5">
+                                <button 
+                                  className="btn btn-sm btn-emerald-solid px-3 fw-bold" 
+                                  title="Print Order Invoice to move to Packaging and start auto-dispatch"
+                                  onClick={() => handlePrintOnlineOrderInvoice(order)}
+                                >
+                                  <i className="ri-printer-line me-1" />
+                                  Print Invoice
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-primary px-2.5 fw-bold d-flex align-items-center gap-1"
+                                  title="Load items to POS cart to process and checkout directly"
+                                  onClick={() => loadOnlineOrderToCart(order)}
+                                >
+                                  <i className="ri-shopping-cart-2-line" />
+                                  Add to Cart
+                                </button>
+                              </div>
                             ) : (
                               <>
                                 <button 
@@ -2657,6 +2676,14 @@ export default function POS() {
                                 >
                                   <i className="ri-printer-line me-1" />
                                   Reprint Invoice
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-primary px-2.5 fw-bold d-flex align-items-center gap-1"
+                                  title="Load items to POS cart to process and checkout directly"
+                                  onClick={() => loadOnlineOrderToCart(order)}
+                                >
+                                  <i className="ri-shopping-cart-2-line" />
+                                  Add to Cart
                                 </button>
                                 {order.status === 'awaiting_driver_confirmation' || order.rawStatus === 'awaiting_driver_confirmation' ? (
                                   <button

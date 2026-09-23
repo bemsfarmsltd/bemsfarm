@@ -1388,6 +1388,7 @@ router.get("/analytics", requireRole("superadmin", "manager", "admin", "cashier"
 router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
   try {
     const { orderId } = req.params;
+    const cleanId = String(orderId || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
 
     const orderRes = await pool.query(
       `SELECT o.id, o.order_ref, o.status, o.tracking_status,
@@ -1416,8 +1417,8 @@ router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "c
        LEFT JOIN users c ON c.id = o.user_id
        LEFT JOIN user_addresses ua ON ua.id = o.shipping_address_id
        LEFT JOIN drivers dr ON dr.id = o.driver_id
-       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))`,
-      [orderId]
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1) OR UPPER(o.id) = UPPER($2) OR UPPER(o.order_ref) = UPPER($2))`,
+      [orderId, cleanId]
     );
 
     if (!orderRes.rows.length) {
@@ -1480,6 +1481,7 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
   try {
     await client.query("BEGIN");
     const { order_id, barcode, quantity = 1, terminal_id = "POS-MAIN" } = req.body;
+    const cleanId = String(order_id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
     const scanQty = Math.max(1, parseInt(quantity, 10) || 1);
 
     if (!order_id || !barcode) {
@@ -1491,9 +1493,9 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
     const orderRes = await client.query(
       `SELECT o.id, o.order_ref, o.status, o.tracking_status
        FROM orders o
-       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1) OR UPPER(o.id) = UPPER($2) OR UPPER(o.order_ref) = UPPER($2))
        FOR UPDATE OF o`,
-      [order_id]
+      [order_id, cleanId]
     );
 
     if (!orderRes.rows.length) {

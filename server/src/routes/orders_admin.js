@@ -1109,7 +1109,7 @@ router.post(
     try {
       await client.query("BEGIN");
       const { id } = req.params;
-      const cleanId = String(id || '').replace(/^#/, '').trim();
+      const cleanId = String(id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
 
       const orderRes = await client.query(
         "SELECT id, order_ref, status, total, address, latitude, longitude, driver_id FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1) OR UPPER(id)=UPPER($2) OR UPPER(order_ref)=UPPER($2)) FOR UPDATE",
@@ -1299,9 +1299,10 @@ router.patch(
         return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
       }
 
+      const cleanId = String(req.params.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
       const current = await client.query(
-        "SELECT id, status, driver_id, driver_picked_up, picked_up_at FROM orders WHERE UPPER(id::text)=UPPER($1) OR UPPER(order_ref)=UPPER($1)",
-        [req.params.id],
+        "SELECT id, status, driver_id, driver_picked_up, picked_up_at FROM orders WHERE UPPER(id::text)=UPPER($1) OR UPPER(order_ref)=UPPER($1) OR UPPER(id::text)=UPPER($2) OR UPPER(order_ref)=UPPER($2)",
+        [req.params.id, cleanId],
       );
       if (!current.rows.length) {
         await client.query("ROLLBACK");
