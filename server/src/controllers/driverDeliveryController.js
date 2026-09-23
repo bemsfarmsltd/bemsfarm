@@ -94,7 +94,7 @@ const getActiveDeliveries = async (req, res, next) => {
         o.status AS order_status,
         o.tracking_status,
         o.total AS order_total,
-        o.subtotal,
+        COALESCE(o.subtotal, o.total - COALESCE(o.delivery_fee, 0), o.total) AS subtotal,
         o.delivery_fee,
         o.payment_method,
         o.payment_status,
@@ -114,7 +114,7 @@ const getActiveDeliveries = async (req, res, next) => {
               'product_id', oi.product_id,
               'product_name', COALESCE(oi.product_name, p.name),
               'quantity', oi.quantity,
-              'unit_price', oi.unit_price,
+              'unit_price', COALESCE(oi.unit_price, oi.price, 0),
               'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
               'unit', COALESCE(p.unit, 'item'),
               'image_url', p.image_url
@@ -187,7 +187,7 @@ const getAvailableDeliveries = async (req, res, next) => {
         o.status AS order_status,
         o.tracking_status,
         o.total AS order_total,
-        o.subtotal,
+        COALESCE(o.subtotal, o.total - COALESCE(o.delivery_fee, 0), o.total) AS subtotal,
         o.delivery_fee,
         o.payment_method,
         o.payment_status,
@@ -207,7 +207,7 @@ const getAvailableDeliveries = async (req, res, next) => {
               'product_id', oi.product_id,
               'product_name', COALESCE(oi.product_name, p.name),
               'quantity', oi.quantity,
-              'unit_price', oi.unit_price,
+              'unit_price', COALESCE(oi.unit_price, oi.price, 0),
               'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
               'unit', COALESCE(p.unit, 'item'),
               'image_url', p.image_url
@@ -391,7 +391,7 @@ const getDeliveryDetails = async (req, res, next) => {
         o.status AS order_status,
         o.tracking_status,
         o.total AS order_total,
-        o.subtotal,
+        COALESCE(o.subtotal, o.total - COALESCE(o.delivery_fee, 0), o.total) AS subtotal,
         o.delivery_fee,
         o.payment_method,
         o.payment_status,
@@ -412,7 +412,7 @@ const getDeliveryDetails = async (req, res, next) => {
               'product_id', oi.product_id,
               'product_name', COALESCE(oi.product_name, p.name),
               'quantity', oi.quantity,
-              'unit_price', oi.unit_price,
+              'unit_price', COALESCE(oi.unit_price, oi.price, 0),
               'total_price', COALESCE(oi.total_price, oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)),
               'unit', COALESCE(p.unit, 'item'),
               'image_url', p.image_url
@@ -426,7 +426,7 @@ const getDeliveryDetails = async (req, res, next) => {
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
-      WHERE d.driver_id = $1
+      WHERE (d.driver_id = $1 OR d.driver_id IS NULL)
         AND (d.order_id = $2 OR d.id::text = $2 OR d.delivery_ref = $2 OR o.order_ref = $2)
       LIMIT 1
       `,
@@ -754,7 +754,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     const updateDeliveryQuery = `
       UPDATE deliveries 
       SET 
-        status = $1,
+        status = $1::varchar,
         accepted_at = COALESCE($2, accepted_at),
         dispatched_at = COALESCE($3, dispatched_at),
         delivered_at = COALESCE($4, delivered_at),
@@ -765,7 +765,7 @@ const updateDeliveryStatus = async (req, res, next) => {
         item_proofs = COALESCE($9::jsonb, item_proofs),
         failure_reason = COALESCE($10, failure_reason),
         eta_minutes = COALESCE($11, eta_minutes),
-        attempts = CASE WHEN $1 = 'delivery_attempted' THEN attempts + 1 ELSE attempts END,
+        attempts = CASE WHEN $1::varchar = 'delivery_attempted' THEN attempts + 1 ELSE attempts END,
         updated_at = NOW()
       WHERE id = $12
       RETURNING *
@@ -849,10 +849,14 @@ const updateDeliveryStatus = async (req, res, next) => {
       }
     })();
 
+    const formatted = formatDelivery(updatedDeliveryResult.rows[0]);
     res.json({
+      success: true,
       message: `Delivery status updated to ${rawStatus}`,
-      delivery: formatDelivery(updatedDeliveryResult.rows[0]),
+      delivery: formatted,
+      data: formatted,
       order_id: actualOrderId,
+      orderId: actualOrderId,
       status: rawStatus,
     });
   } catch (err) {
@@ -880,7 +884,7 @@ const acceptDelivery = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
-        AND d.driver_id = $2
+        AND (d.driver_id = $2 OR d.driver_id IS NULL)
       FOR UPDATE
       `,
       [orderId, driverId]
@@ -888,7 +892,7 @@ const acceptDelivery = async (req, res, next) => {
 
     if (deliveryRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ status: "error", message: "Assigned delivery not found for this driver" });
+      return res.status(404).json({ success: false, status: "error", message: "Assigned delivery not found for this driver" });
     }
 
     const delivery = deliveryRes.rows[0];
@@ -897,12 +901,13 @@ const acceptDelivery = async (req, res, next) => {
       `
       UPDATE deliveries 
       SET 
+        driver_id = $2,
         status = 'assigned',
         accepted_at = NOW(),
         updated_at = NOW()
       WHERE id = $1
       `,
-      [delivery.id]
+      [delivery.id, driverId]
     );
 
     await client.query(
@@ -917,7 +922,15 @@ const acceptDelivery = async (req, res, next) => {
       [delivery.actual_order_id, driverId]
     );
 
-    // Update assignment record if exists
+    // Update assignment record if exists or insert one
+    await client.query(
+      `
+      INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, response_at, created_at)
+      VALUES ($1, $2, 'manual', 'accepted', NOW(), NOW())
+      ON CONFLICT DO NOTHING
+      `,
+      [delivery.id, driverId]
+    ).catch(() => {});
     await client.query(
       `
       UPDATE delivery_assignments 
@@ -940,13 +953,35 @@ const acceptDelivery = async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    const orderRef = delivery.order_ref || delivery.actual_order_id;
+    const deliveryPayload = {
+      id: parseInt(delivery.id, 10) || 0,
+      delivery_id: parseInt(delivery.id, 10) || 0,
+      deliveryId: parseInt(delivery.id, 10) || 0,
+      order_id: delivery.actual_order_id,
+      orderId: delivery.actual_order_id,
+      order_ref: orderRef,
+      orderRef: orderRef,
+      order_number: orderRef,
+      orderNumber: orderRef,
+      status: "assigned",
+      delivery_status: "assigned",
+    };
+
     res.json({
+      success: true,
       status: "success",
       message: "Delivery accepted successfully",
       delivery_id: parseInt(delivery.id, 10) || 0,
+      deliveryId: parseInt(delivery.id, 10) || 0,
       order_id: delivery.actual_order_id,
-      order_ref: delivery.order_ref,
-      status: "accepted"
+      orderId: delivery.actual_order_id,
+      order_ref: orderRef,
+      orderRef: orderRef,
+      order_number: orderRef,
+      orderNumber: orderRef,
+      delivery: deliveryPayload,
+      data: deliveryPayload,
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -974,7 +1009,7 @@ const declineDelivery = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
-        AND d.driver_id = $2
+        AND (d.driver_id = $2 OR d.driver_id IS NULL)
       FOR UPDATE
       `,
       [orderId, driverId]
@@ -982,7 +1017,7 @@ const declineDelivery = async (req, res, next) => {
 
     if (deliveryRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ status: "error", message: "Assigned delivery not found for this driver" });
+      return res.status(404).json({ success: false, status: "error", message: "Assigned delivery not found for this driver" });
     }
 
     const delivery = deliveryRes.rows[0];
@@ -993,7 +1028,7 @@ const declineDelivery = async (req, res, next) => {
       UPDATE deliveries 
       SET 
         driver_id = NULL,
-        status = 'pending_assignment',
+        status = 'awaiting_pickup',
         declined_at = NOW(),
         decline_reason = $1,
         declined_by = COALESCE(declined_by, '[]'::jsonb) || JSON_BUILD_OBJECT('driver_id', $2::int, 'reason', $1::text, 'declined_at', NOW())::jsonb,
@@ -1022,11 +1057,17 @@ const declineDelivery = async (req, res, next) => {
       );
     } catch (e) {}
 
+    const orderRef = delivery.order_ref || delivery.actual_order_id;
     res.json({
+      success: true,
       status: "success",
       message: "Delivery declined. Returned to dispatch pool for reassignment.",
       order_id: delivery.actual_order_id,
-      order_ref: delivery.order_ref
+      orderId: delivery.actual_order_id,
+      order_ref: orderRef,
+      orderRef: orderRef,
+      order_number: orderRef,
+      orderNumber: orderRef,
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -1108,13 +1149,42 @@ const confirmPickup = async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    res.json({
-      success: true,
-      message: `Goods pickup confirmed for Order #${delivery.order_ref || actualOrderId}. Ready to proceed with transit.`,
+    const orderRef = delivery.order_ref || actualOrderId;
+    const deliveryPayload = {
+      id: delivery.id,
+      delivery_id: delivery.id,
+      deliveryId: delivery.id,
+      order_id: actualOrderId,
+      orderId: actualOrderId,
+      order_ref: orderRef,
+      orderRef: orderRef,
+      order_number: orderRef,
+      orderNumber: orderRef,
+      status: "picked_up",
       delivery_status: "picked_up",
       order_status: "picked_up",
       picked_up_at: pickupTime,
-      goods_confirmed: true
+      goods_confirmed: true,
+    };
+
+    res.json({
+      success: true,
+      status: "success",
+      message: `Goods pickup confirmed for Order #${orderRef}. Ready to proceed with transit.`,
+      delivery_id: delivery.id,
+      deliveryId: delivery.id,
+      order_id: actualOrderId,
+      orderId: actualOrderId,
+      order_ref: orderRef,
+      orderRef: orderRef,
+      order_number: orderRef,
+      orderNumber: orderRef,
+      delivery_status: "picked_up",
+      order_status: "picked_up",
+      picked_up_at: pickupTime,
+      goods_confirmed: true,
+      delivery: deliveryPayload,
+      data: deliveryPayload,
     });
   } catch (err) {
     await client.query("ROLLBACK");
