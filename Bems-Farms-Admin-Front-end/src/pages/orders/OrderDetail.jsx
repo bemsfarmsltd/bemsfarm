@@ -32,7 +32,7 @@ export default function OrderDetail() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
-  const [showReceipt, setShowReceipt] = useState(false)
+  const [printModalType, setPrintModalType] = useState(null) // null | 'invoice' | 'receipt'
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -83,18 +83,26 @@ export default function OrderDetail() {
     }
   }
 
-  const handlePrintReceipt = async () => {
+  const handlePrintInvoice = async () => {
     printThermalReceipt()
-    // If order was in new_order, pending or paid, transition to packed_ready (Packaging)
-    if (['paid', 'new_order', 'pending', 'confirmed'].includes(order.status)) {
+    try {
+      await api.post(`/admin/orders/${id}/print-invoice`)
+      toast.success('Official Invoice printed! Order moved to Packaging.')
+      fetchOrder()
+    } catch (e) {
+      console.warn('Could not register invoice print:', e)
       try {
-        await api.patch(`/admin/orders/${id}/status`, { status: 'packed_ready', notes: 'Invoice printed - handed to packaging' })
-        toast.success('Invoice printed! Order transitioned to Packaging.')
+        await api.patch(`/admin/orders/${id}/status`, { status: 'processing', notes: 'Invoice printed - handed to packaging' })
         fetchOrder()
-      } catch (e) {
-        console.warn('Could not auto-advance status on print:', e)
-      }
+      } catch (_) {}
     }
+    setPrintModalType(null)
+  }
+
+  const handlePrintReceipt = () => {
+    printThermalReceipt()
+    toast.success('Customer payment receipt printed.')
+    setPrintModalType(null)
   }
 
   if (loading) {
@@ -128,6 +136,8 @@ export default function OrderDetail() {
   const total = parseFloat(order.total) || (subtotal + deliveryFee - discount)
   const statusKey = String(order.status || 'paid').toLowerCase()
   const color = STATUS_COLOR[statusKey] || 'primary'
+  const isInvoicePrinted = Boolean(order.invoice_printed)
+  const canPrintInvoice = !['delivered', 'cancelled', 'completed'].includes(statusKey)
 
   return (
     <div className="container-fluid">
@@ -144,15 +154,85 @@ export default function OrderDetail() {
             </p>
           </div>
         </div>
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <span className={`badge bg-${color}-subtle text-${color} px-3 py-2 text-uppercase fs-xs`}>
             {order.status}
           </span>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowReceipt(true)}>
-            <i className="ri-printer-line me-1" />Print Receipt
-          </button>
+
+          {isInvoicePrinted ? (
+            <>
+              <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fs-xs d-inline-flex align-items-center gap-1">
+                <i className="ri-check-double-line" />
+                Invoice Printed
+              </span>
+              <button
+                className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
+                onClick={() => setPrintModalType('invoice')}
+                title="Reprint Warehouse Invoice & Packing List"
+              >
+                <i className="ri-file-text-line" />
+                <span>Reprint Invoice</span>
+              </button>
+              <button
+                className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 shadow-sm"
+                onClick={() => setPrintModalType('receipt')}
+                title="Print Customer Payment Receipt"
+              >
+                <i className="ri-printer-line" />
+                <span>Print Customer Receipt</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn btn-success btn-sm px-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm"
+                onClick={() => setPrintModalType('invoice')}
+                title="Print Official Invoice (Packing List) first to begin packing and trigger dispatch"
+              >
+                <i className="ri-file-text-line" />
+                <span>Print Invoice (Packing List)</span>
+              </button>
+              <button
+                className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+                onClick={() => setPrintModalType('receipt')}
+                title="Print Customer Payment Receipt"
+              >
+                <i className="ri-printer-line" />
+                <span>Customer Receipt</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Advisory Banner: Order always prints invoice first for warehouse packing */}
+      {!isInvoicePrinted && canPrintInvoice && (
+        <div
+          className="alert alert-warning border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
+          style={{ background: '#fffbeb', borderLeft: '4px solid #f59e0b' }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 36, height: 36, background: '#fef3c7', color: '#b45309' }}
+            >
+              <i className="ri-file-list-3-line fs-18" />
+            </div>
+            <div>
+              <div className="fw-bold text-dark fs-14">Order Awaiting Packing Invoice</div>
+              <div className="text-muted fs-12">
+                Orders must always print the <strong>Official Invoice (Packing List)</strong> first so the warehouse team can pick and pack items. Printing advances this order to Packaging and initiates courier dispatch.
+              </div>
+            </div>
+          </div>
+          <button
+            className="btn btn-sm btn-warning text-dark px-3 fw-bold text-nowrap ms-3"
+            onClick={() => setPrintModalType('invoice')}
+          >
+            <i className="ri-printer-line me-1" />Print Invoice Now
+          </button>
+        </div>
+      )}
 
       <div className="row g-4">
         {/* Left Column: Items and Status Actions */}
@@ -417,7 +497,7 @@ export default function OrderDetail() {
       {/* Background Thermal Print Target */}
       <div className="pos-thermal-print-container" aria-hidden="true">
         <ThermalReceipt
-          receiptType={order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online'}
+          receiptType={printModalType === 'invoice' ? 'invoice' : (order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online')}
           receiptNumber={order.order_ref || order.id}
           date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
           customer={order.customer_name || 'Walk-in Customer'}
@@ -436,31 +516,44 @@ export default function OrderDetail() {
         />
       </div>
 
-      {/* Printable Receipt Preview Modal */}
-      {showReceipt && (
+      {/* Printable Receipt / Invoice Preview Modal */}
+      {printModalType && (
         <div
           className="modal fade show d-block"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
-          onClick={() => setShowReceipt(false)}
+          onClick={() => setPrintModalType(null)}
         >
           <div
             className="modal-dialog modal-dialog-centered"
-            style={{ maxWidth: 440 }}
+            style={{ maxWidth: 460 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
               <div className="modal-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-                <h6 className="modal-title fw-bold mb-0">Sales Receipt #{order.order_ref || order.id}</h6>
+                <div>
+                  <h6 className="modal-title fw-bold mb-0">
+                    {printModalType === 'invoice' ? '📄 Official Invoice (Packing List)' : '🧾 Customer Payment Receipt'} #{order.order_ref || order.id}
+                  </h6>
+                  <span className="text-muted" style={{ fontSize: 11 }}>
+                    {printModalType === 'invoice' ? 'Internal Warehouse Copy · Item picking & packaging' : 'Customer Copy · Handover upon delivery'}
+                  </span>
+                </div>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-sm btn-primary" onClick={handlePrintReceipt}>
-                    <i className="ri-printer-line me-1" />Print Receipt
-                  </button>
-                  <button className="btn-close" onClick={() => setShowReceipt(false)} />
+                  {printModalType === 'invoice' ? (
+                    <button className="btn btn-sm btn-success fw-bold" onClick={handlePrintInvoice}>
+                      <i className="ri-printer-line me-1" />Print Invoice & Pack
+                    </button>
+                  ) : (
+                    <button className="btn btn-sm btn-primary fw-bold" onClick={handlePrintReceipt}>
+                      <i className="ri-printer-line me-1" />Print Receipt
+                    </button>
+                  )}
+                  <button className="btn-close" onClick={() => setPrintModalType(null)} />
                 </div>
               </div>
               <div className="modal-body p-3 thermal-receipt-preview" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
                 <ThermalReceipt
-                  receiptType={order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online'}
+                  receiptType={printModalType === 'invoice' ? 'invoice' : (order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online')}
                   receiptNumber={order.order_ref || order.id}
                   date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
                   customer={order.customer_name || 'Walk-in Customer'}

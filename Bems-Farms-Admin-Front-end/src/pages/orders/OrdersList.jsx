@@ -287,7 +287,7 @@ export default function OrdersList() {
     if (type === 'assign') setAssignType(meta.assignType || 'initial')
 
     // If viewing or printing, fetch full order timeline & items from GET /admin/orders/:id
-    if (type === 'view' || type === 'receipt') {
+    if (type === 'view' || type === 'receipt' || type === 'invoice') {
       try {
         setDetailLoading(true)
         const targetId = order.id || order.order_ref
@@ -538,18 +538,25 @@ export default function OrdersList() {
     }
   }
 
-  const handlePrint = async () => {
+  const handlePrintInvoice = async () => {
     printThermalReceipt()
     if (selected?.id) {
       try {
         await api.post(`/admin/orders/${selected.id}/print-invoice`)
-        toast.success(`Invoice printed. Order #${selected.id} moved to Packaging!`)
+        toast.success(`Official invoice printed. Order #${selected.id} moved to Packaging!`)
         fetchOrders()
       } catch (e) {
         console.warn('Invoice print tracking notification:', e.message)
       }
     }
   }
+
+  const handlePrintReceipt = () => {
+    printThermalReceipt()
+    toast.success(`Customer payment receipt printed for #${selected?.id || ''}`)
+  }
+
+  const handlePrint = handlePrintInvoice
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -953,13 +960,23 @@ export default function OrdersList() {
                         >
                           <i className="ri-eye-line" />
                         </button>
-                        <button
-                          className="btn btn-sm btn-outline-secondary"
-                          title="Print Receipt"
-                          onClick={() => openModal('receipt', order)}
-                        >
-                          <i className="ri-printer-line" />
-                        </button>
+                        {!(order.invoice_printed || ['processing', 'packed_ready', 'packed', 'assigned', 'shipped', 'out_for_delivery', 'delivered', 'completed', 'cancelled'].includes(order.status)) ? (
+                          <button
+                            className="btn btn-sm btn-success fw-bold px-2"
+                            title="Print Invoice (Packing List) — Orders must always print invoice first"
+                            onClick={() => openModal('invoice', order)}
+                          >
+                            <i className="ri-file-text-line me-1" />Invoice
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            title="Print Customer Payment Receipt"
+                            onClick={() => openModal('receipt', order)}
+                          >
+                            <i className="ri-printer-line" />
+                          </button>
+                        )}
 
                         {/* Status workflow triggers */}
                         {order.status === 'paid' && (
@@ -1087,8 +1104,17 @@ export default function OrdersList() {
                     >
                       <i className="ri-map-pin-2-line me-1" />Live Fleet Map
                     </Link>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal('receipt', selected)} title="Print Sales Receipt">
-                      <i className="ri-printer-line me-1" />Print Receipt
+                    {(!selected.invoice_printed && !['delivered', 'cancelled', 'completed'].includes(selected.status)) ? (
+                      <button className="btn btn-sm btn-success fw-bold" onClick={() => openModal('invoice', selected)} title="Print Warehouse Invoice & Packing List">
+                        <i className="ri-file-text-line me-1" />Print Invoice
+                      </button>
+                    ) : (
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => openModal('invoice', selected)} title="Reprint Warehouse Invoice & Packing List">
+                        <i className="ri-file-text-line me-1" />Reprint Invoice
+                      </button>
+                    )}
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal('receipt', selected)} title="Print Customer Payment Receipt">
+                      <i className="ri-printer-line me-1" />Customer Receipt
                     </button>
                     <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
                   </div>
@@ -1395,15 +1421,57 @@ export default function OrdersList() {
             )
           })()}
 
-          {/* ── 2. PRINTABLE RECEIPT MODAL ────────────────────────── */}
+          {/* ── 2A. PRINTABLE INVOICE / PACKING LIST MODAL ──────────── */}
+          {activeModal === 'invoice' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
+                <div>
+                  <h6 className="mb-0 fw-bold">📄 Official Invoice (Packing List)</h6>
+                  <span className="text-muted" style={{ fontSize: 11 }}>Internal Warehouse Copy · Item picking & packaging</span>
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-sm btn-success fw-bold" onClick={handlePrintInvoice} disabled={detailLoading}>
+                    <i className={`${detailLoading ? 'ri-loader-4-line ri-spin' : 'ri-printer-line'} me-1`} />
+                    {detailLoading ? 'Loading items…' : 'Print Invoice & Pack'}
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+                </div>
+              </div>
+
+              <div ref={receiptRef} className="thermal-receipt-preview">
+                <ThermalReceipt
+                  receiptType="invoice"
+                  receiptNumber={selected.order_ref || selected.id}
+                  date={selected.date}
+                  customer={selected.customer?.name}
+                  customerPhone={selected.customer?.phone}
+                  channel={getChannelCfg(selected.channel).label}
+                  cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+                  fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
+                  status={getStatusCfg(selected.status).label}
+                  items={selected.items}
+                  subtotal={calcSub(selected.items) || selected.total}
+                  deliveryFee={selected.deliveryFee}
+                  total={selected.total}
+                  paymentMethod={selected.payment?.toUpperCase()}
+                  note={selected.notes}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── 2B. PRINTABLE CUSTOMER RECEIPT MODAL ────────────────── */}
           {activeModal === 'receipt' && (
             <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
               <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
-                <h6 className="mb-0 fw-bold">Sales Receipt</h6>
+                <div>
+                  <h6 className="mb-0 fw-bold">🧾 Customer Payment Receipt</h6>
+                  <span className="text-muted" style={{ fontSize: 11 }}>Customer Copy · Handover upon delivery</span>
+                </div>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-sm btn-primary" onClick={handlePrint} disabled={detailLoading}>
+                  <button className="btn btn-sm btn-primary fw-bold" onClick={handlePrintReceipt} disabled={detailLoading}>
                     <i className={`${detailLoading ? 'ri-loader-4-line ri-spin' : 'ri-printer-line'} me-1`} />
-                    {detailLoading ? 'Loading items…' : 'Print'}
+                    {detailLoading ? 'Loading items…' : 'Print Receipt'}
                   </button>
                   <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
                 </div>
@@ -1412,7 +1480,7 @@ export default function OrdersList() {
               <div ref={receiptRef} className="thermal-receipt-preview">
                 <ThermalReceipt
                   receiptType={selected.channel === 'physical' ? 'pos' : 'online'}
-                  receiptNumber={selected.id}
+                  receiptNumber={selected.order_ref || selected.id}
                   date={selected.date}
                   customer={selected.customer?.name}
                   customerPhone={selected.customer?.phone}
