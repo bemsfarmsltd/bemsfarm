@@ -1058,12 +1058,6 @@ router.post(
     }
   }
 );
-      next(err);
-    } finally {
-      client.release();
-    }
-  }
-);
 
 // ── PATCH /api/admin/orders/:id/status ───────────────────────────
 // Generic status update with timeline logging
@@ -1260,6 +1254,7 @@ router.patch(
             ev ? ev.type : nextStatus
           );
           console.log("Email sent to:", orderInfo.email);
+        }
       } catch (emailErr) {
         console.error("Email failed:", emailErr.message);
       }
