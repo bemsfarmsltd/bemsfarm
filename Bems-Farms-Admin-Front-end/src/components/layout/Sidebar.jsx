@@ -778,6 +778,10 @@ export default function Sidebar() {
                   <span>Active Deliveries</span>
                   <span className="sub-badge" style={{ background: '#EFF6FF', color: '#2563EB' }}>Live</span>
                 </NavLink>
+                <NavLink to="/deliveries/auto-assign" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Auto-Dispatch Logs</span>
+                  <span className="sub-badge" style={{ background: '#ECFDF5', color: '#059669' }}>AI</span>
+                </NavLink>
                 <NavLink to="/deliveries/map" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Delivery Map</span>
                 </NavLink>

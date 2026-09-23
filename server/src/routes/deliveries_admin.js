@@ -147,6 +147,256 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
   }
 });
 
+// ── GET /api/admin/deliveries/automap-telemetry ───────────────────
+// Comprehensive real-time auto-dispatch operations telemetry, stats & audit stream
+router.get("/automap-telemetry", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { status, driver_id, search, limit = 50, page = 1 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const offset = (pageNum - 1) * limitNum;
+
+    // 1. Calculate overall dispatch KPIs
+    const kpiRes = await pool.query(`
+      SELECT
+        COUNT(*) AS total_assignments,
+        COUNT(CASE WHEN da.driver_response = 'accepted' THEN 1 END) AS accepted_count,
+        COUNT(CASE WHEN da.driver_response = 'rejected' THEN 1 END) AS rejected_count,
+        COUNT(CASE WHEN da.driver_response = 'timed_out' THEN 1 END) AS timed_out_count,
+        COUNT(CASE WHEN da.driver_response = 'pending' OR da.driver_response IS NULL THEN 1 END) AS pending_count,
+        COUNT(CASE WHEN da.assignment_type = 'manual' THEN 1 END) AS manual_count,
+        COUNT(CASE WHEN da.assignment_type IN ('auto', 'system') THEN 1 END) AS auto_count,
+        ROUND(AVG(CASE WHEN da.response_at IS NOT NULL AND da.response_at >= da.created_at THEN EXTRACT(EPOCH FROM (da.response_at - da.created_at)) END)) AS avg_response_seconds
+      FROM delivery_assignments da
+    `);
+
+    const rawKpis = kpiRes.rows[0] || {};
+    const totalAssignments = parseInt(rawKpis.total_assignments, 10) || 0;
+    const acceptedCount = parseInt(rawKpis.accepted_count, 10) || 0;
+    const rejectedCount = parseInt(rawKpis.rejected_count, 10) || 0;
+    const timedOutCount = parseInt(rawKpis.timed_out_count, 10) || 0;
+    const pendingCount = parseInt(rawKpis.pending_count, 10) || 0;
+    const autoCount = parseInt(rawKpis.auto_count, 10) || 0;
+    const manualCount = parseInt(rawKpis.manual_count, 10) || 0;
+    const avgResponseSeconds = parseInt(rawKpis.avg_response_seconds, 10) || 0;
+    const acceptanceRate = totalAssignments > 0 ? parseFloat(((acceptedCount / totalAssignments) * 100).toFixed(1)) : 0;
+
+    // 2. Build filtered log stream query
+    let whereClauses = [];
+    let params = [];
+
+    if (status && status !== "all") {
+      params.push(status);
+      whereClauses.push(`da.driver_response = $${params.length}`);
+    }
+
+    if (driver_id) {
+      params.push(parseInt(driver_id, 10));
+      whereClauses.push(`da.driver_id = $${params.length}`);
+    }
+
+    if (search && search.trim()) {
+      params.push(`%${search.trim()}%`);
+      whereClauses.push(`(
+        o.id::text ILIKE $${params.length} 
+        OR o.order_ref ILIKE $${params.length} 
+        OR d.delivery_ref ILIKE $${params.length} 
+        OR dr.name ILIKE $${params.length} 
+        OR dr.phone ILIKE $${params.length}
+        OR COALESCE(o.customer_name, u.name) ILIKE $${params.length}
+      )`);
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM delivery_assignments da
+      JOIN deliveries d ON da.delivery_id = d.id
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+      LEFT JOIN drivers dr ON da.driver_id = dr.id
+      ${whereSql}
+    `;
+    const countRes = await pool.query(countQuery, params);
+    const totalRecords = parseInt(countRes.rows[0]?.total, 10) || 0;
+
+    // 3. Fetch paginated records
+    const fetchParams = [...params, limitNum, offset];
+    const dataQuery = `
+      SELECT
+        da.id AS assignment_id,
+        da.delivery_id,
+        da.driver_id,
+        da.assignment_type,
+        COALESCE(da.driver_response, 'pending') AS driver_response,
+        da.response_at,
+        da.rejection_reason,
+        da.override_note,
+        da.created_at AS assigned_at,
+        CASE 
+          WHEN da.response_at IS NOT NULL AND da.response_at >= da.created_at THEN 
+            ROUND(EXTRACT(EPOCH FROM (da.response_at - da.created_at)))
+          ELSE NULL
+        END AS response_duration_seconds,
+        d.status AS delivery_status,
+        d.delivery_ref,
+        d.eta_minutes,
+        COALESCE(d.delivery_address, o.address) AS delivery_address,
+        o.id AS order_id,
+        COALESCE(o.order_ref, o.id::text) AS order_ref,
+        o.status AS order_status,
+        o.total AS order_total,
+        o.payment_method,
+        o.payment_status,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        dr.name AS driver_name,
+        dr.phone AS driver_phone,
+        dr.vehicle_type,
+        dr.vehicle_plate,
+        dr.avatar_url AS driver_avatar,
+        dr.rating AS driver_rating,
+        dz.zone_name,
+        ov.name AS assigned_by_name
+      FROM delivery_assignments da
+      JOIN deliveries d ON da.delivery_id = d.id
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+      LEFT JOIN drivers dr ON da.driver_id = dr.id
+      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      LEFT JOIN users ov ON da.assigned_by = ov.id
+      ${whereSql}
+      ORDER BY da.created_at DESC
+      LIMIT $${fetchParams.length - 1} OFFSET $${fetchParams.length}
+    `;
+
+    const dataRes = await pool.query(dataQuery, fetchParams);
+
+    res.json({
+      success: true,
+      kpis: {
+        total_assignments: totalAssignments,
+        auto_count: autoCount,
+        manual_count: manualCount,
+        accepted_count: acceptedCount,
+        rejected_count: rejectedCount,
+        timed_out_count: timedOutCount,
+        pending_count: pendingCount,
+        acceptance_rate: acceptanceRate,
+        avg_response_seconds: avgResponseSeconds,
+      },
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total_records: totalRecords,
+        total_pages: Math.ceil(totalRecords / limitNum) || 1,
+      },
+      records: dataRes.rows.map(r => ({
+        ...r,
+        assignment_id: parseInt(r.assignment_id, 10),
+        delivery_id: parseInt(r.delivery_id, 10),
+        driver_id: r.driver_id ? parseInt(r.driver_id, 10) : null,
+        order_total: parseFloat(r.order_total) || 0,
+        response_duration_seconds: r.response_duration_seconds !== null ? parseInt(r.response_duration_seconds, 10) : null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/deliveries/:id/dispatch-history ────────────────
+// Fetch the complete multi-attempt dispatch cascade history for an order
+router.get("/:id/dispatch-history", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        da.id AS assignment_id,
+        da.delivery_id,
+        da.driver_id,
+        da.assignment_type,
+        COALESCE(da.driver_response, 'pending') AS driver_response,
+        da.response_at,
+        da.rejection_reason,
+        da.override_note,
+        da.created_at AS assigned_at,
+        CASE 
+          WHEN da.response_at IS NOT NULL AND da.response_at >= da.created_at THEN 
+            ROUND(EXTRACT(EPOCH FROM (da.response_at - da.created_at)))
+          ELSE NULL
+        END AS response_duration_seconds,
+        dr.name AS driver_name,
+        dr.phone AS driver_phone,
+        dr.vehicle_type,
+        dr.vehicle_plate,
+        dr.avatar_url AS driver_avatar,
+        dr.rating AS driver_rating,
+        ov.name AS assigned_by_name
+      FROM delivery_assignments da
+      LEFT JOIN drivers dr ON da.driver_id = dr.id
+      LEFT JOIN users ov ON da.assigned_by = ov.id
+      WHERE da.delivery_id = $1::bigint OR da.delivery_id IN (
+        SELECT id FROM deliveries WHERE order_id = $1::text OR delivery_ref = $1::text
+      )
+      ORDER BY da.created_at ASC
+      `,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      attempts_count: result.rows.length,
+      history: result.rows.map(r => ({
+        ...r,
+        assignment_id: parseInt(r.assignment_id, 10),
+        delivery_id: parseInt(r.delivery_id, 10),
+        driver_id: r.driver_id ? parseInt(r.driver_id, 10) : null,
+        response_duration_seconds: r.response_duration_seconds !== null ? parseInt(r.response_duration_seconds, 10) : null,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/deliveries/:id/re-dispatch ────────────────────
+// Trigger proximity re-dispatch for an order
+router.post("/:id/re-dispatch", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+
+    const delRes = await pool.query(
+      `SELECT d.id, d.order_id, d.status 
+       FROM deliveries d 
+       WHERE d.id::text = $1 OR d.order_id = $1 OR d.delivery_ref = $1 
+       LIMIT 1`,
+      [id]
+    );
+
+    if (!delRes.rows.length) {
+      return res.status(404).json({ message: "Delivery not found for re-dispatch" });
+    }
+
+    const delivery = delRes.rows[0];
+    const result = await autoAssignClosestDriver(delivery.id);
+
+    res.json({
+      success: result.success,
+      message: result.success 
+        ? `Re-dispatch successful: Assigned to ${result.driver?.name} (${result.driver?.distanceKm} km away)` 
+        : `Re-dispatch notice: ${result.message}`,
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── PATCH /api/admin/deliveries/:id/status ────────────────────────
 router.patch(
   "/:id/status",

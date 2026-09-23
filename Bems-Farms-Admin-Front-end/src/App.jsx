@@ -55,10 +55,11 @@ import Invoices    from './pages/orders/Invoices'
 import Refunds     from './pages/orders/Refunds'
 
 // Deliveries
-import ActiveDeliveries  from './pages/deliveries/ActiveDeliveries'
-import DeliveryZones     from './pages/deliveries/DeliveryZones'
-import DriversManagement from './pages/deliveries/DriversManagement'
-import DeliveryMap       from './pages/deliveries/DeliveryMap'
+import ActiveDeliveries   from './pages/deliveries/ActiveDeliveries'
+import AutoAssignTelemetry from './pages/deliveries/AutoAssignTelemetry'
+import DeliveryZones      from './pages/deliveries/DeliveryZones'
+import DriversManagement  from './pages/deliveries/DriversManagement'
+import DeliveryMap        from './pages/deliveries/DeliveryMap'
 
 // Customers
 import CustomersList  from './pages/customers/CustomersList'
@@ -192,11 +193,12 @@ function App() {
 
               {/* ── Deliveries ── */}
               <Route element={<ProtectedRoute allowedRoles={DELIVERY_ROLES} />}>
-                <Route path="/deliveries"         element={<Navigate to="/deliveries/active" replace />} />
-                <Route path="/deliveries/active"  element={<ActiveDeliveries />} />
-                <Route path="/deliveries/map"     element={<DeliveryMap />} />
-                <Route path="/deliveries/zones"   element={<DeliveryZones />} />
-                <Route path="/deliveries/drivers" element={<DriversManagement />} />
+                <Route path="/deliveries"             element={<Navigate to="/deliveries/active" replace />} />
+                <Route path="/deliveries/active"      element={<ActiveDeliveries />} />
+                <Route path="/deliveries/auto-assign" element={<AutoAssignTelemetry />} />
+                <Route path="/deliveries/map"         element={<DeliveryMap />} />
+                <Route path="/deliveries/zones"       element={<DeliveryZones />} />
+                <Route path="/deliveries/drivers"     element={<DriversManagement />} />
               </Route>
 
               {/* ── Customers ── */}

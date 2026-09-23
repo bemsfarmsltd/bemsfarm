@@ -297,21 +297,27 @@ export default function ActiveDeliveries() {
 
       {/* Page Tabs */}
       <div className="card mb-4">
-        <div className="card-body d-flex gap-1 p-2">
-          <button className={`btn btn-sm ${activeTab === 'live' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('live')}>
-            <i className="ri-truck-line me-1" />Live Deliveries
-            <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'live' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'live' ? '#fff' : '#374151' }}>
-              {deliveries.length}
-            </span>
-          </button>
-          <button className={`btn btn-sm ${activeTab === 'auto_log' ? 'btn-primary' : 'btn-outline-secondary'}`}
-            onClick={() => setActiveTab('auto_log')}>
-            <i className="ri-cpu-line me-1" />Auto Assignment Log
-            <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'auto_log' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'auto_log' ? '#fff' : '#374151' }}>
-              {autoLogs.length}
-            </span>
-          </button>
+        <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 p-2">
+          <div className="d-flex gap-1">
+            <button className={`btn btn-sm ${activeTab === 'live' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('live')}>
+              <i className="ri-truck-line me-1" />Live Deliveries
+              <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'live' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'live' ? '#fff' : '#374151' }}>
+                {deliveries.length}
+              </span>
+            </button>
+            <button className={`btn btn-sm ${activeTab === 'auto_log' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('auto_log')}>
+              <i className="ri-cpu-line me-1" />Quick Log
+              <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'auto_log' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'auto_log' ? '#fff' : '#374151' }}>
+                {autoLogs.length}
+              </span>
+            </button>
+          </div>
+          <Link to="/deliveries/auto-assign" className="btn btn-sm btn-success d-flex align-items-center gap-1.5 fw-bold shadow-xs">
+            <i className="ri-radar-fill" />
+            <span>Full Auto-Assign Telemetry &amp; Analytics →</span>
+          </Link>
         </div>
       </div>
 
