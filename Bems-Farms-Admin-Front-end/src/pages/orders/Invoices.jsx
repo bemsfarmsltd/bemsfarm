@@ -27,6 +27,41 @@ const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFract
 const calcSub = (items = []) => (Array.isArray(items) ? items : []).reduce((s, i) => s + (Number(i.total) || (Number(i.qty || 1) * Number(i.price || 0))), 0)
 const calcTotal = (items = [], fee = 0, disc = 0) => calcSub(items) + Number(fee || 0) - Number(disc || 0)
 
+function numberToWords(num) {
+  if (!num || isNaN(num)) return 'Zero Naira Only'
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+  
+  function convertGroup(n) {
+    if (n === 0) return ''
+    if (n < 20) return a[n] + ' '
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? '-' + a[n % 10] : '') + ' '
+    return a[Math.floor(n / 100)] + ' Hundred ' + (n % 100 !== 0 ? 'and ' + convertGroup(n % 100) : '')
+  }
+
+  const integerPart = Math.floor(Math.abs(num))
+  const decimalPart = Math.round((Math.abs(num) - integerPart) * 100)
+
+  if (integerPart === 0 && decimalPart === 0) return 'Zero Naira Only'
+
+  const billions = Math.floor(integerPart / 1000000000)
+  const millions = Math.floor((integerPart % 1000000000) / 1000000)
+  const thousands = Math.floor((integerPart % 1000000) / 1000)
+  const remainder = integerPart % 1000
+
+  let words = ''
+  if (billions) words += convertGroup(billions) + 'Billion '
+  if (millions) words += convertGroup(millions) + 'Million '
+  if (thousands) words += convertGroup(thousands) + 'Thousand '
+  if (remainder) words += convertGroup(remainder)
+
+  words = words.trim() + ' Naira'
+  if (decimalPart > 0) {
+    words += ' and ' + convertGroup(decimalPart).trim() + ' Kobo'
+  }
+  return words + ' Only'
+}
+
 const BLANK_FORM = {
   customerId:    '',
   customer:      '',
@@ -53,6 +88,7 @@ export default function Invoices() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
   const [selected, setSelected]         = useState(null)
+  const [invoiceDocType, setInvoiceDocType] = useState('proforma')
   const [form, setForm]                 = useState(BLANK_FORM)
   const [markPaidRef, setMarkPaidRef]   = useState('')
   const [submitting, setSubmitting]     = useState(false)
@@ -141,7 +177,14 @@ export default function Invoices() {
     }).catch(err => console.warn('Could not load products catalog:', err.message))
   }, [])
 
-  const openModal = (type, inv) => { setSelected(inv); setActiveModal(type); setMarkPaidRef('') }
+  const openModal = (type, inv) => {
+    setSelected(inv)
+    setActiveModal(type)
+    setMarkPaidRef('')
+    if (type === 'view' && inv) {
+      setInvoiceDocType(inv.status === 'paid' ? 'tax_invoice' : 'proforma')
+    }
+  }
   const closeModal = () => { setActiveModal(null); setSelected(null); setSubmitting(false) }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -742,180 +785,402 @@ export default function Invoices() {
           onClick={e => e.target === e.currentTarget && closeModal()}
         >
 
-          {/* ── VIEW INVOICE ───────────────────────────── */}
+          {/* ── VIEW INVOICE (EXECUTIVE BRANDED A4 PROFORMA / COMMERCIAL INVOICE) ── */}
           {activeModal === 'view' && selected && (() => {
             const total = selected.amount || calcTotal(selected.items, selected.deliveryFee, selected.discount)
-            const cfg   = STATUS_CFG[selected.status] || STATUS_CFG.draft
-            const chCfg = CHANNEL_CFG[selected.channel] || CHANNEL_CFG.online
+            const sub = calcSub(selected.items)
+            const isProforma = invoiceDocType === 'proforma'
+            const cfg = STATUS_CFG[selected.status] || STATUS_CFG.draft
+
             return (
-              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto' }}>
-                {/* Invoice header band */}
-                <div style={{ background: '#1e293b', color: '#fff', borderRadius: '12px 12px 0 0', padding: '24px 32px' }}>
-                  <div className="d-flex align-items-start justify-content-between">
-                    <div>
-                      <div className="fw-bold fs-18 mb-1">BEMS FARMS</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>Fresh Produce & Food Delivery · Abia State, Nigeria</div>
+              <div style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', position: 'fixed', inset: 0, zIndex: 1060, overflowY: 'auto', padding: '24px 12px' }}>
+                <style>{`
+                  @media print {
+                    body * {
+                      visibility: hidden !important;
+                    }
+                    .a4-sheet-container, .a4-sheet-container * {
+                      visibility: visible !important;
+                    }
+                    .a4-sheet-container {
+                      position: absolute !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      box-shadow: none !important;
+                      border: none !important;
+                      background: #ffffff !important;
+                    }
+                    .no-print, .no-print * {
+                      display: none !important;
+                    }
+                    @page {
+                      size: A4 portrait;
+                      margin: 12mm;
+                    }
+                  }
+                `}</style>
+
+                {/* Floating Top Control Bar */}
+                <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
+                      <i className="ri-file-list-3-line me-1"/>{isProforma ? 'PROFORMA INVOICE' : 'COMMERCIAL TAX INVOICE'}
+                    </span>
+                    <span className="text-white-50 small d-none d-sm-inline">| A4 Print & PDF Ready</span>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <div className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        className={`btn ${isProforma ? 'btn-success fw-bold' : 'btn-outline-light'}`}
+                        onClick={() => setInvoiceDocType('proforma')}
+                      >
+                        Proforma Invoice
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${!isProforma ? 'btn-success fw-bold' : 'btn-outline-light'}`}
+                        onClick={() => setInvoiceDocType('tax_invoice')}
+                      >
+                        Tax Invoice
+                      </button>
                     </div>
-                    <div className="text-end">
-                      <div className="fw-bold fs-20">{selected.id}</div>
-                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
-                        <i className={`${cfg.icon} me-1`}/>{cfg.label}
-                      </span>
-                    </div>
+
+                    <button className="btn btn-sm btn-primary fw-medium px-3 shadow-sm" onClick={handlePrint}>
+                      <i className="ri-printer-line me-1"/>Print / Save PDF (A4)
+                    </button>
+
+                    <button className="btn btn-sm btn-outline-info" onClick={() => openModal('waybill', selected)}>
+                      <i className="ri-file-paper-2-line me-1"/>Delivery Waybill
+                    </button>
+
+                    <button className="btn btn-sm btn-outline-light" onClick={closeModal} title="Close Preview">
+                      <i className="ri-close-line fs-16"/>
+                    </button>
                   </div>
                 </div>
 
-                <div className="p-4">
-                  {/* Meta row */}
-                  <div className="row g-3 mb-4">
-                    <div className="col-6">
-                      <div className="text-muted small mb-1">Billed To</div>
-                      <div className="fw-bold">{selected.customer?.name || 'Walk-in Customer'}</div>
-                      {selected.customer?.phone && <div className="small">{selected.customer.phone}</div>}
-                      {selected.customer?.email && <div className="small text-muted">{selected.customer.email}</div>}
-                      {selected.customer?.address && <div className="small text-muted">{selected.customer.address}</div>}
+                {/* A4 Sheet Container */}
+                <div
+                  className="a4-sheet-container mx-auto bg-white rounded-2 shadow-lg"
+                  style={{
+                    maxWidth: 840,
+                    minHeight: '1120px',
+                    padding: '42px 48px',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    color: '#0f172a',
+                    lineHeight: 1.45,
+                    position: 'relative',
+                    border: '1px solid #e2e8f0'
+                  }}
+                >
+                  {/* Watermark for Proforma or Paid */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '42%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%) rotate(-30deg)',
+                      fontSize: '78px',
+                      fontWeight: 900,
+                      letterSpacing: '12px',
+                      color: selected.status === 'paid' ? 'rgba(34, 197, 94, 0.04)' : 'rgba(15, 23, 42, 0.03)',
+                      userSelect: 'none',
+                      pointerEvents: 'none',
+                      whiteSpace: 'nowrap',
+                      zIndex: 0
+                    }}
+                  >
+                    {selected.status === 'paid' ? 'PAID & SETTLED' : (isProforma ? 'PROFORMA' : 'BEMS FARMS')}
+                  </div>
+
+                  {/* ── HEADER: BRAND + DOCUMENT TITLE ── */}
+                  <div className="d-flex justify-content-between align-items-start pb-3 mb-3 border-bottom border-2">
+                    <div style={{ maxWidth: '58%' }}>
+                      <div className="d-flex align-items-center gap-3 mb-2">
+                        <img
+                          src="/bemsfarms_logo_compact.png"
+                          alt="Bems Farms"
+                          style={{ height: 60, width: 'auto', objectFit: 'contain' }}
+                          onError={(e) => {
+                            if (!e.currentTarget.src.includes('bemsfarms_logo.png')) {
+                              e.currentTarget.src = '/bemsfarms_logo.png'
+                            }
+                          }}
+                        />
+                        <div>
+                          <h3 className="fw-bolder mb-0 tracking-tight" style={{ color: '#064e3b', fontSize: 24, letterSpacing: '-0.5px' }}>
+                            BEMS FARMS LIMITED
+                          </h3>
+                          <div className="text-muted fw-semibold" style={{ fontSize: 11, letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                            Fresh Produce · Fish & Poultry · B2B Institutional Supply
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-secondary" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+                        <div><i className="ri-map-pin-2-line me-1 text-success"/>Central Farm Settlement Hub, Umuahia, Abia State, Nigeria</div>
+                        <div><i className="ri-phone-line me-1 text-success"/>+234 800 236 7326 · +234 814 000 0000 · <i className="ri-mail-line me-1 text-success"/>corporate@bemsfarms.com</div>
+                        <div><i className="ri-global-line me-1 text-success"/>www.bemsfarms.com · <strong>RC No:</strong> RC-1849204 · <strong>TIN:</strong> 24819402-0001</div>
+                      </div>
                     </div>
-                    <div className="col-6 text-end">
-                      <div className="row g-2">
-                        <div className="col-6 text-start"><div className="text-muted small">Issue Date</div></div>
-                        <div className="col-6"><div className="small fw-medium">{selected.issuedDate || '—'}</div></div>
-                        <div className="col-6 text-start"><div className="text-muted small">Due Date</div></div>
-                        <div className="col-6"><div className="small fw-medium">{selected.dueDate || '—'}</div></div>
-                        {selected.orderId && (
-                          <>
-                            <div className="col-6 text-start"><div className="text-muted small">Order Ref</div></div>
-                            <div className="col-6"><div className="small fw-medium">{selected.orderId}</div></div>
-                          </>
-                        )}
-                        <div className="col-6 text-start"><div className="text-muted small">Channel</div></div>
-                        <div className="col-6">
-                          <span className="badge" style={{ background: chCfg.color + '20', color: chCfg.color, fontSize: 10 }}>
-                            <i className={`${chCfg.icon} me-1`}/>{chCfg.label}
+
+                    <div className="text-end" style={{ minWidth: 240 }}>
+                      <div
+                        className="d-inline-block px-3 py-1.5 rounded-2 fw-black text-uppercase tracking-wider mb-2"
+                        style={{
+                          background: isProforma ? '#ecfdf5' : '#eff6ff',
+                          color: isProforma ? '#064e3b' : '#1e40af',
+                          border: isProforma ? '1.5px solid #a7f3d0' : '1.5px solid #bfdbfe',
+                          fontSize: 16,
+                          fontWeight: 800,
+                          letterSpacing: '1px'
+                        }}
+                      >
+                        {isProforma ? 'PROFORMA INVOICE' : 'COMMERCIAL TAX INVOICE'}
+                      </div>
+
+                      <div className="fw-bold fs-17 text-dark font-monospace mb-1">{selected.id}</div>
+                      <div className="text-muted small"><strong>Issue Date:</strong> {selected.issuedDate || '—'}</div>
+                      <div className="text-muted small"><strong>Valid Until / Due:</strong> {selected.dueDate || '7 Days from Issue'}</div>
+                      <div className="mt-1.5">
+                        <span className="badge" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}40`, fontSize: 11, fontWeight: 700 }}>
+                          <i className={`${cfg.icon} me-1`}/>{cfg.label.toUpperCase()}
+                        </span>
+                        {selected.fulfillmentStatus === 'fulfilled' && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle ms-1" style={{ fontSize: 11 }}>
+                            <i className="ri-truck-line me-1"/>DISPATCHED
                           </span>
-                        </div>
-                        <div className="col-6 text-start"><div className="text-muted small">Payment</div></div>
-                        <div className="col-6"><div className="small fw-medium">{selected.paymentMethod}</div></div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Fulfillment Status Banner */}
-                  <div className={`p-3 rounded-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2 ${selected.fulfillmentStatus === 'fulfilled' ? 'bg-success-subtle border border-success-subtle text-success-emphasis' : 'bg-warning-subtle border border-warning-subtle text-warning-emphasis'}`}>
-                    <div>
-                      <div className="fw-bold d-flex align-items-center gap-2">
-                        <i className={selected.fulfillmentStatus === 'fulfilled' ? 'ri-checkbox-circle-fill fs-18 text-success' : 'ri-time-line fs-18 text-warning'}/>
-                        <span>{selected.fulfillmentStatus === 'fulfilled' ? 'Stock Dispatched & Deducted' : 'Pending Inventory Fulfillment'}</span>
+                  {/* ── DUAL PARTIES INFO: ISSUED BY vs BILLED TO ── */}
+                  <div className="row g-3 mb-4 p-3.5 rounded-3" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div className="col-6 border-end pe-3">
+                      <div className="text-uppercase fw-bolder fs-10 tracking-wider text-muted mb-1.5 d-flex align-items-center gap-1">
+                        <i className="ri-building-line text-success"/> ISSUED BY (SUPPLIER)
                       </div>
-                      <div className="small mt-1 opacity-75">
-                        {selected.fulfillmentStatus === 'fulfilled'
-                          ? `Goods were deducted from live farm inventory on ${selected.fulfilledAt || 'earlier date'}.`
-                          : 'Stock has NOT been deducted yet. Click "Fulfill & Deduct Stock" when dispatching goods to the hotel/marketer.'}
-                      </div>
+                      <div className="fw-bold fs-14 text-dark mb-0.5">Bems Farms Ltd - Commercial Sales</div>
+                      <div className="small text-secondary mb-0.5">Wholesale, Hospitality & Institutional Supply Division</div>
+                      <div className="small text-secondary mb-0.5">Central Agro Cold Hub, Abia State, Nigeria</div>
+                      <div className="small text-secondary"><strong>Account Rep:</strong> Bems Corporate Desk (+234 800 236 7326)</div>
                     </div>
-                    <div className="d-flex gap-2">
-                      {selected.fulfillmentStatus !== 'fulfilled' && selected.status !== 'cancelled' && (
-                        <button className="btn btn-success btn-sm fw-medium shadow-sm" onClick={() => fulfillInvoice(selected)} disabled={submitting}>
-                          {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-truck-line me-1"/>}
-                          Fulfill & Deduct Stock
-                        </button>
+
+                    <div className="col-6 ps-3">
+                      <div className="text-uppercase fw-bolder fs-10 tracking-wider text-muted mb-1.5 d-flex align-items-center gap-1">
+                        <i className="ri-user-star-line text-primary"/> {isProforma ? 'PROFORMA BILLED TO / CONSIGNEE' : 'TAX INVOICE BILLED TO'}
+                      </div>
+                      <div className="fw-bold fs-15 text-dark mb-0.5">{selected.customer?.name || 'Walk-in / Institutional Client'}</div>
+                      {selected.customer?.address ? (
+                        <div className="small text-secondary mb-0.5"><i className="ri-map-pin-line me-1 text-muted"/>{selected.customer.address}</div>
+                      ) : (
+                        <div className="small text-secondary mb-0.5"><i className="ri-map-pin-line me-1 text-muted"/>Delivery address on file</div>
                       )}
-                      {selected.fulfillmentStatus === 'fulfilled' && (
-                        <button className="btn btn-outline-danger btn-sm" onClick={() => unfulfillInvoice(selected)} disabled={submitting}>
-                          {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-restart-line me-1"/>}
-                          Reverse Stock Deduction
-                        </button>
+                      {selected.customer?.phone && (
+                        <div className="small text-secondary mb-0.5"><i className="ri-phone-line me-1 text-muted"/>{selected.customer.phone}</div>
                       )}
+                      {selected.customer?.email && (
+                        <div className="small text-secondary"><i className="ri-mail-line me-1 text-muted"/>{selected.customer.email}</div>
+                      )}
+                      <div className="small text-secondary mt-1">
+                        <strong>Payment Terms:</strong> {selected.paymentMethod} · Net 7 Days
+                      </div>
                     </div>
                   </div>
 
-                  {/* Line items */}
-                  <table className="table table-sm mb-0 border">
-                    <thead style={{ background: '#f8fafc' }}>
-                      <tr style={{ fontSize: 12 }}>
-                        <th>Product</th>
-                        <th className="text-center">Qty</th>
-                        <th className="text-end">Unit Price</th>
-                        <th className="text-end">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.items.length === 0 && (
-                        <tr><td colSpan={4} className="text-center text-muted py-3">No line items recorded</td></tr>
-                      )}
-                      {selected.items.map((item, i) => (
-                        <tr key={i} style={{ fontSize: 13 }}>
-                          <td>{item.name}</td>
-                          <td className="text-center">{item.qty} {item.unit}</td>
-                          <td className="text-end">{fmt(item.price)}</td>
-                          <td className="text-end">{fmt(item.total)}</td>
+                  {/* ── LINE ITEMS TABLE ── */}
+                  <div className="mb-4">
+                    <table className="table mb-0 align-middle" style={{ border: '1px solid #cbd5e1' }}>
+                      <thead>
+                        <tr style={{ background: '#064e3b', color: '#ffffff', fontSize: 11, letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                          <th className="py-2.5 px-3 text-center" style={{ width: 42, color: '#ffffff' }}>#</th>
+                          <th className="py-2.5 px-3" style={{ color: '#ffffff' }}>Item Description & Farm Grade</th>
+                          <th className="py-2.5 px-3 text-center" style={{ width: 110, color: '#ffffff' }}>Unit / Pack</th>
+                          <th className="py-2.5 px-3 text-center" style={{ width: 90, color: '#ffffff' }}>Qty</th>
+                          <th className="py-2.5 px-3 text-end" style={{ width: 130, color: '#ffffff' }}>Unit Price (₦)</th>
+                          <th className="py-2.5 px-3 text-end" style={{ width: 140, color: '#ffffff' }}>Amount (₦)</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {selected.items.length === 0 ? (
+                          <tr><td colSpan={6} className="text-center py-4 text-muted">No line items specified</td></tr>
+                        ) : (
+                          selected.items.map((it, idx) => (
+                            <tr key={idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc', fontSize: 12.5 }}>
+                              <td className="text-center text-muted py-2.5 px-3 fw-bold">{idx + 1}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="fw-bold text-dark">{it.name}</div>
+                                <div className="text-muted" style={{ fontSize: 10.5 }}>Farm Fresh Grade A · Cold-Chain Preserved</div>
+                              </td>
+                              <td className="text-center text-muted py-2.5 px-3 text-uppercase font-monospace fw-semibold">{it.unit || 'kg'}</td>
+                              <td className="text-center py-2.5 px-3 fw-bold font-monospace">{Number(it.qty).toLocaleString()}</td>
+                              <td className="text-end py-2.5 px-3 font-monospace">{Number(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="text-end py-2.5 px-3 fw-bold font-monospace text-dark">{Number(it.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-                  {/* Totals */}
-                  <div className="d-flex justify-content-end mt-3">
-                    <div style={{ minWidth: 240 }}>
-                      <div className="d-flex justify-content-between py-1 small text-muted">
-                        <span>Subtotal</span><span>{fmt(calcSub(selected.items))}</span>
+                  {/* ── FINANCIAL TOTALS & SETTLEMENT DETAILS ── */}
+                  <div className="row g-3 mb-4">
+                    {/* Left: Amount in Words & Bank wire transfer details */}
+                    <div className="col-7">
+                      <div className="p-3 rounded-2 mb-3" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
+                        <div className="text-muted text-uppercase fw-bolder fs-10 tracking-wider mb-1">
+                          TOTAL AMOUNT IN WORDS:
+                        </div>
+                        <div className="fw-bold text-dark fst-italic" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+                          "{numberToWords(total)}"
+                        </div>
                       </div>
-                      {selected.deliveryFee > 0 && (
-                        <div className="d-flex justify-content-between py-1 small text-muted">
-                          <span>Delivery Fee</span><span>+{fmt(selected.deliveryFee)}</span>
+
+                      <div className="p-3 rounded-2" style={{ background: '#ffffff', border: '1.5px solid #059669', boxShadow: '0 2px 8px rgba(5,150,105,0.06)' }}>
+                        <div className="d-flex align-items-center justify-content-between mb-1.5 pb-1 border-bottom">
+                          <span className="fw-bolder fs-11 tracking-wider text-uppercase" style={{ color: '#064e3b' }}>
+                            <i className="ri-bank-card-line me-1"/> OFFICIAL BEMS FARMS SETTLEMENT ACCOUNT
+                          </span>
+                          <span className="badge bg-success-subtle text-success fs-10">WIRE TRANSFER</span>
                         </div>
-                      )}
-                      {selected.discount > 0 && (
-                        <div className="d-flex justify-content-between py-1 small text-success">
-                          <span>Discount</span><span>-{fmt(selected.discount)}</span>
+                        <div className="row g-1 text-dark" style={{ fontSize: 11.5 }}>
+                          <div className="col-4 text-muted">Bank Name:</div>
+                          <div className="col-8 fw-bold">Moniepoint MFB / Zenith Bank Plc</div>
+                          <div className="col-4 text-muted">Account Name:</div>
+                          <div className="col-8 fw-bolder" style={{ color: '#064e3b' }}>BEMS FARMS LIMITED</div>
+                          <div className="col-4 text-muted">Account No:</div>
+                          <div className="col-8">
+                            <span className="font-monospace fw-bolder fs-14 bg-light px-2 py-0.5 rounded border text-dark" style={{ letterSpacing: '1px' }}>
+                              1023849502
+                            </span>
+                          </div>
+                          <div className="col-4 text-muted">Narration / Ref:</div>
+                          <div className="col-8 fw-semibold text-secondary font-monospace">{selected.id} - {selected.customer?.name}</div>
                         </div>
-                      )}
-                      <div className="d-flex justify-content-between py-2 fw-bold border-top mt-1" style={{ fontSize: 15 }}>
-                        <span>Total</span><span>{fmt(total)}</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Calculations Box */}
+                    <div className="col-5">
+                      <div className="p-3.5 rounded-2 bg-light border" style={{ borderColor: '#cbd5e1' }}>
+                        <div className="d-flex justify-content-between py-1.5 text-secondary" style={{ fontSize: 12.5 }}>
+                          <span>Subtotal ({selected.items?.length || 0} items)</span>
+                          <span className="font-monospace fw-semibold text-dark">{fmt(sub)}</span>
+                        </div>
+                        {selected.deliveryFee > 0 && (
+                          <div className="d-flex justify-content-between py-1.5 text-secondary" style={{ fontSize: 12.5 }}>
+                            <span>Cold-Chain Delivery & Logistics</span>
+                            <span className="font-monospace fw-semibold text-dark">+{fmt(selected.deliveryFee)}</span>
+                          </div>
+                        )}
+                        {selected.discount > 0 && (
+                          <div className="d-flex justify-content-between py-1.5 text-success" style={{ fontSize: 12.5 }}>
+                            <span>Trade / Volume Discount</span>
+                            <span className="font-monospace fw-semibold">-{fmt(selected.discount)}</span>
+                          </div>
+                        )}
+                        <div
+                          className="d-flex justify-content-between align-items-center p-2.5 rounded-2 mt-2"
+                          style={{
+                            background: '#064e3b',
+                            color: '#ffffff',
+                            border: '1.5px solid #064e3b',
+                          }}
+                        >
+                          <div>
+                            <div className="fw-bolder fs-12 text-uppercase tracking-wider" style={{ color: '#a7f3d0' }}>
+                              TOTAL PAYABLE
+                            </div>
+                            <div className="text-white-50" style={{ fontSize: 9.5 }}>All taxes & charges inclusive</div>
+                          </div>
+                          <div className="fs-18 fw-bolder font-monospace text-white">{fmt(total)}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Payment record */}
-                  {selected.paidDate && (
-                    <div className="alert alert-success p-3 mt-3 small">
-                      <i className="ri-checkbox-circle-line me-1"/>
-                      <strong>Payment received</strong> on {selected.paidDate}
-                      {selected.paymentRef && <> · Ref: <strong>{selected.paymentRef}</strong></>}
+                  {/* ── COMMERCIAL TERMS & NOTES ── */}
+                  <div className="mb-4 p-3 rounded-2" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 11, color: '#475569' }}>
+                    <div className="fw-bold text-dark text-uppercase tracking-wider mb-1" style={{ fontSize: 10.5 }}>
+                      Commercial Conditions & Supply Terms:
                     </div>
-                  )}
-
-                  {/* Notes */}
-                  {selected.notes && (
-                    <div className="border-top pt-3 mt-3 small text-muted">
-                      <strong>Notes:</strong> {selected.notes}
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div className="border-top pt-3 mt-3 d-flex gap-2 flex-wrap align-items-center">
-                    <button className="btn btn-outline-secondary btn-sm" onClick={handlePrint}>
-                      <i className="ri-printer-line me-1"/>Print / Save PDF
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm" onClick={() => openModal('waybill', selected)}>
-                      <i className="ri-file-paper-2-line me-1"/>Delivery Waybill
-                    </button>
-                    {selected.status === 'draft' && (
-                      <button className="btn btn-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('send', selected), 100) }}>
-                        <i className="ri-send-plane-line me-1"/>Send Invoice
-                      </button>
-                    )}
-                    {['sent', 'overdue', 'draft'].includes(selected.status) && (
-                      <button className="btn btn-success btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('markpaid', selected), 100) }}>
-                        <i className="ri-checkbox-circle-line me-1"/>Mark as Paid
-                      </button>
-                    )}
-                    {!['paid', 'cancelled'].includes(selected.status) && (
-                      <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('cancel', selected), 100) }}>
-                        <i className="ri-close-circle-line me-1"/>Cancel
-                      </button>
-                    )}
-                    <button className="btn btn-light btn-sm ms-auto" onClick={closeModal}>Close</button>
+                    <ul className="mb-0 ps-3" style={{ lineHeight: 1.6 }}>
+                      <li><strong>Validity:</strong> This Proforma quotation remains valid for <strong>7 calendar days</strong> from date of issue due to fresh farm commodity harvest price cycles.</li>
+                      <li><strong>Quality Assurance:</strong> All fresh poultry, fish, eggs, and organic vegetables meet strict agricultural hygiene and food safety certifications.</li>
+                      <li><strong>Delivery Endorsement:</strong> Goods must be physically inspected by client representative on arrival and signed off on the accompanying Bems Farms Delivery Waybill.</li>
+                    </ul>
                   </div>
+
+                  {/* ── OFFICIAL SIGNATURES & CORPORATE SEAL ── */}
+                  <div className="row g-3 pt-3 border-top border-2 align-items-end text-center" style={{ fontSize: 11 }}>
+                    <div className="col-4 border-end">
+                      <div className="fw-bold text-dark mb-4">PREPARED BY (SALES)</div>
+                      <div className="font-monospace text-muted mb-1" style={{ fontSize: 10 }}>Bems Commercial Desk</div>
+                      <div className="text-secondary">Abia State Central Hub</div>
+                    </div>
+
+                    <div className="col-4 border-end">
+                      <div className="fw-bold text-dark mb-4">AUTHORIZED SIGNATORY</div>
+                      <div className="border-bottom mx-4 mb-1" style={{ height: 18 }}></div>
+                      <div className="fw-semibold text-dark">Finance & Operations Director</div>
+                    </div>
+
+                    <div className="col-4">
+                      <div className="fw-bold text-dark mb-1">OFFICIAL CORPORATE SEAL</div>
+                      <div
+                        className="mx-auto d-flex align-items-center justify-content-center text-muted"
+                        style={{
+                          width: 82,
+                          height: 82,
+                          borderRadius: '50%',
+                          border: '2px dashed #059669',
+                          fontSize: 9,
+                          color: '#059669',
+                          fontWeight: 700,
+                          textAlign: 'center',
+                          padding: 4
+                        }}
+                      >
+                        BEMS FARMS LTD<br/>SEAL
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Footer Note */}
+                  <div className="text-center text-muted pt-3 mt-3 border-top" style={{ fontSize: 10 }}>
+                    BEMS FARMS LIMITED · Registration RC-1849204 · Thank you for your partnership in nourishing Nigeria.
+                  </div>
+                </div>
+
+                {/* Bottom Sticky Action Bar in Preview */}
+                <div className="no-print d-flex align-items-center justify-content-center gap-2 mx-auto mt-3 py-2 flex-wrap" style={{ maxWidth: 840 }}>
+                  <button className="btn btn-primary shadow fw-semibold px-4" onClick={handlePrint}>
+                    <i className="ri-printer-line me-1.5"/>Print / Save A4 PDF
+                  </button>
+                  <button className="btn btn-outline-light shadow fw-semibold px-3" onClick={() => openModal('waybill', selected)}>
+                    <i className="ri-file-paper-2-line me-1.5"/>View Delivery Waybill
+                  </button>
+                  {selected.fulfillmentStatus !== 'fulfilled' && selected.status !== 'cancelled' && (
+                    <button className="btn btn-success shadow fw-semibold px-3" onClick={() => fulfillInvoice(selected)} disabled={submitting}>
+                      {submitting ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-truck-line me-1.5"/>}
+                      Fulfill & Deduct Stock
+                    </button>
+                  )}
+                  {['sent', 'overdue', 'draft'].includes(selected.status) && (
+                    <button className="btn btn-warning shadow fw-semibold px-3 text-dark" onClick={() => { closeModal(); setTimeout(() => openModal('markpaid', selected), 100) }}>
+                      <i className="ri-checkbox-circle-line me-1.5"/>Mark as Paid
+                    </button>
+                  )}
+                  <button className="btn btn-secondary shadow fw-semibold px-3" onClick={closeModal}>
+                    Close Preview
+                  </button>
                 </div>
               </div>
             )
