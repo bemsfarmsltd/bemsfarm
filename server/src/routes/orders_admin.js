@@ -1103,7 +1103,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
 // Transitions order to packaging ('processing') and activates proximity auto-dispatch.
 router.post(
   "/:id/print-invoice",
-  requireRole("superadmin", "manager", "admin", "delivery_manager", "staff"),
+  requireRole("superadmin", "manager", "admin", "delivery_manager", "staff", "cashier"),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -1370,7 +1370,7 @@ router.patch(
         );
       } else {
         await client.query(
-          "UPDATE orders SET status=$1, tracking_status=$1, updated_at=NOW() WHERE id=$2",
+          "UPDATE orders SET status=$1, tracking_status=$1, invoice_printed = CASE WHEN $1 = 'processing' THEN true ELSE invoice_printed END, updated_at=NOW() WHERE id=$2",
           [nextStatus, resolvedId],
         );
       }

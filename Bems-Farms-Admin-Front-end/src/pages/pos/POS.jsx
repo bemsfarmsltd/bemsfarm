@@ -483,7 +483,15 @@ export default function POS() {
                 }))
               }
             })
-            setOnlineOrders(mappedOrders)
+            setOnlineOrders(prev => {
+              return mappedOrders.map(mo => {
+                const prevOrder = prev.find(p => p.id === mo.id || p.rawId === mo.rawId)
+                if (prevOrder && prevOrder.invoice_printed && !mo.invoice_printed && (mo.status === 'new' || mo.status === 'pending')) {
+                  return { ...mo, invoice_printed: true, status: 'processing', rawStatus: 'processing' }
+                }
+                return mo
+              })
+            })
           }
         } catch (e) {
           console.error('Live online orders load failed', e)
@@ -1129,11 +1137,30 @@ export default function POS() {
       return match ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o
     }))
 
-    // 2. Dispatch backend invoice-print registration in background
+    // 2. Automatically switch active tab to 'processing' so user sees the order immediately
+    setOnlineFilter('processing')
+
+    // 3. Dispatch backend status update with multi-endpoint fallback
     if (targetOrderId) {
-      api.post(`/admin/orders/${targetOrderId}/print-invoice`).catch(err => {
-        console.warn('Invoice print registration warning:', err.response?.data?.message || err.message)
-      })
+      (async () => {
+        try {
+          // Primary: dedicated POS endpoint
+          await api.post(`/admin/pos/orders/${targetOrderId}/print-invoice`)
+        } catch (errPos) {
+          try {
+            // Secondary: admin orders print-invoice
+            await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
+          } catch (errAdm) {
+            try {
+              // Tertiary fallback: standard status patch
+              await api.patch(`/admin/orders/${targetOrderId}/status`, { status: 'processing', notes: 'Invoice printed via POS terminal' })
+            } catch (errPatch) {
+              console.error('All invoice registration endpoints failed:', errPatch)
+              showToast(`Status update warning: ${errPatch.response?.data?.message || errPatch.message}`, 'warning', '⚠️')
+            }
+          }
+        }
+      })()
     }
 
     // 3. Format receipt and trigger printing

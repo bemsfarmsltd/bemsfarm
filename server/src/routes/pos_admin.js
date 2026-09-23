@@ -1383,6 +1383,81 @@ router.get("/analytics", requireRole("superadmin", "manager", "admin", "cashier"
 // POS ONLINE ORDER PACKING & INVENTORY DEDUCTION (Sections 11 - 17)
 // ════════════════════════════════════════════════════════════════════════════
 
+// ── POST /api/admin/pos/orders/:id/print-invoice ───────────────────────────
+// Triggered immediately when POS cashier clicks Print Invoice on an online order.
+// Sets invoice_printed = true and transitions order status to processing.
+router.post(
+  "/orders/:id/print-invoice",
+  requireRole("superadmin", "manager", "admin", "cashier", "staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { id } = req.params;
+      const cleanId = String(id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
+
+      const orderRes = await client.query(
+        "SELECT id, order_ref, status FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1) OR UPPER(id)=UPPER($2) OR UPPER(order_ref)=UPPER($2)) FOR UPDATE",
+        [id, cleanId]
+      );
+
+      if (!orderRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const order = orderRes.rows[0];
+      const invoiceNumber = order.invoice_number || `INV-${order.order_ref || order.id}`;
+
+      await client.query(
+        `UPDATE orders
+         SET invoice_printed = true,
+             invoice_printed_at = NOW(),
+             invoice_printed_by = $2,
+             invoice_number = $3,
+             status = CASE 
+               WHEN status IN ('pending', 'pending_payment', 'paid', 'new_order', 'confirmed') THEN 'processing'
+               ELSE status
+             END,
+             tracking_status = CASE
+               WHEN tracking_status IN ('order_placed', 'pending', 'pending_payment', 'confirmed') THEN 'processing'
+               ELSE tracking_status
+             END,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [order.id, req.user.id, invoiceNumber]
+      );
+
+      try {
+        await client.query("SAVEPOINT pos_print_event");
+        await client.query(
+          `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
+           VALUES ($1, 'invoice_printed', 'Order invoice printed via POS terminal. Moved to processing.', 'pos_cashier', $2, NOW())`,
+          [order.id, req.user.id]
+        );
+        await client.query("RELEASE SAVEPOINT pos_print_event");
+      } catch (e) {
+        await client.query("ROLLBACK TO SAVEPOINT pos_print_event");
+      }
+
+      await client.query("COMMIT");
+
+      return res.json({
+        success: true,
+        message: "Invoice registered. Order moved to processing.",
+        order_id: order.id,
+        invoice_number: invoiceNumber,
+        status: "processing"
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
 // ── GET /api/admin/pos/packing/:orderId ──────────────────────────────────────
 // Returns item-by-item packing progress for an order
 router.get("/packing/:orderId", requireRole("superadmin", "manager", "admin", "cashier", "staff"), async (req, res, next) => {
