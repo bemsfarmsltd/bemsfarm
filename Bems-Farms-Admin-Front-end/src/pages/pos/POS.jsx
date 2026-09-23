@@ -1121,6 +1121,22 @@ export default function POS() {
   // Print Invoice for Incoming/Online Orders (Prints receipt/packing slip, transitions status to Processing)
   const handlePrintOnlineOrderInvoice = async (order) => {
     if (!order) return
+    const targetOrderId = String(order.rawId || order.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim()
+
+    // 1. Optimistically transition order to Processing immediately in UI
+    setOnlineOrders(prev => prev.map(o => {
+      const match = o.id === order.id || o.rawId === targetOrderId || o.id === targetOrderId || String(o.id).replace(/^ORD-/i, '') === targetOrderId
+      return match ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o
+    }))
+
+    // 2. Dispatch backend invoice-print registration in background
+    if (targetOrderId) {
+      api.post(`/admin/orders/${targetOrderId}/print-invoice`).catch(err => {
+        console.warn('Invoice print registration warning:', err.response?.data?.message || err.message)
+      })
+    }
+
+    // 3. Format receipt and trigger printing
     const orderTotal = Number(order.total || 0) || (order.items || []).reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 1)), 0)
     const formattedReceipt = {
       orderId: order.id,
@@ -1154,33 +1170,22 @@ export default function POS() {
 
     setSuccessData(formattedReceipt)
 
-    // Hardware direct ESC/POS or browser thermal print
-    if (isPrinterConnected()) {
-      try {
-        await printReceiptESC(formattedReceipt, {})
-      } catch (err) {
-        console.warn('Direct ESC/POS print failed, using browser printer:', err)
-        printThermalReceipt()
+    try {
+      if (isPrinterConnected()) {
+        try {
+          await printReceiptESC(formattedReceipt, {})
+        } catch (err) {
+          console.warn('Direct ESC/POS print failed, using browser printer:', err)
+          setTimeout(() => printThermalReceipt(), 150)
+        }
+      } else {
+        setTimeout(() => printThermalReceipt(), 150)
       }
-    } else {
-      printThermalReceipt()
+    } catch (printErr) {
+      console.warn('Receipt print error:', printErr)
     }
 
-    // Advance order to Processing and enable Add to Cart
-    const targetOrderId = String(order.rawId || order.id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim()
-    if (targetOrderId) {
-      try {
-        await api.post(`/admin/orders/${targetOrderId}/print-invoice`)
-        setOnlineOrders(prev => prev.map(o => {
-          const match = o.id === order.id || o.rawId === targetOrderId || o.id === targetOrderId || String(o.id).replace(/^ORD-/i, '') === targetOrderId
-          return match ? { ...o, invoice_printed: true, status: 'processing', rawStatus: 'processing' } : o
-        }))
-        showToast(`Invoice printed for #${order.id} · Moved to Processing`, 'success', '🖨️')
-      } catch (err) {
-        console.warn('Failed to register invoice print:', err.message)
-        showToast(`Invoice printed, but status update failed: ${err.response?.data?.message || err.message}`, 'warning', '⚠️')
-      }
-    }
+    showToast(`Invoice printed for #${order.id} · Moved to Processing`, 'success', '🖨️')
   }
 
   // Open Packing Scanner Modal (Sections 11 - 17)
