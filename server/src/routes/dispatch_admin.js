@@ -74,9 +74,27 @@ router.post('/unassign/:ref', requireRole('superadmin', 'admin', 'manager', 'cas
 // GET /api/admin/dispatch/alerts — fetch all unresolved dispatch alerts
 router.get('/alerts', requireRole('superadmin', 'admin', 'manager', 'cashier'), async (req, res) => {
   try {
+    // Auto-resolve any alerts belonging to cancelled, refunded, delivered, or unpacked orders
+    await pool.query(`
+      UPDATE dispatch_alerts da
+      SET resolved = TRUE, resolution = 'order_cancelled', resolved_at = NOW()
+      FROM orders o
+      WHERE (
+        UPPER(REPLACE(da.order_id, '#', '')) = UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', ''))
+        OR UPPER(REPLACE(da.order_id, '#', '')) = UPPER(o.id)
+      )
+      AND da.resolved = FALSE
+      AND o.status IN ('cancelled', 'refunded', 'delivered', 'completed', 'packaging', 'confirmed', 'pending', 'pending_payment')
+    `).catch(() => {});
+
     const result = await pool.query(`
       SELECT
-        da.*,
+        da.id,
+        da.order_id,
+        da.delivery_id,
+        da.last_driver_id,
+        da.message,
+        da.created_at,
         o.id AS actual_order_id,
         COALESCE(o.order_ref, o.id) AS order_display_id,
         COALESCE(NULLIF(o.customer_name, ''), NULLIF(u.name, ''), 'Customer') AS customer_name,
@@ -112,6 +130,7 @@ router.get('/alerts', requireRole('superadmin', 'admin', 'manager', 'cashier'), 
       LEFT JOIN users u ON u.id = o.user_id
       LEFT JOIN drivers drv ON drv.id = da.last_driver_id
       WHERE da.resolved = FALSE
+        AND (o.status IS NULL OR o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed', 'packaging', 'confirmed', 'pending', 'pending_payment'))
       ORDER BY da.created_at DESC
     `)
     res.json({ alerts: result.rows })

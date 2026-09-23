@@ -363,8 +363,14 @@ export default function OrderDetailPage() {
     );
   }
 
-  const rawStatus = String(order.status || 'pending').toLowerCase()
-  const cfg = STATUS_CONFIG[rawStatus] || STATUS_CONFIG.pending;
+  const isCod = ['cod', 'cashondelivery', 'payondelivery', 'cash'].includes(String(order.payment_method || '').toLowerCase().trim().replace(/[\s-_]+/g, ''));
+  let effectiveStatus = String(order.tracking_status || order.status || 'pending').toLowerCase().trim();
+  if (isCod && (effectiveStatus === 'pending_payment' || effectiveStatus === 'pending')) {
+    effectiveStatus = order.invoice_printed ? 'packaging' : 'confirmed';
+  } else if (order.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(effectiveStatus)) {
+    effectiveStatus = 'packaging';
+  }
+  const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
   const total = Number(order.total || 0);
   const deliveryFee = Number(order.delivery_fee || 1500);
@@ -372,11 +378,11 @@ export default function OrderDetailPage() {
   const subtotal = computedSubtotal > 0 ? computedSubtotal : (total - deliveryFee > 0 ? total - deliveryFee : total);
   const date = new Date(order.created_at || order.createdAt);
 
-  const isIncomplete = !["delivered", "cancelled"].includes(String(order.status).toLowerCase());
-  const isInProgress = ["pending", "confirmed", "processing", "shipped", "en_route", "out_for_delivery"].includes(String(order.status).toLowerCase());
-  const isCancelled = order.status === "cancelled";
-  const isDelivered = order.status === "delivered";
-  const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(String(order.status).toLowerCase()) && !order.driver_picked_up;
+  const isCancelled = effectiveStatus === "cancelled" || order.status === "cancelled";
+  const isDelivered = effectiveStatus === "delivered" || order.status === "delivered";
+  const isIncomplete = !isDelivered && !isCancelled;
+  const isInProgress = !isDelivered && !isCancelled;
+  const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(effectiveStatus) && !order.driver_picked_up;
 
   const updatedAt = new Date(
     order.delivered_at || order.updated_at || order.updatedAt || order.created_at

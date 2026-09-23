@@ -27,6 +27,17 @@ ensureDispatchAlertsTable().catch(err => console.warn('[dispatch-alerts] Table b
  * Called when auto-reassignment fails (no available drivers).
  */
 async function insertDispatchAlert({ order_id, order_ref, delivery_id, last_driver_id, last_driver_name, message }) {
+  // Do not create dispatch alerts for cancelled, refunded, completed, or unpacked orders
+  try {
+    const ordRes = await pool.query(
+      `SELECT status FROM orders WHERE UPPER(REPLACE(id, '#', '')) = UPPER(REPLACE($1, '#', '')) OR UPPER(REPLACE(COALESCE(order_ref, ''), '#', '')) = UPPER(REPLACE($1, '#', ''))`,
+      [order_id]
+    );
+    if (ordRes.rows.length > 0 && ['cancelled', 'refunded', 'delivered', 'completed', 'packaging', 'confirmed', 'pending', 'pending_payment'].includes(ordRes.rows[0].status)) {
+      return;
+    }
+  } catch (_) {}
+
   // Avoid duplicate unresolved alerts for same order
   const existing = await pool.query(
     `SELECT id FROM dispatch_alerts WHERE order_id=$1 AND resolved=FALSE AND alert_type='no_driver_available'`,
@@ -94,6 +105,17 @@ async function autoAssignClosestDriver(
     }
 
     const order = orderRes.rows[0];
+
+    // Only orders that are actually packed (ready for pickup) can be dispatched to couriers.
+    // Packaging must first be completed on the POS terminal.
+    if (['pending', 'pending_payment', 'confirmed', 'packaging', 'new_order', 'cancelled', 'refunded', 'delivered'].includes(order.status)) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        message: `Order #${order.order_ref || order.id} is in status '${order.status}' and has not been packed yet.`,
+      };
+    }
+
     const originLat = parseFloat(order.latitude) || storeCoords.lat;
     const originLng = parseFloat(order.longitude) || storeCoords.lng;
 
@@ -318,12 +340,13 @@ async function processUnresponsiveAssignments(
           drv.name AS driver_name,
           'driver_unresponsive' AS alert_case
         FROM orders o
-        LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+        JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
         LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
         LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
         WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
-          AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'completed')
-          AND (d.accepted_at IS NULL OR d.id IS NULL)
+          AND o.status IN ('packed', 'packed_ready', 'awaiting_driver_confirmation', 'driver_assigned')
+          AND d.status = 'assigned'
+          AND d.accepted_at IS NULL
           AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
 
         UNION ALL

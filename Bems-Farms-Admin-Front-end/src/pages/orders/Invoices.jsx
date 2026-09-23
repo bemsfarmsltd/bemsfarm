@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import BemsOfficialDocument from '../../components/documents/BemsOfficialDocument'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -447,8 +448,19 @@ export default function Invoices() {
     }
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     window.print()
+    if (selected) {
+      const orderRef = selected.orderId || (selected.id && selected.id.startsWith('BF-') ? selected.id : null)
+      if (orderRef) {
+        try {
+          await api.post(`/admin/orders/${orderRef}/print-invoice`)
+          fetchInvoices()
+        } catch (e) {
+          console.warn('Could not register invoice print with order workflow:', e.message)
+        }
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -812,10 +824,10 @@ export default function Invoices() {
                     body * {
                       visibility: hidden !important;
                     }
-                    .a4-sheet-container, .a4-sheet-container * {
+                    .bems-doc-print-target, .bems-doc-print-target * {
                       visibility: visible !important;
                     }
-                    .a4-sheet-container {
+                    .bems-doc-print-target {
                       position: absolute !important;
                       left: 0 !important;
                       top: 0 !important;
@@ -832,7 +844,7 @@ export default function Invoices() {
                     }
                     @page {
                       size: A4 portrait;
-                      margin: 12mm;
+                      margin: 0;
                     }
                   }
                 `}</style>
@@ -841,9 +853,10 @@ export default function Invoices() {
                 <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
                   <div className="d-flex align-items-center gap-2">
                     <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
-                      <i className="ri-file-list-3-line me-1"/>{isProforma ? 'PROFORMA INVOICE' : 'COMMERCIAL TAX INVOICE'}
+                      <i className="ri-file-list-3-line me-1"/>
+                      {invoiceDocType === 'receipt' ? 'OFFICIAL PAYMENT RECEIPT' : (isProforma ? 'PROFORMA INVOICE' : 'COMMERCIAL TAX INVOICE')}
                     </span>
-                    <span className="text-white-50 small d-none d-sm-inline">| A4 Print & PDF Ready</span>
+                    <span className="text-white-50 small d-none d-sm-inline">| Executive A4 Print & PDF</span>
                   </div>
 
                   <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -885,321 +898,12 @@ export default function Invoices() {
                   </div>
                 </div>
 
-                {/* A4 Sheet Container - Modern Executive Minimalist */}
-                <div
-                  className="a4-sheet-container mx-auto bg-white rounded-2 shadow-lg"
-                  style={{
-                    maxWidth: 820,
-                    minHeight: '1080px',
-                    padding: '44px 52px',
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                    color: '#0f172a',
-                    lineHeight: 1.45,
-                    position: 'relative',
-                    border: '1px solid #e2e8f0'
-                  }}
-                >
-                  {/* Subtle Elegant Watermark */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '42%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%) rotate(-28deg)',
-                      fontSize: '76px',
-                      fontWeight: 900,
-                      letterSpacing: '14px',
-                      color: invoiceDocType === 'receipt' || selected.status === 'paid' ? 'rgba(34, 197, 94, 0.035)' : 'rgba(15, 23, 42, 0.025)',
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                      whiteSpace: 'nowrap',
-                      zIndex: 0
-                    }}
-                  >
-                    {invoiceDocType === 'receipt' ? 'OFFICIAL RECEIPT' : (isProforma ? 'PROFORMA' : 'BEMS FARMS')}
-                  </div>
-
-                  {/* ── HEADER: BRAND + DOCUMENT TITLE ── */}
-                  <div className="d-flex justify-content-between align-items-start pb-3 mb-3">
-                    <div style={{ maxWidth: '54%' }}>
-                      <img
-                        src="/bemsfarms_logo.png"
-                        alt="Bems Farms"
-                        style={{ height: 46, width: 'auto', objectFit: 'contain' }}
-                        onError={(e) => {
-                          if (!e.currentTarget.src.includes('bemsfarms_logo_compact.png')) {
-                            e.currentTarget.src = '/bemsfarms_logo_compact.png'
-                          }
-                        }}
-                      />
-                      
-                      <div className="text-secondary mt-2.5" style={{ fontSize: 11, lineHeight: 1.55 }}>
-                        <div>Central Agro Logistics Hub · Umuahia, Abia State, Nigeria</div>
-                        <div>+234 800 236 7326 · corporate@bemsfarms.com · www.bemsfarms.com</div>
-                        <div className="text-muted">RC No: <strong className="text-dark">RC-1849204</strong> · TIN: <strong className="text-dark">24819402-0001</strong></div>
-                      </div>
-                    </div>
-
-                    <div className="text-end" style={{ minWidth: 240 }}>
-                      <h1 className="fw-bolder mb-0.5 tracking-tight text-dark" style={{ fontSize: 24, letterSpacing: '-0.5px' }}>
-                        {invoiceDocType === 'receipt' ? 'Payment Receipt' : (isProforma ? 'Proforma Invoice' : 'Tax Invoice')}
-                      </h1>
-                      <div className="font-monospace fw-semibold text-secondary mb-2" style={{ fontSize: 13.5 }}>
-                        {invoiceDocType === 'receipt' ? `REC-${selected.id.replace('INV-', '')}` : selected.id}
-                      </div>
-
-                      <div className="d-inline-flex flex-column gap-1 text-end" style={{ fontSize: 11.5, color: '#475569' }}>
-                        <div>
-                          <span className="text-muted">{invoiceDocType === 'receipt' ? 'Payment Date:' : 'Date Issued:'}</span>{' '}
-                          <strong className="text-dark">{selected.paidDate || selected.issuedDate || '—'}</strong>
-                        </div>
-                        {invoiceDocType !== 'receipt' && (
-                          <div>
-                            <span className="text-muted">Due Date:</span>{' '}
-                            <strong className="text-dark">{selected.dueDate || '7 Days from Issue'}</strong>
-                          </div>
-                        )}
-                        {invoiceDocType === 'receipt' && (
-                          <div>
-                            <span className="text-muted">Payment Ref:</span>{' '}
-                            <span className="font-monospace text-dark fw-semibold">{selected.paymentRef || 'Direct Transfer'}</span>
-                          </div>
-                        )}
-                        <div className="mt-1">
-                          <span className="badge rounded-pill px-2.5 py-1" style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}35`, fontSize: 10, letterSpacing: '0.5px' }}>
-                            {cfg.label.toUpperCase()}
-                          </span>
-                          {selected.fulfillmentStatus === 'fulfilled' && (
-                            <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle ms-1 px-2.5 py-1" style={{ fontSize: 10 }}>
-                              DISPATCHED
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hairline Divider */}
-                  <div className="mb-3.5" style={{ height: 1, background: '#f1f5f9' }} />
-
-                  {/* ── PARTIES INFO: CLEAN MINIMALIST COLUMNS ── */}
-                  <div className="row g-4 mb-4 pb-1">
-                    <div className="col-6">
-                      <div className="text-uppercase fw-semibold text-muted mb-1" style={{ fontSize: 10, letterSpacing: '0.8px' }}>
-                        {invoiceDocType === 'receipt' ? 'RECEIVED WITH THANKS FROM' : 'BILLED TO / CONSIGNEE'}
-                      </div>
-                      <div className="fw-bold fs-15 text-dark mb-0.5">{selected.customer?.name || 'Walk-in / Institutional Client'}</div>
-                      {selected.customer?.address && (
-                        <div className="small text-secondary mb-0.5">{selected.customer.address}</div>
-                      )}
-                      <div className="small text-muted">
-                        {[selected.customer?.phone, selected.customer?.email].filter(Boolean).join(' · ')}
-                      </div>
-                    </div>
-
-                    <div className="col-6 text-end">
-                      <div className="text-uppercase fw-semibold text-muted mb-1" style={{ fontSize: 10, letterSpacing: '0.8px' }}>
-                        ISSUED BY (SUPPLIER)
-                      </div>
-                      <div className="fw-bold fs-15 text-dark mb-0.5">Bems Farms Limited</div>
-                      <div className="small text-secondary mb-0.5">Commercial & Wholesale Institutional Desk</div>
-                      <div className="small text-muted">
-                        Payment Method: <strong className="text-dark">{selected.paymentMethod}</strong> {invoiceDocType === 'receipt' ? '(Settled)' : '· Net 7 Days'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── LINE ITEMS TABLE: MODERN MINIMALIST LEDGER ── */}
-                  <div className="mb-4">
-                    <table className="table mb-0 align-middle" style={{ borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1.5px solid #cbd5e1' }}>
-                          <th className="py-2.5 px-3 text-muted text-center" style={{ width: 36, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>#</th>
-                          <th className="py-2.5 px-3 text-muted" style={{ fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Item & Specification</th>
-                          <th className="py-2.5 px-3 text-muted text-center" style={{ width: 90, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Unit</th>
-                          <th className="py-2.5 px-3 text-muted text-center" style={{ width: 70, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Qty</th>
-                          <th className="py-2.5 px-3 text-muted text-end" style={{ width: 125, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Rate (₦)</th>
-                          <th className="py-2.5 px-3 text-muted text-end" style={{ width: 135, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Amount (₦)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selected.items.length === 0 ? (
-                          <tr><td colSpan={6} className="text-center py-4 text-muted small">No line items specified</td></tr>
-                        ) : (
-                          selected.items.map((it, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td className="text-center text-muted py-2.5 px-3 small">{idx + 1}</td>
-                              <td className="py-2.5 px-3">
-                                <div className="fw-semibold text-dark fs-13">{it.name}</div>
-                                <div className="text-muted" style={{ fontSize: 11 }}>Farm Fresh Grade A · Cold-Chain Preserved</div>
-                              </td>
-                              <td className="text-center text-secondary py-2.5 px-3 small text-uppercase font-monospace">{it.unit || 'kg'}</td>
-                              <td className="text-center text-dark py-2.5 px-3 fw-semibold font-monospace small">{Number(it.qty).toLocaleString()}</td>
-                              <td className="text-end text-secondary py-2.5 px-3 font-monospace small">{Number(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                              <td className="text-end text-dark py-2.5 px-3 fw-bold font-monospace fs-13">{Number(it.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* ── FINANCIAL TOTALS & SETTLEMENT DETAILS ── */}
-                  <div className="row g-4 mb-4">
-                    {/* Left: Amount in Words & Compact Settlement Box */}
-                    <div className="col-7 pe-4">
-                      <div className="mb-3">
-                        <div className="text-uppercase fw-semibold text-muted mb-1" style={{ fontSize: 10, letterSpacing: '0.8px' }}>
-                          TOTAL AMOUNT IN WORDS
-                        </div>
-                        <div className="fw-semibold text-dark fst-italic" style={{ fontSize: 12.5, lineHeight: 1.4, color: '#334155' }}>
-                          "{numberToWords(total)}"
-                        </div>
-                      </div>
-
-                      {invoiceDocType === 'receipt' ? (
-                        <div className="p-3 rounded-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                          <div className="d-flex align-items-center justify-content-between mb-1.5 pb-1 border-bottom border-success-subtle">
-                            <span className="fw-bold fs-11 text-success text-uppercase tracking-wider">
-                              <i className="ri-checkbox-circle-fill me-1"/> Payment Settlement Realized
-                            </span>
-                            <span className="badge bg-success text-white" style={{ fontSize: 9.5 }}>CLEARED</span>
-                          </div>
-                          <div className="text-secondary small" style={{ lineHeight: 1.6, fontSize: 11 }}>
-                            <div>Channel: <strong className="text-dark">{selected.paymentMethod}</strong></div>
-                            <div>Reference: <span className="font-monospace text-dark">{selected.paymentRef || `TXN-${selected.id.replace('INV-', '')}`}</span></div>
-                            <div>Settlement Date: <span className="font-monospace text-dark">{selected.paidDate || selected.issuedDate || 'Same-day'}</span></div>
-                            <div className="text-success mt-1 pt-1 border-top border-success-subtle" style={{ fontSize: 10.5 }}>
-                              Funds verified & audited by Bems Central Treasury.
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-2" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                          <div className="d-flex align-items-center justify-content-between mb-1.5 pb-1 border-bottom" style={{ borderColor: '#e2e8f0' }}>
-                            <span className="fw-bold fs-11 text-dark text-uppercase tracking-wider">
-                              <i className="ri-bank-card-line me-1 text-success"/> Bank Wire Settlement Details
-                            </span>
-                            <span className="badge bg-white text-secondary border" style={{ fontSize: 9.5 }}>SETTLEMENT</span>
-                          </div>
-                          <div className="text-secondary small" style={{ lineHeight: 1.6, fontSize: 11 }}>
-                            <div>Bank: <strong className="text-dark">Moniepoint MFB / Zenith Bank Plc</strong></div>
-                            <div>Account Name: <strong className="text-dark">BEMS FARMS LIMITED</strong></div>
-                            <div>Account No: <span className="font-monospace fw-bold text-dark px-1.5 py-0.5 bg-white border rounded" style={{ letterSpacing: '1px' }}>1023849502</span></div>
-                            <div className="text-muted mt-1" style={{ fontSize: 10.5 }}>Narration: Quote <strong>{selected.id}</strong> on bank transfer.</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right: Modern Right-Aligned Calculations */}
-                    <div className="col-5 ps-2">
-                      <div className="py-1">
-                        <div className="d-flex justify-content-between py-1 text-secondary" style={{ fontSize: 12.5 }}>
-                          <span>Subtotal ({selected.items?.length || 0} items)</span>
-                          <span className="font-monospace text-dark">{fmt(sub)}</span>
-                        </div>
-                        {selected.deliveryFee > 0 && (
-                          <div className="d-flex justify-content-between py-1 text-secondary" style={{ fontSize: 12.5 }}>
-                            <span>Cold-Chain Logistics</span>
-                            <span className="font-monospace text-dark">+{fmt(selected.deliveryFee)}</span>
-                          </div>
-                        )}
-                        {selected.discount > 0 && (
-                          <div className="d-flex justify-content-between py-1 text-success" style={{ fontSize: 12.5 }}>
-                            <span>Volume Discount</span>
-                            <span className="font-monospace">-{fmt(selected.discount)}</span>
-                          </div>
-                        )}
-                        <div className="my-2 border-top" style={{ borderColor: '#e2e8f0' }} />
-                        <div className="d-flex justify-content-between align-items-baseline py-1">
-                          <div>
-                            <div className="fw-bold text-uppercase" style={{ fontSize: 12, letterSpacing: '0.5px', color: '#0f172a' }}>
-                              {invoiceDocType === 'receipt' ? 'Amount Received' : 'Total Amount Due'}
-                            </div>
-                            <div className="text-muted" style={{ fontSize: 10 }}>All applicable taxes inclusive</div>
-                          </div>
-                          <div className="fw-bolder font-monospace" style={{ fontSize: 20, color: invoiceDocType === 'receipt' ? '#15803d' : '#064e3b' }}>
-                            {fmt(total)}
-                          </div>
-                        </div>
-                        {invoiceDocType === 'receipt' && (
-                          <div className="d-flex justify-content-between align-items-center pt-1 text-muted" style={{ fontSize: 11 }}>
-                            <span>Balance Outstanding:</span>
-                            <span className="font-monospace fw-bold text-success">₦0.00 (NIL)</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── COMMERCIAL TERMS & NOTES (CLEAN MINIMALIST FOOTNOTE) ── */}
-                  <div className="mb-4 pt-3 border-top" style={{ borderColor: '#f1f5f9', fontSize: 10.5, color: '#64748b', lineHeight: 1.5 }}>
-                    <div className="row g-2">
-                      <div className="col-4">
-                        <strong>Validity:</strong> {isProforma ? 'Quotation valid for 7 calendar days from issue.' : 'Payment receipt valid upon issuance.'}
-                      </div>
-                      <div className="col-4">
-                        <strong>Inspection:</strong> Goods inspected and endorsed upon delivery waybill.
-                      </div>
-                      <div className="col-4">
-                        <strong>Certification:</strong> Certified fresh Grade A agro commodities.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── OFFICIAL SIGNATURES & CORPORATE SEAL ── */}
-                  <div className="row g-3 pt-3 border-top align-items-center text-center" style={{ borderColor: '#e2e8f0', fontSize: 11 }}>
-                    <div className="col-4">
-                      <div className="fw-bold text-dark mb-3.5">
-                        {invoiceDocType === 'receipt' ? 'ISSUED BY (ACCOUNTS)' : 'PREPARED BY (SALES)'}
-                      </div>
-                      <div className="font-monospace text-muted mb-0.5" style={{ fontSize: 10 }}>Bems Commercial Desk</div>
-                      <div className="text-secondary small">Central Hub, Umuahia</div>
-                    </div>
-
-                    <div className="col-4">
-                      <div
-                        className="mx-auto d-flex flex-column align-items-center justify-content-center"
-                        style={{
-                          width: 86,
-                          height: 86,
-                          borderRadius: '50%',
-                          border: `2px solid ${invoiceDocType === 'receipt' ? '#16a34a' : '#064e3b'}`,
-                          background: invoiceDocType === 'receipt' ? '#f0fdf4' : '#f8fafc',
-                          color: invoiceDocType === 'receipt' ? '#15803d' : '#064e3b',
-                          fontSize: 8.5,
-                          fontWeight: 800,
-                          textAlign: 'center',
-                          padding: 5,
-                          letterSpacing: '0.4px',
-                          boxShadow: `inset 0 0 0 1.5px ${invoiceDocType === 'receipt' ? '#86efac' : '#a7f3d0'}`
-                        }}
-                      >
-                        <i className={`${invoiceDocType === 'receipt' ? 'ri-checkbox-circle-fill text-success' : 'ri-shield-check-fill'} fs-14 mb-0.5`}/>
-                        <span>BEMS FARMS LTD</span>
-                        <span style={{ fontSize: 7.5, opacity: 0.85 }}>RC-1849204</span>
-                        <span className="fw-bolder mt-0.5" style={{ fontSize: 8 }}>
-                          {invoiceDocType === 'receipt' ? '★ PAID ★' : '★ OFFICIAL SEAL ★'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="col-4">
-                      <div className="fw-bold text-dark mb-3.5">
-                        {invoiceDocType === 'receipt' ? 'PAYER SIGN-OFF' : 'AUTHORIZED SIGNATORY'}
-                      </div>
-                      <div className="border-bottom mx-4 mb-1" style={{ height: 16, borderColor: '#cbd5e1' }}></div>
-                      <div className="fw-semibold text-dark small">
-                        {invoiceDocType === 'receipt' ? (selected.customer?.name || 'Customer Signature') : 'Finance & Operations Director'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Footer Note */}
-                  <div className="text-center text-muted pt-3 mt-3 border-top" style={{ borderColor: '#f8fafc', fontSize: 10 }}>
-                    BEMS FARMS LIMITED · RC-1849204 · Thank you for your partnership in nourishing Nigeria.
-                  </div>
+                {/* Official Bems Farms Executive Document (Invoice / Receipt) */}
+                <div className="bems-doc-print-target d-flex justify-content-center">
+                  <BemsOfficialDocument
+                    documentType={invoiceDocType}
+                    data={selected}
+                  />
                 </div>
 
                 {/* Bottom Sticky Action Bar in Preview */}

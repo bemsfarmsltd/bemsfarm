@@ -153,6 +153,14 @@ export default function OrdersList() {
       if (res.data?.orders) {
         const mapped = res.data.orders.map((o) => {
           let parsedStatus = (o.status || 'paid').toLowerCase().trim()
+          const isCod = ['cod', 'cashondelivery', 'payondelivery', 'cash'].includes(String(o.payment_method || o.payment || '').toLowerCase().trim().replace(/[\s-_]+/g, ''))
+          // COD orders bypass upfront payment verification
+          if (isCod && (parsedStatus === 'pending_payment' || parsedStatus === 'pending')) {
+            parsedStatus = o.invoice_printed ? 'packaging' : 'confirmed'
+          }
+          if (o.invoice_printed && ['pending', 'pending_payment', 'new_order', 'confirmed'].includes(parsedStatus)) {
+            parsedStatus = 'packaging'
+          }
           if (parsedStatus === 'pending' || parsedStatus === 'new_order') parsedStatus = 'paid'
           if (parsedStatus === 'packed_ready') parsedStatus = 'packed'
           if (parsedStatus === 'driver_assigned') parsedStatus = 'assigned'

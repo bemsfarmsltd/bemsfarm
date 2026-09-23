@@ -32,7 +32,11 @@ export default function DispatchAlertBanner() {
     if (!canSee) return
     try {
       const res = await api.get('/admin/dispatch/alerts')
-      const incoming = res.data?.alerts || []
+      const raw = res.data?.alerts || []
+      const incoming = raw.filter(a => {
+        const st = String(a.order_status || '').toLowerCase()
+        return !['cancelled', 'refunded', 'delivered', 'completed', 'packaging', 'confirmed', 'pending', 'pending_payment'].includes(st)
+      })
       setAlerts(incoming)
       if (incoming.length === 0) {
         setActiveIndex(0)

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
+import BemsOfficialDocument from '../../components/documents/BemsOfficialDocument'
 import { useAuth } from '../../context/AuthContext'
 
 const STATUS_COLOR = {
@@ -48,6 +49,7 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [printModalType, setPrintModalType] = useState(null) // null | 'invoice' | 'receipt'
+  const [printFormat, setPrintFormat] = useState('a4') // 'a4' | 'thermal'
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -115,7 +117,11 @@ export default function OrderDetail() {
   }
 
   const handlePrintInvoice = async () => {
-    printThermalReceipt()
+    if (printFormat === 'thermal') {
+      printThermalReceipt()
+    } else {
+      window.print()
+    }
     try {
       await api.post(`/admin/orders/${id}/print-invoice`)
       toast.success('Official Invoice printed! Order moved to Packaging.')
@@ -127,13 +133,15 @@ export default function OrderDetail() {
         fetchOrder()
       } catch (_) {}
     }
-    setPrintModalType(null)
   }
 
   const handlePrintReceipt = () => {
-    printThermalReceipt()
+    if (printFormat === 'thermal') {
+      printThermalReceipt()
+    } else {
+      window.print()
+    }
     toast.success('Customer payment receipt printed.')
-    setPrintModalType(null)
   }
 
   const handleAdminDeliveryOverride = async () => {
@@ -185,6 +193,39 @@ export default function OrderDetail() {
   const color = STATUS_COLOR[statusKey] || 'primary'
   const isInvoicePrinted = Boolean(order.invoice_printed)
   const canPrintInvoice = !['delivered', 'cancelled', 'completed'].includes(statusKey)
+
+  const orderDocData = {
+    id: order.order_ref || `INV-${order.id}`,
+    invoice_ref: order.order_ref || `INV-${order.id}`,
+    receiptNo: order.receipt_ref || `REC-${String(order.order_ref || order.id).replace(/[^0-9A-Za-z]/g, '')}`,
+    transactionRef: order.payment_reference || order.payment_ref || `TXN-${order.id}`,
+    status: order.payment_status === 'paid' || ['paid', 'completed', 'delivered'].includes(statusKey) ? 'paid' : (order.status || 'draft'),
+    paymentStatus: order.payment_status || (['paid', 'completed', 'delivered'].includes(statusKey) ? 'paid' : 'unpaid'),
+    paymentMethod: order.payment_method?.toUpperCase() || 'Bank Transfer',
+    salesChannel: order.channel || (order.source?.toLowerCase().includes('pos') ? 'physical' : 'online'),
+    issuedDate: order.created_at,
+    dueDate: order.created_at,
+    paidDate: order.paid_at || order.created_at,
+    customer: {
+      name: order.customer_name || 'Walk-in Customer',
+      phone: order.customer_phone || '',
+      email: order.customer_email || '',
+      address: order.delivery_address || order.shipping_address || '',
+    },
+    items: items.map(it => ({
+      name: it.product_name || it.name || 'Agro Commodity',
+      sku: it.sku || '',
+      unit: it.unit || 'unit',
+      qty: it.quantity || it.qty || 1,
+      price: it.unit_price || it.price || 0,
+      total: it.subtotal || ((it.quantity || it.qty || 1) * (it.unit_price || it.price || 0))
+    })),
+    subtotal,
+    deliveryFee,
+    discount,
+    amount: total,
+    notes: order.notes
+  }
 
   return (
     <div className="container-fluid">
@@ -709,28 +750,76 @@ export default function OrderDetail() {
       {printModalType && (
         <div
           className="modal fade show d-block"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', zIndex: 1050 }}
           onClick={() => setPrintModalType(null)}
         >
+          {printFormat === 'a4' && (
+            <style>{`
+              @media print {
+                body * {
+                  visibility: hidden !important;
+                }
+                .bems-doc-print-target, .bems-doc-print-target * {
+                  visibility: visible !important;
+                }
+                .bems-doc-print-target {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: #ffffff !important;
+                }
+                .no-print, .no-print * {
+                  display: none !important;
+                }
+                @page {
+                  size: A4 portrait;
+                  margin: 0;
+                }
+              }
+            `}</style>
+          )}
+
           <div
-            className="modal-dialog modal-dialog-centered"
-            style={{ maxWidth: 460 }}
+            className="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+            style={{ maxWidth: printFormat === 'a4' ? 880 : 460, transition: 'max-width 0.2s ease' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
-              <div className="modal-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
+              <div className="modal-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between bg-light">
                 <div>
                   <h6 className="modal-title fw-bold mb-0">
-                    {printModalType === 'invoice' ? '📄 Official Invoice (Packing List)' : '🧾 Customer Payment Receipt'} #{order.order_ref || order.id}
+                    {printModalType === 'invoice' ? '📄 Official Invoice' : '🧾 Customer Payment Receipt'} #{order.order_ref || order.id}
                   </h6>
                   <span className="text-muted" style={{ fontSize: 11 }}>
-                    {printModalType === 'invoice' ? 'Internal Warehouse Copy · Item picking & packaging' : 'Customer Copy · Handover upon delivery'}
+                    {printFormat === 'a4' ? 'Executive A4 Brand Document · Security Stamps & QR Verification' : '80mm POS Thermal Slip'}
                   </span>
                 </div>
-                <div className="d-flex gap-2">
+
+                <div className="d-flex align-items-center gap-2">
+                  <div className="btn-group btn-group-sm" role="group">
+                    <button
+                      type="button"
+                      className={`btn ${printFormat === 'a4' ? 'btn-success fw-bold' : 'btn-outline-secondary'}`}
+                      onClick={() => setPrintFormat('a4')}
+                    >
+                      A4 Document
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${printFormat === 'thermal' ? 'btn-success fw-bold' : 'btn-outline-secondary'}`}
+                      onClick={() => setPrintFormat('thermal')}
+                    >
+                      Thermal POS
+                    </button>
+                  </div>
+
                   {printModalType === 'invoice' ? (
-                    <button className="btn btn-sm btn-success fw-bold" onClick={handlePrintInvoice}>
-                      <i className="ri-printer-line me-1" />Print Invoice & Pack
+                    <button className="btn btn-sm btn-primary fw-bold" onClick={handlePrintInvoice}>
+                      <i className="ri-printer-line me-1" />Print Invoice
                     </button>
                   ) : (
                     <button className="btn btn-sm btn-primary fw-bold" onClick={handlePrintReceipt}>
@@ -740,25 +829,37 @@ export default function OrderDetail() {
                   <button className="btn-close" onClick={() => setPrintModalType(null)} />
                 </div>
               </div>
-              <div className="modal-body p-3 thermal-receipt-preview" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-                <ThermalReceipt
-                  receiptType={printModalType === 'invoice' ? 'invoice' : (order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online')}
-                  receiptNumber={order.order_ref || order.id}
-                  date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
-                  customer={order.customer_name || 'Walk-in Customer'}
-                  customerPhone={order.customer_phone}
-                  channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
-                  cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
-                  fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
-                  status={order.status?.toUpperCase()}
-                  items={items}
-                  subtotal={subtotal}
-                  deliveryFee={deliveryFee}
-                  discount={discount}
-                  total={total}
-                  paymentMethod={order.payment_method?.toUpperCase()}
-                  note={order.notes}
-                />
+
+              <div className="modal-body p-3" style={{ maxHeight: '80vh', overflowY: 'auto', background: printFormat === 'a4' ? '#f1f5f9' : '#ffffff' }}>
+                {printFormat === 'a4' ? (
+                  <div className="bems-doc-print-target d-flex justify-content-center">
+                    <BemsOfficialDocument
+                      documentType={printModalType === 'invoice' ? 'tax_invoice' : 'receipt'}
+                      data={orderDocData}
+                    />
+                  </div>
+                ) : (
+                  <div className="thermal-receipt-preview d-flex justify-content-center">
+                    <ThermalReceipt
+                      receiptType={printModalType === 'invoice' ? 'invoice' : (order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online')}
+                      receiptNumber={order.order_ref || order.id}
+                      date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
+                      customer={order.customer_name || 'Walk-in Customer'}
+                      customerPhone={order.customer_phone}
+                      channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
+                      cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+                      fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
+                      status={order.status?.toUpperCase()}
+                      items={items}
+                      subtotal={subtotal}
+                      deliveryFee={deliveryFee}
+                      discount={discount}
+                      total={total}
+                      paymentMethod={order.payment_method?.toUpperCase()}
+                      note={order.notes}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

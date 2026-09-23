@@ -1109,10 +1109,11 @@ router.post(
     try {
       await client.query("BEGIN");
       const { id } = req.params;
+      const cleanId = String(id || '').replace(/^#/, '').trim();
 
       const orderRes = await client.query(
-        "SELECT id, order_ref, status, total, address, latitude, longitude, driver_id FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1)) FOR UPDATE",
-        [id]
+        "SELECT id, order_ref, status, total, address, latitude, longitude, driver_id FROM orders WHERE (UPPER(id)=UPPER($1) OR UPPER(order_ref)=UPPER($1) OR UPPER(id)=UPPER($2) OR UPPER(order_ref)=UPPER($2)) FOR UPDATE",
+        [id, cleanId]
       );
 
       if (!orderRes.rows.length) {

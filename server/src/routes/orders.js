@@ -316,18 +316,29 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     }
 
     const orderId = "BF-" + Date.now().toString(36).toUpperCase();
-    const status = method === "monnify" ? "confirmed" : "pending_payment";
+    const isCod = ["cod", "cashondelivery", "payondelivery", "cash"].includes(String(method || "").toLowerCase().trim().replace(/[\s-_]+/g, ""));
+    const isGatewayPaid = (method === "monnify" && monnifyData && monnifyData.paymentStatus === "PAID");
+
+    // Payment & Status resolution:
+    // - If placed via Cash on Delivery (COD), bypass payment upfront -> status is 'confirmed'.
+    // - If paid through payment gateway (Monnify), confirm payment -> status is 'confirmed', payment_status is 'paid'.
+    // - Only if an unverified gateway payment intent was submitted -> status is 'pending_payment'.
+    const status = (isCod || isGatewayPaid) ? "confirmed" : "pending_payment";
+    const paymentStatus = isGatewayPaid ? "paid" : "pending";
+    const trackingStatus = status;
 
     await client.query(
       `INSERT INTO orders
-       (id, user_id, total, discount_amount, status, payment_method, payment_ref, address, latitude, longitude, created_at, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)`,
+       (id, user_id, total, discount_amount, status, payment_status, tracking_status, payment_method, payment_ref, address, latitude, longitude, created_at, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13)`,
       [
         orderId,
         req.user.id,
         total,
         couponDiscount,
         status,
+        paymentStatus,
+        trackingStatus,
         method,
         method === "monnify" ? effectivePaymentRef : null,
         address || "",
@@ -345,6 +356,22 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
          VALUES ($1, $2, $3, $4, 0)`,
         [orderId, item.productId, item.quantity, item.unitPrice],
       );
+    }
+
+    try {
+      await client.query(
+        `INSERT INTO order_tracking_events (order_id, event_type, description, actor_type, actor_id, created_at)
+         VALUES ($1, 'order_created', $2, 'customer', $3, NOW())`,
+        [
+          orderId,
+          isCod
+            ? "Order placed via Cash on Delivery (payment bypassed — to be collected at doorstep)."
+            : (isGatewayPaid ? "Order placed and payment confirmed via payment gateway." : "Order placed. Awaiting payment verification."),
+          req.user.id,
+        ]
+      );
+    } catch (e) {
+      console.warn("Could not insert tracking event for order_created:", e.message);
     }
 
     await logOrderAudit(client, {
@@ -452,7 +479,9 @@ router.get("/", protect, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT
-         o.id, o.total, COALESCE(o.discount_amount, 0) as discount_amount, o.status, o.payment_method, o.address,
+         o.id, o.total, COALESCE(o.discount_amount, 0) as discount_amount, o.status,
+         COALESCE(o.payment_status, 'pending') as payment_status,
+         o.payment_method, COALESCE(o.invoice_printed, false) as invoice_printed, o.address,
          o.created_at, o.cancelled_at, o.cancel_reason,
          COALESCE(o.tracking_status, o.status) as tracking_status,
          json_agg(
