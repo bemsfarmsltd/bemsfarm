@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
@@ -38,14 +38,14 @@ jobs:
 
       - name: Upload Artifacts (macOS)
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BemsFarms-macOS
           path: Bems-Farms-Admin-Front-end/release/*.dmg
 
       - name: Upload Artifacts (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BemsFarms-Windows
           path: Bems-Farms-Admin-Front-end/release/*.exe
