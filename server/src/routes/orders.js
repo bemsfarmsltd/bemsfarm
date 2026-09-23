@@ -926,7 +926,7 @@ const { autoAssignClosestDriver } = require("../services/dispatchEngine");
 router.post(
   "/:id/auto-assign-driver",
   protect,
-  requireRole("superadmin", "admin", "manager", "delivery_manager"),
+  requireRole("superadmin", "admin", "manager", "delivery_manager", "cashier"),
   async (req, res, next) => {
     try {
       const { id } = req.params;

@@ -1634,7 +1634,7 @@ router.post(
 // ── PATCH /api/admin/orders/:id/assign-driver ─────────────────────
 router.patch(
   "/:id/assign-driver",
-  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  requireRole("superadmin", "manager", "admin", "delivery_manager", "cashier"),
   validate(orderAdminSchemas.assignDriver),
   async (req, res, next) => {
     const client = await pool.connect();
@@ -1642,15 +1642,21 @@ router.patch(
       await client.query("BEGIN");
       const { driver_id, reassign = false } = req.body;
 
-      const order = await client.query("SELECT * FROM orders WHERE id=$1", [
-        req.params.id,
-      ]);
+      const order = await client.query(
+        `SELECT * FROM orders 
+         WHERE UPPER(REPLACE(id::text, '#', '')) = UPPER(REPLACE($1, '#', ''))
+            OR UPPER(REPLACE(COALESCE(order_ref, ''), '#', '')) = UPPER(REPLACE($1, '#', ''))
+         LIMIT 1`,
+        [req.params.id]
+      );
       if (!order.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
       }
 
-      if (order.rows[0].status === "cancelled") {
+      const orderRow = order.rows[0];
+
+      if (orderRow.status === "cancelled") {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Cannot assign a driver to a cancelled order" });
       }
@@ -1664,25 +1670,25 @@ router.patch(
       }
 
       const d = driver.rows[0];
-      const prevDriverId = order.rows[0].driver_id;
+      const prevDriverId = orderRow.driver_id;
 
       // Update order
       await client.query(
-        "UPDATE orders SET driver_id=$1, status='driver_assigned', updated_at=NOW() WHERE id=$2",
-        [driver_id, req.params.id],
+        "UPDATE orders SET driver_id=$1, status='driver_assigned', tracking_status='driver_assigned', updated_at=NOW() WHERE id=$2",
+        [driver_id, orderRow.id],
       );
 
       // Create or update delivery record
       const existingDelivery = await client.query(
-        "SELECT id FROM deliveries WHERE order_id=$1",
-        [req.params.id],
+        "SELECT id FROM deliveries WHERE order_id=$1 OR order_id=$2",
+        [orderRow.id, orderRow.order_ref || orderRow.id],
       );
 
       let deliveryId;
       if (existingDelivery.rows.length) {
         deliveryId = existingDelivery.rows[0].id;
         await client.query(
-          "UPDATE deliveries SET driver_id=$1, status='assigned', assigned_at=NOW() WHERE id=$2",
+          "UPDATE deliveries SET driver_id=$1, status='assigned', assigned_at=NOW(), updated_at=NOW() WHERE id=$2",
           [driver_id, deliveryId],
         );
       } else {
@@ -1693,9 +1699,9 @@ router.patch(
       `,
           [
             `DEL-${Date.now()}`,
-            req.params.id,
+            orderRow.id,
             driver_id,
-            order.rows[0].delivery_address || order.rows[0].address,
+            orderRow.delivery_address || orderRow.address,
           ],
         );
         deliveryId = del.rows[0].id;
@@ -1707,12 +1713,16 @@ router.patch(
       INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, assigned_by, driver_response, created_at)
       VALUES ($1,$2,$3,$4,'pending',NOW())
     `,
-        // Both a fresh assignment and a reassignment are manual actions from
-        // this table's perspective (deliveries_admin.js's auto-log query
-        // distinguishes them from 'auto'/'system' rows, not from each other —
-        // the reassign-vs-assign distinction lives in the `note` text below).
         [deliveryId, driver_id, "manual", req.user.id],
       );
+
+      // Auto-resolve any unresolved dispatch alert for this order
+      await client.query(
+        `UPDATE dispatch_alerts 
+         SET resolved = TRUE, resolution = 'keep_driver', resolved_at = NOW(), resolved_by = $1
+         WHERE (order_id = $2::text OR order_id = $3::text) AND resolved = FALSE`,
+        [req.user.id, orderRow.id, orderRow.order_ref || orderRow.id]
+      ).catch(() => {});
 
       const note = reassign
         ? `Manual reassignment. Previous driver ID: ${prevDriverId || "none"} → New driver: ${d.name}. Push notification sent.`
@@ -1720,15 +1730,15 @@ router.patch(
 
       await logStatusChange(
         client,
-        req.params.id,
-        order.rows[0].status,
+        orderRow.id,
+        orderRow.status,
         "driver_assigned",
         req.user.id,
         note,
       );
       await logTrackingEvent(
         client,
-        req.params.id,
+        orderRow.id,
         deliveryId,
         "driver_assigned",
         note,

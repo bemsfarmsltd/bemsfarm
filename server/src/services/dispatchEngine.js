@@ -79,8 +79,10 @@ async function autoAssignClosestDriver(
       `
       SELECT o.*, d.id AS delivery_id, d.status AS delivery_status
       FROM orders o
-      LEFT JOIN deliveries d ON d.order_id = o.id
-      WHERE o.id = $1 OR d.id::text = $1
+      LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      WHERE UPPER(REPLACE(o.id::text, '#', '')) = UPPER(REPLACE($1, '#', ''))
+         OR UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', '')) = UPPER(REPLACE($1, '#', ''))
+         OR d.id::text = $1
       FOR UPDATE OF o
       `,
       [orderId]
@@ -252,6 +254,14 @@ async function autoAssignClosestDriver(
         deliveryId,
       ]
     );
+
+    // Auto-resolve any unresolved dispatch alert for this order
+    await client.query(
+      `UPDATE dispatch_alerts 
+       SET resolved = TRUE, resolution = 'keep_driver', resolved_at = NOW()
+       WHERE (order_id = $1::text OR order_id = $2::text) AND resolved = FALSE`,
+      [order.id, order.order_ref || order.id]
+    ).catch(() => {});
 
     await client.query("COMMIT");
 

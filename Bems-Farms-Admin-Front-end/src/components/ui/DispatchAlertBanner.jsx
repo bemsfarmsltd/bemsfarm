@@ -127,7 +127,7 @@ export default function DispatchAlertBanner() {
     setLoadingAction(true)
     try {
       await api.patch(`/admin/orders/${targetOrderId}/assign-driver`, {
-        driver_id: driver.id,
+        driver_id: Number(driver.id),
       })
       toast.success(`Driver ${driver.name} manually assigned to order #${targetOrderId}!`)
       await resolveAlert('keep_driver')

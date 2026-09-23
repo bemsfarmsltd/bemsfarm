@@ -383,7 +383,7 @@ router.patch(
 );
 
 // ── GET /api/admin/deliveries/drivers ────────────────────────────
-router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager", "cashier"), async (req, res, next) => {
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
