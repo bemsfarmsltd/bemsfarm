@@ -311,13 +311,13 @@ async function processUnresponsiveAssignments(
         `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to order #${item.order_ref || item.order_id} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
       );
 
-      // 1. Mark the timed out assignment as 'timeout' if record exists
+      // 1. Mark the timed out assignment as 'timed_out' if record exists
       if (item.assignment_id) {
         await pool.query(
           `
           UPDATE delivery_assignments
           SET 
-            driver_response = 'timeout',
+            driver_response = 'timed_out',
             rejection_reason = $1,
             response_at = NOW()
           WHERE id = $2

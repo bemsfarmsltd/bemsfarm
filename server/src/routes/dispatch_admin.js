@@ -42,7 +42,7 @@ router.post('/unassign/:ref', requireRole('superadmin', 'admin', 'manager', 'cas
     // Cancel any pending driver assignments
     await client.query(
       `UPDATE delivery_assignments da
-       SET driver_response = 'cancelled', response_at = NOW()
+       SET driver_response = 'timed_out', response_at = NOW()
        FROM deliveries d
        WHERE da.delivery_id = d.id AND (d.order_id = $1::text OR d.order_id = $2::text) AND da.driver_response = 'pending'`,
       [order.id, order.order_ref || order.id]
@@ -140,7 +140,7 @@ router.post('/alerts/:id/resolve', requireRole('superadmin', 'admin', 'manager',
         )
         // Mark pending assignment as cancelled
         await client.query(
-          `UPDATE delivery_assignments SET driver_response = 'cancelled', response_at = NOW()
+          `UPDATE delivery_assignments SET driver_response = 'timed_out', response_at = NOW()
            WHERE delivery_id = $1 AND driver_response = 'pending'`,
           [alert.delivery_id]
         )
