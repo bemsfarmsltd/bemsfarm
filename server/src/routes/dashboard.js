@@ -65,6 +65,8 @@ function parseDateFilter(query = {}) {
 
   const ordersWhere = buildOrdersWhere('created_at');
   const ordersJoinWhere = buildOrdersWhere('o.created_at');
+  const returnsWhere = buildOrdersWhere('created_at');
+  const returnsJoinWhere = buildOrdersWhere('r.created_at');
 
   if (range === 'custom' && customFrom && customTo) {
     const fromStr = `${customFrom} 00:00:00`;
@@ -75,8 +77,9 @@ function parseDateFilter(query = {}) {
       isFiltered: true,
       ordersWhere,
       ordersJoinWhere,
+      returnsWhere,
+      returnsJoinWhere,
       incomeWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
-      returnsWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
       attendanceWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
       usersWhere: `joined_at >= '${fromStr}'::timestamp AND joined_at <= '${toStr}'::timestamp`,
       aiWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
@@ -92,8 +95,9 @@ function parseDateFilter(query = {}) {
       isFiltered: true,
       ordersWhere,
       ordersJoinWhere,
+      returnsWhere,
+      returnsJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
-      returnsWhere: `created_at >= NOW() - INTERVAL '7 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
       usersWhere: `joined_at >= NOW() - INTERVAL '7 days'`,
       aiWhere: `created_at >= NOW() - INTERVAL '7 days'`,
@@ -107,8 +111,9 @@ function parseDateFilter(query = {}) {
       isFiltered: true,
       ordersWhere,
       ordersJoinWhere,
+      returnsWhere,
+      returnsJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
-      returnsWhere: `created_at >= NOW() - INTERVAL '12 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
       usersWhere: `joined_at >= NOW() - INTERVAL '12 days'`,
       aiWhere: `created_at >= NOW() - INTERVAL '12 days'`,
@@ -122,8 +127,9 @@ function parseDateFilter(query = {}) {
       isFiltered: true,
       ordersWhere,
       ordersJoinWhere,
+      returnsWhere,
+      returnsJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
-      returnsWhere: `created_at >= NOW() - INTERVAL '30 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
       usersWhere: `joined_at >= NOW() - INTERVAL '30 days'`,
       aiWhere: `created_at >= NOW() - INTERVAL '30 days'`,
@@ -137,8 +143,9 @@ function parseDateFilter(query = {}) {
       isFiltered: true,
       ordersWhere,
       ordersJoinWhere,
+      returnsWhere,
+      returnsJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
-      returnsWhere: `created_at >= NOW() - INTERVAL '1 year'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
       usersWhere: `joined_at >= NOW() - INTERVAL '1 year'`,
       aiWhere: `created_at >= NOW() - INTERVAL '1 year'`,
@@ -152,8 +159,9 @@ function parseDateFilter(query = {}) {
     isFiltered: false,
     ordersWhere,
     ordersJoinWhere,
+    returnsWhere,
+    returnsJoinWhere,
     incomeWhere: `DATE(date) = CURRENT_DATE`,
-    returnsWhere: `DATE(created_at) = CURRENT_DATE`,
     attendanceWhere: `date = CURRENT_DATE`,
     usersWhere: `DATE(joined_at) = CURRENT_DATE`,
     aiWhere: `DATE(created_at) = CURRENT_DATE`,
@@ -550,7 +558,7 @@ router.get("/sales", async (req, res, next) => {
       q(`SELECT r.id, r.order_id, p.name AS product, r.reason, r.refund_amount, r.status
          FROM returns r
          LEFT JOIN products p ON r.product_id = p.id
-         WHERE ${filter.returnsWhere}
+         WHERE ${filter.returnsJoinWhere}
          ORDER BY r.created_at DESC
          LIMIT 10`),
 

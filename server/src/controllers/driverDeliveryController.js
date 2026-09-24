@@ -2,6 +2,7 @@ const pool = require("../db/pool");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 const { logOrderAudit } = require("../utils/workflowAudit");
 const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+const { deductOrderStock } = require("../utils/orderStock");
 
 // Normalize driver status string input
 function normalizeStatus(status) {
@@ -861,6 +862,16 @@ const updateDeliveryStatus = async (req, res, next) => {
       } catch (finErr) {
         await client.query("ROLLBACK TO SAVEPOINT sp_double_entry").catch(() => {});
         console.warn("Delivery completion double-entry non-fatal warning:", finErr.message);
+      }
+
+      // 3. Ensure order stock is deducted if not already deducted at packing
+      try {
+        await client.query("SAVEPOINT sp_stock_deduct");
+        await deductOrderStock(client, actualOrderId, driverId, 'DRIVER-DROP');
+        await client.query("RELEASE SAVEPOINT sp_stock_deduct");
+      } catch (stockErr) {
+        await client.query("ROLLBACK TO SAVEPOINT sp_stock_deduct").catch(() => {});
+        console.warn("Delivery completion stock deduction non-fatal warning:", stockErr.message);
       }
 
       // Store driver_commission_amount on delivery record
