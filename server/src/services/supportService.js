@@ -35,7 +35,7 @@ async function sendMessage(customerId,message,actor){
           type: 'support_message',
           title: `💬 New Support Message from ${senderName}`,
           message: `${senderName}: "${message.trim().slice(0, 150)}${message.trim().length > 150 ? '…' : ''}"`,
-          link: `/god-eye`,
+          link: `/customers/messages?customer=${customerId}`,
           severity: 'info',
           data: {
             customer_id: customerId,
@@ -43,6 +43,13 @@ async function sendMessage(customerId,message,actor){
             message: message.trim(),
           },
           actor: { id: customerId, name: senderName, role: 'customer' },
+        });
+
+        const { broadcastSupportMessage } = require('./socketService');
+        broadcastSupportMessage({
+          customer_id: customerId,
+          customer_name: senderName,
+          message: message.trim(),
         });
       } catch (notifErr) {
         console.warn("Admin notification dispatch notice:", notifErr?.message);

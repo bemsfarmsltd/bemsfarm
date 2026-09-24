@@ -406,6 +406,21 @@ export function RealtimeProvider({ children }) {
       notifySubscribers('dashboard:update', data)
     }
 
+    // 10. Customer Support Chat Message
+    const handleSupportMessage = (data) => {
+      notifySubscribers('support:message', data)
+      showNotificationPopup(
+        {
+          id: `support-${data.customer_id}-${Date.now()}`,
+          type: 'support_message',
+          title: `💬 New Message: ${data.customer_name || 'Customer'}`,
+          message: data.message ? `"${data.message}"` : 'Customer sent a new support inquiry.',
+          link: `/customers/messages?customer=${data.customer_id}`,
+        },
+        { navigate, soundEnabled, playChime: playWebAudioChime }
+      )
+    }
+
     socket.on('notification:new', handleNotificationNew)
     socket.on('order:created', handleOrderCreated)
     socket.on('order:updated', handleOrderUpdated)
@@ -416,6 +431,7 @@ export function RealtimeProvider({ children }) {
     socket.on('dispatch:alert', handleDispatchAlert)
     socket.on('emergency:sos', handleEmergencySos)
     socket.on('dashboard:update', handleDashboardUpdate)
+    socket.on('support:message', handleSupportMessage)
 
     // Handle Window Focus: when admin returns to tab, refresh current views
     const onVisibilityChange = () => {
@@ -439,6 +455,7 @@ export function RealtimeProvider({ children }) {
       socket.off('dispatch:alert', handleDispatchAlert)
       socket.off('emergency:sos', handleEmergencySos)
       socket.off('dashboard:update', handleDashboardUpdate)
+      socket.off('support:message', handleSupportMessage)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('focus', onVisibilityChange)
     }

@@ -206,6 +206,15 @@ function broadcastEmergencyAlert(emergency) {
   });
 }
 
+function broadcastSupportMessage(payload) {
+  emitEvent("support:message", {
+    customer_id: payload?.customer_id,
+    customer_name: payload?.customer_name,
+    message: payload?.message,
+    created_at: new Date().toISOString(),
+  });
+}
+
 function broadcastDashboardInvalidation(section = "all") {
   emitEvent("dashboard:update", { section, timestamp: Date.now() });
 }
@@ -223,5 +232,6 @@ module.exports = {
   broadcastNotification,
   broadcastDispatchAlert,
   broadcastEmergencyAlert,
+  broadcastSupportMessage,
   broadcastDashboardInvalidation,
 };

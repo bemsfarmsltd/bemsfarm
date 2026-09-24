@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 
@@ -143,6 +143,9 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
 
 // ─── Full Customer Messages Inbox page ───────────────────────────────────────
 export default function CustomerMessages() {
+  const [searchParams] = useSearchParams()
+  const qCustomer = searchParams.get('customer') || searchParams.get('id')
+
   const [conversations, setConversations] = useState([])
   const [selected, setSelected]           = useState(null)
   const [selectedName, setSelectedName]   = useState('')
@@ -153,15 +156,22 @@ export default function CustomerMessages() {
   const load = useCallback(async () => {
     try {
       const r = await api.get('/admin/customers/conversations/inbox')
-      setConversations(r.data.conversations || [])
+      const convs = r.data.conversations || []
+      setConversations(convs)
       setError('')
-      // If a customer is selected, update their details
-      if (selected && r.data?.conversations) {
-        const found = r.data.conversations.find(c => c.customer_id === selected)
-        if (found) setSelectedCustomer(found)
+
+      // Auto-select by query param or preserve current selection
+      const targetId = qCustomer || selected
+      if (targetId && convs.length) {
+        const found = convs.find(c => String(c.customer_id) === String(targetId))
+        if (found) {
+          setSelected(found.customer_id)
+          setSelectedName(found.customer_name)
+          setSelectedCustomer(found)
+        }
       }
     } catch { setError('Inbox could not be loaded.') }
-  }, [selected])
+  }, [selected, qCustomer])
 
   useEffect(() => {
     load()
@@ -170,6 +180,7 @@ export default function CustomerMessages() {
   }, [load])
 
   useRealtimeEvent('notification:new', load)
+  useRealtimeEvent('support:message', load)
   useRealtimeEvent('window:focused', load)
 
   const totalUnread = conversations.reduce((s, c) => s + Number(c.unread_count || 0), 0)
