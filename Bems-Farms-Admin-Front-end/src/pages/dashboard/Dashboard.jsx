@@ -22,7 +22,7 @@ function getGreeting() {
 function fmtNaira(v) {
   const n = Number(v || 0)
   if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000)     return `₦${(n / 1_000).toFixed(0)}K`
+  if (n >= 100_000)   return `₦${(n / 1_000).toFixed(0)}K`
   return `₦${n.toLocaleString()}`
 }
 
