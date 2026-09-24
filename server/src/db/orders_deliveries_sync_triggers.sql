@@ -94,44 +94,7 @@ CREATE TRIGGER trg_align_order_fields
   FOR EACH ROW
   EXECUTE FUNCTION align_order_fields();
 
--- 5. Auto-create delivery row on orders insert (AFTER INSERT)
-CREATE OR REPLACE FUNCTION auto_create_delivery_for_order()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM deliveries WHERE order_id = NEW.id) THEN
-    INSERT INTO deliveries (
-      delivery_ref,
-      order_id,
-      driver_id,
-      status,
-      delivery_address,
-      eta_minutes,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      COALESCE(NEW.delivery_ref, 'DEL-' || NEW.id),
-      NEW.id,
-      NEW.driver_id,
-      COALESCE(NEW.delivery_status, 'assigned'),
-      COALESCE(NEW.address, 'Customer Delivery Address'),
-      COALESCE(NEW.eta_minutes, 0),
-      NOW(),
-      NOW()
-    )
-    ON CONFLICT (delivery_ref) DO NOTHING;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_auto_create_delivery_for_order ON orders;
-CREATE TRIGGER trg_auto_create_delivery_for_order
-  AFTER INSERT ON orders
-  FOR EACH ROW
-  EXECUTE FUNCTION auto_create_delivery_for_order();
-
--- 6. Cross-table synchronization: deliveries -> orders & driver availability (AFTER INSERT OR UPDATE)
+-- 5. Cross-table synchronization: deliveries -> orders & driver availability (AFTER INSERT OR UPDATE)
 CREATE OR REPLACE FUNCTION sync_deliveries_to_orders_and_drivers()
 RETURNS TRIGGER AS $$
 DECLARE
