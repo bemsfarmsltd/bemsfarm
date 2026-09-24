@@ -405,6 +405,10 @@ export default function OrderDetailPage() {
 
   const openReturnModal = () => {
     if (!order) return;
+    if (order.customer_confirmed || order.customer_confirmed_at) {
+      showToast("Return cannot be requested because you have already confirmed delivery receipt.", "error");
+      return;
+    }
     const items = order.items || order.order_items || [];
     const init = {};
     items.forEach((it) => {
@@ -593,10 +597,11 @@ export default function OrderDetailPage() {
   const updatedAt = isNaN(parsedUpdate.getTime()) ? new Date() : parsedUpdate;
   const daysSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
 
+  const isCustomerConfirmed = Boolean(order.customer_confirmed || order.customer_confirmed_at);
   const isReturnRequested = effectiveStatus === "return_requested" || order.status === "return_requested" || order.return_status === "pending";
   const isReturnApproved = effectiveStatus === "return_approved" || order.status === "return_approved" || order.return_status === "approved";
   const isReturned = effectiveStatus === "returned" || order.status === "returned";
-  const canReturn = !isReturnRequested && !isReturnApproved && !isReturned && !isCancelled &&
+  const canReturn = !isCustomerConfirmed && !isReturnRequested && !isReturnApproved && !isReturned && !isCancelled &&
     (["delivered", "completed"].includes(effectiveStatus) ? daysSinceUpdate <= 7 : ["driver_arrived", "arrived", "out_for_delivery", "en_route", "in_transit", "shipped"].includes(rawStatus));
 
   return (

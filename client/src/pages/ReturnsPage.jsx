@@ -84,6 +84,7 @@ export default function ReturnsPage() {
         "out_for_delivery", "shipped", "in_transit"
       ];
       const eligible = (r.data.orders || []).filter((o) => {
+        if (o.customer_confirmed || o.customer_confirmed_at) return false;
         const st = String(o.status || "").toLowerCase();
         if (!returnableStatuses.includes(st)) return false;
         const deliveredAt = o.delivered_at || o.updated_at || o.updatedAt || o.created_at || o.date;

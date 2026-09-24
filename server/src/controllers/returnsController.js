@@ -60,6 +60,12 @@ const submitReturn = async (req, res, next) => {
     const trackingStatus = String(orderRow.tracking_status || '').toLowerCase();
     const returnableStatuses = ["delivered", "driver_arrived", "arrived", "shipped", "in_transit", "out_for_delivery"];
 
+    if (orderRow.customer_confirmed || orderRow.customer_confirmed_at) {
+      return res.status(400).json({
+        message: "Return cannot be requested because delivery receipt has already been confirmed for this order."
+      });
+    }
+
     if (!returnableStatuses.includes(orderStatus) && !returnableStatuses.includes(trackingStatus)) {
       return res.status(400).json({
         message: `Cannot request return for order currently in '${orderRow.status}' status. Returns can be initiated during delivery handover or within 7 days of delivery.`
