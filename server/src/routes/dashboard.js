@@ -730,7 +730,7 @@ router.get("/finance", async (req, res, next) => {
          FROM orders
          WHERE ${filter.ordersWhere}
            AND status NOT IN ('cancelled')
-         GROUP BY channel
+         GROUP BY 1
          ORDER BY amount DESC`),
 
       // 11. Daily Gross Inflows (Last 7 Days)
