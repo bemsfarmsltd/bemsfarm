@@ -489,9 +489,29 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
                stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
                updated_at = NOW()
            WHERE id=$2
-           RETURNING cost_price, unit_price, name`,
+           RETURNING cost_price, unit_price, name, stock, stock_quantity`,
           [effectiveDeduction, item.product_id]
         );
+
+        const currentStock = productsById.get(item.product_id)?.stock ?? 0;
+        const newStock = prodRes.rows[0]?.stock ?? Math.max(0, currentStock - effectiveDeduction);
+
+        try {
+          await logInventoryTransaction(client, {
+            order_id: orderId,
+            product_id: item.product_id,
+            quantity: effectiveDeduction,
+            previous_quantity: currentStock,
+            new_quantity: newStock,
+            pos_terminal: req.body?.terminal_id || 'POS-MAIN',
+            pos_operator_id: req.user?.id || null,
+            transaction_type: 'pos_sale',
+            source_reference: reference,
+            notes: `POS Counter Sale: ${displayName} (Qty: ${effectiveDeduction})`
+          });
+        } catch (logErr) {
+          console.warn("POS inventory_transactions log warning:", logErr.message);
+        }
 
         const itemCost = prodRes.rows[0]
           ? parseFloat(prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0)
