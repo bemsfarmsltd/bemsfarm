@@ -160,6 +160,12 @@ const STATUS_CONFIG = {
     stepIndex: 4,
     desc: "Courier is at your doorstep or entrance",
   },
+  driver_arrived: {
+    label: "Courier Arrived",
+    bg: "#D1FAE5", color: "#065F46", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 4,
+    desc: "Courier is at your doorstep or entrance",
+  },
   // ── Delivered ──
   delivered: {
     label: "Delivered Successfully",
