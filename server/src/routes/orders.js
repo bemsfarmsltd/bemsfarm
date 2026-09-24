@@ -10,7 +10,7 @@ const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const validate = require("../middleware/validate");
 const orderSchemas = require("../schemas/orderSchemas");
 const { restoreOrderStock } = require("../utils/orderStock");
-const { submitReturn, getUserReturns } = require("../controllers/returnsController");
+const { submitReturn, getUserReturns, submitRefundAccount, getOrderReturn } = require("../controllers/returnsController");
 const { detectChannel } = require("../utils/channel");
 const { notifyAdmin } = require("../services/notificationService");
 const { logOrderAudit } = require("../utils/workflowAudit");
@@ -514,6 +514,8 @@ router.get("/", protect, async (req, res, next) => {
 // ─────────────────────────────────────────────
 router.get("/returns", protect, getUserReturns);
 router.post("/returns", protect, submitReturn);
+router.post("/returns/:id/refund-account", protect, submitRefundAccount);
+router.get("/:id/return", protect, getOrderReturn);
 
 // ─────────────────────────────────────────────
 // PUBLIC ORDER TRACKING
@@ -646,6 +648,13 @@ router.get("/:id", protect, async (req, res, next) => {
          loc.speed AS driver_speed,
          loc.recorded_at AS location_updated_at,
          dz.zone_name,
+         ret.return_id,
+         ret.return_status,
+         ret.return_reason,
+         ret.return_bank_name,
+         ret.return_account_number,
+         ret.return_account_name,
+         ret.return_created_at,
          json_agg(
            json_build_object(
              'name', COALESCE(p.name, oi.product_name, 'Produce Item'),
@@ -685,12 +694,27 @@ router.get("/:id", protect, async (req, res, next) => {
          LIMIT 1
        ) loc ON true
        LEFT JOIN delivery_zones dz ON dz.zone_id = delivery.zone_id
+       LEFT JOIN LATERAL (
+         SELECT 
+           r.id AS return_id,
+           r.status AS return_status,
+           r.reason AS return_reason,
+           r.bank_name AS return_bank_name,
+           r.account_number AS return_account_number,
+           r.account_name AS return_account_name,
+           r.created_at AS return_created_at
+         FROM returns r
+         WHERE UPPER(r.order_id) = UPPER(o.id)
+         ORDER BY r.created_at DESC
+         LIMIT 1
+       ) ret ON true
        WHERE UPPER(o.id) = UPPER($1) AND (o.user_id = $2 OR o.customer_id = $2 OR $3 IN ('admin', 'superadmin', 'manager', 'delivery_manager', 'staff'))
        GROUP BY 
          o.id, o.latitude, o.longitude, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
          delivery.delivered_at, delivery.arrived_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
          dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
-         loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name`,
+         loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name,
+         ret.return_id, ret.return_status, ret.return_reason, ret.return_bank_name, ret.return_account_number, ret.return_account_name, ret.return_created_at`,
       [id, req.user.id, req.user.role || 'user'],
     );
 

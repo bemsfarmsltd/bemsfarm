@@ -25,7 +25,7 @@ const VALID_CONDITIONS = ["reusable", "damaged", "partial_goods"];
 const submitReturn = async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { order_id, reason, description, items } = req.body;
+    const { order_id, reason, description, items, bank_name, account_number, account_name } = req.body;
 
     // ── Validate reason ──────────────────────────────────────────
     if (!VALID_REASONS.includes(reason))
@@ -43,27 +43,34 @@ const submitReturn = async (req, res, next) => {
         return res.status(400).json({ message: "Product ID is required for each item" });
       if (!item.returned_quantity || item.returned_quantity <= 0)
         return res.status(400).json({ message: `Returned quantity must be greater than 0 for ${item.product_name || "an item"}` });
-      if (!VALID_CONDITIONS.includes(item.condition))
+      if (item.condition && !VALID_CONDITIONS.includes(item.condition))
         return res.status(400).json({ message: `Invalid condition for ${item.product_name || "an item"}. Must be reusable, damaged, or partial_goods` });
     }
 
-    // ── Verify order belongs to user and is delivered ────────────
+    // ── Verify order belongs to user and is delivered or in delivery ────────────
     const order = await pool.query(
-      "SELECT * FROM orders WHERE id=$1 AND user_id=$2",
+      "SELECT * FROM orders WHERE (UPPER(id) = UPPER($1) OR UPPER(order_ref) = UPPER($1)) AND (user_id = $2 OR customer_id = $2)",
       [order_id, req.user.id]
     );
     if (!order.rows.length)
       return res.status(404).json({ message: "Order not found" });
-    if (order.rows[0].status !== "delivered")
-      return res.status(400).json({ message: "Only delivered orders can be returned" });
+
+    const orderRow = order.rows[0];
+    const orderStatus = String(orderRow.status || '').toLowerCase();
+    const trackingStatus = String(orderRow.tracking_status || '').toLowerCase();
+    const returnableStatuses = ["delivered", "driver_arrived", "arrived", "shipped", "in_transit", "out_for_delivery"];
+
+    if (!returnableStatuses.includes(orderStatus) && !returnableStatuses.includes(trackingStatus)) {
+      return res.status(400).json({
+        message: `Cannot request return for order currently in '${orderRow.status}' status. Returns can be initiated during delivery handover or within 7 days of delivery.`
+      });
+    }
 
     // ── Verify each returned item actually belongs to this order, and cap
-    // the returned quantity at what the order really contains — the client
-    // can send whatever `ordered_quantity` it wants, so that field is never
-    // trusted for the actual limit check.
+    // the returned quantity at what the order really contains
     const realItems = await pool.query(
-      "SELECT product_id, quantity FROM order_items WHERE order_id=$1",
-      [order_id]
+      "SELECT product_id, quantity FROM order_items WHERE order_id = $1",
+      [orderRow.id]
     );
     const realQtyByProduct = new Map(realItems.rows.map((r) => [String(r.product_id), r.quantity]));
     for (const item of items) {
@@ -74,28 +81,29 @@ const submitReturn = async (req, res, next) => {
         return res.status(400).json({ message: `Returned quantity cannot exceed the ${orderedQty} ordered for ${item.product_name || "this item"}` });
     }
 
-    // ── 7-day return window ──────────────────────────────────────
-    // Counted from delivery (updated_at, bumped when status flips to
-    // 'delivered'), not order placement (created_at) — matches the error
-    // message below and the client's own eligibility check (ReturnsPage.jsx,
-    // OrderDetailPage.jsx), which uses delivered_at. An order that
-    // takes longer than 7 days to arrive is still eligible 7 days after delivery.
-    if (!order.rows[0].delivered_at) {
-      return res.status(400).json({ message: "Delivery date not found, cannot calculate return eligibility" });
+    // ── 7-day return window for delivered orders ──────────────────
+    if (orderRow.status === "delivered" && orderRow.delivered_at) {
+      const daysDiff = (Date.now() - new Date(orderRow.delivered_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 7)
+        return res.status(400).json({ message: "Returns must be requested within 7 days of delivery" });
     }
-    const daysDiff = (Date.now() - new Date(order.rows[0].delivered_at).getTime()) / (1000 * 60 * 60 * 24);
-    if (daysDiff > 7)
-      return res.status(400).json({ message: "Returns must be requested within 7 days of delivery" });
 
     await client.query("BEGIN");
     await ensureReturnItemsTable(client);
 
     // ── Insert return header ─────────────────────────────────────
-    // product_id / quantity kept null for multi-item returns
     const result = await client.query(
-      `INSERT INTO returns (order_id, user_id, product_id, quantity, reason, description)
-       VALUES ($1, $2, NULL, NULL, $3, $4) RETURNING id`,
-      [order_id, req.user.id, reason, description?.trim() || ""]
+      `INSERT INTO returns (order_id, user_id, product_id, quantity, reason, description, bank_name, account_number, account_name, initiator_type)
+       VALUES ($1, $2, NULL, NULL, $3, $4, $5, $6, $7, 'customer') RETURNING id`,
+      [
+        orderRow.id,
+        req.user.id,
+        reason,
+        description?.trim() || "",
+        bank_name?.trim() || null,
+        account_number?.trim() || null,
+        account_name?.trim() || null,
+      ]
     );
     const returnId = result.rows[0].id;
 
@@ -119,16 +127,16 @@ const submitReturn = async (req, res, next) => {
 
     await client.query(
       `UPDATE orders SET status = 'return_requested', tracking_status = 'return_requested', updated_at = NOW() WHERE id = $1`,
-      [order_id]
+      [orderRow.id]
     );
 
     await logOrderAudit(client, {
-      order_id: order_id,
+      order_id: orderRow.id,
       actor_id: req.user.id,
       actor_name: req.user.name,
       actor_role: 'customer',
       action: 'return_requested',
-      previous_state: 'delivered',
+      previous_state: orderRow.status || 'delivered',
       new_state: 'return_requested',
       metadata: { return_id: returnId, reason, items_count: items.length }
     });
@@ -419,4 +427,95 @@ const setItemDisposition = async (req, res, next) => {
   }
 };
 
-module.exports = { submitReturn, getUserReturns, getAllReturns, updateReturn, setItemDisposition };
+// ── POST /api/orders/returns/:id/refund-account ──────────────────────────────
+// Specification Section 16: Customer provides refund account details after return approval
+const submitRefundAccount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { bank_name, account_number, account_name } = req.body;
+
+    if (!bank_name?.trim() || !account_number?.trim() || !account_name?.trim()) {
+      return res.status(400).json({ message: "Bank name, account number, and account name are required" });
+    }
+
+    const retRes = await pool.query(
+      `SELECT r.* FROM returns r 
+       JOIN orders o ON o.id = r.order_id
+       WHERE (r.id::text = $1 OR UPPER(r.order_id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+         AND (r.user_id = $2 OR o.user_id = $2 OR o.customer_id = $2)`,
+      [id, req.user.id]
+    );
+
+    if (!retRes.rows.length) {
+      return res.status(404).json({ message: "Return record not found for this account" });
+    }
+
+    const returnRow = retRes.rows[0];
+
+    await pool.query(
+      `UPDATE returns 
+       SET bank_name = $1, account_number = $2, account_name = $3
+       WHERE id = $4`,
+      [bank_name.trim(), account_number.trim(), account_name.trim(), returnRow.id]
+    );
+
+    await logOrderAudit(pool, {
+      order_id: returnRow.order_id,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: 'customer',
+      action: 'refund_account_submitted',
+      previous_state: returnRow.status,
+      new_state: returnRow.status,
+      metadata: {
+        return_id: returnRow.id,
+        bank_name: bank_name.trim(),
+        account_name: account_name.trim(),
+        account_number_masked: '***' + account_number.trim().slice(-4),
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "Refund bank account details securely submitted! Our finance team will process your refund.",
+      return_id: returnRow.id
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── GET /api/orders/:id/return ───────────────────────────────────────────────
+const getOrderReturn = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const retRes = await pool.query(
+      `SELECT r.* FROM returns r
+       WHERE UPPER(r.order_id) = UPPER($1)
+       ORDER BY r.created_at DESC LIMIT 1`,
+      [id]
+    );
+    if (!retRes.rows.length) {
+      return res.json({ return_record: null });
+    }
+    const returnRow = retRes.rows[0];
+    const itemsRes = await pool.query(
+      `SELECT * FROM return_items WHERE return_id = $1 ORDER BY id`,
+      [returnRow.id]
+    ).catch(() => ({ rows: [] }));
+    returnRow.items = itemsRes.rows;
+    res.json({ return_record: returnRow });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  submitReturn,
+  getUserReturns,
+  getAllReturns,
+  updateReturn,
+  setItemDisposition,
+  submitRefundAccount,
+  getOrderReturn
+};

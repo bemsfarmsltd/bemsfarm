@@ -65,26 +65,34 @@ export default function ReturnsPage() {
   const [description, setDescription]     = useState("");
   // keyed by product_id (string): { selected, returnQty, condition, remarks, product_name, ordered_quantity }
   const [returnItems, setReturnItems]     = useState({});
+  const [bankName, setBankName]           = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName]     = useState("");
+  const [activeRefundReturnId, setActiveRefundReturnId] = useState(null);
+  const [submittingRefundAccount, setSubmittingRefundAccount] = useState(false);
+  const [refundAccountMsg, setRefundAccountMsg] = useState("");
   const [submitting, setSubmitting]       = useState(false);
   const [submitError, setSubmitError]     = useState("");
   const [success, setSuccess]             = useState(false);
   const [tab, setTab]                     = useState("new");
 
   useEffect(() => {
-    // Matches OrderDetailPage's eligibility check: delivered AND within 7
-    // days of updated_at (the delivery-status timestamp, not created_at —
-    // an order placed 2 weeks ago but delivered yesterday is still eligible).
     api.get("/orders").then((r) => {
       const now = Date.now();
+      const returnableStatuses = [
+        "delivered", "completed", "arrived", "driver_arrived",
+        "out_for_delivery", "shipped", "in_transit"
+      ];
       const eligible = (r.data.orders || []).filter((o) => {
-        if (o.status !== "delivered") return false;
+        const st = String(o.status || "").toLowerCase();
+        if (!returnableStatuses.includes(st)) return false;
         const deliveredAt = o.delivered_at || o.updated_at || o.updatedAt || o.created_at || o.date;
         const daysSince = (now - new Date(deliveredAt).getTime()) / 86400000;
         return daysSince <= 7;
       });
       setOrders(eligible);
     });
-    api.get("/orders/returns").then((r) => setMyReturns(r.data.returns));
+    api.get("/orders/returns").then((r) => setMyReturns(r.data.returns || []));
   }, []);
 
   // Arriving from an order's "Request Return" button — auto-select that
@@ -169,17 +177,43 @@ export default function ReturnsPage() {
     setSubmitting(true);
     try {
       await api.post("/orders/returns", {
-        order_id:    selectedOrder.id,
+        order_id:       selectedOrder.id,
         reason,
-        description: description.trim(),
-        items:       itemsPayload,
+        description:    description.trim(),
+        items:          itemsPayload,
+        bank_name:      bankName.trim() || undefined,
+        account_number: accountNumber.trim() || undefined,
+        account_name:   accountName.trim() || undefined,
       });
       setSuccess(true);
-      api.get("/orders/returns").then((r) => setMyReturns(r.data.returns));
+      api.get("/orders/returns").then((r) => setMyReturns(r.data.returns || []));
     } catch (err) {
       setSubmitError(err.response?.data?.message || "Return submission failed. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSaveRefundAccount = async (returnId) => {
+    if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
+      setRefundAccountMsg("Please fill in Bank Name, Account Number, and Account Name.");
+      return;
+    }
+    setSubmittingRefundAccount(true);
+    setRefundAccountMsg("");
+    try {
+      await api.post(`/orders/returns/${returnId}/refund-account`, {
+        bank_name: bankName.trim(),
+        account_number: accountNumber.trim(),
+        account_name: accountName.trim(),
+      });
+      setRefundAccountMsg("Refund account details saved successfully!");
+      setActiveRefundReturnId(null);
+      api.get("/orders/returns").then((r) => setMyReturns(r.data.returns || []));
+    } catch (err) {
+      setRefundAccountMsg(err.response?.data?.message || "Failed to save refund account");
+    } finally {
+      setSubmittingRefundAccount(false);
     }
   };
 
@@ -189,6 +223,9 @@ export default function ReturnsPage() {
     setReason("");
     setDescription("");
     setReturnItems({});
+    setBankName("");
+    setAccountNumber("");
+    setAccountName("");
     setSubmitError("");
   }
 
@@ -518,6 +555,49 @@ export default function ReturnsPage() {
                     </div>
                   )}
 
+                  {/* ── Step 4: Refund Bank Details (Section 16) ──────── */}
+                  <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px dashed #E5E7EB" }}>
+                    <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
+                      Step 4 — Refund Bank Details (Optional)
+                    </h4>
+                    <p style={{ fontSize: "12px", color: "#6B7280", marginBottom: "14px" }}>
+                      Provide your account details now so your payout can be transferred immediately upon approval.
+                    </p>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                      <div>
+                        <label style={{ ...labelStyle, color: "#4B5563" }}>Bank Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Zenith Bank, GTBank, Access"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, color: "#4B5563" }}>Account Number</label>
+                        <input
+                          type="text"
+                          maxLength={10}
+                          placeholder="10-digit NUBAN"
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, color: "#4B5563" }}>Account Name</label>
+                        <input
+                          type="text"
+                          placeholder="Name on bank account"
+                          value={accountName}
+                          onChange={(e) => setAccountName(e.target.value)}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Inline validation hint */}
                   {validationError && reason && selectedItemsList.length > 0 && (
                     <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "10px", fontSize: "13px", color: "#991B1B", marginBottom: "16px" }}>
@@ -587,6 +667,9 @@ export default function ReturnsPage() {
                 {myReturns.map((ret) => {
                   const s = statusColors[ret.status] || statusColors.submitted;
                   const reasonLabel = RETURN_REASONS.find((r) => r.value === ret.reason)?.label || ret.reason;
+                  const isApproved = ret.status === "approved";
+                  const hasBankDetails = Boolean(ret.bank_name && ret.account_number);
+
                   return (
                     <div key={ret.id} style={{ ...card, padding: "20px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
@@ -603,6 +686,67 @@ export default function ReturnsPage() {
                         <strong>Reason:</strong> {reasonLabel}
                         {ret.description && <span style={{ color: "#9CA3AF", fontStyle: "italic" }}> — "{ret.description}"</span>}
                       </p>
+
+                      {/* Refund Account Section (Section 16) */}
+                      {hasBankDetails ? (
+                        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "10px", padding: "10px 14px", marginBottom: "12px", fontSize: "12px", color: "#166534" }}>
+                          <span style={{ fontWeight: 700 }}>🏦 Refund Account Attached:</span> {ret.bank_name} · {ret.account_number} ({ret.account_name})
+                        </div>
+                      ) : isApproved ? (
+                        <div style={{ background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: "12px", padding: "14px", marginBottom: "14px" }}>
+                          <p style={{ fontWeight: 700, fontSize: "13px", color: "#854D0E", marginBottom: "4px" }}>
+                            🎉 Return Approved! Please provide your refund bank details:
+                          </p>
+                          <p style={{ fontSize: "12px", color: "#713F12", marginBottom: "10px" }}>
+                            Our finance department will process the refund to this account.
+                          </p>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px", marginBottom: "10px" }}>
+                            <input
+                              type="text"
+                              placeholder="Bank Name"
+                              value={activeRefundReturnId === ret.id ? bankName : ""}
+                              onChange={(e) => { setActiveRefundReturnId(ret.id); setBankName(e.target.value); }}
+                              style={{ ...inputStyle, padding: "8px 12px", fontSize: "12px" }}
+                            />
+                            <input
+                              type="text"
+                              maxLength={10}
+                              placeholder="Account Number (10 digits)"
+                              value={activeRefundReturnId === ret.id ? accountNumber : ""}
+                              onChange={(e) => { setActiveRefundReturnId(ret.id); setAccountNumber(e.target.value.replace(/\D/g, "")); }}
+                              style={{ ...inputStyle, padding: "8px 12px", fontSize: "12px" }}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Account Name"
+                              value={activeRefundReturnId === ret.id ? accountName : ""}
+                              onChange={(e) => { setActiveRefundReturnId(ret.id); setAccountName(e.target.value); }}
+                              style={{ ...inputStyle, padding: "8px 12px", fontSize: "12px" }}
+                            />
+                          </div>
+                          {activeRefundReturnId === ret.id && refundAccountMsg && (
+                            <p style={{ fontSize: "12px", color: refundAccountMsg.includes("success") ? "#15803D" : "#B91C1C", marginBottom: "8px" }}>
+                              {refundAccountMsg}
+                            </p>
+                          )}
+                          <button
+                            onClick={() => handleSaveRefundAccount(ret.id)}
+                            disabled={submittingRefundAccount}
+                            style={{
+                              backgroundColor: "#1B4332",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              padding: "8px 18px",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {submittingRefundAccount && activeRefundReturnId === ret.id ? "Saving..." : "Submit Refund Account Details"}
+                          </button>
+                        </div>
+                      ) : null}
 
                       {/* Items list */}
                       {ret.items?.length > 0 && (

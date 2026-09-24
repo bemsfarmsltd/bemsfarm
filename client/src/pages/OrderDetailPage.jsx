@@ -198,6 +198,24 @@ const STATUS_CONFIG = {
     stepIndex: -1,
     desc: "This order has been refunded",
   },
+  return_requested: {
+    label: "Return Requested",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
+    stepIndex: 5,
+    desc: "A return request has been submitted and is under admin review",
+  },
+  return_approved: {
+    label: "Return Approved",
+    bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
+    stepIndex: 5,
+    desc: "Return approved. Refund processing is underway",
+  },
+  returned: {
+    label: "Returned & Closed",
+    bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
+    stepIndex: 5,
+    desc: "Goods have been returned and order resolved",
+  },
 };
 
 
@@ -227,6 +245,17 @@ export default function OrderDetailPage() {
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const autoOpenedRef = useRef(false);
+
+  // Return request modal state (Section 14-16)
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState("damaged");
+  const [returnNotes, setReturnNotes] = useState("");
+  const [returnItemsSelection, setReturnItemsSelection] = useState({});
+  const [returnBankName, setReturnBankName] = useState("");
+  const [returnAccountNumber, setReturnAccountNumber] = useState("");
+  const [returnAccountName, setReturnAccountName] = useState("");
+  const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [refundAccountSubmitting, setRefundAccountSubmitting] = useState(false);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -374,6 +403,116 @@ export default function OrderDetailPage() {
     }
   };
 
+  const openReturnModal = () => {
+    if (!order) return;
+    const items = order.items || order.order_items || [];
+    const init = {};
+    items.forEach((it) => {
+      const pid = String(it.product_id || it.id);
+      init[pid] = {
+        selected: true,
+        product_id: Number(it.product_id || it.id),
+        product_name: it.name,
+        ordered_quantity: Number(it.quantity || 1),
+        returned_quantity: Number(it.quantity || 1),
+        condition: "damaged",
+        remarks: "",
+      };
+    });
+    setReturnItemsSelection(init);
+    setReturnReason("damaged");
+    setReturnNotes("");
+    setReturnModalOpen(true);
+  };
+
+  const handleReturnItemToggle = (pid) => {
+    setReturnItemsSelection((prev) => ({
+      ...prev,
+      [pid]: { ...prev[pid], selected: !prev[pid]?.selected },
+    }));
+  };
+
+  const handleReturnItemQty = (pid, qty) => {
+    setReturnItemsSelection((prev) => ({
+      ...prev,
+      [pid]: {
+        ...prev[pid],
+        returned_quantity: Math.max(1, Math.min(Number(qty) || 1, prev[pid]?.ordered_quantity || 1)),
+      },
+    }));
+  };
+
+  const handleReturnItemCondition = (pid, condition) => {
+    setReturnItemsSelection((prev) => ({
+      ...prev,
+      [pid]: { ...prev[pid], condition },
+    }));
+  };
+
+  const handleSubmitReturnRequest = async () => {
+    if (!order) return;
+    const selectedList = Object.values(returnItemsSelection).filter((it) => it.selected);
+    if (!selectedList.length) {
+      showToast("Please select at least one item to return", "error");
+      return;
+    }
+    setSubmittingReturn(true);
+    try {
+      const payload = {
+        order_id: order.id,
+        reason: returnReason,
+        description: returnNotes.trim() || undefined,
+        items: selectedList.map((it) => ({
+          product_id: it.product_id,
+          product_name: it.product_name,
+          ordered_quantity: it.ordered_quantity,
+          returned_quantity: it.returned_quantity,
+          condition: it.condition || "damaged",
+          remarks: it.remarks || undefined,
+        })),
+        bank_name: returnBankName.trim() || undefined,
+        account_number: returnAccountNumber.trim() || undefined,
+        account_name: returnAccountName.trim() || undefined,
+      };
+
+      await api.post("/orders/returns", payload);
+      showToast("Return request submitted! An administrator will review it shortly.");
+      setReturnModalOpen(false);
+      loadOrder(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to submit return request", "error");
+    } finally {
+      setSubmittingReturn(false);
+    }
+  };
+
+  const handleSaveRefundAccountDirect = async () => {
+    if (!order) return;
+    const returnId = order.return_id;
+    if (!returnId) {
+      showToast("No active return record found for this order", "error");
+      return;
+    }
+    if (!returnBankName.trim() || !returnAccountNumber.trim() || !returnAccountName.trim()) {
+      showToast("Please enter Bank Name, 10-digit Account Number, and Account Name", "error");
+      return;
+    }
+    setRefundAccountSubmitting(true);
+    try {
+      await api.post(`/orders/returns/${returnId}/refund-account`, {
+        bank_name: returnBankName.trim(),
+        account_number: returnAccountNumber.trim(),
+        account_name: returnAccountName.trim(),
+      });
+      showToast("Refund bank account saved successfully!");
+      loadOrder(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to save refund account", "error");
+    } finally {
+      setRefundAccountSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageWrapper>
@@ -453,7 +592,12 @@ export default function OrderDetailPage() {
   );
   const updatedAt = isNaN(parsedUpdate.getTime()) ? new Date() : parsedUpdate;
   const daysSinceUpdate = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-  const canReturn = order.status === "delivered" && daysSinceUpdate <= 7;
+
+  const isReturnRequested = effectiveStatus === "return_requested" || order.status === "return_requested" || order.return_status === "pending";
+  const isReturnApproved = effectiveStatus === "return_approved" || order.status === "return_approved" || order.return_status === "approved";
+  const isReturned = effectiveStatus === "returned" || order.status === "returned";
+  const canReturn = !isReturnRequested && !isReturnApproved && !isReturned && !isCancelled &&
+    (["delivered", "completed"].includes(effectiveStatus) ? daysSinceUpdate <= 7 : ["driver_arrived", "arrived", "out_for_delivery", "en_route", "in_transit", "shipped"].includes(rawStatus));
 
   return (
     <PageWrapper>
@@ -537,6 +681,104 @@ export default function OrderDetailPage() {
 
         {/* ── MAIN DASHBOARD CONTAINER (FULL WIDTH EDGE-TO-EDGE) ── */}
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 -mt-6">
+          {/* Section 14: Return Requested Status Alert */}
+          {isReturnRequested && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 sm:p-6 shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center text-2xl shrink-0">
+                  📦
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-amber-950">Return Request Under Review</h3>
+                    <span className="bg-amber-200 text-amber-900 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full">Section 14</span>
+                  </div>
+                  <p className="text-xs text-amber-800 mt-1 max-w-2xl leading-relaxed">
+                    A return request has been submitted for this order. Our admin team is reviewing the claim. Per protocol, items will be assessed for disposition (restock vs disposal) and refund accounts processed accordingly.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/returns"
+                className="bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition shrink-0"
+              >
+                View Returns Hub →
+              </Link>
+            </div>
+          )}
+
+          {/* Section 15-16: Return Approved & Refund Account */}
+          {isReturnApproved && (
+            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-5 sm:p-6 shadow-sm mb-6 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center text-2xl shrink-0">
+                    🎉
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-extrabold text-emerald-950">Return Approved by Admin!</h3>
+                      <span className="bg-emerald-200 text-emerald-900 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full">Section 15 & 16</span>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1 max-w-2xl leading-relaxed">
+                      Your return has been accepted. Please ensure your refund account details are attached so our financial department can dispatch your settlement.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {order.return_bank_name && order.return_account_number ? (
+                <div className="bg-white rounded-2xl p-4 border border-emerald-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div>
+                    <span className="font-bold text-emerald-950">Refund Bank Account: </span>
+                    <span className="font-mono text-emerald-900 font-bold">{order.return_bank_name} · {order.return_account_number} ({order.return_account_name})</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                    Awaiting Payout
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-emerald-200 space-y-3">
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>🏦</span>
+                    <span>Submit Your Refund Bank Details:</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Bank Name (e.g. Zenith, GTB)"
+                      value={returnBankName}
+                      onChange={(e) => setReturnBankName(e.target.value)}
+                      className="text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="10-digit Account Number"
+                      value={returnAccountNumber}
+                      onChange={(e) => setReturnAccountNumber(e.target.value.replace(/\D/g, ""))}
+                      className="text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Account Name"
+                      value={returnAccountName}
+                      onChange={(e) => setReturnAccountName(e.target.value)}
+                      className="text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveRefundAccountDirect}
+                    disabled={refundAccountSubmitting}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider transition shadow-sm cursor-pointer"
+                  >
+                    {refundAccountSubmitting ? "Saving..." : "Save Refund Bank Account"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* ════════ LEFT SECTION: TIMELINE, LIVE MAP & ADDRESS (7 COLS) ════════ */}
             <div className="lg:col-span-7 space-y-6">
@@ -853,10 +1095,11 @@ export default function OrderDetailPage() {
 
                 {canReturn && (
                   <button
-                    onClick={() => navigate("/returns", { state: { orderId: order.id } })}
-                    className="w-full py-3 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 font-bold text-xs hover:bg-amber-100 transition"
+                    onClick={openReturnModal}
+                    className="w-full py-3.5 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-950 font-black text-xs uppercase tracking-wider hover:bg-amber-100 transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    Request Return / Exchange
+                    <span>🔄</span>
+                    <span>Request Return / Refuse Items</span>
                   </button>
                 )}
 
@@ -1034,6 +1277,193 @@ export default function OrderDetailPage() {
                   className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
                 >
                   Review Order Details
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* ── RETURN REQUEST MODAL (SECTIONS 14 - 16) ── */}
+        {returnModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl">
+                    🔄
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">
+                      Request Item Return
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Order #{order.order_ref || order.id} · Section 14 Workflow
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReturnModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Items Selection */}
+              <div className="space-y-3 mb-5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Select Items to Return:
+                </label>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {Object.entries(returnItemsSelection).map(([pid, item]) => (
+                    <div
+                      key={pid}
+                      className={`p-3 rounded-2xl border text-xs transition ${
+                        item.selected
+                          ? "border-emerald-500 bg-emerald-50/50"
+                          : "border-slate-200 bg-slate-50/50 opacity-70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-900 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={item.selected}
+                            onChange={() => handleReturnItemToggle(pid)}
+                            className="rounded text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <span>{item.product_name}</span>
+                        </label>
+                        <span className="text-[11px] text-slate-500">
+                          Ordered: {item.ordered_quantity}
+                        </span>
+                      </div>
+
+                      {item.selected && (
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block mb-1">Return Qty:</span>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                max={item.ordered_quantity}
+                                value={item.returned_quantity}
+                                onChange={(e) => handleReturnItemQty(pid, e.target.value)}
+                                className="w-16 p-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-center"
+                              />
+                              <span className="text-[10px] text-slate-400">max {item.ordered_quantity}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 block mb-1">Condition:</span>
+                            <select
+                              value={item.condition}
+                              onChange={(e) => handleReturnItemCondition(pid, e.target.value)}
+                              className="w-full p-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium"
+                            >
+                              <option value="damaged">Damaged / Spoiled</option>
+                              <option value="reusable">Reusable / Intact</option>
+                              <option value="partial_goods">Partial Goods</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  Reason for Return:
+                </label>
+                <select
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  className="w-full text-xs font-medium p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                >
+                  <option value="damaged">Damaged / Rotten / Spoiled</option>
+                  <option value="wrong_item">Wrong Item Delivered</option>
+                  <option value="quality">Quality Not As Expected</option>
+                  <option value="changed_mind">Customer Refused at Doorstep</option>
+                  <option value="other">Other Reason</option>
+                </select>
+              </div>
+
+              {/* Remarks */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  Additional Notes (Optional):
+                </label>
+                <textarea
+                  rows={2}
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  placeholder="Explain why this item is being returned..."
+                  className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                />
+              </div>
+
+              {/* Refund Bank Details (Section 16) */}
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 mb-5 space-y-2.5">
+                <div className="text-[11px] font-bold text-slate-800 flex items-center justify-between">
+                  <span>Refund Bank Details (Section 16)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Optional now</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <input
+                    type="text"
+                    placeholder="Bank Name"
+                    value={returnBankName}
+                    onChange={(e) => setReturnBankName(e.target.value)}
+                    className="p-2 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                  <input
+                    type="text"
+                    maxLength={10}
+                    placeholder="Account Number"
+                    value={returnAccountNumber}
+                    onChange={(e) => setReturnAccountNumber(e.target.value.replace(/\D/g, ""))}
+                    className="p-2 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Account Name"
+                    value={returnAccountName}
+                    onChange={(e) => setReturnAccountName(e.target.value)}
+                    className="p-2 rounded-lg border border-slate-200 bg-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-900 mb-5 leading-relaxed">
+                ℹ️ <strong>System Protocol:</strong> Items are not automatically restocked. Upon physical reception, an administrator determines disposition (Option A: return to stock or Option B: disposal).
+              </div>
+
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setReturnModalOpen(false)}
+                  disabled={submittingReturn}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitReturnRequest}
+                  disabled={submittingReturn}
+                  className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-amber-600/20"
+                >
+                  {submittingReturn ? "Submitting..." : "Submit Return Request"}
                 </button>
               </div>
             </motion.div>

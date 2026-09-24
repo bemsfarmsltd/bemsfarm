@@ -1374,6 +1374,121 @@ const confirmDelivery = async (req, res, next) => {
   return updateDeliveryStatus(req, res, next);
 };
 
+// ── POST /api/driver/deliveries/:orderId/request-return ────────────────
+// Specification Section 14: Driver initiates return request from delivery workflow
+const requestReturnByDriver = async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+    const { reason, description, items } = req.body;
+
+    if (!reason?.trim()) {
+      return res.status(400).json({ message: "Return reason is required" });
+    }
+
+    const delRes = await client.query(
+      `SELECT d.*, o.id as order_primary_id, o.status as order_status, o.user_id as customer_user_id
+       FROM deliveries d
+       JOIN orders o ON (o.id = d.order_id OR o.order_ref = d.order_id)
+       WHERE (UPPER(d.order_id) = UPPER($1) OR UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+         AND d.driver_id = $2
+       ORDER BY d.created_at DESC LIMIT 1`,
+      [orderId, driverId]
+    );
+
+    if (!delRes.rows.length) {
+      return res.status(404).json({ message: "Delivery not found or not assigned to you" });
+    }
+
+    const delivery = delRes.rows[0];
+
+    await client.query("BEGIN");
+
+    // 1. Create return record
+    const retRes = await client.query(
+      `INSERT INTO returns (order_id, user_id, reason, description, initiator_type, status)
+       VALUES ($1, $2, $3, $4, 'driver', 'pending') RETURNING id`,
+      [delivery.order_primary_id, delivery.customer_user_id, reason.trim(), description?.trim() || "Initiated by delivery courier at doorstep"]
+    );
+    const returnId = retRes.rows[0].id;
+
+    // 2. Insert items if provided, or default to all items in order
+    const realItems = await client.query(
+      "SELECT product_id, quantity, product_name FROM order_items WHERE order_id = $1",
+      [delivery.order_primary_id]
+    );
+
+    const itemsToInsert = Array.isArray(items) && items.length > 0 ? items : realItems.rows.map(r => ({
+      product_id: r.product_id,
+      product_name: r.product_name,
+      returned_quantity: r.quantity,
+      condition: 'damaged'
+    }));
+
+    for (const it of itemsToInsert) {
+      await client.query(
+        `INSERT INTO return_items (return_id, product_id, product_name, ordered_quantity, returned_quantity, condition, remarks)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          returnId,
+          it.product_id,
+          it.product_name || "Item",
+          it.returned_quantity || 1,
+          it.returned_quantity || 1,
+          it.condition || "reusable",
+          it.remarks || "Courier return request at doorstep"
+        ]
+      );
+    }
+
+    // 3. Update orders table to return_requested
+    await client.query(
+      `UPDATE orders 
+       SET status = 'return_requested', 
+           tracking_status = 'return_requested',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [delivery.order_primary_id]
+    );
+
+    // 4. Update deliveries table
+    await client.query(
+      `UPDATE deliveries 
+       SET status = 'returned',
+           updated_at = NOW()
+       WHERE id = $1`,
+      [delivery.id]
+    );
+
+    // 5. Audit log
+    await logOrderAudit(client, {
+      order_id: delivery.order_primary_id,
+      actor_id: driverId,
+      actor_name: req.driver.name,
+      actor_role: 'driver',
+      action: 'driver_return_requested',
+      previous_state: delivery.order_status,
+      new_state: 'return_requested',
+      metadata: { return_id: returnId, reason, description }
+    });
+
+    await client.query("COMMIT");
+
+    res.json({
+      success: true,
+      message: "Return request initiated. Please return goods to store counter.",
+      return_id: returnId,
+      status: "return_requested"
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getActiveDeliveries,
   getAvailableDeliveries,
@@ -1384,5 +1499,6 @@ module.exports = {
   declineDelivery,
   confirmPickup,
   confirmDelivery,
+  requestReturnByDriver,
 };
 
