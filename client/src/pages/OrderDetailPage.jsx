@@ -225,6 +225,8 @@ export default function OrderDetailPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const autoOpenedRef = useRef(false);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -237,6 +239,7 @@ export default function OrderDetailPage() {
     try {
       const res = await api.post(`/orders/${order.id}/confirm-receipt`);
       showToast(res.data?.message || "Delivery confirmed! Thank you for shopping with Bems Farms.");
+      setConfirmModalOpen(false);
       loadOrder(false);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to confirm delivery receipt", "error");
@@ -244,6 +247,24 @@ export default function OrderDetailPage() {
       setConfirmingReceipt(false);
     }
   };
+
+  // Auto-open Delivery Confirmation popup when courier arrives at customer doorstep
+  useEffect(() => {
+    if (!order) return;
+    const rawSt = String(order.delivery_status || order.tracking_status || order.status || '').toLowerCase().trim();
+    const isArrived = Boolean(
+      order.driver_arrived_at ||
+      order.arrived_at ||
+      ["arrived", "driver_arrived"].includes(rawSt)
+    );
+    const isConfirmed = Boolean(order.customer_confirmed);
+    const isDone = ["delivered", "cancelled"].includes(String(order.status).toLowerCase());
+
+    if (isArrived && !isConfirmed && !isDone && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      setConfirmModalOpen(true);
+    }
+  }, [order]);
 
   const loadOrder = useCallback(
     async (silent = false) => {
@@ -809,9 +830,9 @@ export default function OrderDetailPage() {
                       </div>
                     ) : (
                       <button
-                        onClick={handleConfirmReceipt}
+                        onClick={() => setConfirmModalOpen(true)}
                         disabled={confirmingReceipt}
-                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-700/20 transition hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-700/20 transition hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <span className="text-base">✅</span>
                         <span>{confirmingReceipt ? "Confirming Receipt..." : "Confirm Delivery Received"}</span>
@@ -920,6 +941,99 @@ export default function OrderDetailPage() {
                   className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs transition shadow-md shadow-red-600/20 flex items-center justify-center gap-2"
                 >
                   {cancelling ? "Cancelling..." : "Yes, Cancel Order"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── CUSTOMER CONFIRM DELIVERY POPUP MODAL ── */}
+      <AnimatePresence>
+        {confirmModalOpen && order && !order.customer_confirmed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-emerald-100 relative overflow-hidden"
+            >
+              {/* Close Button in corner */}
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-sm font-bold transition cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </button>
+
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 border-2 border-emerald-200 flex items-center justify-center text-3xl mx-auto mb-3 shadow-sm animate-bounce">
+                🚚
+              </div>
+
+              <div className="flex justify-center mb-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold uppercase tracking-wider">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  Driver At Your Doorstep
+                </span>
+              </div>
+
+              <h3 className="text-xl font-black text-slate-900 text-center mb-1">
+                Confirm Delivery Received
+              </h3>
+              <p className="text-xs text-slate-500 text-center mb-5 leading-relaxed">
+                Your courier is at your destination. Please confirm that you have received your package in good condition.
+              </p>
+
+              {/* Order & Courier Summary Box */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 mb-5 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="text-slate-500">Order Reference:</span>
+                  <span className="font-mono font-bold text-slate-900">#{order.order_ref || order.id}</span>
+                </div>
+                {order.driver_name && (
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span className="text-slate-500">Courier:</span>
+                    <span className="font-bold text-slate-900 flex items-center gap-1">
+                      <span>👤</span> {order.driver_name}
+                      {order.driver_phone && (
+                        <a href={`tel:${order.driver_phone}`} className="text-emerald-700 hover:underline ml-1">
+                          ({order.driver_phone})
+                        </a>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {order.address && (
+                  <div className="flex justify-between items-start text-slate-600 pt-1 border-t border-slate-200/60">
+                    <span className="text-slate-500 shrink-0 mr-2">Address:</span>
+                    <span className="font-medium text-slate-800 text-right line-clamp-2">{order.address}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-slate-600 pt-1 border-t border-slate-200/60">
+                  <span className="text-slate-500">Total Amount:</span>
+                  <span className="font-black text-emerald-800 text-sm">₦{Number(order.total || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={handleConfirmReceipt}
+                  disabled={confirmingReceipt}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-700/20 transition hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="text-base">✅</span>
+                  <span>{confirmingReceipt ? "Confirming Receipt..." : "Yes, I Received My Delivery"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalOpen(false)}
+                  disabled={confirmingReceipt}
+                  className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
+                >
+                  Review Order Details
                 </button>
               </div>
             </motion.div>
