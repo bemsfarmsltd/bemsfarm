@@ -150,6 +150,17 @@ export default function OrdersList() {
     }
   }, [searchParams])
 
+  const handleStatusChange = useCallback((newStatus) => {
+    setFilterStatus(newStatus)
+    const p = new URLSearchParams(searchParams)
+    if (newStatus && newStatus !== 'all') {
+      p.set('status', newStatus)
+    } else {
+      p.delete('status')
+    }
+    setSearchParams(p, { replace: true })
+  }, [searchParams, setSearchParams])
+
   // ─── Fetch live orders from backend ─────────────────────────────────────────
   const fetchOrders = useCallback(async (isSilent = false) => {
     try {
@@ -663,7 +674,7 @@ export default function OrdersList() {
             iconBg: '#F0F9FF',
             iconColor: '#0284C7',
             icon: 'ri-money-dollar-circle-line',
-            filter: 'paid',
+            filter: 'confirmed',
             subLeft: 'Awaiting Fulfillment',
             subRight: `${stats.newOrders} New`
           },
@@ -674,7 +685,7 @@ export default function OrdersList() {
             iconBg: '#FEF3C7',
             iconColor: '#D97706',
             icon: 'ri-loader-line',
-            filter: 'processing',
+            filter: 'packaging',
             subLeft: 'Warehouse Queue',
             subRight: 'Processing'
           },
@@ -685,7 +696,7 @@ export default function OrdersList() {
             iconBg: '#EFF6FF',
             iconColor: '#2563EB',
             icon: 'ri-truck-line',
-            filter: 'shipped',
+            filter: 'in_transit',
             subLeft: 'Couriers En Route',
             subRight: `${stats.outForDelivery} Active`
           },
@@ -696,7 +707,7 @@ export default function OrdersList() {
             iconBg: '#FEF3C7',
             iconColor: '#D97706',
             icon: 'ri-route-line',
-            filter: 'delivery_attempted',
+            filter: 'delivery_exception',
             subLeft: 'Customer Contacted',
             subRight: stats.deliveryAttempted > 0 ? `${stats.deliveryAttempted} Retry` : 'None'
           },
@@ -718,7 +729,7 @@ export default function OrdersList() {
             iconBg: '#FFF1F2',
             iconColor: '#E11D48',
             icon: 'ri-alert-line',
-            filter: 'dispute',
+            filter: 'returns',
             subLeft: 'Requires Review',
             subRight: stats.disputes > 0 ? `${stats.disputes} Open` : 'Resolved'
           },
@@ -733,12 +744,28 @@ export default function OrdersList() {
             subLeft: 'Aggregate Value',
             subRight: 'Gross Sales'
           },
-        ].map((c) => (
+        ].map((c) => {
+          const isCardActive = c.filter && filterStatus === c.filter
+          return (
           <div key={c.label} className="col-12 col-sm-6 col-xl-3">
             <div
-              className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}
-              style={{ cursor: c.filter ? 'pointer' : 'default' }}
-              onClick={() => c.filter && setFilterStatus(c.filter)}
+              className={`card h-100 border shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}
+              style={{
+                cursor: c.filter ? 'pointer' : 'default',
+                borderColor: isCardActive ? '#15803D' : '#e2e8f0',
+                borderWidth: isCardActive ? '2px' : '1px',
+                boxShadow: isCardActive ? '0 0 0 3px rgba(21, 128, 61, 0.15), 0 8px 20px rgba(0,0,0,0.06)' : undefined,
+                transition: 'all 0.18s ease',
+              }}
+              title={c.filter ? `Click to filter: ${c.label}` : undefined}
+              onClick={() => {
+                if (!c.filter) return
+                if (filterStatus === c.filter && c.filter !== 'all') {
+                  handleStatusChange('all')
+                } else {
+                  handleStatusChange(c.filter)
+                }
+              }}
             >
               <div className="card-body p-3.5">
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -759,7 +786,7 @@ export default function OrdersList() {
               </div>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
 
@@ -768,7 +795,7 @@ export default function OrdersList() {
         <div className="card-body p-3">
           <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between">
             {/* Search Input */}
-            <div className="input-group" style={{ maxWidth: 280 }}>
+            <div className="input-group" style={{ maxWidth: 260 }}>
               <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted" /></span>
               <input
                 className="form-control border-start-0 ps-0"
@@ -778,10 +805,35 @@ export default function OrdersList() {
               />
             </div>
 
+            {/* Status Filter Dropdown */}
+            <select
+              className="form-select"
+              style={{
+                maxWidth: 220,
+                fontWeight: filterStatus !== 'all' ? 700 : 500,
+                borderColor: filterStatus !== 'all' ? '#15803D' : '#cbd5e1',
+                color: filterStatus !== 'all' ? '#15803D' : '#1e293b',
+                backgroundColor: filterStatus !== 'all' ? '#F0FDF4' : '#ffffff',
+              }}
+              value={filterStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              title="Filter orders by fulfillment status"
+            >
+              <option value="all">Status: All Orders ({orders.length})</option>
+              {ORDER_STATUS_TABS.filter(t => t.key !== 'all').map((t) => {
+                const count = orders.filter((o) => t.statuses?.includes(o.status)).length
+                return (
+                  <option key={t.key} value={t.key}>
+                    Status: {t.label} ({count})
+                  </option>
+                )
+              })}
+            </select>
+
             {/* Channel Sub-category Dropdown */}
             <select
               className="form-select"
-              style={{ maxWidth: 220 }}
+              style={{ maxWidth: 200 }}
               value={filterChannel}
               onChange={(e) => setFilterChannel(e.target.value)}
             >
@@ -795,14 +847,14 @@ export default function OrdersList() {
 
             {(filterStatus !== 'all' || filterChannel !== 'orders' || search) && (
               <button
-                className="btn btn-sm btn-outline-danger"
+                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
                 onClick={() => {
-                  setFilterStatus('all')
+                  handleStatusChange('all')
                   setFilterChannel('orders')
                   setSearch('')
                 }}
               >
-                <i className="ri-close-line me-1" />Reset Filters
+                <i className="ri-close-line" /> Reset Filters
               </button>
             )}
 
@@ -830,7 +882,7 @@ export default function OrdersList() {
                     color: isActive ? '#143C2D' : '#6b7280',
                     background: 'transparent',
                   }}
-                  onClick={() => setFilterStatus(t.key)}
+                  onClick={() => handleStatusChange(t.key)}
                 >
                   <span>{t.label}</span>
                   <span
