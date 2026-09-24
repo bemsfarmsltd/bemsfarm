@@ -287,86 +287,81 @@ export default function CustomerDetail() {
                 {customer.customer_code}
               </div>
 
-              {/* Prominent Last Active Box */}
-              <div className="p-3 rounded-3 mb-2.5 text-start" style={{
-                background: lastActiveTimestamp ? (isRecentActive ? '#f0fdf4' : '#f8fafc') : '#fef2f2',
-                border: `1px solid ${lastActiveTimestamp ? (isRecentActive ? '#bbf7d0' : '#e2e8f0') : '#fecaca'}`
+              {/* Unified Activity & Session Card */}
+              <div className="rounded-3 mb-3 text-start overflow-hidden shadow-xs" style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
               }}>
-                <div className="d-flex align-items-center justify-content-between mb-1">
-                  <span className="text-muted fw-semibold" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <i className="ri-pulse-line me-1 text-success" /> Last Active
-                  </span>
-                  <span className="badge rounded-pill d-inline-flex align-items-center gap-1" style={{
-                    fontSize: 10,
-                    background: isOnlineNow ? '#dcfce7' : isRecentActive ? '#ecfdf5' : '#f1f5f9',
-                    color: isOnlineNow ? '#15803d' : isRecentActive ? '#059669' : '#475569',
-                    border: `1px solid ${isOnlineNow ? '#86efac' : isRecentActive ? '#a7f3d0' : '#e2e8f0'}`
-                  }}>
-                    {isOnlineNow && <span className="spinner-grow spinner-grow-sm" style={{ width: 6, height: 6 }} />}
-                    {isOnlineNow ? 'Online Now' : isRecentActive ? 'Active Today' : lastActiveTimestamp ? 'Inactive Recently' : 'No Activity'}
-                  </span>
-                </div>
-                <div className="fw-bold text-dark" style={{ fontSize: 15 }}>
-                  {lastActiveTimestamp ? fmtRelative(lastActiveTimestamp) : 'Never'}
-                </div>
-                {lastActiveTimestamp ? (
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                    <i className="ri-time-line me-1" /> {fmtDateTime(lastActiveTimestamp)}
-                  </div>
-                ) : (
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                    No recorded platform interaction yet.
-                  </div>
-                )}
-              </div>
-
-              {/* Last Platform Login Box */}
-              <div className="p-2.5 rounded-3 mb-3 text-start" style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0'
-              }}>
-                <div className="d-flex align-items-center justify-content-between mb-1">
-                  <span className="text-muted fw-semibold" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <i className="ri-login-circle-line me-1 text-primary" /> Last Login
-                  </span>
-                  <span className="badge rounded-pill" style={{
-                    fontSize: 10,
-                    background: customer.last_login ? (isRecentLogin ? '#eff6ff' : '#f1f5f9') : '#fee2e2',
-                    color: customer.last_login ? (isRecentLogin ? '#1d4ed8' : '#475569') : '#b91c1c'
-                  }}>
-                    {customer.last_login ? (isRecentLogin ? 'Session Fresh' : 'Older Session') : 'Never Logged In'}
-                  </span>
-                </div>
-                <div className="fw-bold text-dark" style={{ fontSize: 13 }}>
-                  {customer.last_login ? fmtRelative(customer.last_login) : 'Never'}
-                </div>
-                {customer.last_login ? (
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                    <i className="ri-calendar-line me-1" /> {fmtDateTime(customer.last_login)}
-                  </div>
-                ) : (
-                  <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
-                    Customer has not signed in yet.
-                  </div>
-                )}
-              </div>
-
-              {/* Active Channel Box */}
-              <div className="p-2.5 rounded-3 mb-3 text-start d-flex align-items-center justify-content-between" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <span className="text-muted fw-semibold text-uppercase" style={{ fontSize: 11 }}>
-                  <i className="ri-radar-line me-1 text-primary" /> Active Channel
-                </span>
-                {(() => {
-                  const ch = (customer.last_channel || 'web').toLowerCase()
-                  const isApp = ch === 'app' || ch === 'mobile'
-                  const isPos = ch === 'pos'
-                  return (
-                    <span className={`badge d-inline-flex align-items-center gap-1 ${isApp ? 'bg-success-subtle text-success border border-success-subtle' : isPos ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'}`} style={{ fontSize: 11, padding: '4px 8px' }}>
-                      <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
-                      {isApp ? 'Mobile App' : isPos ? 'Point of Sale' : 'Web Store'}
+                {/* Header Strip with Live Presence Status & Channel */}
+                <div className="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style={{
+                  background: isRecentActive ? '#f0fdf4' : '#f8fafc',
+                  borderBottomColor: isRecentActive ? '#bbf7d0' : '#e2e8f0'
+                }}>
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className={`rounded-circle ${isOnlineNow ? 'bg-success' : isRecentActive ? 'bg-success' : 'bg-secondary'}`}
+                      style={{
+                        width: 7,
+                        height: 7,
+                        flexShrink: 0,
+                        boxShadow: isOnlineNow ? '0 0 0 3px rgba(34,197,94,0.25)' : 'none'
+                      }}
+                    />
+                    <span className="fw-semibold" style={{ fontSize: 11, color: isRecentActive ? '#15803d' : '#64748b' }}>
+                      {isOnlineNow ? 'Online Now' : isRecentActive ? 'Active Today' : lastActiveTimestamp ? 'Inactive Recently' : 'No Activity'}
                     </span>
-                  )
-                })()}
+                  </div>
+                  {/* Channel Tag */}
+                  {(() => {
+                    const ch = (customer.last_channel || 'web').toLowerCase()
+                    const isApp = ch === 'app' || ch === 'mobile'
+                    const isPos = ch === 'pos'
+                    return (
+                      <span className={`badge d-inline-flex align-items-center gap-1 ${isApp ? 'bg-success-subtle text-success border border-success-subtle' : isPos ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'}`} style={{ fontSize: 10, padding: '2px 7px', fontWeight: 600 }}>
+                        <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
+                        {isApp ? 'Mobile App' : isPos ? 'Point of Sale' : 'Web Store'}
+                      </span>
+                    )
+                  })()}
+                </div>
+
+                {/* Body: Last Active & Last Login in Clean Rows */}
+                <div className="p-3 d-flex flex-column gap-2.5">
+                  {/* Row 1: Last Active */}
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-0.5">
+                      <span className="text-muted fw-semibold text-uppercase d-flex align-items-center gap-1" style={{ fontSize: 10, letterSpacing: '0.4px' }}>
+                        <i className="ri-pulse-line text-success" /> Last Active
+                      </span>
+                      <span className="fw-bold text-dark" style={{ fontSize: 13 }}>
+                        {lastActiveTimestamp ? fmtRelative(lastActiveTimestamp) : 'Never'}
+                      </span>
+                    </div>
+                    {lastActiveTimestamp && (
+                      <div className="text-muted text-end" style={{ fontSize: 10 }}>
+                        <i className="ri-time-line me-1" />{fmtDateTime(lastActiveTimestamp)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ height: 1, background: '#f1f5f9' }} />
+
+                  {/* Row 2: Last Login */}
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-0.5">
+                      <span className="text-muted fw-semibold text-uppercase d-flex align-items-center gap-1" style={{ fontSize: 10, letterSpacing: '0.4px' }}>
+                        <i className="ri-login-circle-line text-primary" /> Last Login
+                      </span>
+                      <span className="fw-semibold text-dark" style={{ fontSize: 13 }}>
+                        {customer.last_login ? fmtRelative(customer.last_login) : 'Never'}
+                      </span>
+                    </div>
+                    {customer.last_login && (
+                      <div className="text-muted text-end" style={{ fontSize: 10 }}>
+                        <i className="ri-calendar-line me-1" />{fmtDateTime(customer.last_login)}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Tier and Points Progress */}
