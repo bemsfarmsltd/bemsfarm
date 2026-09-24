@@ -51,6 +51,11 @@ async function insertDispatchAlert({ order_id, order_ref, delivery_id, last_driv
     [order_id, order_ref || null, delivery_id || null, last_driver_id || null, last_driver_name || null, message || null]
   );
   console.log(`🔔 Dispatch alert created for order ${order_ref || order_id} — admin action required.`);
+
+  try {
+    const { broadcastDispatchAlert } = require("./socketService");
+    broadcastDispatchAlert({ order_id, order_ref, delivery_id, message });
+  } catch (_) {}
 }
 
 // Haversine formula: calculate distance between two coordinates in km
@@ -296,6 +301,24 @@ async function autoAssignClosestDriver(
     ).catch(() => {});
 
     await client.query("COMMIT");
+
+    try {
+      const { broadcastDeliveryUpdated, broadcastOrderUpdated } = require("./socketService");
+      broadcastDeliveryUpdated({
+        delivery_id: deliveryId,
+        order_id: order.id,
+        driver_id: bestDriver.id,
+        driver_name: bestDriver.name,
+        status: "assigned",
+      });
+      broadcastOrderUpdated({
+        id: order.id,
+        order_ref: order.order_ref,
+        status: "driver_assigned",
+        driver_id: bestDriver.id,
+        driver_name: bestDriver.name,
+      });
+    } catch (_) {}
 
     return {
       success: true,

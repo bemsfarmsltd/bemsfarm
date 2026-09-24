@@ -8,6 +8,7 @@ import DetailModal from '../../components/ui/DetailModal'
 import DetailTable from '../../components/ui/DetailTable'
 import DateFilterControls from '../../components/ui/DateFilterControls'
 import { useAuth } from '../../context/AuthContext'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 import api from '../../lib/api'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -2624,6 +2625,16 @@ export default function Dashboard() {
     setSearchParams(params, { replace: true })
   }
 
+  const [realtimeTrigger, setRealtimeTrigger] = useState(0)
+  const refreshAll = useCallback(() => setRealtimeTrigger(k => k + 1), [])
+
+  useRealtimeEvent('order:created', refreshAll)
+  useRealtimeEvent('order:updated', refreshAll)
+  useRealtimeEvent('delivery:updated', refreshAll)
+  useRealtimeEvent('stock:updated', refreshAll)
+  useRealtimeEvent('dashboard:update', refreshAll)
+  useRealtimeEvent('window:focused', refreshAll)
+
   return (
     <div className="container-fluid py-3">
       {/* Page Header */}
@@ -2631,7 +2642,7 @@ export default function Dashboard() {
         title={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] ?? 'Admin'} 👋`}
         sub="Here's what's happening at Bems Farms."
       >
-        <button className="btn btn-sm btn-outline-success" onClick={() => window.location.reload()}>
+        <button className="btn btn-sm btn-outline-success" onClick={refreshAll} title="Refresh active view">
           <i className="ri-refresh-line me-1" /> Refresh
         </button>
       </PageHeader>
@@ -2675,13 +2686,13 @@ export default function Dashboard() {
       </div>
 
       {/* Active Tab View */}
-      {activeTab === 'overview'   && <OverviewTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'sales'      && <SalesTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'finance'    && <FinanceTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'inventory'  && <InventoryTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'operations' && <OperationsTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'customers'  && <CustomersTab range={rangeParam} from={fromParam} to={toParam} />}
-      {activeTab === 'ai'         && <ChefBemsTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'overview'   && <OverviewTab key={`overview-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'sales'      && <SalesTab key={`sales-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'finance'    && <FinanceTab key={`finance-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'inventory'  && <InventoryTab key={`inventory-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'operations' && <OperationsTab key={`operations-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'customers'  && <CustomersTab key={`customers-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'ai'         && <ChefBemsTab key={`ai-${realtimeTrigger}`} range={rangeParam} from={fromParam} to={toParam} />}
     </div>
   )
 }

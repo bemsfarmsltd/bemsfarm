@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 const STATUS_CFG = {
   active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
@@ -142,8 +143,8 @@ export default function DriversManagement() {
   const [payoutDisburseNote, setPayoutDisburseNote] = useState('')
   const [payoutRejectReason, setPayoutRejectReason] = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const [drvRes, zoneRes] = await Promise.all([
         api.get('/admin/deliveries/drivers', {
@@ -163,9 +164,16 @@ export default function DriversManagement() {
     } catch {
       toast.error('Failed to load drivers')
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }, [search, filterStatus])
+
+  // Live auto-refresh when drivers send heartbeat, GPS updates, or assignments change
+  useRealtimeEvent('driver:telemetry', () => load(true))
+  useRealtimeEvent('driver:location', () => load(true))
+  useRealtimeEvent('delivery:updated', () => load(true))
+  useRealtimeEvent('emergency:sos', () => load(true))
+  useRealtimeEvent('window:focused', () => load(true))
 
   const loadPayouts = useCallback(async () => {
     setPayoutLoading(true)

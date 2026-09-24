@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 /**
  * DispatchAlertBanner
@@ -60,6 +61,18 @@ export default function DispatchAlertBanner() {
       setLoadingDrivers(false)
     }
   }, [canSee])
+
+  // Instant response to dispatch alerts, courier assignments, and window focus
+  useRealtimeEvent('dispatch:alert', () => {
+    fetchAlerts()
+    fetchDrivers()
+  })
+  useRealtimeEvent('delivery:updated', () => {
+    fetchAlerts()
+    fetchDrivers()
+  })
+  useRealtimeEvent('driver:telemetry', fetchDrivers)
+  useRealtimeEvent('window:focused', fetchAlerts)
 
   useEffect(() => {
     if (!canSee) return

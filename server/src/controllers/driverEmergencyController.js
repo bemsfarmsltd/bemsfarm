@@ -52,6 +52,30 @@ const triggerEmergency = async (req, res, next) => {
       [driverId, JSON.stringify({ emergency_ref: emergencyRef, latitude, longitude })]
     );
 
+    // Live Socket.io broadcast to all admin dashboards & dispatch screens
+    try {
+      const { broadcastEmergencyAlert, broadcastNotification } = require("../services/socketService");
+      broadcastEmergencyAlert({
+        id: result.rows[0]?.id,
+        emergency_ref: emergencyRef,
+        driver_id: driverId,
+        driver_name: driver.name,
+        phone: driver.phone,
+        vehicle_plate: driver.vehicle_plate,
+        latitude,
+        longitude,
+        emergency_type,
+        notes,
+      });
+      broadcastNotification({
+        type: "security_event",
+        title: `🚨 Driver SOS Alert: ${driver.name}`,
+        message: `Driver ${driver.name} activated SOS (${emergency_type}). Immediate response required.`,
+        severity: "critical",
+        link: "/deliveries/telemetry",
+      });
+    } catch (_) {}
+
     res.status(201).json({
       status: "success",
       message: "🚨 Emergency SOS alert activated. Dispatch Operations team has been notified immediately.",

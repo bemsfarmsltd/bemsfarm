@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
@@ -150,9 +151,9 @@ export default function OrdersList() {
   }, [searchParams])
 
   // ─── Fetch live orders from backend ─────────────────────────────────────────
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true)
+      if (!isSilent) setLoading(true)
       const res = await api.get('/admin/orders?limit=200')
       if (res.data?.orders) {
         const mapped = res.data.orders.map((o) => {
@@ -269,9 +270,16 @@ export default function OrdersList() {
       console.error('Failed to load orders:', err)
       toast.error('Unable to fetch live orders')
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }, [])
+
+  // Auto-refresh orders list seamlessly via real-time WebSocket events or tab focus
+  useRealtimeEvent('order:created', () => fetchOrders(true))
+  useRealtimeEvent('order:updated', () => fetchOrders(true))
+  useRealtimeEvent('delivery:updated', () => fetchOrders(true))
+  useRealtimeEvent('dispatch:alert', () => fetchOrders(true))
+  useRealtimeEvent('window:focused', () => fetchOrders(true))
 
   // Load auxiliary form data: Drivers & Staff
   useEffect(() => {

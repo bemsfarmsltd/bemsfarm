@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 const DEFAULT_STATUS_CFG = {
   label: 'Active Delivery',
@@ -69,8 +70,8 @@ export default function ActiveDeliveries() {
   const toggleDelItems = (delId) => setExpandedDelItems(prev => ({ ...prev, [delId]: !prev[delId] }))
 
   // Load live active deliveries from backend
-  const fetchActiveDeliveries = useCallback(async () => {
-    setLoading(true)
+  const fetchActiveDeliveries = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
       const res = await api.get('/admin/deliveries/active')
       const rawDeliveries = res.data?.deliveries || []
@@ -111,9 +112,18 @@ export default function ActiveDeliveries() {
     } catch (err) {
       console.warn('Could not fetch live active deliveries:', err.message)
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
   }, [])
+
+  // Auto-refresh live deliveries when assignments, driver coordinates or orders change
+  useRealtimeEvent('delivery:updated', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('driver:location', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('driver:telemetry', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('dispatch:alert', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('order:created', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('order:updated', () => fetchActiveDeliveries(true))
+  useRealtimeEvent('window:focused', () => fetchActiveDeliveries(true))
 
   useEffect(() => {
     async function loadMeta() {

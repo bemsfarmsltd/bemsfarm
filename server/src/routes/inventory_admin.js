@@ -1009,6 +1009,20 @@ router.post(
       }
 
       await client.query("COMMIT");
+
+      try {
+        const { broadcastStockUpdated } = require("../services/socketService");
+        broadcastStockUpdated({
+          product_id,
+          variant_id,
+          warehouse_id,
+          before_qty: beforeQty,
+          after_qty: afterQty,
+          delta,
+          reason,
+        });
+      } catch (_) {}
+
       res.json({ message: "Stock adjusted", before_qty: beforeQty, after_qty: afterQty, delta });
     } catch (err) {
       await client.query("ROLLBACK");

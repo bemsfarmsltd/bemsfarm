@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import { useRealtime, useRealtimeEvent } from '../../context/RealtimeContext'
 
 const EMPTY_RESULTS = { products: [], orders: [], customers: [], staff: [] }
 
@@ -44,6 +45,8 @@ export default function Topbar({ onToggleSidebar }) {
   const searchBoxRef = useRef(null)
   const debounceRef = useRef(null)
 
+  const { connected, soundEnabled, toggleSound } = useRealtime()
+
   // Fetch live notifications
   const fetchNotifs = useCallback(async () => {
     try {
@@ -53,9 +56,16 @@ export default function Topbar({ onToggleSidebar }) {
     } catch (_) {}
   }, [])
 
+  // Auto-refetch immediately on any incoming realtime notification or focus
+  useRealtimeEvent('notification:new', fetchNotifs)
+  useRealtimeEvent('order:created', fetchNotifs)
+  useRealtimeEvent('dispatch:alert', fetchNotifs)
+  useRealtimeEvent('emergency:sos', fetchNotifs)
+  useRealtimeEvent('window:focused', fetchNotifs)
+
   useEffect(() => {
     fetchNotifs()
-    const interval = setInterval(fetchNotifs, 15000)
+    const interval = setInterval(fetchNotifs, 30000)
     return () => clearInterval(interval)
   }, [fetchNotifs])
 
@@ -344,6 +354,35 @@ export default function Topbar({ onToggleSidebar }) {
           <i className="ri-external-link-line" style={{ color: '#F59E0B' }}></i>
           <span>Storefront</span>
         </a>
+
+        {/* Real-time Connection Indicator */}
+        <div
+          className="d-none d-sm-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill border fs-11 fw-semibold shadow-2xs"
+          style={{
+            backgroundColor: connected ? '#F0FDF4' : '#FFFBEB',
+            borderColor: connected ? '#BBF7D0' : '#FDE68A',
+            color: connected ? '#15803D' : '#B45309',
+            cursor: 'default',
+          }}
+          title={connected ? "Real-time engine connected. Pages and notifications update automatically." : "Connecting to real-time engine..."}
+        >
+          <span
+            className={`rounded-circle ${connected ? 'bg-success' : 'bg-warning'}`}
+            style={{ width: 6, height: 6, display: 'inline-block' }}
+          />
+          <span>{connected ? 'Live Sync' : 'Connecting'}</span>
+        </div>
+
+        {/* Audio Alerts Toggle */}
+        <button
+          type="button"
+          className="btn topbar-icon-btn d-none d-sm-flex"
+          title={soundEnabled ? "Mute Real-time Order Audio Chimes" : "Unmute Real-time Order Audio Chimes"}
+          onClick={toggleSound}
+          style={{ color: soundEnabled ? '#15803D' : '#94A3B8' }}
+        >
+          <i className={soundEnabled ? "ri-volume-up-line fs-16" : "ri-volume-mute-line fs-16"}></i>
+        </button>
 
         {/* Fullscreen Toggle */}
         <button

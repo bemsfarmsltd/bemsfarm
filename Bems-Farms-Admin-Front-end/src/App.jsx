@@ -122,13 +122,15 @@ import TeamOnboarding        from './pages/settings/TeamOnboarding'
 import Profile               from './pages/settings/Profile'
 
 import GlobalBarcodeListener from './components/GlobalBarcodeListener'
+import { RealtimeProvider } from './context/RealtimeContext'
 
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <GlobalBarcodeListener />
-        <Routes>
+        <RealtimeProvider>
+          <GlobalBarcodeListener />
+          <Routes>
           {/* ── Public Auth Routes ── */}
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -311,6 +313,7 @@ function App() {
           {/* 404 fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        </RealtimeProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

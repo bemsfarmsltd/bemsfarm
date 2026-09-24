@@ -148,6 +148,17 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
         ]
       );
       savedNotif = insRes.rows[0];
+
+      // Broadcast live real-time notification to all admin screens
+      try {
+        const { broadcastNotification, broadcastOrderCreated } = require("./socketService");
+        broadcastNotification(savedNotif);
+        if (type === "order_placed" || type === "pos_sale") {
+          broadcastOrderCreated({ id: data?.order_id, customer_name: actor?.name, total: data?.total_amount, ...data });
+        }
+      } catch (e) {
+        // Socket broadcast optional
+      }
     }
 
     // 2. Check Email alert preference (defaults to true if not explicitly 'false')

@@ -47,6 +47,25 @@ const updateLocation = async (req, res, next) => {
       [driverId]
     ).catch(() => {});
 
+    try {
+      const { broadcastDriverLocation, broadcastDriverTelemetry } = require("../services/socketService");
+      broadcastDriverLocation({
+        driver_id: driverId,
+        latitude: lat,
+        longitude: lng,
+        heading: heading !== undefined ? parseFloat(heading) : null,
+        speed: speed !== undefined ? parseFloat(speed) : null,
+        accuracy: accuracy !== undefined ? parseFloat(accuracy) : null,
+        recorded_at: new Date().toISOString(),
+      });
+      broadcastDriverTelemetry({
+        driver_id: driverId,
+        is_available: true,
+        status: "active",
+        last_ping_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
     res.status(201).json({
       success: true,
       location: result.rows[0],
@@ -86,6 +105,16 @@ const recordHeartbeat = async (req, res, next) => {
        ON CONFLICT (driver_id) DO UPDATE SET last_ping_at = NOW()`,
       [driverId]
     ).catch(() => {});
+
+    try {
+      const { broadcastDriverTelemetry } = require("../services/socketService");
+      broadcastDriverTelemetry({
+        driver_id: driverId,
+        is_available: true,
+        status: "active",
+        last_ping_at: new Date().toISOString(),
+      });
+    } catch (_) {}
 
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (err) {

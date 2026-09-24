@@ -297,14 +297,20 @@ try {
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
+const http = require("http");
+const server = http.createServer(app);
+
+const { initSocketService } = require("./services/socketService");
+initSocketService(server, [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(Boolean));
+
 const PORT = process.env.PORT || 5000;
 const { initCrmTables } = require("./db/migrate_crm_chat_broadcast");
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running with Realtime WebSockets on port ${PORT}`));
 
 initCrmTables()
   .catch((err) => {
     console.warn("CRM tables startup notice (will retry on query):", err.message?.slice(0, 120));
   });
 
-module.exports = app;
+module.exports = { app, server };
