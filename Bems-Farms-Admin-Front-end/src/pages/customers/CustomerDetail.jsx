@@ -183,7 +183,10 @@ export default function CustomerDetail() {
   if (waPhone.startsWith('0')) waPhone = '234' + waPhone.slice(1)
   if (waPhone.startsWith('+')) waPhone = waPhone.slice(1)
 
-  const isRecentLogin = customer.last_login && (Date.now() - new Date(customer.last_login).getTime() < 86400000)
+  const lastActiveTimestamp = customer.last_active_at || customer.last_active || customer.last_login
+  const isOnlineNow = Boolean(lastActiveTimestamp && (Date.now() - new Date(lastActiveTimestamp).getTime() < 5 * 60 * 1000))
+  const isRecentActive = Boolean(lastActiveTimestamp && (Date.now() - new Date(lastActiveTimestamp).getTime() < 86400000))
+  const isRecentLogin = Boolean(customer.last_login && (Date.now() - new Date(customer.last_login).getTime() < 86400000))
 
   const TABS = [
     ...(canEngage ? [{id:'intelligence',label:'Product interest',icon:'ri-bar-chart-line'},{id:'messages',label:'Support chat',icon:'ri-chat-3-line'}] : []),
@@ -284,33 +287,66 @@ export default function CustomerDetail() {
                 {customer.customer_code}
               </div>
 
-              {/* Prominent Last Login Box */}
-              <div className="p-3 rounded-3 mb-3 text-start" style={{
-                background: customer.last_login ? (isRecentLogin ? '#f0fdf4' : '#f8fafc') : '#fef2f2',
-                border: `1px solid ${customer.last_login ? (isRecentLogin ? '#bbf7d0' : '#e2e8f0') : '#fecaca'}`
+              {/* Prominent Last Active Box */}
+              <div className="p-3 rounded-3 mb-2.5 text-start" style={{
+                background: lastActiveTimestamp ? (isRecentActive ? '#f0fdf4' : '#f8fafc') : '#fef2f2',
+                border: `1px solid ${lastActiveTimestamp ? (isRecentActive ? '#bbf7d0' : '#e2e8f0') : '#fecaca'}`
               }}>
                 <div className="d-flex align-items-center justify-content-between mb-1">
                   <span className="text-muted fw-semibold" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <i className="ri-history-line me-1" /> Last Platform Login
+                    <i className="ri-pulse-line me-1 text-success" /> Last Active
                   </span>
-                  <span className="badge rounded-pill" style={{
+                  <span className="badge rounded-pill d-inline-flex align-items-center gap-1" style={{
                     fontSize: 10,
-                    background: customer.last_login ? (isRecentLogin ? '#dcfce7' : '#f1f5f9') : '#fee2e2',
-                    color: customer.last_login ? (isRecentLogin ? '#15803d' : '#475569') : '#b91c1c'
+                    background: isOnlineNow ? '#dcfce7' : isRecentActive ? '#ecfdf5' : '#f1f5f9',
+                    color: isOnlineNow ? '#15803d' : isRecentActive ? '#059669' : '#475569',
+                    border: `1px solid ${isOnlineNow ? '#86efac' : isRecentActive ? '#a7f3d0' : '#e2e8f0'}`
                   }}>
-                    {customer.last_login ? (isRecentLogin ? 'Active recently' : 'Inactive recently') : 'Never Logged In'}
+                    {isOnlineNow && <span className="spinner-grow spinner-grow-sm" style={{ width: 6, height: 6 }} />}
+                    {isOnlineNow ? 'Online Now' : isRecentActive ? 'Active Today' : lastActiveTimestamp ? 'Inactive Recently' : 'No Activity'}
                   </span>
                 </div>
                 <div className="fw-bold text-dark" style={{ fontSize: 15 }}>
-                  {fmtRelative(customer.last_login)}
+                  {lastActiveTimestamp ? fmtRelative(lastActiveTimestamp) : 'Never'}
                 </div>
-                {customer.last_login ? (
+                {lastActiveTimestamp ? (
                   <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                    <i className="ri-time-line me-1" /> {fmtDateTime(customer.last_login)}
+                    <i className="ri-time-line me-1" /> {fmtDateTime(lastActiveTimestamp)}
                   </div>
                 ) : (
                   <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                    Customer has not signed into the web store or mobile app yet.
+                    No recorded platform interaction yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Last Platform Login Box */}
+              <div className="p-2.5 rounded-3 mb-3 text-start" style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0'
+              }}>
+                <div className="d-flex align-items-center justify-content-between mb-1">
+                  <span className="text-muted fw-semibold" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <i className="ri-login-circle-line me-1 text-primary" /> Last Login
+                  </span>
+                  <span className="badge rounded-pill" style={{
+                    fontSize: 10,
+                    background: customer.last_login ? (isRecentLogin ? '#eff6ff' : '#f1f5f9') : '#fee2e2',
+                    color: customer.last_login ? (isRecentLogin ? '#1d4ed8' : '#475569') : '#b91c1c'
+                  }}>
+                    {customer.last_login ? (isRecentLogin ? 'Session Fresh' : 'Older Session') : 'Never Logged In'}
+                  </span>
+                </div>
+                <div className="fw-bold text-dark" style={{ fontSize: 13 }}>
+                  {customer.last_login ? fmtRelative(customer.last_login) : 'Never'}
+                </div>
+                {customer.last_login ? (
+                  <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                    <i className="ri-calendar-line me-1" /> {fmtDateTime(customer.last_login)}
+                  </div>
+                ) : (
+                  <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>
+                    Customer has not signed in yet.
                   </div>
                 )}
               </div>
@@ -629,24 +665,55 @@ export default function CustomerDetail() {
                     </div>
                   </div>
 
-                  {/* Highlight of Last Login at top */}
-                  <div className="p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 42, height: 42, background: '#eff6ff', color: '#2563eb' }}>
-                        <i className="ri-login-circle-line" style={{ fontSize: 20 }} />
-                      </div>
-                      <div>
-                        <div className="fw-semibold text-dark" style={{ fontSize: 13 }}>Latest Authentication Session</div>
-                        <div className="text-muted" style={{ fontSize: 12 }}>
-                          {customer.last_login ? `${fmtDateTime(customer.last_login)} (${fmtRelative(customer.last_login)})` : 'No login recorded yet'}
+                  {/* Highlight of Last Active and Last Login at top */}
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <div className="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100" style={{
+                        background: lastActiveTimestamp ? (isRecentActive ? '#f0fdf4' : '#f8fafc') : '#fef2f2',
+                        border: `1px solid ${lastActiveTimestamp ? (isRecentActive ? '#bbf7d0' : '#e2e8f0') : '#fecaca'}`
+                      }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 42, height: 42, background: isRecentActive ? '#dcfce7' : '#f1f5f9', color: isRecentActive ? '#15803d' : '#64748b' }}>
+                            <i className="ri-pulse-line" style={{ fontSize: 20 }} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold text-dark" style={{ fontSize: 13 }}>Last Active on Platform</div>
+                            <div className="text-muted" style={{ fontSize: 12 }}>
+                              {lastActiveTimestamp ? `${fmtDateTime(lastActiveTimestamp)} (${fmtRelative(lastActiveTimestamp)})` : 'No activity recorded yet'}
+                            </div>
+                          </div>
                         </div>
+                        <span className="badge rounded-pill d-inline-flex align-items-center gap-1" style={{
+                          fontSize: 11,
+                          background: isOnlineNow ? '#dcfce7' : isRecentActive ? '#ecfdf5' : '#f1f5f9',
+                          color: isOnlineNow ? '#15803d' : isRecentActive ? '#059669' : '#475569',
+                          border: `1px solid ${isOnlineNow ? '#86efac' : isRecentActive ? '#a7f3d0' : '#e2e8f0'}`
+                        }}>
+                          {isOnlineNow && <span className="spinner-grow spinner-grow-sm" style={{ width: 6, height: 6 }} />}
+                          {isOnlineNow ? 'Online Now' : isRecentActive ? 'Active Today' : lastActiveTimestamp ? 'Inactive Recently' : 'No Activity'}
+                        </span>
                       </div>
                     </div>
-                    {customer.last_login && (
-                      <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-                        <i className="ri-check-line me-1" /> Session Verified
-                      </span>
-                    )}
+                    <div className="col-md-6">
+                      <div className="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 42, height: 42, background: '#eff6ff', color: '#2563eb' }}>
+                            <i className="ri-login-circle-line" style={{ fontSize: 20 }} />
+                          </div>
+                          <div>
+                            <div className="fw-semibold text-dark" style={{ fontSize: 13 }}>Latest Authentication Session</div>
+                            <div className="text-muted" style={{ fontSize: 12 }}>
+                              {customer.last_login ? `${fmtDateTime(customer.last_login)} (${fmtRelative(customer.last_login)})` : 'No login recorded yet'}
+                            </div>
+                          </div>
+                        </div>
+                        {customer.last_login && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5" style={{ fontSize: 11 }}>
+                            <i className="ri-check-line me-1" /> Session Verified
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {activity.length === 0 ? (
@@ -919,8 +986,12 @@ export default function CustomerDetail() {
                             <span className="text-muted">Account Registered:</span>
                             <span>{fmtDateTime(customer.joined_at || customer.created_at)}</span>
                           </div>
+                          <div className="d-flex justify-content-between py-1 border-bottom">
+                            <span className="text-muted">Last Active on Platform:</span>
+                            <span className="fw-semibold text-dark">{lastActiveTimestamp ? fmtDateTime(lastActiveTimestamp) : 'Never'}</span>
+                          </div>
                           <div className="d-flex justify-content-between py-1">
-                            <span className="text-muted">Last Active Login:</span>
+                            <span className="text-muted">Last Authentication Login:</span>
                             <span className="fw-semibold text-dark">{customer.last_login ? fmtDateTime(customer.last_login) : 'Never'}</span>
                           </div>
                         </div>

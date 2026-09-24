@@ -67,6 +67,13 @@ const protect = async (req, res, next) => {
     }
 
     req.user = result.rows[0];
+
+    // Fire-and-forget throttled update for last_active_at (at most once every 60s per user)
+    pool.query(
+      `UPDATE users SET last_active_at = NOW() WHERE id = $1 AND (last_active_at IS NULL OR last_active_at < NOW() - INTERVAL '1 minute')`,
+      [req.user.id]
+    ).catch(() => {});
+
     next();
   } catch (err) {
     console.error("Auth middleware error:", err.message);

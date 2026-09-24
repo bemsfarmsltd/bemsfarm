@@ -245,11 +245,11 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
     const channel = detectChannel(req);
 
     await pool.query(
-      "UPDATE users SET refresh_token=$1, last_login=NOW(), last_channel=$3 WHERE id=$2",
+      "UPDATE users SET refresh_token=$1, last_login=NOW(), last_active_at=NOW(), last_channel=$3 WHERE id=$2",
       [refreshToken, user.id, channel],
     ).catch(() => {
       // Fallback if last_channel column doesn't exist yet
-      return pool.query("UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2", [refreshToken, user.id]);
+      return pool.query("UPDATE users SET refresh_token=$1, last_login=NOW(), last_active_at=NOW() WHERE id=$2", [refreshToken, user.id]);
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -481,7 +481,7 @@ router.post("/accept-invite", validate(authSchemas.acceptInvite), async (req, re
     const refreshToken = generateRefreshToken(user.id);
 
     await pool.query(
-      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
+      "UPDATE users SET refresh_token=$1, last_login=NOW(), last_active_at=NOW() WHERE id=$2",
       [refreshToken, user.id]
     );
 
@@ -565,7 +565,7 @@ router.post("/admin-bypass", async (req, res, next) => {
     const refreshToken = generateRefreshToken(staff.id);
 
     await pool.query(
-      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
+      "UPDATE users SET refresh_token=$1, last_login=NOW(), last_active_at=NOW() WHERE id=$2",
       [refreshToken, staff.id]
     );
 
@@ -1091,8 +1091,8 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
     // sign-in; this Google route never did, so any account that only ever
     // signs in via Google always showed "Never Logged In" on the admin
     // Customer Detail page regardless of how recently they'd actually used it.
-    await pool.query("UPDATE users SET last_login=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
-      return pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+    await pool.query("UPDATE users SET last_login=NOW(), last_active_at=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
+      return pool.query("UPDATE users SET last_login=NOW(), last_active_at=NOW() WHERE id=$1", [user.id]);
     });
 
     const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
@@ -1180,8 +1180,8 @@ router.post("/social", async (req, res, next) => {
     const nameParts = (user.name || "").trim().split(" ");
     const channel = detectChannel(req);
 
-    await pool.query("UPDATE users SET last_login=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
-      return pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+    await pool.query("UPDATE users SET last_login=NOW(), last_active_at=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
+      return pool.query("UPDATE users SET last_login=NOW(), last_active_at=NOW() WHERE id=$1", [user.id]);
     });
 
     const clientIP = req.ip || req.connection?.remoteAddress || "unknown";

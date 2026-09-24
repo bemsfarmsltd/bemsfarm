@@ -161,9 +161,12 @@ function trackActivity(userId, type, { entityType, entityId, metadata, ip } = {}
     )
     .catch((err) => console.warn("[aiContext] trackActivity failed:", err.message));
 
-  // Also bump last_activity timestamp
+  // Also bump last_activity timestamp in ai_user_context and users
   pool
     .query("UPDATE ai_user_context SET last_activity=NOW(), updated_at=NOW() WHERE user_id=$1", [userId])
+    .catch(() => {});
+  pool
+    .query("UPDATE users SET last_active_at=NOW() WHERE id=$1", [userId])
     .catch(() => {});
 }
 

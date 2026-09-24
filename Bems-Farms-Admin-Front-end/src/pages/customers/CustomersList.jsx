@@ -323,7 +323,7 @@ export default function CustomersList() {
           <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
             <thead style={{background:'#f8fafc'}}>
               <tr>
-                {['CUSTOMER','CONTACT','CHANNEL','ZONE','TIER','ORDERS','TOTAL SPENT','LAST LOGIN','STATUS','ACTIONS'].map(h=>(
+                {['CUSTOMER','CONTACT','CHANNEL','ZONE','TIER','ORDERS','TOTAL SPENT','LAST ACTIVE / LOGIN','STATUS','ACTIONS'].map(h=>(
                   <th key={h} className="px-3 py-2 fw-medium text-muted text-nowrap" style={{fontSize:11}}>{h}</th>
                 ))}
               </tr>
@@ -422,23 +422,33 @@ export default function CustomersList() {
                     <td className="px-3 py-2 fw-semibold text-center">{c.total_orders || 0}</td>
                     <td className="px-3 py-2 fw-bold text-success">{fmt(c.total_spent)}</td>
                     <td className="px-3 py-2 text-nowrap">
-                      {c.last_login ? (
-                        <div>
-                          <div className="d-flex align-items-center gap-1" style={{fontSize:12, fontWeight:500, color: '#0f172a'}}>
-                            <i className="ri-time-line text-primary" style={{fontSize:13}}/>
-                            <span>{fmtLogin(c.last_login)}</span>
+                      {c.last_active_at || c.last_active || c.last_login ? (() => {
+                        const activeTs = c.last_active_at || c.last_active || c.last_login
+                        const isNow = Date.now() - new Date(activeTs).getTime() < 5 * 60 * 1000
+                        const isToday = Date.now() - new Date(activeTs).getTime() < 86400000
+                        return (
+                          <div>
+                            <div className="d-flex align-items-center gap-1.5" style={{fontSize:12, fontWeight:600, color: isNow ? '#166534' : isToday ? '#0f172a' : '#475569'}}>
+                              <span className={`rounded-circle ${isNow ? 'bg-success' : isToday ? 'bg-success' : 'bg-secondary'}`} style={{ width: 7, height: 7, flexShrink: 0, opacity: isNow ? 1 : isToday ? 0.8 : 0.4 }} />
+                              <span>{isNow ? 'Active Now' : fmtLogin(activeTs)}</span>
+                              {!isNow && (
+                                <span className="text-muted fw-normal" style={{ fontSize: 10 }}>
+                                  {new Date(activeTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-muted" style={{fontSize:10, paddingLeft:14}}>
+                              {c.last_login ? `Login: ${fmtLogin(c.last_login)}` : 'Never logged in'}
+                            </div>
                           </div>
-                          <div className="text-muted" style={{fontSize:10, paddingLeft:17}}>
-                            {new Date(c.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
-                      ) : (
+                        )
+                      })() : (
                         <div>
                           <div className="d-flex align-items-center gap-1 text-muted" style={{fontSize:12}}>
-                            <i className="ri-time-line text-muted" style={{fontSize:13}}/>
-                            <span>Never Logged In</span>
+                            <span className="rounded-circle bg-secondary" style={{ width: 6, height: 6, opacity: 0.3 }} />
+                            <span>No Activity</span>
                           </div>
-                          <div className="text-warning fw-medium" style={{fontSize:10, paddingLeft:17}}>
+                          <div className="text-warning fw-medium" style={{fontSize:10, paddingLeft:14}}>
                             {isVerified ? 'Awaiting Login' : 'Unverified Email'}
                           </div>
                         </div>
