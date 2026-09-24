@@ -101,6 +101,8 @@ const STATUS_INDEX = {
   en_route: 3,
   out_for_delivery: 3,
   arrived: 3,
+  driver_arrived: 3,
+  at_location: 3,
   delivery_attempted: 3,
   delivery_exception: 3,
   customer_unreachable: 3,
@@ -130,7 +132,9 @@ const STATUS_COPY = {
   shipped: ["In Transit", "Your order has departed our logistics center."],
   en_route: ["On The Way", "Your delivery driver is en route to your destination."],
   out_for_delivery: ["Out for Delivery", "Your courier is nearby and approaching your delivery address."],
-  arrived: ["Courier Arrived", "Your courier has arrived at your delivery address."],
+  arrived: ["Courier Arrived at Your Destination", "Your delivery courier has arrived at your address. Please verify your package and confirm delivery."],
+  driver_arrived: ["Courier Arrived at Your Destination", "Your delivery courier has arrived at your address. Please verify your package and confirm delivery."],
+  at_location: ["Courier Arrived at Your Destination", "Your delivery courier has arrived at your address. Please verify your package and confirm delivery."],
   delivery_attempted: ["Delivery Attempted", "Courier attempted contact. Please check your phone or contact dispatch."],
   delivery_exception: ["Delivery Notice", "A delivery update was noted. Dispatch is resolving."],
   customer_unreachable: ["Customer Contact Needed", "Courier was unable to reach you. Please check your phone."],
@@ -490,15 +494,32 @@ export default function TrackOrderPage() {
                   {/* Courier & Order Metadata Card */}
                   <div className="md:col-span-5 p-5 sm:p-6 bg-slate-50 flex flex-col justify-between space-y-4">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                        Dispatch Personnel
-                      </span>
-                      <h3 className="font-display text-lg font-bold text-slate-900 mt-0.5">
-                        {order.driver_name || "BemsFarms Logistics Courier"}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                          Dispatch Personnel
+                        </span>
+                        {order.driver_rating && (
+                          <span className="text-[11px] font-bold text-amber-700 bg-amber-100/70 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span>★</span> {Number(order.driver_rating).toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-display text-lg font-bold text-slate-900 mt-0.5 flex items-center gap-2">
+                        <span>👤</span>
+                        <span>{order.driver_name || "BemsFarms Logistics Courier"}</span>
                       </h3>
 
+                      {(order.vehicle_type || order.vehicle_plate) && (
+                        <div className="mt-1 text-xs text-slate-600 flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-700">Vehicle:</span>
+                          <span className="bg-slate-200/80 px-2 py-0.5 rounded text-slate-800 font-mono font-bold text-[11px]">
+                            {order.vehicle_type ? `${order.vehicle_type.toUpperCase()} ` : ""}{order.vehicle_plate || ""}
+                          </span>
+                        </div>
+                      )}
+
                       {order.destination_area && (
-                        <div className="mt-2 text-xs text-slate-600">
+                        <div className="mt-2.5 text-xs text-slate-600">
                           <span className="font-semibold text-slate-800">Destination:</span> {order.destination_area}
                         </div>
                       )}
@@ -510,7 +531,7 @@ export default function TrackOrderPage() {
                       )}
 
                       {/* Direct Courier Action Buttons */}
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <div className="mt-3.5 flex flex-wrap items-center gap-2">
                         {order.driver_phone && (
                           <a
                             href={`tel:${order.driver_phone}`}
@@ -519,7 +540,7 @@ export default function TrackOrderPage() {
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                             </svg>
-                            <span>Call Driver</span>
+                            <span>Call Driver ({order.driver_phone})</span>
                           </a>
                         )}
 
@@ -532,13 +553,42 @@ export default function TrackOrderPage() {
                           <span>WhatsApp Dispatch</span>
                         </a>
                       </div>
+
+                      {/* Customer Handover & Confirmation Box */}
+                      {(status === "driver_arrived" || status === "arrived" || Boolean(order.arrived_at)) && (
+                        <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                          <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
+                            <span className="text-base animate-bounce">🚚</span>
+                            <span>Courier is at your destination!</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
+                            Please meet your driver, verify your produce, and confirm delivery receipt.
+                          </p>
+                          <div className="mt-2.5 flex flex-col sm:flex-row gap-2">
+                            {order.customer_confirmed ? (
+                              <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5">
+                                <span>✓</span>
+                                <span>You confirmed delivery receipt</span>
+                              </div>
+                            ) : (
+                              <Link
+                                to={`/orders/${order.id}`}
+                                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black uppercase tracking-wider text-center shadow-md transition hover:scale-[1.01] flex items-center justify-center gap-1.5"
+                              >
+                                <span>✅</span>
+                                <span>Confirm Delivery Received</span>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-                      <span>Status: In Transit</span>
-                      <a href="mailto:info@bemsfarms.com" className="font-bold text-emerald-800 hover:underline">
-                        Need Dispatch Help?
-                      </a>
+                      <span>Status: <strong className="text-slate-800 font-bold">{statusTitle}</strong></span>
+                      <Link to={`/orders/${order.id}`} className="font-bold text-emerald-800 hover:underline">
+                        Order Details →
+                      </Link>
                     </div>
                   </div>
 

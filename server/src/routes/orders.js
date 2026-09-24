@@ -529,24 +529,38 @@ router.get("/track/:code", async (req, res, next) => {
 
     const result = await pool.query(
       `SELECT
-         id,
-         status,
+         orders.id,
+         orders.order_ref,
+         orders.status,
          CASE
-           WHEN tracking_status IS NULL OR tracking_status = 'order_placed' THEN status
-           ELSE tracking_status
+           WHEN orders.tracking_status IS NULL OR orders.tracking_status = 'order_placed' THEN orders.status
+           ELSE orders.tracking_status
          END AS tracking_status,
-         created_at,
-         delivered_at,
+         orders.created_at,
+         orders.delivered_at,
+         orders.address AS destination_area,
+         orders.delivery_city,
          COALESCE(orders.driver_arrived_at, delivery.arrived_at) AS arrived_at,
          COALESCE(orders.customer_confirmed, false) AS customer_confirmed,
          orders.customer_confirmed_at,
          COALESCE(orders.driver_confirmed, false) AS driver_confirmed,
          orders.driver_confirmed_at,
-         updated_at,
+         orders.updated_at,
          delivery.eta_minutes,
-         ROUND(location.latitude::numeric, 3) AS driver_lat,
-         ROUND(location.longitude::numeric, 3) AS driver_lng,
-         location.recorded_at AS location_updated_at
+         ROUND(location.latitude::numeric, 4) AS driver_lat,
+         ROUND(location.longitude::numeric, 4) AS driver_lng,
+         location.recorded_at AS location_updated_at,
+         dr.name AS driver_name,
+         dr.phone AS driver_phone,
+         dr.vehicle_type,
+         dr.vehicle_plate,
+         dr.rating AS driver_rating,
+         (
+           SELECT string_agg(CONCAT(oi.quantity, 'x ', COALESCE(p.name, oi.product_name, 'Produce Item')), ', ')
+           FROM order_items oi
+           LEFT JOIN products p ON p.id = oi.product_id
+           WHERE oi.order_id = orders.id
+         ) AS items_summary
        FROM orders
        LEFT JOIN LATERAL (
          SELECT d.driver_id, d.eta_minutes, d.arrived_at
@@ -555,14 +569,15 @@ router.get("/track/:code", async (req, res, next) => {
          ORDER BY d.created_at DESC
          LIMIT 1
        ) delivery ON true
+       LEFT JOIN drivers dr ON dr.id = COALESCE(orders.driver_id, delivery.driver_id)
        LEFT JOIN LATERAL (
          SELECT dl.latitude, dl.longitude, dl.recorded_at
          FROM driver_locations dl
-         WHERE dl.driver_id = delivery.driver_id
+         WHERE dl.driver_id = COALESCE(orders.driver_id, delivery.driver_id)
          ORDER BY dl.recorded_at DESC
          LIMIT 1
        ) location ON true
-       WHERE UPPER(id) = $1
+       WHERE UPPER(orders.id) = $1 OR UPPER(orders.order_ref) = $1
        LIMIT 1`,
       [code],
     );
