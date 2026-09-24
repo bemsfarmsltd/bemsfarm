@@ -1,7 +1,11 @@
 const pool=require('../db/pool');
 const {initCrmTables}=require('../db/migrate_crm_chat_broadcast');
-async function resolveCustomer(target){
-  const r=await pool.query("SELECT id,name FROM users WHERE role='user' AND COALESCE(status,'active') <> 'deleted' AND (id::text=$1 OR customer_code=$1 OR LOWER(email)=LOWER($1))",[String(target)]);
+async function resolveCustomer(target, { requireActive = false } = {}){
+  const statusFilter = requireActive ? "AND COALESCE(status,'active') <> 'deleted'" : "";
+  const r = await pool.query(
+    `SELECT id, name, email, phone, status FROM users WHERE role='user' ${statusFilter} AND (id::text=$1 OR customer_code=$1 OR LOWER(email)=LOWER($1))`,
+    [String(target)]
+  );
   if(!r.rows.length) throw Object.assign(new Error('Customer not found'),{status:404});
   return r.rows[0];
 }

@@ -558,6 +558,7 @@ router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin")
         u.name AS customer_name,
         u.email AS customer_email,
         u.phone AS customer_phone,
+        u.status AS customer_status,
         CASE
           WHEN u.customer_code IS NOT NULL AND u.customer_code != 'null' AND u.customer_code != 'undefined' AND TRIM(u.customer_code) != ''
           THEN u.customer_code
@@ -567,7 +568,7 @@ router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin")
       FROM customer_conversations c
       JOIN users u ON u.id = c.customer_id
       LEFT JOIN customer_messages m ON m.conversation_id = c.id
-      GROUP BY c.id, c.customer_id, c.status, c.last_message, c.last_message_at, u.id, u.name, u.email, u.phone, u.customer_code
+      GROUP BY c.id, c.customer_id, c.status, c.last_message, c.last_message_at, u.id, u.name, u.email, u.phone, u.status, u.customer_code
       ORDER BY c.last_message_at DESC;
     `);
 

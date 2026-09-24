@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 function timeSince(ts) {
   if (!ts) return ''
@@ -25,19 +26,24 @@ function Avatar({ name, size = 38 }) {
 }
 
 // ─── Embedded chat widget used in CustomerDetail ─────────────────────────────
-export function CustomerChat({ customerId }) {
+export function CustomerChat({ customerId, customerStatus, customerName }) {
   const [messages, setMessages] = useState([])
   const [text, setText]         = useState('')
   const [error, setError]       = useState('')
   const [sending, setSending]   = useState(false)
   const bottomRef               = useRef(null)
 
+  const isClosed = customerStatus === 'deleted' || customerName === 'Deleted Customer'
+
   const load = useCallback(async () => {
     try {
       const r = await api.get(`/admin/customers/${customerId}/messages`)
       setMessages(r.data.messages || [])
+      setError('')
       await api.post(`/admin/customers/${customerId}/messages/read`).catch(() => {})
-    } catch { setError('Messages unavailable.') }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Messages unavailable.')
+    }
   }, [customerId])
 
   useEffect(() => {
@@ -48,10 +54,12 @@ export function CustomerChat({ customerId }) {
         const r = await api.get(`/admin/customers/${customerId}/messages`)
         if (active) { setMessages(r.data.messages || []); setError('') }
         await api.post(`/admin/customers/${customerId}/messages/read`).catch(() => {})
-      } catch { if (active) setError('Unable to refresh messages.') }
+      } catch (err) {
+        if (active) setError(err.response?.data?.message || 'Unable to refresh messages.')
+      }
     }
     poll()
-    const t = setInterval(poll, 4000)
+    const t = setInterval(poll, 6000)
     return () => { active = false; clearInterval(t) }
   }, [customerId])
 
@@ -74,6 +82,11 @@ export function CustomerChat({ customerId }) {
       border: '1px solid #f1f5f9', overflow: 'hidden', fontFamily: 'Inter,system-ui,sans-serif' }}>
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {isClosed && (
+          <div style={{ padding: '10px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, color: '#92400e', fontSize: 12, textAlign: 'center', lineHeight: 1.4, marginBottom: 8 }}>
+            ⚠️ <strong>Customer Account Closed / Deleted:</strong> This user account was removed. Prior chat messages are preserved below for audit and record-keeping.
+          </div>
+        )}
         {!messages.length && !error && (
           <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8' }}>
             <div style={{ fontSize: 32 }}>💬</div>
@@ -84,7 +97,7 @@ export function CustomerChat({ customerId }) {
           const isAdmin = m.sender_type === 'admin'
           return (
             <div key={m.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start', gap: 8 }}>
-              {!isAdmin && <Avatar name="Customer" size={28} />}
+              {!isAdmin && <Avatar name={customerName || 'Customer'} size={28} />}
               <div style={{ maxWidth: '70%' }}>
                 <div style={{ padding: '10px 14px', borderRadius: isAdmin ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
                   background: isAdmin ? '#3b82f6' : '#fff',
@@ -95,7 +108,7 @@ export function CustomerChat({ customerId }) {
                 </div>
                 <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3,
                   textAlign: isAdmin ? 'right' : 'left', paddingLeft: isAdmin ? 0 : 4, paddingRight: isAdmin ? 4 : 0 }}>
-                  {isAdmin ? (m.admin_name || 'Staff') : 'Customer'} · {timeSince(m.created_at)}
+                  {isAdmin ? (m.admin_name || 'Staff') : (customerName || 'Customer')} · {timeSince(m.created_at)}
                 </div>
               </div>
               {isAdmin && <Avatar name={m.admin_name || 'Staff'} size={28} />}
@@ -110,7 +123,7 @@ export function CustomerChat({ customerId }) {
       <form onSubmit={send} style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fff', display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <textarea
           value={text} onChange={e => setText(e.target.value)} maxLength={4000} required
-          placeholder="Type your reply to the customer…"
+          placeholder={isClosed ? "Type an internal staff note on this archived thread…" : "Type your reply to the customer…"}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) } }}
           style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px',
             fontSize: 13, resize: 'none', minHeight: 44, maxHeight: 120, outline: 'none',
@@ -133,21 +146,31 @@ export default function CustomerMessages() {
   const [conversations, setConversations] = useState([])
   const [selected, setSelected]           = useState(null)
   const [selectedName, setSelectedName]   = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [error, setError]                 = useState('')
   const [search, setSearch]               = useState('')
 
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get('/admin/customers/conversations/inbox')
+      setConversations(r.data.conversations || [])
+      setError('')
+      // If a customer is selected, update their details
+      if (selected && r.data?.conversations) {
+        const found = r.data.conversations.find(c => c.customer_id === selected)
+        if (found) setSelectedCustomer(found)
+      }
+    } catch { setError('Inbox could not be loaded.') }
+  }, [selected])
+
   useEffect(() => {
-    let active = true
-    const load = async () => {
-      try {
-        const r = await api.get('/admin/customers/conversations/inbox')
-        if (active) { setConversations(r.data.conversations || []); setError('') }
-      } catch { if (active) setError('Inbox could not be loaded.') }
-    }
     load()
-    const t = setInterval(load, 5000)
-    return () => { active = false; clearInterval(t) }
-  }, [])
+    const t = setInterval(load, 6000)
+    return () => clearInterval(t)
+  }, [load])
+
+  useRealtimeEvent('notification:new', load)
+  useRealtimeEvent('window:focused', load)
 
   const totalUnread = conversations.reduce((s, c) => s + Number(c.unread_count || 0), 0)
 
@@ -193,8 +216,9 @@ export default function CustomerMessages() {
           {filtered.map(c => {
             const isActive = selected === c.customer_id
             const unread   = Number(c.unread_count || 0)
+            const isClosed = c.customer_status === 'deleted' || (c.customer_name || '').toLowerCase().includes('deleted')
             return (
-              <button key={c.customer_id} onClick={() => { setSelected(c.customer_id); setSelectedName(c.customer_name) }}
+              <button key={c.customer_id} onClick={() => { setSelected(c.customer_id); setSelectedName(c.customer_name); setSelectedCustomer(c) }}
                 style={{ width: '100%', padding: '14px 16px', border: 'none', borderBottom: '1px solid #f8fafc',
                   background: isActive ? '#eff6ff' : '#fff', cursor: 'pointer', textAlign: 'left',
                   borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent', transition: 'all .12s' }}>
@@ -202,10 +226,17 @@ export default function CustomerMessages() {
                   <Avatar name={c.customer_name} size={38} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: unread > 0 ? 700 : 500, fontSize: 13, color: '#0f172a' }}>
-                        {c.customer_name || 'Unknown Customer'}
-                      </span>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{timeSince(c.last_message_at)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                        <span style={{ fontWeight: unread > 0 ? 700 : 500, fontSize: 13, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.customer_name || 'Unknown Customer'}
+                        </span>
+                        {isClosed && (
+                          <span style={{ fontSize: 9, background: '#fee2e2', color: '#dc2626', padding: '1px 5px', borderRadius: 4, fontWeight: 700, flexShrink: 0 }}>
+                            Closed
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{timeSince(c.last_message_at)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 3 }}>
                       <span style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>
@@ -235,19 +266,38 @@ export default function CustomerMessages() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Avatar name={selectedName} size={40} />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{selectedName}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{selectedName}</span>
+                    {(selectedCustomer?.customer_status === 'deleted' || selectedName === 'Deleted Customer') && (
+                      <span style={{ fontSize: 10, background: '#fee2e2', color: '#dc2626', padding: '1px 7px', borderRadius: 4, fontWeight: 700 }}>
+                        Account Closed
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: '#94a3b8' }}>Live support conversation · Auto-refreshing</div>
                 </div>
               </div>
-              <Link to={`/customers/${selected}`}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px',
-                  fontSize: 12, fontWeight: 600, color: '#475569', textDecoration: 'none' }}>
-                Open Profile →
-              </Link>
+              {selectedCustomer?.customer_status !== 'deleted' && selectedName !== 'Deleted Customer' ? (
+                <Link to={`/customers/${selected}`}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px',
+                    fontSize: 12, fontWeight: 600, color: '#475569', textDecoration: 'none' }}>
+                  Open Profile →
+                </Link>
+              ) : (
+                <span style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 12px',
+                  fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>
+                  Archived Profile
+                </span>
+              )}
             </div>
             {/* Chat body */}
             <div style={{ flex: 1, padding: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <CustomerChat key={selected} customerId={selected} />
+              <CustomerChat
+                key={selected}
+                customerId={selected}
+                customerStatus={selectedCustomer?.customer_status}
+                customerName={selectedName}
+              />
             </div>
           </>
         ) : (
