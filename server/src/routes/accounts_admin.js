@@ -856,12 +856,14 @@ router.post("/commissions/generate", requireRole("superadmin", "manager"), async
     for (const ds of driverStats.rows) {
       const netPayout = parseFloat(ds.base_amount);
       if (parseInt(ds.deliveries) > 0 || netPayout > 0) {
+        const tripsCount = parseInt(ds.deliveries) || 0;
+        const commPerDrop = tripsCount > 0 ? (netPayout / tripsCount) : 700;
         await client.query(
           `INSERT INTO driver_commissions
-             (driver_id, period_from, period_to, deliveries, base_amount, bonus, deductions, net_payout, status, created_by, created_at)
-           VALUES ($1,$2,$3,$4,$5,0,0,$6,'pending',$7,NOW())
+             (driver_id, period_from, period_to, week_start, week_end, deliveries, trips, base_amount, bonus, deductions, net_payout, total_earned, unpaid_balance, commission_per_delivery, status, created_by, created_at)
+           VALUES ($1,$2,$3,COALESCE($2, DATE_TRUNC('week', NOW())),COALESCE($3, DATE_TRUNC('week', NOW()) + INTERVAL '6 days 23 hours 59 minutes'),$4,$4,$5,0,0,$6,$6,$6,$7,'pending',$8,NOW())
            ON CONFLICT DO NOTHING`,
-          [ds.driver_id, period_from, period_to, parseInt(ds.deliveries), parseFloat(ds.base_amount), netPayout, req.user.id]
+          [ds.driver_id, period_from, period_to, tripsCount, parseFloat(ds.base_amount), netPayout, commPerDrop, req.user.id]
         );
         generated++;
       }
