@@ -1383,7 +1383,15 @@ router.patch(
         );
       } else {
         await client.query(
-          "UPDATE orders SET status=$1, tracking_status=$1, invoice_printed = CASE WHEN $1 = 'processing' THEN true ELSE invoice_printed END, updated_at=NOW() WHERE id=$2",
+          `UPDATE orders 
+           SET status=$1, tracking_status=$1, 
+               payment_status = CASE 
+                 WHEN $1 = 'delivered' AND LOWER(COALESCE(payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery') THEN 'paid' 
+                 ELSE payment_status 
+               END,
+               invoice_printed = CASE WHEN $1 = 'processing' THEN true ELSE invoice_printed END, 
+               updated_at=NOW() 
+           WHERE id=$2`,
           [nextStatus, resolvedId],
         );
       }
@@ -1458,6 +1466,15 @@ router.patch(
                 user_id: req.user.id,
               });
             }
+          }
+
+          if (['cod', 'cash', 'cash_on_delivery', 'payondelivery'].includes(String(ord.payment_method || '').toLowerCase())) {
+            await client.query(
+              `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+               VALUES ($1, 'sales', 'online_order', 'Cash on Delivery', $2, $3, 'cash', $4, 'completed', CURRENT_DATE, $5)
+               ON CONFLICT (reference) DO NOTHING`,
+              [`INC-COD-${resolvedId}`, `Cash collected on delivery for Order #${ord.order_ref || resolvedId}`, totalAmt, String(resolvedId), req.user.id]
+            ).catch((e) => console.warn("Income insert warning on COD delivery:", e.message));
           }
         } catch (finErr) {
           console.warn("Order delivery double-entry non-fatal warning:", finErr.message);

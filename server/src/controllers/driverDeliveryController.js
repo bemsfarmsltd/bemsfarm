@@ -958,6 +958,10 @@ const updateDeliveryStatus = async (req, res, next) => {
       SET 
         status = $1::varchar,
         tracking_status = $2::varchar,
+        payment_status = CASE 
+          WHEN $1::varchar = 'delivered' AND LOWER(COALESCE(payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery') THEN 'paid' 
+          ELSE payment_status 
+        END,
         driver_confirmed = CASE WHEN $1::varchar = 'delivered' THEN true ELSE driver_confirmed END,
         driver_confirmed_at = CASE WHEN $1::varchar = 'delivered' THEN COALESCE(driver_confirmed_at, NOW()) ELSE driver_confirmed_at END,
         driver_arrived_at = CASE WHEN $1::varchar = 'arrived' OR $2::varchar = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
@@ -971,6 +975,25 @@ const updateDeliveryStatus = async (req, res, next) => {
       `,
       [orderStatus, trackingStatus, finalProofPhoto, finalProofPhotos, finalItemProofs, finalProofNote, actualOrderId]
     );
+
+    if (deliveryStatus === "delivered") {
+      try {
+        const ordRes = await client.query("SELECT total, payment_method, order_ref FROM orders WHERE id = $1", [actualOrderId]);
+        const ord = ordRes.rows[0];
+        if (ord && ['cod', 'cash', 'cash_on_delivery', 'payondelivery'].includes(String(ord.payment_method || '').toLowerCase())) {
+          const sysUser = await client.query("SELECT id FROM users ORDER BY (CASE WHEN role='superadmin' THEN 1 WHEN role='manager' THEN 2 WHEN role='admin' THEN 3 ELSE 4 END) LIMIT 1");
+          const adminId = sysUser.rows[0]?.id || 1;
+          await client.query(
+            `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+             VALUES ($1, 'sales', 'online_order', 'Cash on Delivery', $2, $3, 'cash', $4, 'completed', CURRENT_DATE, $5)
+             ON CONFLICT (reference) DO NOTHING`,
+            [`INC-COD-${actualOrderId}`, `Cash collected on delivery by driver for Order #${ord.order_ref || actualOrderId}`, ord.total, String(actualOrderId), adminId]
+          );
+        }
+      } catch (incErr) {
+        console.warn("COD income recording non-fatal notice:", incErr.message);
+      }
+    }
 
     // Sync delivery_assignments table
     await client.query(
