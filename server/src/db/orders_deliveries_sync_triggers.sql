@@ -139,8 +139,9 @@ BEGIN
       target_order_status := 'delivery_attempted';
       target_tracking_status := 'failed_attempt';
     WHEN 'cancelled' THEN
-      target_order_status := 'cancelled';
-      target_tracking_status := 'cancelled';
+      -- A cancelled delivery attempt (driver re-assignment, courier timeout) must NEVER cancel the order itself.
+      target_order_status := NULL;
+      target_tracking_status := NULL;
     ELSE
       target_order_status := NULL;
       target_tracking_status := NULL;
@@ -164,6 +165,14 @@ BEGIN
            OR tracking_status IS DISTINCT FROM target_tracking_status
            OR delivery_status IS DISTINCT FROM NEW.status
            OR driver_id IS DISTINCT FROM NEW.driver_id);
+  ELSE
+    UPDATE orders
+    SET
+      delivery_status = NEW.status,
+      driver_id = NEW.driver_id,
+      updated_at = NOW()
+    WHERE id = NEW.order_id
+      AND (delivery_status IS DISTINCT FROM NEW.status OR driver_id IS DISTINCT FROM NEW.driver_id);
   END IF;
 
   -- B. Keep driver availability & status strictly synchronized with actual delivery state

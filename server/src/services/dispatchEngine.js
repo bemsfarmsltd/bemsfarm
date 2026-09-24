@@ -495,11 +495,11 @@ async function processUnresponsiveAssignments(
            WHERE id = $1`,
           [item.order_id]
         );
-        // Clear driver from delivery record and cancel active delivery so it does not linger in active deliveries
+        // Clear driver from delivery record so it waits for next courier assignment
         await pool.query(
           `UPDATE deliveries
            SET driver_id = NULL,
-               status = 'cancelled',
+               status = 'awaiting_pickup',
                updated_at = NOW()
            WHERE order_id = $1 OR id = $2`,
           [item.order_id, item.delivery_id || -1]
