@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import PremiumModal from '../../components/ui/PremiumModal'
-import CartonBreakdownModal from '../../components/inventory/CartonBreakdownModal'
 import ProductSelect from '../../components/ui/ProductSelect'
 
 const REASONS = [
@@ -18,7 +17,6 @@ const REASONS = [
 ]
 
 export default function StockAdjustment() {
-  const location = useLocation()
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState([])
@@ -34,14 +32,6 @@ export default function StockAdjustment() {
 
   // Adjustment Modal State
   const [modalOpen, setModalOpen] = useState(false)
-  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false)
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (params.get('action') === 'debulk') {
-      setBreakdownModalOpen(true)
-    }
-  }, [location.search])
   const [submitting, setSubmitting] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -301,12 +291,6 @@ export default function StockAdjustment() {
           </div>
           <button
             type="button"
-            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1 shadow-sm text-dark fw-medium"
-            onClick={() => setBreakdownModalOpen(true)}>
-            <i className="ri-inbox-unarchive-line text-warning"></i> Carton Breakdown / De-bulk
-          </button>
-          <button
-            type="button"
             className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
             onClick={() => openAdjustmentModal()}>
             <i className="ri-scales-3-line"></i> + Create Stock Adjustment
@@ -523,13 +507,6 @@ export default function StockAdjustment() {
           </div>
         </form>
       </PremiumModal>
-
-      {/* Carton Breakdown / De-bulking Studio Modal */}
-      <CartonBreakdownModal
-        isOpen={breakdownModalOpen}
-        onClose={() => setBreakdownModalOpen(false)}
-        onSuccess={fetchMovements}
-      />
     </div>
   )
 }

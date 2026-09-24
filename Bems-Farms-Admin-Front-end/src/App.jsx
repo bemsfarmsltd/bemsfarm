@@ -47,6 +47,7 @@ import StockAlerts     from './pages/inventory/StockAlerts'
 import StockValuation  from './pages/inventory/StockValuation'
 import LostItems       from './pages/inventory/LostItems'
 import PurchaseScheduleCalendar from './pages/inventory/PurchaseScheduleCalendar'
+import Debulk from './pages/inventory/Debulk'
 
 // Orders
 import OrdersList  from './pages/orders/OrdersList'
@@ -175,7 +176,7 @@ function App() {
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
                 <Route path="/inventory/stock-out"  element={<StockOut />} />
                 <Route path="/inventory/adjustment" element={<StockAdjustment />} />
-                <Route path="/inventory/debulk"     element={<Navigate to="/inventory/adjustment?action=debulk" replace />} />
+                <Route path="/inventory/debulk"     element={<Debulk />} />
                 <Route path="/inventory/transfer"   element={<StockTransfer />} />
                 <Route path="/inventory/batches"    element={<BatchManagement />} />
                 <Route path="/inventory/warehouses" element={<Warehouses />} />

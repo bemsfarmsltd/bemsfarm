@@ -718,13 +718,13 @@ export default function Sidebar() {
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/adjustment" end className={({ isActive }) => `dual-sub-link ${isActive && !location.search.includes('debulk') ? 'active' : ''}`}>
+                  <NavLink to="/inventory/adjustment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Adjustments</span>
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/adjustment?action=debulk" className={() => `dual-sub-link ${location.search.includes('action=debulk') ? 'active' : ''}`}>
-                    <span>Debulk / Unbundle</span>
+                  <NavLink to="/inventory/debulk" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Debulk &amp; Unbundle</span>
                     <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>De-bulk</span>
                   </NavLink>
                 )}
