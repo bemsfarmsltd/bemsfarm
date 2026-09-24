@@ -132,10 +132,12 @@ const getActiveDeliveries = async (req, res, next) => {
         AND d.status NOT IN ('delivered', 'cancelled')
       ORDER BY 
         CASE 
-          WHEN d.status = 'en_route' THEN 1
-          WHEN d.status = 'awaiting_pickup' THEN 2
-          WHEN d.status = 'assigned' THEN 3
-          ELSE 4
+          WHEN d.status = 'arrived' THEN 1
+          WHEN d.status = 'en_route' THEN 2
+          WHEN d.status = 'picked_up' THEN 3
+          WHEN d.status = 'awaiting_pickup' THEN 4
+          WHEN d.status = 'assigned' THEN 5
+          ELSE 6
         END,
         d.assigned_at ASC
       `,
@@ -750,7 +752,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     }
 
     // Update deliveries table
-    const dbDeliveryStatus = deliveryStatus === "arrived" ? "en_route" : deliveryStatus;
+    const dbDeliveryStatus = deliveryStatus;
     const updateDeliveryQuery = `
       UPDATE deliveries 
       SET 
