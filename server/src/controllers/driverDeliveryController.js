@@ -104,6 +104,14 @@ function formatDelivery(row) {
 const getActiveDeliveries = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
+    const requestedStatus = (req.query.status || req.query.type || "").toLowerCase().trim();
+
+    let statusFilter = "d.status NOT IN ('delivered', 'cancelled')";
+    if (requestedStatus === "assigned" || requestedStatus === "new" || requestedStatus === "available") {
+      statusFilter = "d.status = 'assigned'";
+    } else if (requestedStatus === "active") {
+      statusFilter = "d.status NOT IN ('delivered', 'cancelled', 'assigned')";
+    }
 
     const result = await pool.query(
       `
@@ -166,17 +174,18 @@ const getActiveDeliveries = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE d.driver_id = $1
-        AND d.status NOT IN ('delivered', 'cancelled', 'assigned')
+        AND ${statusFilter}
       ORDER BY 
         CASE 
-          WHEN d.status = 'arrived' THEN 1
-          WHEN d.status = 'en_route' THEN 2
-          WHEN d.status = 'picked_up' THEN 3
-          WHEN d.status = 'awaiting_pickup' THEN 4
-          WHEN d.status = 'accepted' THEN 5
-          ELSE 6
+          WHEN d.status = 'assigned' THEN 1
+          WHEN d.status = 'arrived' THEN 2
+          WHEN d.status = 'en_route' THEN 3
+          WHEN d.status = 'picked_up' THEN 4
+          WHEN d.status = 'awaiting_pickup' THEN 5
+          WHEN d.status = 'accepted' THEN 6
+          ELSE 7
         END,
-        d.assigned_at ASC
+        d.assigned_at DESC
       `,
       [driverId]
     );
