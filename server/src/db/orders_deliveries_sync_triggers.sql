@@ -1,4 +1,4 @@
--- Migration: Comprehensive Database Synchronization Triggers (SSOT)
+-- Migration: Comprehensive Single Source of Truth Synchronization (SSOT)
 -- Date: 2026-09-24
 
 -- 1. Ensure constraint on deliveries supports all lifecycle statuses
@@ -6,7 +6,25 @@ ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_status_check;
 ALTER TABLE deliveries ADD CONSTRAINT deliveries_status_check 
   CHECK (status = ANY (ARRAY['assigned', 'accepted', 'awaiting_pickup', 'picked_up', 'en_route', 'arrived', 'delivery_attempted', 'delivered', 'cancelled']));
 
--- 2. In-row customer & status alignment on orders (BEFORE INSERT OR UPDATE)
+-- 2. Consolidate driver availability columns directly onto drivers
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS is_on_delivery BOOLEAN DEFAULT FALSE;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS last_toggled_at TIMESTAMP DEFAULT NOW();
+
+-- 3. Consolidate delivery columns directly onto orders
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_ref VARCHAR;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_status VARCHAR DEFAULT 'assigned';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS proof_photo TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS proof_photos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS proof_note TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS item_proofs JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS failure_reason TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS eta_minutes INTEGER DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS max_attempts INTEGER DEFAULT 2;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS distance_km NUMERIC DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS driver_commission_amount NUMERIC;
+
+-- 4. In-row customer & status alignment on orders (BEFORE INSERT OR UPDATE)
 CREATE OR REPLACE FUNCTION align_order_fields()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -21,6 +39,11 @@ BEGIN
     END IF;
   ELSIF NEW.customer_id IS NOT NULL AND NEW.user_id IS NULL THEN
     NEW.user_id := NEW.customer_id;
+  END IF;
+
+  -- Ensure delivery_ref is set
+  IF NEW.delivery_ref IS NULL AND NEW.id IS NOT NULL THEN
+    NEW.delivery_ref := 'DEL-' || NEW.id;
   END IF;
 
   -- B. Keep orders.status and orders.tracking_status strictly aligned
@@ -64,7 +87,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_align_order_status_columns ON orders;
 DROP TRIGGER IF EXISTS trg_align_order_fields ON orders;
 CREATE TRIGGER trg_align_order_fields
   BEFORE INSERT OR UPDATE OF status, tracking_status, user_id, customer_id
@@ -72,7 +94,44 @@ CREATE TRIGGER trg_align_order_fields
   FOR EACH ROW
   EXECUTE FUNCTION align_order_fields();
 
--- 3. Cross-table synchronization: deliveries -> orders & driver availability (AFTER INSERT OR UPDATE)
+-- 5. Auto-create delivery row on orders insert (AFTER INSERT)
+CREATE OR REPLACE FUNCTION auto_create_delivery_for_order()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM deliveries WHERE order_id = NEW.id) THEN
+    INSERT INTO deliveries (
+      delivery_ref,
+      order_id,
+      driver_id,
+      status,
+      delivery_address,
+      eta_minutes,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      COALESCE(NEW.delivery_ref, 'DEL-' || NEW.id),
+      NEW.id,
+      NEW.driver_id,
+      COALESCE(NEW.delivery_status, 'assigned'),
+      COALESCE(NEW.address, 'Customer Delivery Address'),
+      COALESCE(NEW.eta_minutes, 0),
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (delivery_ref) DO NOTHING;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_auto_create_delivery_for_order ON orders;
+CREATE TRIGGER trg_auto_create_delivery_for_order
+  AFTER INSERT ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION auto_create_delivery_for_order();
+
+-- 6. Cross-table synchronization: deliveries -> orders & driver availability (AFTER INSERT OR UPDATE)
 CREATE OR REPLACE FUNCTION sync_deliveries_to_orders_and_drivers()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -124,14 +183,18 @@ BEGIN
     SET 
       status = target_order_status,
       tracking_status = target_tracking_status,
+      delivery_status = NEW.status,
       driver_id = COALESCE(NEW.driver_id, orders.driver_id),
       driver_picked_up = CASE WHEN NEW.status IN ('picked_up', 'en_route', 'arrived', 'delivered') THEN true ELSE orders.driver_picked_up END,
       picked_up_at = CASE WHEN NEW.status IN ('picked_up', 'en_route', 'arrived', 'delivered') THEN COALESCE(NEW.picked_up_at, orders.picked_up_at, NOW()) ELSE orders.picked_up_at END,
       delivered_at = CASE WHEN NEW.status = 'delivered' THEN COALESCE(NEW.delivered_at, orders.delivered_at, NOW()) ELSE orders.delivered_at END,
+      proof_photo = COALESCE(NEW.proof_photo, orders.proof_photo),
+      proof_note = COALESCE(NEW.proof_note, orders.proof_note),
       updated_at = NOW()
     WHERE id = NEW.order_id
       AND (status IS DISTINCT FROM target_order_status 
            OR tracking_status IS DISTINCT FROM target_tracking_status
+           OR delivery_status IS DISTINCT FROM NEW.status
            OR (NEW.driver_id IS NOT NULL AND driver_id IS DISTINCT FROM NEW.driver_id));
   END IF;
 
@@ -139,7 +202,6 @@ BEGIN
   affected_driver_id := COALESCE(NEW.driver_id, (CASE WHEN TG_OP = 'UPDATE' THEN OLD.driver_id ELSE NULL END));
   
   IF affected_driver_id IS NOT NULL THEN
-    -- Check if this driver currently has any active in-transit deliveries
     SELECT EXISTS (
       SELECT 1 FROM deliveries
       WHERE driver_id = affected_driver_id
@@ -147,23 +209,21 @@ BEGIN
     ) INTO has_active_deliveries;
 
     IF has_active_deliveries THEN
-      -- Mark driver as actively on delivery
       UPDATE driver_availability
       SET is_on_delivery = true, last_toggled_at = NOW()
       WHERE driver_id = affected_driver_id AND is_on_delivery IS DISTINCT FROM true;
 
       UPDATE drivers
-      SET status = 'on_delivery', updated_at = NOW()
-      WHERE id = affected_driver_id AND status NOT IN ('on_delivery', 'suspended');
+      SET is_on_delivery = true, status = 'on_delivery', updated_at = NOW()
+      WHERE id = affected_driver_id AND (status NOT IN ('on_delivery', 'suspended') OR is_on_delivery IS DISTINCT FROM true);
     ELSE
-      -- Free driver from on_delivery state
       UPDATE driver_availability
       SET is_on_delivery = false, last_toggled_at = NOW()
       WHERE driver_id = affected_driver_id AND is_on_delivery IS DISTINCT FROM false;
 
       UPDATE drivers
-      SET status = 'active', updated_at = NOW()
-      WHERE id = affected_driver_id AND status = 'on_delivery';
+      SET is_on_delivery = false, status = 'active', updated_at = NOW()
+      WHERE id = affected_driver_id AND (status = 'on_delivery' OR is_on_delivery IS DISTINCT FROM false);
     END IF;
   END IF;
 
@@ -179,7 +239,7 @@ CREATE TRIGGER trg_sync_deliveries_to_orders_and_drivers
   FOR EACH ROW
   EXECUTE FUNCTION sync_deliveries_to_orders_and_drivers();
 
--- 4. Cross-table synchronization: orders -> deliveries (AFTER UPDATE)
+-- 7. Cross-table synchronization: orders -> deliveries (AFTER UPDATE)
 CREATE OR REPLACE FUNCTION propagate_order_status_to_deliveries()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -208,8 +268,7 @@ CREATE TRIGGER trg_propagate_order_status_to_deliveries
   FOR EACH ROW
   EXECUTE FUNCTION propagate_order_status_to_deliveries();
 
--- 5. Products stock parity trigger (BEFORE INSERT OR UPDATE ON products)
--- Keeps stock and stock_quantity strictly identical
+-- 8. Products stock parity trigger (BEFORE INSERT OR UPDATE ON products)
 CREATE OR REPLACE FUNCTION align_product_stock_columns()
 RETURNS TRIGGER AS $$
 BEGIN
