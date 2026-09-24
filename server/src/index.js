@@ -71,20 +71,38 @@ app.use('/api/audit', require('./routes/audit'));
     const path = require('path');
     const pool = require('./db/pool');
     
-    // Audit v2 migration
+    // Audit v2 migration (run only if schema is not yet up to date)
     try {
-      const sqlAudit = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
-      await pool.query(sqlAudit);
-      console.log('✅ God Eye Audit v2 schema ready.');
+      const colCheck = await pool.query(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'system_audit_events' AND column_name = 'external_id'
+        LIMIT 1
+      `);
+      if (colCheck.rows.length === 0) {
+        const sqlAudit = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
+        await pool.query(sqlAudit);
+        console.log('✅ God Eye Audit v2 schema ready.');
+      } else {
+        console.log('✅ God Eye Audit v2 schema verified.');
+      }
     } catch (e) {
       console.warn('[god-eye] Audit v2 migration notice:', e.message?.slice(0,120));
     }
 
-    // Driver tables migration
+    // Driver tables migration (run only if tables not yet created)
     try {
-      const sqlDriver = fs.readFileSync(path.join(__dirname, 'db/driver_tables_migration.sql'), 'utf8');
-      await pool.query(sqlDriver);
-      console.log('✅ Driver App schema ready.');
+      const driverCheck = await pool.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'driver_wallet_ledger'
+        LIMIT 1
+      `);
+      if (driverCheck.rows.length === 0) {
+        const sqlDriver = fs.readFileSync(path.join(__dirname, 'db/driver_tables_migration.sql'), 'utf8');
+        await pool.query(sqlDriver);
+        console.log('✅ Driver App schema ready.');
+      } else {
+        console.log('✅ Driver App schema verified.');
+      }
     } catch (e) {
       console.warn('[driver-app] Driver migration notice:', e.message?.slice(0,120));
     }

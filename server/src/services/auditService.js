@@ -446,7 +446,7 @@ async function recordDeploymentEvent() {
 
     try {
       const { execSync } = require('child_process');
-      const gitOut = execSync('git log -1 --pretty=format:"%H|%s|%an"', { timeout: 3000 }).toString().trim();
+      const gitOut = execSync('git log -1 --pretty=format:"%H|%s|%an"', { timeout: 3000, stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim();
       if (gitOut && gitOut.includes('|')) {
         const parts = gitOut.split('|');
         commitHash = parts[0] || commitHash;
