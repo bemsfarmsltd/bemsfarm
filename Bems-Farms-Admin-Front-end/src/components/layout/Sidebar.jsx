@@ -438,17 +438,6 @@ export default function Sidebar() {
               <span className="rail-label">Dashboards</span>
             </button>
 
-            {/* 2. Point of Sale (POS) */}
-            {showPOS && (
-              <Link
-                to="/pos"
-                className={`rail-btn ${activeTab === 'pos' ? 'active' : ''}`}
-                title="Point of Sale (POS Terminal)"
-              >
-                <i className="ri-shopping-cart-2-line rail-icon text-success"></i>
-                <span className="rail-label">Point of Sale</span>
-              </Link>
-            )}
 
             {/* 3. Inventory (BEFORE Products) */}
             {showInventory && (
