@@ -274,11 +274,12 @@ export default function TrackOrderPage() {
   }, []);
 
   const status = order?.tracking_status || order?.status || "pending";
-  const activeIndex = STATUS_INDEX[status] ?? 0;
+  const isDelivered = status === "delivered" || status === "completed" || order?.status === "delivered" || order?.delivery_status === "delivered";
+  const activeIndex = isDelivered ? 4 : (STATUS_INDEX[status] ?? 0);
   const [statusTitle, statusText] = STATUS_COPY[status] || ["Order Status Update", "Your order status is being updated."];
   const isCancelled = status === "cancelled" || order?.status === "cancelled";
   const hasDriverLocation = Number.isFinite(Number(order?.driver_lat)) && Number.isFinite(Number(order?.driver_lng));
-  const showDriverMap = hasDriverLocation && activeIndex >= 2 && !isCancelled;
+  const showDriverMap = hasDriverLocation && activeIndex >= 2 && !isCancelled && !isDelivered;
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -419,9 +420,14 @@ export default function TrackOrderPage() {
                       <span className="text-[11px] font-mono font-bold uppercase px-2.5 py-0.5 rounded bg-white/15 border border-white/20">
                         {order.preview ? "Sample Live Preview" : `Order #${order.id}`}
                       </span>
-                      {order.eta_minutes && (
+                      {order.eta_minutes && !isDelivered && (
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-400 text-emerald-950">
                           ETA: ~{order.eta_minutes} mins
+                        </span>
+                      )}
+                      {isDelivered && (
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                          <span>✓</span> Delivered
                         </span>
                       )}
                     </div>
@@ -445,15 +451,15 @@ export default function TrackOrderPage() {
                   <div className="px-6 py-6 sm:px-8 bg-gradient-to-b from-white to-slate-50 border-b border-slate-100">
                     <div className="grid grid-cols-5 gap-2 relative">
                       {STEPS.map((step, index) => {
-                        const isDone = index < activeIndex;
-                        const isCurrent = index === activeIndex;
+                        const isDone = isDelivered ? true : index < activeIndex;
+                        const isCurrent = !isDelivered && index === activeIndex;
                         return (
                           <div key={step.key} className="relative flex flex-col items-center text-center">
                             {/* Connecting Line */}
                             {index < STEPS.length - 1 && (
                               <div
                                 className={`hidden sm:block absolute top-4 left-[50%] right-[-50%] h-1 z-0 rounded-full transition-colors ${
-                                  index < activeIndex ? "bg-emerald-600" : "bg-slate-200"
+                                  (isDelivered || index < activeIndex) ? "bg-emerald-600" : "bg-slate-200"
                                 }`}
                               />
                             )}
@@ -476,7 +482,7 @@ export default function TrackOrderPage() {
                               )}
                             </div>
 
-                            <p className={`mt-2 text-xs font-bold ${isCurrent ? "text-emerald-950" : isDone ? "text-slate-800" : "text-slate-400"}`}>
+                            <p className={`mt-2 text-xs font-bold ${isDone ? "text-emerald-950 font-extrabold" : isCurrent ? "text-emerald-950" : "text-slate-400"}`}>
                               {step.label}
                             </p>
                             <p className="text-[10px] text-slate-500 hidden md:block">
@@ -555,7 +561,31 @@ export default function TrackOrderPage() {
                       </div>
 
                       {/* Customer Handover & Confirmation Box */}
-                      {(status === "driver_arrived" || status === "arrived" || Boolean(order.arrived_at)) && (
+                      {isDelivered ? (
+                        <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                          <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
+                            <span className="text-base">🎉</span>
+                            <span>Delivery Completed Successfully</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
+                            Your package was safely delivered to your doorstep. Thank you for choosing Bems Farms!
+                          </p>
+                          {order.proof_photo && (
+                            <div className="mt-2.5 pt-2.5 border-t border-emerald-200/60">
+                              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                                Proof of Delivery:
+                              </span>
+                              <a href={order.proof_photo} target="_blank" rel="noreferrer" className="inline-block group">
+                                <img
+                                  src={order.proof_photo}
+                                  alt="Proof of Delivery"
+                                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-emerald-300 shadow-xs group-hover:scale-105 transition"
+                                />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ) : (status === "driver_arrived" || status === "arrived" || Boolean(order.arrived_at)) && (
                         <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
                           <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
                             <span className="text-base animate-bounce">🚚</span>
@@ -594,7 +624,20 @@ export default function TrackOrderPage() {
 
                   {/* Driver Map Preview */}
                   <div className="md:col-span-7 p-3 bg-white flex items-center">
-                    {showDriverMap ? (
+                    {isDelivered ? (
+                      <div className="h-64 w-full rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-100/40 flex flex-col items-center justify-center text-center p-6 border border-emerald-200/80 shadow-xs">
+                        <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-bold shadow-md mb-2.5">
+                          ✓
+                        </div>
+                        <p className="text-sm font-extrabold text-emerald-950">Delivered to Destination</p>
+                        <p className="text-xs text-emerald-700 mt-1 max-w-xs leading-relaxed">
+                          Doorstep delivery has been completed successfully and received in full.
+                        </p>
+                        <div className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold border border-emerald-200">
+                          <span>📍</span> <span>Delivery Confirmed</span>
+                        </div>
+                      </div>
+                    ) : showDriverMap ? (
                       <DeliveryMap latitude={order.driver_lat} longitude={order.driver_lng} />
                     ) : (
                       <div className="h-64 w-full rounded-2xl bg-slate-100 flex flex-col items-center justify-center text-center p-6 border border-slate-200">
