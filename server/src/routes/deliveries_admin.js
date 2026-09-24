@@ -30,7 +30,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
-    const where = ["d.status NOT IN ('delivered','cancelled')"];
+    const where = ["d.status NOT IN ('delivered','cancelled')", "d.driver_id IS NOT NULL"];
 
     if (status) {
       params.push(status);
@@ -98,10 +98,11 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       SELECT
         COUNT(*)                                              AS total,
         COUNT(*) FILTER (WHERE status = 'out_for_delivery')  AS en_route,
-        COUNT(*) FILTER (WHERE status = 'assigned')          AS awaiting,
+        COUNT(*) FILTER (WHERE status IN ('assigned', 'awaiting_pickup')) AS awaiting,
         COUNT(*) FILTER (WHERE status = 'delivery_attempted') AS attempted
       FROM deliveries
       WHERE status NOT IN ('delivered','cancelled')
+        AND driver_id IS NOT NULL
     `);
 
     res.json({ deliveries: rows.rows, stats: stats.rows[0] });
