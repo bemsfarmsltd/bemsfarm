@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import PremiumModal from '../../components/ui/PremiumModal'
@@ -18,6 +18,7 @@ const REASONS = [
 ]
 
 export default function StockAdjustment() {
+  const location = useLocation()
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState([])
@@ -34,6 +35,13 @@ export default function StockAdjustment() {
   // Adjustment Modal State
   const [modalOpen, setModalOpen] = useState(false)
   const [breakdownModalOpen, setBreakdownModalOpen] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('action') === 'debulk') {
+      setBreakdownModalOpen(true)
+    }
+  }, [location.search])
   const [submitting, setSubmitting] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)

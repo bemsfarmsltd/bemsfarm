@@ -175,6 +175,7 @@ function App() {
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
                 <Route path="/inventory/stock-out"  element={<StockOut />} />
                 <Route path="/inventory/adjustment" element={<StockAdjustment />} />
+                <Route path="/inventory/debulk"     element={<Navigate to="/inventory/adjustment?action=debulk" replace />} />
                 <Route path="/inventory/transfer"   element={<StockTransfer />} />
                 <Route path="/inventory/batches"    element={<BatchManagement />} />
                 <Route path="/inventory/warehouses" element={<Warehouses />} />
