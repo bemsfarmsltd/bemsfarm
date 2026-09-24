@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import api from '../../lib/api'
 
 const STATUS_CFG = {
-  active:      { label: 'Active',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'  },
+  active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
+  no_signal:   { label: 'No Signal / Data Off', color: '#d97706', bg: '#fef3c7', icon: 'ri-wifi-off-line' },
   on_delivery: { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
   off_duty:    { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
   pending:     { label: 'Pending Review', color: '#d97706', bg: '#fef3c7', icon: 'ri-time-line'          },
@@ -243,6 +244,7 @@ export default function DriversManagement() {
     () => ({
       total: drivers.length,
       active: drivers.filter((d) => d.status === 'active').length,
+      noSignal: drivers.filter((d) => d.status === 'no_signal').length,
       onDelivery: drivers.filter((d) => d.status === 'on_delivery').length,
       offDuty: drivers.filter((d) => d.status === 'off_duty').length,
       suspended: drivers.filter((d) => d.status === 'suspended').length,
@@ -519,28 +521,28 @@ export default function DriversManagement() {
                 glowClass: 'bg-card-glow-blue',
               },
               {
-                label: 'Awaiting Verification',
-                value: stats.pendingCompliance,
-                color: '#d97706',
-                icon: 'ri-file-shield-line',
-                filter: 'onboarding_review',
-                subLeft: 'Self-Service Queue',
-                subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
-                badgeBg: stats.pendingCompliance > 0 ? '#FEF3C7' : '#DCFCE7',
-                badgeColor: stats.pendingCompliance > 0 ? '#D97706' : '#16A34A',
-                glowClass: 'bg-card-glow-amber',
+                label: 'Online & Ready',
+                value: stats.active,
+                color: '#16a34a',
+                icon: 'ri-signal-tower-fill',
+                filter: 'active',
+                subLeft: 'Live Heartbeat (<5m)',
+                subRight: 'Auto-Dispatch On',
+                badgeBg: '#DCFCE7',
+                badgeColor: '#16a34a',
+                glowClass: 'bg-card-glow-green',
               },
               {
-                label: 'Active Standby',
-                value: stats.active,
-                color: '#10b981',
-                icon: 'ri-checkbox-circle-line',
-                filter: 'active',
-                subLeft: 'Online & Available',
-                subRight: 'Ready for Orders',
-                badgeBg: '#ECFDF5',
-                badgeColor: '#059669',
-                glowClass: 'bg-card-glow-green',
+                label: 'No Signal / Data Off',
+                value: stats.noSignal,
+                color: '#d97706',
+                icon: 'ri-wifi-off-line',
+                filter: 'no_signal',
+                subLeft: 'App Stale / Offline',
+                subRight: stats.noSignal > 0 ? 'Ignored by Dispatch' : '0 Disconnected',
+                badgeBg: stats.noSignal > 0 ? '#FEF3C7' : '#F3F4F6',
+                badgeColor: stats.noSignal > 0 ? '#D97706' : '#6B7280',
+                glowClass: 'bg-card-glow-amber',
               },
               {
                 label: 'On Delivery',
@@ -565,15 +567,15 @@ export default function DriversManagement() {
                 glowClass: 'bg-card-glow-blue',
               },
               {
-                label: 'Suspended',
-                value: stats.suspended,
+                label: 'Awaiting Verification',
+                value: stats.pendingCompliance,
                 color: '#ef4444',
-                icon: 'ri-forbid-line',
-                filter: 'suspended',
-                subLeft: 'Restricted Couriers',
-                subRight: stats.suspended > 0 ? 'Action Taken' : '0 Restricted',
-                badgeBg: stats.suspended > 0 ? '#FEE2E2' : '#F3F4F6',
-                badgeColor: stats.suspended > 0 ? '#DC2626' : '#6B7280',
+                icon: 'ri-file-shield-line',
+                filter: 'onboarding_review',
+                subLeft: 'Self-Service Queue',
+                subRight: stats.pendingCompliance > 0 ? 'Review Needed' : 'All Clear',
+                badgeBg: stats.pendingCompliance > 0 ? '#FEE2E2' : '#DCFCE7',
+                badgeColor: stats.pendingCompliance > 0 ? '#DC2626' : '#16A34A',
                 glowClass: 'bg-card-glow-amber',
               },
             ].map((c) => (
@@ -675,10 +677,11 @@ export default function DriversManagement() {
                 {[
                   { key: 'all', label: 'All Drivers' },
                   { key: 'onboarding_review', label: `⚠️ Review Verification (${stats.pendingCompliance})` },
-                  { key: 'active', label: 'Active' },
-                  { key: 'on_delivery', label: 'On Delivery' },
-                  { key: 'off_duty', label: 'Off Duty' },
-                  { key: 'suspended', label: 'Suspended' },
+                  { key: 'active', label: `🟢 Online & Ready (${stats.active})` },
+                  { key: 'no_signal', label: `🟡 No Signal / Data Off (${stats.noSignal})` },
+                  { key: 'on_delivery', label: `🔵 On Delivery (${stats.onDelivery})` },
+                  { key: 'off_duty', label: `Off Duty (${stats.offDuty})` },
+                  { key: 'suspended', label: `Suspended (${stats.suspended})` },
                 ].map((t) => (
                   <button
                     key={t.key}
@@ -845,16 +848,33 @@ export default function DriversManagement() {
 
                           {/* Status */}
                           <td>
-                            <span
-                              className="badge rounded-pill px-2.5 py-1 text-xs fw-bold"
-                              style={{ background: cfg.bg, color: cfg.color }}
-                            >
-                              <i className={`${cfg.icon} me-1`} />
-                              {cfg.label}
-                            </span>
-                            {driver.current_order && (
-                              <div className="text-primary fw-semibold fs-10 mt-1">Order #{driver.current_order}</div>
-                            )}
+                            <div className="d-flex flex-column align-items-start gap-1">
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 text-xs fw-bold d-inline-flex align-items-center gap-1.5"
+                                style={{ background: cfg.bg, color: cfg.color }}
+                              >
+                                {driver.status === 'active' && (
+                                  <span className="spinner-grow spinner-grow-sm text-success" style={{ width: 7, height: 7 }} />
+                                )}
+                                <i className={cfg.icon} />
+                                {cfg.label}
+                              </span>
+                              {driver.status === 'no_signal' && (
+                                <span className="text-muted fs-10 fst-italic">
+                                  {driver.last_telemetry_at
+                                    ? `Last ping: ${new Date(driver.last_telemetry_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                    : 'No recent ping'}
+                                </span>
+                              )}
+                              {driver.status === 'active' && (
+                                <span className="text-success fs-10 fw-medium">
+                                  <i className="ri-check-line me-0.5"></i>GPS Fresh (&lt;5m)
+                                </span>
+                              )}
+                              {driver.current_order && (
+                                <div className="text-primary fw-semibold fs-10 mt-0.5">Order #{driver.current_order}</div>
+                              )}
+                            </div>
                           </td>
 
                           {/* Actions */}
@@ -1608,6 +1628,16 @@ export default function DriversManagement() {
                       >
                         {onbCfg.label}
                       </span>
+                      {selected.status === 'no_signal' && (
+                        <div className="mt-1 text-warning font-monospace" style={{ fontSize: 9 }}>
+                          No ping &gt;5m (Data/GPS Off)
+                        </div>
+                      )}
+                      {selected.status === 'active' && (
+                        <div className="mt-1 text-emerald font-monospace" style={{ fontSize: 9 }}>
+                          Signal live &amp; fresh
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -641,8 +641,18 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
     const where = [];
 
     if (status) {
-      params.push(status);
-      where.push(`dr.status = $${params.length}`);
+      if (status === "no_signal") {
+        where.push(`COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(da.is_on_delivery, false) = false AND (GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes' OR GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) IS NULL)`);
+      } else if (status === "active") {
+        where.push(`dr.status = 'active' AND COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(da.is_on_delivery, false) = false AND GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) >= NOW() - INTERVAL '5 minutes'`);
+      } else if (status === "off_duty") {
+        where.push(`(COALESCE(da.is_available, dr.is_available, false) = false OR dr.status = 'off_duty') AND dr.status NOT IN ('suspended', 'pending')`);
+      } else if (status === "on_delivery") {
+        where.push(`COALESCE(da.is_on_delivery, false) = true`);
+      } else {
+        params.push(status);
+        where.push(`dr.status = $${params.length}`);
+      }
     }
     if (search) {
       params.push(`%${search}%`);
@@ -659,11 +669,20 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         dr.*,
         COALESCE(da.is_available, dr.is_available, false) AS is_available,
         COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+        GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) AS last_telemetry_at,
+        CASE
+          WHEN GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) >= NOW() - INTERVAL '5 minutes' THEN true
+          ELSE false
+        END AS is_telemetry_fresh,
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
           WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
-          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN
+            CASE
+              WHEN GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) >= NOW() - INTERVAL '5 minutes' THEN 'active'
+              ELSE 'no_signal'
+            END
           ELSE 'off_duty'
         END AS status,
         dr.primary_zone_id AS zone_id,
@@ -682,7 +701,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       LEFT JOIN deliveries d ON d.driver_id = dr.id
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       ${whereClause}
-      GROUP BY dr.id, da.is_available, da.is_on_delivery, dz.zone_name
+      GROUP BY dr.id, da.is_available, da.is_on_delivery, da.last_ping_at, da.last_toggled_at, dz.zone_name
       ORDER BY 
         CASE 
           WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification','documents_submitted') THEN 0 
@@ -700,7 +719,28 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         COUNT(*) FILTER (WHERE status = 'suspended')                                                 AS suspended,
         COUNT(*) FILTER (WHERE status = 'pending' OR onboarding_status IN ('pending_verification','documents_submitted')) AS pending_compliance,
         COUNT(*) FILTER (WHERE status = 'active' AND id IN (SELECT driver_id FROM driver_availability WHERE is_on_delivery = true)) AS on_delivery,
-        COUNT(*) FILTER (WHERE status = 'active' AND id IN (SELECT driver_id FROM driver_availability WHERE is_available = true AND is_on_delivery = false)) AS active,
+        COUNT(*) FILTER (
+          WHERE status = 'active' 
+          AND id IN (
+            SELECT da.driver_id 
+            FROM driver_availability da 
+            JOIN drivers d2 ON da.driver_id = d2.id
+            WHERE da.is_available = true 
+              AND da.is_on_delivery = false 
+              AND GREATEST(d2.last_location_at, da.last_ping_at, d2.last_toggled_at, da.last_toggled_at) >= NOW() - INTERVAL '5 minutes'
+          )
+        ) AS active,
+        COUNT(*) FILTER (
+          WHERE status = 'active' 
+          AND id IN (
+            SELECT da.driver_id 
+            FROM driver_availability da 
+            JOIN drivers d2 ON da.driver_id = d2.id
+            WHERE da.is_available = true 
+              AND da.is_on_delivery = false 
+              AND (GREATEST(d2.last_location_at, da.last_ping_at, d2.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes' OR GREATEST(d2.last_location_at, da.last_ping_at, d2.last_toggled_at, da.last_toggled_at) IS NULL)
+          )
+        ) AS no_signal,
         COUNT(*) FILTER (WHERE status = 'active' AND id NOT IN (SELECT driver_id FROM driver_availability WHERE is_available = true)) AS off_duty
       FROM drivers
     `);

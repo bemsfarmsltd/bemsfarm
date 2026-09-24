@@ -153,6 +153,15 @@ async function autoAssignClosestDriver(
       WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
         AND COALESCE(da.is_available, d.is_available, true) = true
         AND COALESCE(da.is_on_delivery, false) = false
+        -- 5-MINUTE TELEMETRY FRESHNESS RULE:
+        -- Driver must have an active GPS ping, heartbeat, or status toggle within the last 5 minutes.
+        -- If their mobile data was turned off or phone died > 5 mins ago, they are automatically bypassed.
+        AND GREATEST(
+          dl.recorded_at,
+          d.last_location_at,
+          da.last_ping_at,
+          COALESCE(d.last_toggled_at, da.last_toggled_at)
+        ) >= NOW() - INTERVAL '5 minutes'
         AND NOT EXISTS (
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
@@ -538,9 +547,58 @@ async function processUnresponsiveAssignments(
 }
 
 /**
+ * Automatically sweeps stale driver availability:
+ * If a driver has is_available = true, but no heartbeat, GPS ping, or toggle in > 15 minutes,
+ * they are automatically transitioned to 'off_duty' so the fleet ledger stays accurate.
+ */
+async function sweepStaleDriverAvailability(staleMinutes = 15) {
+  try {
+    const sweepResult = await pool.query(
+      `
+      UPDATE drivers d
+      SET status = 'off_duty', is_available = false, updated_at = NOW()
+      FROM driver_availability da
+      WHERE d.id = da.driver_id
+        AND d.status = 'active'
+        AND da.is_available = true
+        AND da.is_on_delivery = false
+        AND GREATEST(
+          d.last_location_at,
+          da.last_ping_at,
+          da.last_toggled_at,
+          d.last_toggled_at,
+          (SELECT MAX(recorded_at) FROM driver_locations WHERE driver_id = d.id)
+        ) < NOW() - ($1 || ' minutes')::interval
+      RETURNING d.id, d.name
+      `,
+      [staleMinutes]
+    );
+
+    if (sweepResult.rows.length > 0) {
+      await pool.query(
+        `
+        UPDATE driver_availability da
+        SET is_available = false
+        FROM drivers d
+        WHERE d.id = da.driver_id
+          AND d.status = 'off_duty'
+          AND da.is_available = true
+          AND da.is_on_delivery = false
+        `
+      ).catch(() => {});
+      console.log(`📡 Stale driver telemetry sweep: marked ${sweepResult.rows.length} unreachable driver(s) as off_duty.`);
+    }
+  } catch (err) {
+    console.error("[dispatch-worker] sweepStaleDriverAvailability error:", err.message);
+  }
+}
+
+/**
  * Start the background worker that checks every 30s for timed-out driver assignments (5 mins limit)
+ * and sweeps disconnected/stale drivers every 60s.
  */
 let timeoutWorkerInterval = null;
+let sweepCounter = 0;
 function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5) {
   if (timeoutWorkerInterval) {
     clearInterval(timeoutWorkerInterval);
@@ -551,18 +609,25 @@ function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5
     processUnresponsiveAssignments(timeoutMinutes).catch((e) => {
       console.error("[dispatch-worker] Startup check error:", e.message);
     });
+    sweepStaleDriverAvailability(15).catch(() => {});
   }, 3000);
 
   timeoutWorkerInterval = setInterval(async () => {
     try {
       await processUnresponsiveAssignments(timeoutMinutes);
+      sweepCounter++;
+      // Sweep for stale/disconnected drivers every 2 ticks (~60s)
+      if (sweepCounter >= 2) {
+        sweepCounter = 0;
+        await sweepStaleDriverAvailability(15);
+      }
     } catch (e) {
       console.error("[dispatch-worker] Auto-reassignment tick error:", e.message);
     }
   }, intervalSeconds * 1000);
 
   console.log(
-    `🚚 Auto-dispatch timeout worker active (Checks every ${intervalSeconds}s for ${timeoutMinutes}min unresponsive drivers)`
+    `🚚 Auto-dispatch timeout worker active (Checks every ${intervalSeconds}s for ${timeoutMinutes}min unresponsive drivers, sweeps telemetry every 60s)`
   );
 }
 
@@ -570,6 +635,7 @@ module.exports = {
   calculateDistanceKm,
   autoAssignClosestDriver,
   processUnresponsiveAssignments,
+  sweepStaleDriverAvailability,
   startAutoDispatchTimeoutWorker,
   insertDispatchAlert,
 };

@@ -80,8 +80,9 @@ router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentCo
 // ── 3. Proof of Delivery (POD) Image Upload (accepts 'photo', 'image', 'file', etc.) ──
 router.post("/upload/proof", driverProtect, driverUploadController.upload.any(), driverUploadController.uploadProofPhoto);
 
-// ── 4. Location Telemetry ────────────────────────────────────────────
+// ── 4. Location Telemetry & Heartbeat Ping ────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);
+router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbeat);
 
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);

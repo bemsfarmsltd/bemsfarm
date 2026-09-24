@@ -34,6 +34,19 @@ const updateLocation = async (req, res, next) => {
       ]
     );
 
+    // Update driver telemetry timestamps for active heartbeat
+    pool.query(
+      "UPDATE drivers SET last_location_at = NOW() WHERE id = $1",
+      [driverId]
+    ).catch(() => {});
+
+    pool.query(
+      `INSERT INTO driver_availability (driver_id, is_available, last_ping_at)
+       VALUES ($1, true, NOW())
+       ON CONFLICT (driver_id) DO UPDATE SET last_ping_at = NOW()`,
+      [driverId]
+    ).catch(() => {});
+
     res.status(201).json({
       success: true,
       location: result.rows[0],
@@ -44,6 +57,44 @@ const updateLocation = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/heartbeat ────────────────────────────────────────
+// Lightweight presence ping sent by mobile app every 30-60s while online
+const recordHeartbeat = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { latitude, longitude } = req.body || {};
+
+    if (latitude !== undefined && longitude !== undefined) {
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        await pool.query(
+          "INSERT INTO driver_locations (driver_id, latitude, longitude, recorded_at) VALUES ($1, $2, $3, NOW())",
+          [driverId, lat, lng]
+        ).catch(() => {});
+      }
+    }
+
+    await pool.query(
+      "UPDATE drivers SET last_location_at = NOW() WHERE id = $1",
+      [driverId]
+    ).catch(() => {});
+
+    await pool.query(
+      `INSERT INTO driver_availability (driver_id, is_available, last_ping_at)
+       VALUES ($1, true, NOW())
+       ON CONFLICT (driver_id) DO UPDATE SET last_ping_at = NOW()`,
+      [driverId]
+    ).catch(() => {});
+
+    res.json({ success: true, timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error("Driver recordHeartbeat error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   updateLocation,
+  recordHeartbeat,
 };
