@@ -538,8 +538,8 @@ router.get("/track/:code", async (req, res, next) => {
          created_at,
          delivered_at,
          COALESCE(orders.driver_arrived_at, delivery.arrived_at) AS arrived_at,
-         COALESCE(orders.customer_confirmed, delivery.customer_confirmed, false) AS customer_confirmed,
-         COALESCE(orders.customer_confirmed_at, delivery.customer_confirmed_at) AS customer_confirmed_at,
+         COALESCE(orders.customer_confirmed, false) AS customer_confirmed,
+         orders.customer_confirmed_at,
          COALESCE(orders.driver_confirmed, false) AS driver_confirmed,
          orders.driver_confirmed_at,
          updated_at,
@@ -549,7 +549,7 @@ router.get("/track/:code", async (req, res, next) => {
          location.recorded_at AS location_updated_at
        FROM orders
        LEFT JOIN LATERAL (
-         SELECT d.driver_id, d.eta_minutes, d.arrived_at, d.customer_confirmed, d.customer_confirmed_at
+         SELECT d.driver_id, d.eta_minutes, d.arrived_at
          FROM deliveries d
          WHERE d.order_id = orders.id
          ORDER BY d.created_at DESC
@@ -603,8 +603,8 @@ router.get("/:id", protect, async (req, res, next) => {
          o.created_at,
          COALESCE(delivery.delivered_at, o.updated_at) AS delivered_at,
          COALESCE(o.driver_arrived_at, delivery.arrived_at) AS arrived_at,
-         COALESCE(o.customer_confirmed, delivery.customer_confirmed, false) AS customer_confirmed,
-         COALESCE(o.customer_confirmed_at, delivery.customer_confirmed_at) AS customer_confirmed_at,
+         COALESCE(o.customer_confirmed, false) AS customer_confirmed,
+         o.customer_confirmed_at,
          COALESCE(o.driver_confirmed, false) AS driver_confirmed,
          o.driver_confirmed_at,
          o.updated_at,

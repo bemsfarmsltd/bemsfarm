@@ -400,6 +400,7 @@ export default function OrderDetailPage() {
     );
   }
 
+  const rawStatus = String(order.delivery_status || order.tracking_status || order.status || '').toLowerCase().trim();
   const isCancelled = order.status === 'cancelled' || order.tracking_status === 'cancelled';
   const isCod = ['cod', 'cashondelivery', 'payondelivery', 'cash'].includes(String(order.payment_method || '').toLowerCase().trim().replace(/[\s-_]+/g, ''));
   let effectiveStatus = isCancelled
@@ -799,7 +800,7 @@ export default function OrderDetailPage() {
               {/* ── ACTION BUTTONS CARD ── */}
               <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-slate-200/90 shadow-sm space-y-3">
                 {/* Specification Section 38: Customer Confirm Delivery Received */}
-                {!isDelivered && ["in_transit", "en_route", "out_for_delivery", "arrived", "shipped", "delivery_attempted"].includes(rawStatus) && (
+                {!isDelivered && (["in_transit", "en_route", "out_for_delivery", "arrived", "driver_arrived", "shipped", "delivery_attempted"].includes(rawStatus) || Boolean(order.arrived_at || order.driver_arrived_at)) && (
                   <>
                     {order.customer_confirmed ? (
                       <div className="w-full py-3 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
