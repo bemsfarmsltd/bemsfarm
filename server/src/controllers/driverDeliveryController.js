@@ -19,33 +19,70 @@ function normalizeStatus(status) {
 // Format delivery row to strictly match the mobile app's Dart/Flutter types
 function formatDelivery(row) {
   if (!row) return null;
-  const rawOrderId = row.order_id || '';
-  const orderRef = row.order_ref || String(rawOrderId);
+  const rawOrderId = String(row.order_id || '');
+  const orderRef = String(row.order_ref || rawOrderId || '');
   const deliveryId = parseInt(row.delivery_id || row.id, 10) || 0;
+  const deliveryRef = String(row.delivery_ref || ('DEL-' + deliveryId));
+
   const items = Array.isArray(row.items) ? row.items.map(it => ({
-    ...it,
     id: parseInt(it.id, 10) || 0,
     product_id: parseInt(it.product_id, 10) || 0,
+    product_name: String(it.product_name || 'Farm Produce Item'),
     quantity: parseInt(it.quantity, 10) || 1,
+    unit: String(it.unit || 'item'),
     unit_price: it.unit_price !== null && it.unit_price !== undefined ? parseFloat(it.unit_price) : 0.0,
     total_price: it.total_price !== null && it.total_price !== undefined ? parseFloat(it.total_price) : 0.0,
+    image_url: String(it.image_url || ''),
   })) : [];
 
-  const customerLat = row.customer_lat !== null && row.customer_lat !== undefined ? parseFloat(row.customer_lat) : null;
-  const customerLng = row.customer_lng !== null && row.customer_lng !== undefined ? parseFloat(row.customer_lng) : null;
+  const customerLat = row.customer_lat !== null && row.customer_lat !== undefined ? parseFloat(row.customer_lat) : 0.0;
+  const customerLng = row.customer_lng !== null && row.customer_lng !== undefined ? parseFloat(row.customer_lng) : 0.0;
   const etaMinutes = row.eta_minutes !== null && row.eta_minutes !== undefined ? parseInt(row.eta_minutes, 10) : 0;
+  const assignedAt = row.assigned_at 
+    ? new Date(row.assigned_at).toISOString() 
+    : (row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString());
 
   return {
     ...row,
     id: deliveryId,
     delivery_id: deliveryId,
     deliveryId: deliveryId,
+    delivery_ref: deliveryRef,
+    deliveryRef: deliveryRef,
+    delivery_status: String(row.delivery_status || row.status || 'assigned'),
+    status: String(row.status || row.delivery_status || 'assigned'),
     order_id: rawOrderId,
     orderId: rawOrderId,
     order_ref: orderRef,
     orderRef: orderRef,
     order_number: orderRef || rawOrderId,
     orderNumber: orderRef || rawOrderId,
+    order_status: String(row.order_status || 'awaiting_driver_confirmation'),
+    tracking_status: String(row.tracking_status || 'awaiting_driver_confirmation'),
+    delivery_address: String(row.delivery_address || 'Abia State, Nigeria'),
+    delivery_city: String(row.delivery_city || 'Umuahia'),
+    zone_name: String(row.zone_name || 'Umuahia Central'),
+    customer_name: String(row.customer_name || 'Customer'),
+    customer_phone: String(row.customer_phone || ''),
+    customer_email: String(row.customer_email || ''),
+    order_notes: String(row.order_notes || row.notes || ''),
+    notes: String(row.notes || row.order_notes || ''),
+    proof_note: String(row.proof_note || ''),
+    proof_photo: String(row.proof_photo || ''),
+    proof_photos: Array.isArray(row.proof_photos) ? row.proof_photos : [],
+    item_proofs: Array.isArray(row.item_proofs) ? row.item_proofs : [],
+    failure_reason: String(row.failure_reason || ''),
+    payment_method: String(row.payment_method || 'cod'),
+    payment_status: String(row.payment_status || 'pending'),
+    assigned_at: assignedAt,
+    assignedAt: assignedAt,
+    accepted_at: row.accepted_at ? new Date(row.accepted_at).toISOString() : '',
+    dispatched_at: row.dispatched_at ? new Date(row.dispatched_at).toISOString() : '',
+    arrived_at: row.arrived_at ? new Date(row.arrived_at).toISOString() : '',
+    delivered_at: row.delivered_at ? new Date(row.delivered_at).toISOString() : '',
+    customer_confirmed_at: row.customer_confirmed_at ? new Date(row.customer_confirmed_at).toISOString() : '',
+    customer_confirmed: Boolean(row.customer_confirmed),
+    can_complete_delivery: Boolean(row.can_complete_delivery),
     eta_minutes: etaMinutes,
     estimated_duration_mins: etaMinutes,
     attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
