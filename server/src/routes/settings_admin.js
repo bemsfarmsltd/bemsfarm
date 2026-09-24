@@ -319,20 +319,58 @@ router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// INVOICE SETTINGS
+// INVOICE SETTINGS (Company bank details, RC, TIN, invoicing defaults)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/invoices", requireRole("superadmin", "manager"), async (req, res, next) => {
+const DEFAULT_INVOICE_SETTINGS = {
+  invoice_prefix: 'INV-',
+  invoice_next_number: '1001',
+  invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
+  invoice_account_name: 'Bems Farms Limited',
+  invoice_account_number: '1023849502',
+  invoice_secondary_bank: 'Zenith Bank',
+  invoice_secondary_account_number: '1223849502',
+  invoice_company_name: 'Bems Farms Limited',
+  invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
+  invoice_rc_number: 'RC 1849204',
+  invoice_tin: 'TIN 24819402-0001',
+  invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
+  invoice_email: 'corporate@bemsfarms.com',
+  invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+  invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
+  // Direct aliases for document renderer
+  bank_name: 'Moniepoint MFB / Zenith Bank',
+  account_name: 'Bems Farms Limited',
+  account_number: '1023849502',
+};
+
+router.get("/invoices", requireRole(...STAFF_ROLES), async (req, res, next) => {
   try {
-    res.json({ settings: await getGroup("invoices") });
+    const raw = await getGroup("invoices");
+    const merged = { ...DEFAULT_INVOICE_SETTINGS, ...raw };
+    // Synchronize aliases
+    if (merged.invoice_bank_name && !raw.bank_name) merged.bank_name = merged.invoice_bank_name;
+    if (merged.invoice_account_name && !raw.account_name) merged.account_name = merged.invoice_account_name;
+    if (merged.invoice_account_number && !raw.account_number) merged.account_number = merged.invoice_account_number;
+    res.json({ settings: merged });
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/invoices", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.post("/invoices", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    await saveGroup("invoices", req.body, req.user.id);
-    res.json({ settings: await getGroup("invoices") });
+    // If incoming body has bank_name / account_name / account_number, sync to invoice_* keys
+    const payload = { ...req.body };
+    if (payload.bank_name) payload.invoice_bank_name = payload.bank_name;
+    if (payload.account_name) payload.invoice_account_name = payload.account_name;
+    if (payload.account_number) payload.invoice_account_number = payload.account_number;
+    if (payload.invoice_bank_name) payload.bank_name = payload.invoice_bank_name;
+    if (payload.invoice_account_name) payload.account_name = payload.invoice_account_name;
+    if (payload.invoice_account_number) payload.account_number = payload.invoice_account_number;
+
+    await saveGroup("invoices", payload, req.user.id);
+    const updated = await getGroup("invoices");
+    res.json({ settings: { ...DEFAULT_INVOICE_SETTINGS, ...updated } });
   } catch (err) {
     next(err);
   }

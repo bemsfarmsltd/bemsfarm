@@ -237,8 +237,10 @@ const driverRoutes = require("./routes/driver");
 const locationRoutes = require("./routes/locations");
 const dispatchAdminRoutes = require("./routes/dispatch_admin");
 const notificationsRoutes = require("./routes/notifications");
+const verifyRoutes = require("./routes/verify_public");
 
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/verify", verifyRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/locations", locationRoutes);

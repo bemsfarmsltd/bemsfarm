@@ -1761,6 +1761,83 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── DOCUMENT & INVOICE VERIFICATION SPOTLIGHT ── */}
+        <section id="verify-document" className="border-t border-[#DDD3BF] bg-[#143c2d] px-5 py-16 text-white sm:px-8 lg:px-12 lg:py-20 relative overflow-hidden">
+          <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-widest text-amber-300">
+                  <svg className="w-4 h-4 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Certified Authenticity &amp; Audit Registry
+                </div>
+                <h2 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl leading-tight">
+                  Verify Any Bems Farms Invoice, Receipt or Sales Slip
+                </h2>
+                <p className="mt-4 text-base leading-7 text-emerald-100/80 max-w-2xl">
+                  Every official document issued by Bems Farms Limited carries a cryptographic security code and verifiable QR code. Whether you received a commercial invoice, wholesale quote, POS retail receipt, or delivery waybill, verify its authenticity, payment status, and complete ledger in seconds.
+                </p>
+                <div className="mt-8 flex flex-wrap gap-4 items-center">
+                  <Link
+                    to="/verify"
+                    className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-8 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white shadow-lg shadow-black/20"
+                  >
+                    <span>Verify a Document Now</span>
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                  <span className="text-xs text-emerald-200/70">
+                    RC 1849204 · Primary Corporate Registry
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/15 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-300 text-[#143c2d] font-bold">
+                      QR
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Instant QR Code Scan</h4>
+                      <p className="text-xs text-emerald-200/70">Works with any smartphone camera</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                    Live
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-xs text-emerald-100/80">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-amber-300 font-bold">✓</span>
+                    <span><strong>Proforma &amp; Tax Invoices:</strong> Confirm billing amounts, line items, and genuine corporate remittance accounts.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-amber-300 font-bold">✓</span>
+                    <span><strong>Payment Receipts:</strong> Verify completed settlement, audit proof, and issuing cashier credentials.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-amber-300 font-bold">✓</span>
+                    <span><strong>Store Sales &amp; Orders:</strong> Trace farm batch origin, dispatch date, and fulfillment status.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <Link
+                    to="/verify?ref=REC-2026-0007"
+                    className="text-xs font-semibold text-amber-300 hover:text-white flex items-center gap-1 transition"
+                  >
+                    <span>Try sample verification (REC-2026-0007)</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="border-t border-[#DDD3BF] bg-[#F8F5EE] px-5 pb-20 pt-16 text-center sm:px-8 lg:px-12 lg:pb-28">
           <div className="mx-auto max-w-3xl">
             <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">Ready when you are</p>
@@ -1809,7 +1886,7 @@ export default function LandingPage() {
           <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_.75fr_.75fr_.9fr]">
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Fresh Selection</span><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Secure Checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
-            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/delivery" className="hover:text-white">Delivery & Tracking</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping & delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns & refunds</Link></div></div>
+            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help &amp; Verification</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/verify" className="hover:text-white text-amber-300 font-bold">Verify Receipt / Invoice</Link><Link to="/delivery" className="hover:text-white">Delivery &amp; Tracking</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping &amp; delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns &amp; refunds</Link></div></div>
             <div>
               <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2>
               <p className="mt-5 text-sm leading-6">

@@ -6,9 +6,19 @@ import SettingsTabs from './SettingsTabs'
 const BLANK = {
   invoice_prefix: 'INV-',
   invoice_next_number: '1001',
-  invoice_footer: 'Thank you for your business with Bems Farms!',
-  invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods remain property of Bems Farms Ltd until fully settled.',
-  invoice_bank_info: 'Bank: Access Bank / Zenith Bank\nAccount Name: Bems Farms Limited\nAccount Number: 0123456789',
+  invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
+  invoice_account_name: 'Bems Farms Limited',
+  invoice_account_number: '1023849502',
+  invoice_secondary_bank: 'Zenith Bank',
+  invoice_secondary_account_number: '1223849502',
+  invoice_company_name: 'Bems Farms Limited',
+  invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
+  invoice_rc_number: 'RC 1849204',
+  invoice_tin: 'TIN 24819402-0001',
+  invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
+  invoice_email: 'corporate@bemsfarms.com',
+  invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+  invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
 }
 
 export default function InvoiceSettings() {
@@ -31,7 +41,7 @@ export default function InvoiceSettings() {
     try {
       const res = await api.post('/admin/settings/invoices', form)
       setForm(f => ({ ...f, ...res.data.settings }))
-      toast.success('Invoice templates and numbering saved successfully!')
+      toast.success('Bems Farms invoice templates and bank details saved successfully!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save settings')
     } finally {
@@ -48,9 +58,9 @@ export default function InvoiceSettings() {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
         <div>
-          <h5 className="mb-1 fw-bold">Invoice &amp; Billing Templates</h5>
+          <h5 className="mb-1 fw-bold">Invoice &amp; Official Billing Settings</h5>
           <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-            Configure auto-generated invoice numbering, payment terms, and remittance bank instructions.
+            Configure official Bems Farms bank accounts, RC &amp; TIN credentials, numbering, and payment remittance instructions.
           </p>
         </div>
         <button className="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm" disabled={saving} onClick={handleSave}>
@@ -61,18 +71,165 @@ export default function InvoiceSettings() {
 
       <div className="row g-4">
         <div className="col-lg-7">
-          {/* Invoice Numbering & Content */}
+          {/* Bank Remittance Account Details */}
           <div className="card shadow-sm border mb-4">
             <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-file-text-line text-primary"></i>
-                Invoice Numbering &amp; Messages
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-success">
+                <i className="ri-bank-card-line"></i>
+                Official Remittance Bank Accounts
               </h6>
             </div>
             <div className="card-body">
               <div className="row g-3">
                 <div className="col-md-6">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Invoice Number Prefix</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Account Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Bems Farms Limited"
+                    value={form.invoice_account_name || ''}
+                    onChange={e => fld('invoice_account_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Primary Bank Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Moniepoint MFB / Zenith Bank"
+                    value={form.invoice_bank_name || ''}
+                    onChange={e => fld('invoice_bank_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Primary Account Number *</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace fw-bold"
+                    placeholder="1023849502"
+                    value={form.invoice_account_number || ''}
+                    onChange={e => fld('invoice_account_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Secondary Bank (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Zenith Bank"
+                    value={form.invoice_secondary_bank || ''}
+                    onChange={e => fld('invoice_secondary_bank', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Secondary Account Number</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace"
+                    placeholder="1223849502"
+                    value={form.invoice_secondary_account_number || ''}
+                    onChange={e => fld('invoice_secondary_account_number', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Legal Credentials & Contact Details */}
+          <div className="card shadow-sm border mb-4">
+            <div className="card-header bg-light-subtle py-3">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
+                <i className="ri-government-line text-primary"></i>
+                Corporate Credentials &amp; Contacts
+              </h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Company Legal Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Bems Farms Limited"
+                    value={form.invoice_company_name || ''}
+                    onChange={e => fld('invoice_company_name', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>RC Number</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace"
+                    placeholder="RC 1849204"
+                    value={form.invoice_rc_number || ''}
+                    onChange={e => fld('invoice_rc_number', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>TIN Number</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace"
+                    placeholder="TIN 24819402-0001"
+                    value={form.invoice_tin || ''}
+                    onChange={e => fld('invoice_tin', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-12">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Farm Hub / Address</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Central Farm Settlement Hub, Umuahia, Abia State"
+                    value={form.invoice_company_address || ''}
+                    onChange={e => fld('invoice_company_address', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Billing &amp; Corporate Email</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    placeholder="corporate@bemsfarms.com"
+                    value={form.invoice_email || ''}
+                    onChange={e => fld('invoice_email', e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Support Phone Numbers</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="+234 800 236 7326 / +234 814 000 0000"
+                    value={form.invoice_phone || ''}
+                    onChange={e => fld('invoice_phone', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Numbering & Terms */}
+          <div className="card shadow-sm border mb-4">
+            <div className="card-header bg-light-subtle py-3">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
+                <i className="ri-file-text-line text-primary"></i>
+                Invoice Numbering &amp; Payment Terms
+              </h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Invoice Prefix</label>
                   <input
                     type="text"
                     className="form-control font-monospace"
@@ -80,7 +237,6 @@ export default function InvoiceSettings() {
                     value={form.invoice_prefix || ''}
                     onChange={e => fld('invoice_prefix', e.target.value)}
                   />
-                  <div className="form-text" style={{ fontSize: 11 }}>e.g. INV-, BF-2026-</div>
                 </div>
 
                 <div className="col-md-6">
@@ -93,7 +249,17 @@ export default function InvoiceSettings() {
                     value={form.invoice_next_number || ''}
                     onChange={e => fld('invoice_next_number', e.target.value)}
                   />
-                  <div className="form-text" style={{ fontSize: 11 }}>Next generated invoice will be: <strong className="text-primary">{form.invoice_prefix || 'INV-'}{form.invoice_next_number || '1001'}</strong></div>
+                </div>
+
+                <div className="col-12">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Payment Terms &amp; Policies</label>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Payment terms, due dates..."
+                    value={form.invoice_payment_terms || ''}
+                    onChange={e => fld('invoice_payment_terms', e.target.value)}
+                  />
                 </div>
 
                 <div className="col-12">
@@ -101,44 +267,9 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Thank you for your business with Bems Farms!"
+                    placeholder="Thank you for choosing Bems Farms..."
                     value={form.invoice_footer || ''}
                     onChange={e => fld('invoice_footer', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Terms & Remittance Info */}
-          <div className="card shadow-sm border mb-4">
-            <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-bank-card-line text-primary"></i>
-                Payment Terms &amp; Bank Remittance
-              </h6>
-            </div>
-            <div className="card-body">
-              <div className="row g-3">
-                <div className="col-12">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Standard Payment Terms &amp; Policies</label>
-                  <textarea
-                    className="form-control"
-                    rows={3}
-                    placeholder="Payment terms, due dates, return constraints..."
-                    value={form.invoice_payment_terms || ''}
-                    onChange={e => fld('invoice_payment_terms', e.target.value)}
-                  />
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Bank Account &amp; Wire Details (Printed on Invoices)</label>
-                  <textarea
-                    className="form-control font-monospace"
-                    rows={4}
-                    placeholder="Bank Name, Account Name, Account Number..."
-                    value={form.invoice_bank_info || ''}
-                    onChange={e => fld('invoice_bank_info', e.target.value)}
                   />
                 </div>
               </div>
@@ -152,30 +283,42 @@ export default function InvoiceSettings() {
             <div className="card-header bg-light-subtle py-3">
               <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
                 <i className="ri-eye-line text-primary"></i>
-                Sample Invoice Header Preview
+                Live Remittance Preview
               </h6>
             </div>
             <div className="card-body p-4 bg-light">
               <div className="p-4 bg-white rounded border shadow-sm">
                 <div className="d-flex justify-content-between align-items-start mb-3">
                   <div>
-                    <h5 className="fw-bold mb-0 text-dark">Bems Farms Ltd</h5>
-                    <small className="text-muted">Fresh Farm Produce &amp; Groceries</small>
+                    <h5 className="fw-bold mb-0 text-dark">{form.invoice_company_name || 'Bems Farms Limited'}</h5>
+                    <small className="text-muted">{form.invoice_company_address || 'Central Farm Settlement Hub, Umuahia'}</small>
+                    <div className="text-muted font-monospace mt-1" style={{ fontSize: 11 }}>
+                      {form.invoice_rc_number || 'RC 1849204'} · {form.invoice_tin || 'TIN 24819402-0001'}
+                    </div>
                   </div>
                   <div className="text-end">
-                    <span className="badge bg-primary-subtle text-primary font-monospace px-2 py-1 fs-12 fw-bold">
+                    <span className="badge bg-success-subtle text-success font-monospace px-2.5 py-1.5 fs-12 fw-bold">
                       {form.invoice_prefix || 'INV-'}{form.invoice_next_number || '1001'}
                     </span>
                   </div>
                 </div>
 
                 <div className="border-top pt-3 mt-3 fs-12 text-muted">
-                  <div className="fw-semibold text-dark mb-1">Payment Instructions:</div>
-                  <pre className="mb-2 bg-light p-2 rounded text-dark font-monospace fs-11" style={{ whiteSpace: 'pre-wrap' }}>
-                    {form.invoice_bank_info || 'Bank: Access Bank\nAccount: 0123456789'}
-                  </pre>
+                  <div className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                    <i className="ri-bank-line text-success"/>Official Remittance Bank Details:
+                  </div>
+                  <div className="bg-light p-3 rounded text-dark font-monospace fs-12 border">
+                    <div><strong>Bank:</strong> {form.invoice_bank_name || 'Moniepoint MFB / Zenith Bank'}</div>
+                    <div><strong>Account Name:</strong> {form.invoice_account_name || 'Bems Farms Limited'}</div>
+                    <div><strong>Account Number:</strong> <span className="text-primary fw-bold">{form.invoice_account_number || '1023849502'}</span></div>
+                    {form.invoice_secondary_bank && form.invoice_secondary_account_number && (
+                      <div className="mt-1 pt-1 border-top text-muted">
+                        <strong>Alt:</strong> {form.invoice_secondary_bank} ({form.invoice_secondary_account_number})
+                      </div>
+                    )}
+                  </div>
                   <div className="fst-italic text-center text-muted mt-3">
-                    "{form.invoice_footer || 'Thank you for your business!'}"
+                    "{form.invoice_footer || 'Thank you for choosing Bems Farms.'}"
                   </div>
                 </div>
               </div>

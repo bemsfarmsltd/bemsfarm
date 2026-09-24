@@ -20,6 +20,7 @@
     "framer-motion": "^13.2.0",
     "jsbarcode": "^3.12.3",
     "leaflet": "^1.9.4",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-apexcharts": "^1.4.0",
     "react-dom": "^19.2.7",

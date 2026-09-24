@@ -87,8 +87,9 @@ export default function Footer() {
       ],
     },
     {
-      heading: "Help & Delivery",
+      heading: "Help & Verification",
       links: [
+        { label: "Verify Invoice & Receipt", path: "/verify" },
         { label: "Delivery & Order Tracking", path: "/delivery" },
         { label: "Shipping & Rates", path: "/shipping" },
         { label: "Returns Policy", path: "/returns-policy" },
@@ -101,6 +102,7 @@ export default function Footer() {
       links: [
         { label: "About BemsFarms", path: "/about" },
         { label: "Chef Bems AI", path: "/chef-chat" },
+        { label: "Document Verification", path: "/verify" },
         { label: "Terms of Service", path: "/terms" },
         { label: "Privacy Policy", path: "/privacy" },
         { label: "Customer Security", path: "/commerce-policy" },

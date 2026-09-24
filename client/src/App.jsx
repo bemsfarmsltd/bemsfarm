@@ -30,6 +30,7 @@ const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage")
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const CommercePolicyPage = lazy(() => import("./pages/CommercePolicyPage"));
 const DriverOnboardingPage = lazy(() => import("./pages/driver/DriverOnboardingPage"));
+const VerifyDocumentPage = lazy(() => import("./pages/VerifyDocumentPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 // Internal/staff-only tooling — same auth system as the storefront, but a
@@ -43,6 +44,8 @@ const ROUTE_META = {
   "/contact": ["Contact BemsFarms", "Contact BemsFarms customer support for help with products, orders, delivery or your account."],
   "/track-order": ["Track Your Order | BemsFarms", "Use your BemsFarms delivery code to check the latest progress of your order."],
   "/delivery": ["Delivery & Order Tracking | BemsFarms", "Track your fresh produce delivery live, check coverage zones, and view estimated delivery fees."],
+  "/verify": ["Verify Invoice & Receipts | BemsFarms", "Verify official BemsFarms invoices, receipts, and order authenticity with our central registry."],
+  "/verify-document": ["Verify Invoice & Receipts | BemsFarms", "Verify official BemsFarms invoices, receipts, and order authenticity with our central registry."],
   "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
   "/admin/login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
   "/admin-login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
@@ -84,6 +87,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/verify" element={<VerifyDocumentPage />} />
+        <Route path="/verify-document" element={<VerifyDocumentPage />} />
         <Route path="/onboarding" element={<P><OnboardingPage /></P>} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/product/:id" element={<ProductDetail />} />

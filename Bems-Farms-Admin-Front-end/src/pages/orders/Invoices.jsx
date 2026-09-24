@@ -93,6 +93,60 @@ export default function Invoices() {
   const [form, setForm]                 = useState(BLANK_FORM)
   const [markPaidRef, setMarkPaidRef]   = useState('')
   const [submitting, setSubmitting]     = useState(false)
+  const [bankSettings, setBankSettings] = useState(null)
+  const [bankForm, setBankForm]         = useState({
+    invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
+    invoice_account_name: 'Bems Farms Limited',
+    invoice_account_number: '1023849502',
+    invoice_secondary_bank: 'Zenith Bank',
+    invoice_secondary_account_number: '1223849502',
+    invoice_company_name: 'Bems Farms Limited',
+    invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
+    invoice_rc_number: 'RC 1849204',
+    invoice_tin: 'TIN 24819402-0001',
+    invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
+    invoice_email: 'corporate@bemsfarms.com',
+    invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
+    invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+  })
+  const [savingBank, setSavingBank]     = useState(false)
+
+  const fetchBankSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/settings/invoices')
+      if (res.data?.settings) {
+        setBankSettings(res.data.settings)
+        setBankForm(prev => ({ ...prev, ...res.data.settings }))
+      }
+    } catch (err) {
+      console.warn('Could not load bank settings:', err?.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBankSettings()
+  }, [fetchBankSettings])
+
+  const handleSaveBankSettings = async (e) => {
+    if (e) e.preventDefault()
+    setSavingBank(true)
+    try {
+      const res = await api.post('/admin/settings/invoices', bankForm)
+      const updated = res.data?.settings || bankForm
+      setBankSettings(updated)
+      setBankForm(f => ({ ...f, ...updated }))
+      toast.success('Bems Farms account and invoice details updated successfully!')
+      if (selected) {
+        setActiveModal('document')
+      } else {
+        setActiveModal(null)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save account details')
+    } finally {
+      setSavingBank(false)
+    }
+  }
 
   // ── Fetch Invoices ──────────────────────────────────────────────────────────
   const fetchInvoices = useCallback(async () => {
@@ -602,6 +656,10 @@ export default function Invoices() {
           </button>
           <div className="ms-auto d-flex gap-2 align-items-center">
             <span className="text-muted small">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="btn btn-sm btn-outline-success d-flex align-items-center gap-1" onClick={() => setActiveModal('bankSettings')}>
+              <i className="ri-bank-card-line me-1" />
+              <span>Edit Account Details</span>
+            </button>
             <button className="btn btn-sm btn-primary" onClick={() => { setForm(BLANK_FORM); setActiveModal('create') }}>
               <i className="ri-add-line me-1"/>Create Invoice
             </button>
@@ -884,6 +942,15 @@ export default function Invoices() {
                       </button>
                     </div>
 
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-warning text-warning d-flex align-items-center gap-1"
+                      onClick={() => setActiveModal('bankSettings')}
+                      title="Edit Bems Farms Bank & Company Remittance Details"
+                    >
+                      <i className="ri-edit-box-line me-1"/>Edit Account Details
+                    </button>
+
                     <button className="btn btn-sm btn-primary fw-medium px-3 shadow-sm" onClick={handlePrint}>
                       <i className="ri-printer-line me-1"/>Print / Save PDF (A4)
                     </button>
@@ -903,6 +970,7 @@ export default function Invoices() {
                   <BemsOfficialDocument
                     documentType={invoiceDocType}
                     data={selected}
+                    bankSettings={bankSettings}
                   />
                 </div>
 
@@ -1204,6 +1272,211 @@ export default function Invoices() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── EDIT BEMS FARMS ACCOUNT DETAILS MODAL ──────── */}
+          {activeModal === 'bankSettings' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 680, maxHeight: '92vh', overflowY: 'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-3.5 border-bottom bg-light">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="p-2 rounded-3 bg-success-subtle text-success">
+                    <i className="ri-bank-card-line fs-18"/>
+                  </span>
+                  <div>
+                    <h5 className="mb-0 fw-bold fs-16">Edit Bems Farms Account & Invoicing Details</h5>
+                    <span className="text-muted small">Update official bank account, corporate RC, TIN, and remittance instructions</span>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => selected ? setActiveModal('document') : closeModal()}
+                  title="Close"
+                >
+                  <i className="ri-close-line"/>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveBankSettings} className="p-4">
+                {/* Bank Account Section */}
+                <div className="mb-4">
+                  <h6 className="fw-bold text-success border-bottom pb-2 d-flex align-items-center gap-2">
+                    <i className="ri-bank-line"/>Primary Remittance Bank Account
+                  </h6>
+                  <div className="row g-3 mt-1">
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Account Name *</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="e.g. Bems Farms Limited"
+                        value={bankForm.invoice_account_name || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_account_name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Primary Bank Name *</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="e.g. Moniepoint MFB / Zenith Bank"
+                        value={bankForm.invoice_bank_name || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_bank_name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Account Number *</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace fw-bold"
+                        placeholder="e.g. 1023849502"
+                        value={bankForm.invoice_account_number || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_account_number: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Secondary Bank (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="e.g. Zenith Bank"
+                        value={bankForm.invoice_secondary_bank || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_secondary_bank: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Secondary Account Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace"
+                        placeholder="e.g. 1223456789"
+                        value={bankForm.invoice_secondary_account_number || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_secondary_account_number: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Legal & Regulatory Section */}
+                <div className="mb-4">
+                  <h6 className="fw-bold text-dark border-bottom pb-2 d-flex align-items-center gap-2">
+                    <i className="ri-government-line text-primary"/>Company Legal &amp; Regulatory Credentials
+                  </h6>
+                  <div className="row g-3 mt-1">
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Company Legal Name</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Bems Farms Limited"
+                        value={bankForm.invoice_company_name || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_company_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-medium small mb-1">CAC Registration (RC)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace"
+                        placeholder="RC 1849204"
+                        value={bankForm.invoice_rc_number || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_rc_number: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-medium small mb-1">Tax ID (TIN)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace"
+                        placeholder="TIN 24819402-0001"
+                        value={bankForm.invoice_tin || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_tin: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-medium small mb-1">Hub / Physical Address</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Central Farm Settlement Hub, Umuahia, Abia State"
+                        value={bankForm.invoice_company_address || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_company_address: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Corporate &amp; Billing Email</label>
+                      <input
+                        type="email"
+                        className="form-control form-control-sm"
+                        placeholder="corporate@bemsfarms.com"
+                        value={bankForm.invoice_email || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_email: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium small mb-1">Official Support Phone</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="+234 800 236 7326 / +234 814 000 0000"
+                        value={bankForm.invoice_phone || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Terms & Footer Note */}
+                <div className="mb-4">
+                  <h6 className="fw-bold text-dark border-bottom pb-2 d-flex align-items-center gap-2">
+                    <i className="ri-file-text-line text-secondary"/>Payment Terms &amp; Footer Slogan
+                  </h6>
+                  <div className="row g-3 mt-1">
+                    <div className="col-12">
+                      <label className="form-label fw-medium small mb-1">Standard Payment Terms</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows={2}
+                        placeholder="Payment is due within 7 days of invoice issue date..."
+                        value={bankForm.invoice_payment_terms || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_payment_terms: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-medium small mb-1">Invoice Footer Note</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Thank you for choosing Bems Farms..."
+                        value={bankForm.invoice_footer || ''}
+                        onChange={e => setBankForm(f => ({ ...f, invoice_footer: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Buttons */}
+                <div className="d-flex justify-content-end gap-2 border-top pt-3">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm px-3"
+                    onClick={() => selected ? setActiveModal('document') : closeModal()}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-sm px-4 fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                    disabled={savingBank}
+                  >
+                    {savingBank ? <span className="spinner-border spinner-border-sm me-1"/> : <i className="ri-save-line me-1"/>}
+                    {savingBank ? 'Saving…' : 'Save & Apply to Invoices'}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 

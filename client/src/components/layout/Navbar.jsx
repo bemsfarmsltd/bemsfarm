@@ -477,6 +477,7 @@ export default function Navbar() {
     { label: "Home", path: "/home" },
     { label: "Shop", path: "/products" },
     { label: "Delivery", path: "/delivery" },
+    { label: "Verify", path: "/verify" },
     { label: "Chef Bems", path: "/chef-chat" },
     { label: "My Orders", path: "/orders" },
   ];
@@ -493,6 +494,7 @@ export default function Navbar() {
   const DROPDOWN_ITEMS = [
     { label: "My Profile", path: "/profile" },
     { label: "My Orders", path: "/orders" },
+    { label: "Verify Receipt/Invoice", path: "/verify" },
     { label: "Returns", path: "/returns" },
     ...(isAdmin
       ? [

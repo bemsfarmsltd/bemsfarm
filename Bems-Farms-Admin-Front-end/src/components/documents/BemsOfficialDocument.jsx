@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import QRCode from 'qrcode'
 import './bems-document.css'
 
 /**
@@ -144,10 +145,47 @@ export default function BemsOfficialDocument({
   // Security code for verification
   const securityCode = generateSecurityCode(docNumber, total)
 
-  // Bank Info
-  const accountName = bankSettings?.account_name || 'Bems Farms Limited'
-  const bankName = bankSettings?.bank_name || 'Moniepoint MFB / Zenith Bank'
-  const accountNumber = bankSettings?.account_number || '1023849502'
+  // Dynamic Bank and Company Info
+  const accountName = bankSettings?.invoice_account_name || bankSettings?.account_name || 'Bems Farms Limited'
+  const bankName = bankSettings?.invoice_bank_name || bankSettings?.bank_name || 'Moniepoint MFB / Zenith Bank'
+  const accountNumber = bankSettings?.invoice_account_number || bankSettings?.account_number || '1023849502'
+  const secondaryBank = bankSettings?.invoice_secondary_bank || bankSettings?.secondary_bank || ''
+  const secondaryAccount = bankSettings?.invoice_secondary_account_number || bankSettings?.secondary_account || ''
+  const companyName = bankSettings?.invoice_company_name || bankSettings?.company_name || 'Bems Farms Limited'
+  const companyAddress = bankSettings?.invoice_company_address || bankSettings?.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
+  const rcNumber = bankSettings?.invoice_rc_number || bankSettings?.rc_number || 'RC 1849204'
+  const tinNumber = bankSettings?.invoice_tin || bankSettings?.tin || 'TIN 24819402-0001'
+  const companyEmail = bankSettings?.invoice_email || bankSettings?.email || 'corporate@bemsfarms.com'
+  const companyPhone = bankSettings?.invoice_phone || bankSettings?.phone || '+234 800 236 7326 / +234 814 000 0000'
+
+  // Dynamic Scannable QR Code generation
+  const verifyUrl = useMemo(() => {
+    let origin = 'https://bemsfarms.com'
+    if (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.includes(':517')) {
+      origin = window.location.origin
+    }
+    return `${origin}/verify?ref=${encodeURIComponent(docNumber)}&code=${encodeURIComponent(securityCode)}`
+  }, [docNumber, securityCode])
+
+  const [qrDataUrl, setQrDataUrl] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+    QRCode.toDataURL(verifyUrl, {
+      width: 240,
+      margin: 1,
+      color: {
+        dark: '#123d27',
+        light: '#ffffff',
+      },
+      errorCorrectionLevel: 'M',
+    }).then(url => {
+      if (isMounted) setQrDataUrl(url)
+    }).catch(err => {
+      console.warn('QR Code generation error:', err)
+    })
+    return () => { isMounted = false }
+  }, [verifyUrl])
 
   const firstCustomerName = customerName.split(' ')[0] || 'Customer'
 
@@ -171,8 +209,8 @@ export default function BemsOfficialDocument({
                 />
               </div>
               <div className="bems-doc-co">
-                <b>Bems Farms Limited</b> · Central Farm Settlement Hub, Umuahia, Abia State<br />
-                RC 1849204 · TIN 24819402-0001 · corporate@bemsfarms.com
+                <b>{companyName}</b> · {companyAddress}<br />
+                {rcNumber} · {tinNumber} · {companyEmail}
               </div>
             </div>
 
@@ -316,8 +354,8 @@ export default function BemsOfficialDocument({
               <div className="cap">Questions about this order?</div>
               <div className="nm">We're here to help</div>
               <p>
-                <b>Call</b> +234 800 236 7326 · +234 814 000 0000<br />
-                <b>Email</b> corporate@bemsfarms.com<br />
+                <b>Call</b> {companyPhone}<br />
+                <b>Email</b> {companyEmail}<br />
                 Quote {isReceipt ? 'receipt' : 'invoice'} no. <span className="mono">{docNumber}</span>
               </p>
             </div>
@@ -363,53 +401,70 @@ export default function BemsOfficialDocument({
           {/* ── SETTLEMENT / VERIFICATION & TOTALS ── */}
           <section className="bems-doc-vt">
             {isReceipt ? (
-              /* Genuine Verification Box with SVG QR */
+              /* Genuine Verification Box with Real Scannable QR Code */
               <div className="bems-doc-verify">
-                <div className="qr">
-                  <svg width="76" height="76" viewBox="0 0 29 29" fill="#123d27" shapeRendering="crispEdges">
-                    <rect x="0" y="0" width="1.02" height="1.02"/><rect x="1" y="0" width="1.02" height="1.02"/><rect x="2" y="0" width="1.02" height="1.02"/><rect x="3" y="0" width="1.02" height="1.02"/><rect x="4" y="0" width="1.02" height="1.02"/><rect x="5" y="0" width="1.02" height="1.02"/><rect x="6" y="0" width="1.02" height="1.02"/><rect x="8" y="0" width="1.02" height="1.02"/><rect x="9" y="0" width="1.02" height="1.02"/><rect x="10" y="0" width="1.02" height="1.02"/><rect x="13" y="0" width="1.02" height="1.02"/><rect x="15" y="0" width="1.02" height="1.02"/><rect x="22" y="0" width="1.02" height="1.02"/><rect x="23" y="0" width="1.02" height="1.02"/><rect x="24" y="0" width="1.02" height="1.02"/><rect x="25" y="0" width="1.02" height="1.02"/><rect x="26" y="0" width="1.02" height="1.02"/><rect x="27" y="0" width="1.02" height="1.02"/><rect x="28" y="0" width="1.02" height="1.02"/>
-                    <rect x="0" y="1" width="1.02" height="1.02"/><rect x="6" y="1" width="1.02" height="1.02"/><rect x="10" y="1" width="1.02" height="1.02"/><rect x="11" y="1" width="1.02" height="1.02"/><rect x="12" y="1" width="1.02" height="1.02"/><rect x="17" y="1" width="1.02" height="1.02"/><rect x="19" y="1" width="1.02" height="1.02"/><rect x="22" y="1" width="1.02" height="1.02"/><rect x="28" y="1" width="1.02" height="1.02"/>
-                    <rect x="0" y="2" width="1.02" height="1.02"/><rect x="2" y="2" width="1.02" height="1.02"/><rect x="3" y="2" width="1.02" height="1.02"/><rect x="4" y="2" width="1.02" height="1.02"/><rect x="6" y="2" width="1.02" height="1.02"/><rect x="11" y="2" width="1.02" height="1.02"/><rect x="12" y="2" width="1.02" height="1.02"/><rect x="16" y="2" width="1.02" height="1.02"/><rect x="17" y="2" width="1.02" height="1.02"/><rect x="19" y="2" width="1.02" height="1.02"/><rect x="20" y="2" width="1.02" height="1.02"/><rect x="22" y="2" width="1.02" height="1.02"/><rect x="24" y="2" width="1.02" height="1.02"/><rect x="25" y="2" width="1.02" height="1.02"/><rect x="26" y="2" width="1.02" height="1.02"/><rect x="28" y="2" width="1.02" height="1.02"/>
-                    <rect x="0" y="3" width="1.02" height="1.02"/><rect x="2" y="3" width="1.02" height="1.02"/><rect x="3" y="3" width="1.02" height="1.02"/><rect x="4" y="3" width="1.02" height="1.02"/><rect x="6" y="3" width="1.02" height="1.02"/><rect x="8" y="3" width="1.02" height="1.02"/><rect x="10" y="3" width="1.02" height="1.02"/><rect x="13" y="3" width="1.02" height="1.02"/><rect x="15" y="3" width="1.02" height="1.02"/><rect x="18" y="3" width="1.02" height="1.02"/><rect x="19" y="3" width="1.02" height="1.02"/><rect x="22" y="3" width="1.02" height="1.02"/><rect x="24" y="3" width="1.02" height="1.02"/><rect x="25" y="3" width="1.02" height="1.02"/><rect x="26" y="3" width="1.02" height="1.02"/><rect x="28" y="3" width="1.02" height="1.02"/>
-                    <rect x="0" y="4" width="1.02" height="1.02"/><rect x="2" y="4" width="1.02" height="1.02"/><rect x="3" y="4" width="1.02" height="1.02"/><rect x="4" y="4" width="1.02" height="1.02"/><rect x="6" y="4" width="1.02" height="1.02"/><rect x="8" y="4" width="1.02" height="1.02"/><rect x="10" y="4" width="1.02" height="1.02"/><rect x="11" y="4" width="1.02" height="1.02"/><rect x="12" y="4" width="1.02" height="1.02"/><rect x="14" y="4" width="1.02" height="1.02"/><rect x="15" y="4" width="1.02" height="1.02"/><rect x="18" y="4" width="1.02" height="1.02"/><rect x="20" y="4" width="1.02" height="1.02"/><rect x="22" y="4" width="1.02" height="1.02"/><rect x="24" y="4" width="1.02" height="1.02"/><rect x="25" y="4" width="1.02" height="1.02"/><rect x="26" y="4" width="1.02" height="1.02"/><rect x="28" y="4" width="1.02" height="1.02"/>
-                    <rect x="0" y="5" width="1.02" height="1.02"/><rect x="6" y="5" width="1.02" height="1.02"/><rect x="8" y="5" width="1.02" height="1.02"/><rect x="11" y="5" width="1.02" height="1.02"/><rect x="12" y="5" width="1.02" height="1.02"/><rect x="13" y="5" width="1.02" height="1.02"/><rect x="19" y="5" width="1.02" height="1.02"/><rect x="22" y="5" width="1.02" height="1.02"/><rect x="28" y="5" width="1.02" height="1.02"/>
-                    <rect x="0" y="6" width="1.02" height="1.02"/><rect x="1" y="6" width="1.02" height="1.02"/><rect x="2" y="6" width="1.02" height="1.02"/><rect x="3" y="6" width="1.02" height="1.02"/><rect x="4" y="6" width="1.02" height="1.02"/><rect x="5" y="6" width="1.02" height="1.02"/><rect x="6" y="6" width="1.02" height="1.02"/><rect x="8" y="6" width="1.02" height="1.02"/><rect x="10" y="6" width="1.02" height="1.02"/><rect x="12" y="6" width="1.02" height="1.02"/><rect x="14" y="6" width="1.02" height="1.02"/><rect x="16" y="6" width="1.02" height="1.02"/><rect x="18" y="6" width="1.02" height="1.02"/><rect x="20" y="6" width="1.02" height="1.02"/><rect x="22" y="6" width="1.02" height="1.02"/><rect x="23" y="6" width="1.02" height="1.02"/><rect x="24" y="6" width="1.02" height="1.02"/><rect x="25" y="6" width="1.02" height="1.02"/><rect x="26" y="6" width="1.02" height="1.02"/><rect x="27" y="6" width="1.02" height="1.02"/><rect x="28" y="6" width="1.02" height="1.02"/>
-                    <rect x="10" y="8" width="1.02" height="1.02"/><rect x="12" y="8" width="1.02" height="1.02"/><rect x="14" y="8" width="1.02" height="1.02"/><rect x="17" y="8" width="1.02" height="1.02"/><rect x="18" y="8" width="1.02" height="1.02"/><rect x="20" y="8" width="1.02" height="1.02"/><rect x="21" y="8" width="1.02" height="1.02"/><rect x="24" y="8" width="1.02" height="1.02"/><rect x="25" y="8" width="1.02" height="1.02"/><rect x="28" y="8" width="1.02" height="1.02"/>
-                    <rect x="0" y="9" width="1.02" height="1.02"/><rect x="2" y="9" width="1.02" height="1.02"/><rect x="5" y="9" width="1.02" height="1.02"/><rect x="8" y="9" width="1.02" height="1.02"/><rect x="11" y="9" width="1.02" height="1.02"/><rect x="13" y="9" width="1.02" height="1.02"/><rect x="16" y="9" width="1.02" height="1.02"/><rect x="19" y="9" width="1.02" height="1.02"/><rect x="22" y="9" width="1.02" height="1.02"/><rect x="26" y="9" width="1.02" height="1.02"/>
-                    <rect x="0" y="22" width="1.02" height="1.02"/><rect x="1" y="22" width="1.02" height="1.02"/><rect x="2" y="22" width="1.02" height="1.02"/><rect x="3" y="22" width="1.02" height="1.02"/><rect x="4" y="22" width="1.02" height="1.02"/><rect x="5" y="22" width="1.02" height="1.02"/><rect x="6" y="22" width="1.02" height="1.02"/><rect x="9" y="22" width="1.02" height="1.02"/><rect x="12" y="22" width="1.02" height="1.02"/><rect x="14" y="22" width="1.02" height="1.02"/><rect x="17" y="22" width="1.02" height="1.02"/><rect x="20" y="22" width="1.02" height="1.02"/>
-                    <rect x="0" y="23" width="1.02" height="1.02"/><rect x="6" y="23" width="1.02" height="1.02"/><rect x="9" y="23" width="1.02" height="1.02"/><rect x="10" y="23" width="1.02" height="1.02"/><rect x="13" y="23" width="1.02" height="1.02"/><rect x="15" y="23" width="1.02" height="1.02"/><rect x="18" y="23" width="1.02" height="1.02"/>
-                    <rect x="0" y="24" width="1.02" height="1.02"/><rect x="2" y="24" width="1.02" height="1.02"/><rect x="3" y="24" width="1.02" height="1.02"/><rect x="4" y="24" width="1.02" height="1.02"/><rect x="6" y="24" width="1.02" height="1.02"/><rect x="8" y="24" width="1.02" height="1.02"/><rect x="11" y="24" width="1.02" height="1.02"/><rect x="14" y="24" width="1.02" height="1.02"/><rect x="16" y="24" width="1.02" height="1.02"/><rect x="19" y="24" width="1.02" height="1.02"/><rect x="22" y="24" width="1.02" height="1.02"/><rect x="25" y="24" width="1.02" height="1.02"/>
-                    <rect x="0" y="25" width="1.02" height="1.02"/><rect x="2" y="25" width="1.02" height="1.02"/><rect x="3" y="25" width="1.02" height="1.02"/><rect x="4" y="25" width="1.02" height="1.02"/><rect x="6" y="25" width="1.02" height="1.02"/><rect x="10" y="25" width="1.02" height="1.02"/><rect x="12" y="25" width="1.02" height="1.02"/><rect x="17" y="25" width="1.02" height="1.02"/><rect x="21" y="25" width="1.02" height="1.02"/><rect x="24" y="25" width="1.02" height="1.02"/><rect x="28" y="25" width="1.02" height="1.02"/>
-                    <rect x="0" y="26" width="1.02" height="1.02"/><rect x="2" y="26" width="1.02" height="1.02"/><rect x="3" y="26" width="1.02" height="1.02"/><rect x="4" y="26" width="1.02" height="1.02"/><rect x="6" y="26" width="1.02" height="1.02"/><rect x="9" y="26" width="1.02" height="1.02"/><rect x="13" y="26" width="1.02" height="1.02"/><rect x="15" y="26" width="1.02" height="1.02"/><rect x="18" y="26" width="1.02" height="1.02"/><rect x="23" y="26" width="1.02" height="1.02"/><rect x="27" y="26" width="1.02" height="1.02"/>
-                    <rect x="0" y="27" width="1.02" height="1.02"/><rect x="6" y="27" width="1.02" height="1.02"/><rect x="8" y="27" width="1.02" height="1.02"/><rect x="11" y="27" width="1.02" height="1.02"/><rect x="14" y="27" width="1.02" height="1.02"/><rect x="16" y="27" width="1.02" height="1.02"/><rect x="20" y="27" width="1.02" height="1.02"/><rect x="22" y="27" width="1.02" height="1.02"/><rect x="26" y="27" width="1.02" height="1.02"/>
-                    <rect x="0" y="28" width="1.02" height="1.02"/><rect x="1" y="28" width="1.02" height="1.02"/><rect x="2" y="28" width="1.02" height="1.02"/><rect x="3" y="28" width="1.02" height="1.02"/><rect x="4" y="28" width="1.02" height="1.02"/><rect x="5" y="28" width="1.02" height="1.02"/><rect x="6" y="28" width="1.02" height="1.02"/><rect x="8" y="28" width="1.02" height="1.02"/><rect x="10" y="28" width="1.02" height="1.02"/><rect x="12" y="28" width="1.02" height="1.02"/><rect x="15" y="28" width="1.02" height="1.02"/><rect x="19" y="28" width="1.02" height="1.02"/><rect x="21" y="28" width="1.02" height="1.02"/><rect x="24" y="28" width="1.02" height="1.02"/><rect x="28" y="28" width="1.02" height="1.02"/>
-                  </svg>
+                <div className="qr" style={{ padding: 4, background: '#ffffff', border: '1px solid #c9d6ce', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="Verify Receipt QR Code"
+                      style={{ width: 76, height: 76, display: 'block', imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <div style={{ width: 76, height: 76, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#123d27', fontWeight: 'bold', fontSize: 11 }}>
+                      QR Code
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h4>Check this receipt is genuine</h4>
-                  <p>Scan the code or visit bemsfarms.com/verify and enter the security code.</p>
+                  <p>Scan with any camera or visit bemsfarms.com/verify to verify authenticity.</p>
                   <div className="cap" style={{ marginBottom: 2 }}>Security code</div>
                   <div className="code">{securityCode}</div>
                 </div>
               </div>
             ) : (
-              /* How To Pay Box */
+              /* How To Pay Box with Verification Badge */
               <div className="bems-doc-pay">
-                <h4>How to pay</h4>
-                <p className="sub">Bank transfer to the account below</p>
-                <dl>
-                  <dt>Account name</dt>
-                  <dd>{accountName}</dd>
-                  <dt>Bank</dt>
-                  <dd className="ph">{bankName}</dd>
-                  <dt>Account number</dt>
-                  <dd className="mono ph">{accountNumber}</dd>
-                  <dt>Reference</dt>
-                  <dd className="mono">{invoiceNo}</dd>
-                </dl>
-                <p className="fine">
-                  Send proof of payment to corporate@bemsfarms.com. Your official receipt will be issued once payment is confirmed.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <h4>How to pay</h4>
+                    <p className="sub">Bank transfer to the official account below</p>
+                    <dl>
+                      <dt>Account name</dt>
+                      <dd>{accountName}</dd>
+                      <dt>Bank</dt>
+                      <dd className="ph">{bankName}</dd>
+                      <dt>Account number</dt>
+                      <dd className="mono ph">{accountNumber}</dd>
+                      {secondaryBank && secondaryAccount && (
+                        <>
+                          <dt>Alt. Bank</dt>
+                          <dd className="ph">{secondaryBank} ({secondaryAccount})</dd>
+                        </>
+                      )}
+                      <dt>Reference</dt>
+                      <dd className="mono">{invoiceNo}</dd>
+                    </dl>
+                    <p className="fine">
+                      Send proof of payment to {companyEmail}. Your official receipt will be issued once payment is confirmed.
+                    </p>
+                  </div>
+                  {/* Scannable Verification QR on Invoices */}
+                  <div className="bems-doc-invoice-qr text-center" style={{ minWidth: 84, padding: '6px 8px', background: '#fff', border: '1px solid #c9e0d1', borderRadius: 8, flexShrink: 0 }}>
+                    {qrDataUrl ? (
+                      <img
+                        src={qrDataUrl}
+                        alt="Scan to Verify Invoice"
+                        style={{ width: 68, height: 68, display: 'block', margin: '0 auto', imageRendering: 'pixelated' }}
+                      />
+                    ) : (
+                      <div style={{ width: 68, height: 68, display: 'grid', placeItems: 'center', background: '#eef7f2', fontSize: 10, color: '#123d27', fontWeight: 'bold' }}>QR</div>
+                    )}
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#123d27', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginTop: 3 }}>Scan to Verify</span>
+                    <span className="mono" style={{ fontSize: 8, color: '#4a6b57', display: 'block' }}>{securityCode.slice(0, 9)}</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -446,7 +501,7 @@ export default function BemsOfficialDocument({
           <section className="bems-doc-sign">
             {isReceipt ? (
               <div className="bems-doc-keep">
-                <b>Keep this receipt.</b> It is your proof of payment to Bems Farms Limited for the goods listed and can be used for your accounting, reimbursement or audit records.
+                <b>Keep this receipt.</b> It is your proof of payment to {companyName} for the goods listed and can be used for your accounting, reimbursement or audit records.
               </div>
             ) : (
               <div className="bems-doc-keep terms">
@@ -456,7 +511,7 @@ export default function BemsOfficialDocument({
 
             <div className="bems-doc-sig">
               <div className="ln" />
-              <b>For Bems Farms Limited</b>
+              <b>For {companyName}</b>
               <span>Authorised signature · Accounts</span>
             </div>
           </section>
@@ -465,15 +520,15 @@ export default function BemsOfficialDocument({
 
         {/* ── THANKS BANNER ── */}
         <div className="bems-doc-thanks">
-          <h3>{isReceipt ? 'Thank you for choosing Bems Farms.' : 'Thank you for your order.'}</h3>
+          <h3>{isReceipt ? `Thank you for choosing ${companyName}.` : 'Thank you for your order.'}</h3>
           <span>Premium farm produce from Abia State to your table.</span>
         </div>
 
         {/* ── FOOTER ── */}
         <div className="bems-doc-foot">
-          <span>+234 800 236 7326 · +234 814 000 0000</span>
+          <span>{companyPhone}</span>
           <span>www.bemsfarms.com</span>
-          <span>RC 1849204 · TIN 24819402-0001</span>
+          <span>{rcNumber} · {tinNumber}</span>
         </div>
 
       </div>
