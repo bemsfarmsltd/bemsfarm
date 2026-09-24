@@ -67,6 +67,13 @@ const SMS = {
       `Hi ${name}, your BemsFarms order #${orderId} is out for delivery! Please be available to receive it. Reply HELP for support.`,
     ),
 
+  // Customer: courier has arrived at destination
+  courierArrived: (phone, name, orderId, driverName) =>
+    sendSMS(
+      phone,
+      `Hi ${name}, your BemsFarms courier ${driverName || 'driver'} has arrived with order #${orderId}! Please step out to receive your package. Thank you!`,
+    ),
+
   // Customer: delivery attempted, you were unavailable
   customerUnavailable: (phone, name, orderId) =>
     sendSMS(

@@ -537,6 +537,7 @@ router.get("/track/:code", async (req, res, next) => {
          END AS tracking_status,
          created_at,
          delivered_at,
+         COALESCE(orders.driver_arrived_at, delivery.arrived_at) AS arrived_at,
          updated_at,
          delivery.eta_minutes,
          ROUND(location.latitude::numeric, 3) AS driver_lat,
@@ -544,7 +545,7 @@ router.get("/track/:code", async (req, res, next) => {
          location.recorded_at AS location_updated_at
        FROM orders
        LEFT JOIN LATERAL (
-         SELECT d.driver_id, d.eta_minutes
+         SELECT d.driver_id, d.eta_minutes, d.arrived_at
          FROM deliveries d
          WHERE d.order_id = orders.id
          ORDER BY d.created_at DESC
@@ -597,6 +598,7 @@ router.get("/:id", protect, async (req, res, next) => {
          o.longitude AS customer_lng,
          o.created_at,
          COALESCE(delivery.delivered_at, o.updated_at) AS delivered_at,
+         COALESCE(o.driver_arrived_at, delivery.arrived_at) AS arrived_at,
          o.updated_at,
          o.cancelled_at,
          o.cancel_reason,
@@ -608,6 +610,7 @@ router.get("/:id", protect, async (req, res, next) => {
          delivery.eta_minutes,
          delivery.assigned_at,
          delivery.dispatched_at,
+         delivery.arrived_at AS delivery_arrived_at,
          dr.id AS driver_id,
          dr.name AS driver_name,
          dr.phone AS driver_phone,
@@ -640,6 +643,7 @@ router.get("/:id", protect, async (req, res, next) => {
            d.driver_id,
            d.status AS delivery_status,
            d.delivered_at,
+           d.arrived_at,
            d.eta_minutes,
            d.assigned_at,
            d.dispatched_at,
@@ -661,7 +665,7 @@ router.get("/:id", protect, async (req, res, next) => {
        WHERE UPPER(o.id) = UPPER($1) AND (o.user_id = $2 OR o.customer_id = $2 OR $3 IN ('admin', 'superadmin', 'manager', 'delivery_manager', 'staff'))
        GROUP BY 
          o.id, o.latitude, o.longitude, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
-         delivery.delivered_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
+         delivery.delivered_at, delivery.arrived_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
          dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
          loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name`,
       [id, req.user.id, req.user.role || 'user'],

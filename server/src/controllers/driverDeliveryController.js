@@ -647,10 +647,30 @@ const updateDeliveryStatus = async (req, res, next) => {
         "UPDATE drivers SET status = 'on_delivery' WHERE id = $1 AND status != 'suspended'",
         [driverId]
       );
+      await logOrderAudit(client, {
+        order_id: actualOrderId,
+        actor_id: driverId,
+        actor_name: req.driver.name,
+        actor_role: 'driver',
+        action: 'driver_en_route',
+        previous_state: delivery.status,
+        new_state: 'en_route',
+        metadata: { delivery_id: delivery.id, dispatched_at: dispatchedAt }
+      });
     } else if (deliveryStatus === "arrived") {
       arrivedAt = new Date();
       orderStatus = "shipped";
       trackingStatus = "driver_arrived";
+      await logOrderAudit(client, {
+        order_id: actualOrderId,
+        actor_id: driverId,
+        actor_name: req.driver.name,
+        actor_role: 'driver',
+        action: 'driver_arrived',
+        previous_state: delivery.status,
+        new_state: 'arrived',
+        metadata: { delivery_id: delivery.id, arrived_at: arrivedAt }
+      });
     } else if (deliveryStatus === "delivered") {
       deliveredAt = new Date();
       orderStatus = "delivered";
@@ -792,6 +812,16 @@ const updateDeliveryStatus = async (req, res, next) => {
         "UPDATE driver_availability SET is_on_delivery = false, last_toggled_at = NOW() WHERE driver_id = $1",
         [driverId]
       );
+      await logOrderAudit(client, {
+        order_id: actualOrderId,
+        actor_id: driverId,
+        actor_name: req.driver.name,
+        actor_role: 'driver',
+        action: 'driver_delivered',
+        previous_state: delivery.status,
+        new_state: 'delivered',
+        metadata: { delivery_id: delivery.id, delivered_at: deliveredAt }
+      });
     } else if (deliveryStatus === "delivery_attempted") {
       orderStatus = "delivery_attempted";
       trackingStatus = "failed_attempt";
@@ -799,6 +829,16 @@ const updateDeliveryStatus = async (req, res, next) => {
         "UPDATE driver_availability SET is_on_delivery = false, last_toggled_at = NOW() WHERE driver_id = $1",
         [driverId]
       );
+      await logOrderAudit(client, {
+        order_id: actualOrderId,
+        actor_id: driverId,
+        actor_name: req.driver.name,
+        actor_role: 'driver',
+        action: 'delivery_attempted',
+        previous_state: delivery.status,
+        new_state: 'delivery_attempted',
+        metadata: { delivery_id: delivery.id, reason: finalFailureReason }
+      });
     }
 
     // Update deliveries table
@@ -845,6 +885,8 @@ const updateDeliveryStatus = async (req, res, next) => {
       SET 
         status = $1,
         tracking_status = $2,
+        driver_arrived_at = CASE WHEN $1 = 'arrived' OR $2 = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
+        delivered_at = CASE WHEN $1 = 'delivered' OR $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
         updated_at = NOW()
       WHERE id = $3
       `,
@@ -857,7 +899,7 @@ const updateDeliveryStatus = async (req, res, next) => {
       UPDATE delivery_assignments 
       SET 
         driver_response = CASE 
-          WHEN $1 = 'assigned' OR $1 = 'awaiting_pickup' OR $1 = 'en_route' OR $1 = 'delivered' THEN 'accepted'
+          WHEN $1 = 'assigned' OR $1 = 'awaiting_pickup' OR $1 = 'en_route' OR $1 = 'arrived' OR $1 = 'delivered' THEN 'accepted'
           WHEN $1 = 'cancelled' THEN 'rejected'
           ELSE driver_response
         END,
@@ -870,34 +912,91 @@ const updateDeliveryStatus = async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    // Asynchronously notify customer of milestone status update (In Transit, Arrived, Delivered)
+    // Asynchronously notify customer across all channels (In-App Notification, SMS, Email)
     (async () => {
       try {
         const orderUserRes = await pool.query(
-          `SELECT o.id, o.order_ref, o.address, o.total, u.name, u.email, drv.name as driver_name, drv.vehicle_type
+          `SELECT o.id, o.order_ref, o.address, o.total, o.user_id, o.customer_id, u.name, u.email, u.phone, drv.name as driver_name, drv.vehicle_type
            FROM orders o
            LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
            LEFT JOIN drivers drv ON drv.id = $1
            WHERE o.id = $2`,
           [driverId, actualOrderId]
         );
-        if (orderUserRes.rows.length > 0 && orderUserRes.rows[0].email) {
+        if (orderUserRes.rows.length > 0) {
           const row = orderUserRes.rows[0];
-          const emailService = require("../services/emailService");
-          await emailService.sendOrderStatusEmail(
-            { id: row.id, order_ref: row.order_ref, address: row.address, total: row.total },
-            { name: row.name, email: row.email },
-            rawStatus,
-            {
-              delivery_ref: delivery.delivery_ref,
-              driver_name: row.driver_name,
-              vehicle_type: row.vehicle_type,
-              eta_minutes,
+          const customerUserId = row.user_id || row.customer_id;
+          const displayOrderRef = row.order_ref || row.id;
+          const driverDisplayName = row.driver_name || "Courier";
+
+          // 1. In-App Customer Notification (persisted in notifications table)
+          if (customerUserId) {
+            let notifTitle = null;
+            let notifBody = null;
+
+            if (deliveryStatus === "arrived") {
+              notifTitle = "Courier Has Arrived! 📍";
+              notifBody = `Your delivery courier ${driverDisplayName} has arrived at your location with order #${displayOrderRef}. Please step out to receive and inspect your package.`;
+            } else if (deliveryStatus === "en_route") {
+              notifTitle = "Order Out for Delivery 🚚";
+              notifBody = `Your courier ${driverDisplayName} is on the way with order #${displayOrderRef}.`;
+            } else if (deliveryStatus === "delivered") {
+              notifTitle = "Order Delivered 🎉";
+              notifBody = `Order #${displayOrderRef} has been delivered successfully. Thank you for choosing Bems Farms!`;
+            } else if (deliveryStatus === "delivery_attempted") {
+              notifTitle = "Delivery Attempted ⚠️";
+              notifBody = `Our courier reached your address for order #${displayOrderRef} but could not reach you. Please contact support to reschedule.`;
             }
-          );
+
+            if (notifTitle && notifBody) {
+              await pool.query(
+                `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id, is_read, created_at)
+                 VALUES ($1, 'delivery_update', $2, $3, 'order', $4, FALSE, NOW())`,
+                [customerUserId, notifTitle, notifBody, delivery.id]
+              ).catch((e) => console.warn("Customer in-app notification insert warning:", e.message));
+            }
+          }
+
+          // 2. Customer SMS via Termii
+          if (row.phone) {
+            try {
+              const { SMS } = require("../services/smsService");
+              if (deliveryStatus === "arrived") {
+                await SMS.courierArrived(row.phone, row.name || "Customer", displayOrderRef, driverDisplayName);
+              } else if (deliveryStatus === "en_route") {
+                await SMS.outForDelivery(row.phone, row.name || "Customer", displayOrderRef);
+              } else if (deliveryStatus === "delivered") {
+                await SMS.orderDelivered(row.phone, row.name || "Customer", displayOrderRef);
+              } else if (deliveryStatus === "delivery_attempted") {
+                await SMS.customerUnavailable(row.phone, row.name || "Customer", displayOrderRef);
+              }
+            } catch (smsErr) {
+              console.warn("Milestone SMS notification failed:", smsErr.message);
+            }
+          }
+
+          // 3. Customer Email Notification
+          if (row.email) {
+            try {
+              const emailService = require("../services/emailService");
+              await emailService.sendOrderStatusEmail(
+                { id: row.id, order_ref: row.order_ref, address: row.address, total: row.total },
+                { name: row.name, email: row.email },
+                rawStatus,
+                {
+                  delivery_ref: delivery.delivery_ref,
+                  driver_name: row.driver_name,
+                  vehicle_type: row.vehicle_type,
+                  eta_minutes,
+                }
+              );
+            } catch (emailErr) {
+              console.warn("Milestone email notification failed:", emailErr.message);
+            }
+          }
         }
-      } catch (emailErr) {
-        console.warn("Milestone email notification failed:", emailErr.message);
+      } catch (err) {
+        console.warn("Milestone customer notification processing error:", err.message);
       }
     })();
 
