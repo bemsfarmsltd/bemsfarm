@@ -962,7 +962,9 @@ export default function OrdersList() {
                       )}
                     </td>
                     <td>
-                      {order.driver ? (
+                      {order.status === 'cancelled' ? (
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (Cancelled)</span>
+                      ) : order.driver ? (
                         order.driverAccepted || ['driver_assigned', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) ? (
                           <div>
                             <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
@@ -982,8 +984,6 @@ export default function OrdersList() {
                             <div className="text-muted mt-0.5" style={{ fontSize: 10 }}>Pending Acceptance</div>
                           </div>
                         )
-                      ) : order.status === 'cancelled' ? (
-                        <span className="text-muted" style={{ fontSize: 11 }}>— (Cancelled)</span>
                       ) : !isDelivery ? (
                         <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
                       ) : ['paid', 'new_order', 'pending', 'confirmed', 'processing'].includes(order.status) ? (
@@ -998,8 +998,14 @@ export default function OrdersList() {
                     </td>
                     <td>
                       <span className="badge" style={{ background: order.channel === 'physical' ? '#ECFDF5' : cfg.bg, color: order.channel === 'physical' ? '#059669' : cfg.color, fontSize: 11, padding: '4px 8px', borderRadius: 6 }}>
-                        <i className={`${order.channel === 'physical' ? 'ri-checkbox-circle-line' : cfg.icon} me-1`} />
-                        {order.channel === 'physical' ? 'Completed Sale' : cfg.label}
+                        <i className={`${order.channel === 'physical' ? 'ri-checkbox-circle-line' : (order.status === 'awaiting_driver_confirmation' && !order.driver ? 'ri-truck-line' : cfg.icon)} me-1`} />
+                        {order.channel === 'physical'
+                          ? 'Completed Sale'
+                          : (order.status === 'awaiting_driver_confirmation' && !order.driver)
+                            ? 'Awaiting Courier'
+                            : (order.status === 'awaiting_driver_confirmation' && order.driver)
+                              ? 'Awaiting Driver Acceptance'
+                              : cfg.label}
                       </span>
                       {order.status === 'delivery_attempted' && (
                         <div className="text-danger fw-medium mt-0.5" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
