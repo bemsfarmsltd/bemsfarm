@@ -179,7 +179,7 @@ export default function LiveOrderMap({
   }, [driverCoords, destCoords, isEnRoute, hasLiveDriverGps]);
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-slate-100" style={{ height }}>
+    <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-slate-100 isolate z-0" style={{ height }}>
       {/* Live Map Overlay Banner */}
       <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none flex items-center justify-between gap-2 flex-wrap">
         <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-1.5 rounded-xl shadow-md border border-white/10 flex items-center gap-2 text-xs font-semibold">

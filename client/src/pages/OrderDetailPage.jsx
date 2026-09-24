@@ -893,7 +893,7 @@ export default function OrderDetailPage() {
                     )}
                   </div>
 
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner relative isolate z-0">
                     <MapErrorBoundary>
                       <LiveOrderMap
                         customerLat={order.customer_lat || order.latitude}
@@ -1133,7 +1133,7 @@ export default function OrderDetailPage() {
       {/* ── CANCEL ORDER CONFIRMATION MODAL ── */}
       <AnimatePresence>
         {cancelModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1194,7 +1194,7 @@ export default function OrderDetailPage() {
       {/* ── CUSTOMER CONFIRM DELIVERY POPUP MODAL ── */}
       <AnimatePresence>
         {confirmModalOpen && order && !order.customer_confirmed && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1285,7 +1285,7 @@ export default function OrderDetailPage() {
 
         {/* ── RETURN REQUEST MODAL (SECTIONS 14 - 16) ── */}
         {returnModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
