@@ -220,16 +220,29 @@ router.get("/document", async (req, res, next) => {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // 2. Search in `orders` table (Online orders, POS sales, deliveries)
+    // 2. Search in `orders` table (Online orders, POS sales, customer receipts)
     // ────────────────────────────────────────────────────────────────────────
+    const rawClean = cleanRef.replace(/^(REC|INV|ORD)-/, "");
+    const searchOrderRefs = [
+      cleanRef,
+      rawClean,
+      `POS-${rawClean}`,
+      `BF-${rawClean}`,
+      cleanRef.replace(/^REC-/, ""),
+      cleanRef.replace(/^INV-/, ""),
+    ];
+
     const ordQuery = await pool.query(
       `SELECT * FROM orders 
-       WHERE id ILIKE $1 
-          OR order_ref ILIKE $1 
-          OR ('REC-' || id) ILIKE $1
-          OR ('INV-' || id) ILIKE $1
+       WHERE id = ANY($1) 
+          OR order_ref = ANY($1)
+          OR id ILIKE $2
+          OR order_ref ILIKE $2
+          OR ('REC-' || id) ILIKE $2
+          OR ('INV-' || id) ILIKE $2
+          OR ('ORD-' || id) ILIKE $2
        ORDER BY created_at DESC LIMIT 1`,
-      [cleanRef]
+      [searchOrderRefs, cleanRef]
     );
 
     if (ordQuery.rows.length) {
@@ -244,6 +257,7 @@ router.get("/document", async (req, res, next) => {
         const price = parseFloat(it.price || it.unit_price || 0);
         return {
           name: it.product_name || "Produce Item",
+          sku: it.sku || "",
           pack: it.unit || "unit",
           qty,
           price,
@@ -260,39 +274,94 @@ router.get("/document", async (req, res, next) => {
       const amountPaid = isPaid ? totalAmount : 0;
       const balanceDue = Math.max(0, totalAmount - amountPaid);
 
-      const docRef = cleanRef.startsWith("REC-") ? cleanRef : (isPaid ? `REC-${ord.id}` : ord.id);
+      const docRef = cleanRef.startsWith("REC-") ? cleanRef : (isPaid ? `REC-${ord.id}` : (ord.order_ref || ord.id));
       const computedSecurityCode = generateSecurityCode(docRef, totalAmount);
       const isCodeMatch = cleanCode 
         ? computedSecurityCode.replace(/[^A-Z0-9]/g, "") === cleanCode
         : true;
 
-      const isPos = String(ord.id).startsWith("POS-") || ord.source === "Physical Store (POS)";
-      const docType = isPos 
-        ? "POS Sales Receipt" 
-        : (isPaid ? "Payment Receipt" : "Sales Invoice & Order Confirmation");
+      const isPos = String(ord.id).startsWith("POS-") || ord.source === "Physical Store (POS)" || String(ord.channel || "").toLowerCase().includes("pos");
+
+      // Staff / Cashier lookup
+      let cashierName = isPos ? "Store Cashier" : null;
+      if (ord.created_by) {
+        try {
+          const staffRes = await pool.query("SELECT name FROM users WHERE id = $1", [ord.created_by]);
+          if (staffRes.rows.length) {
+            cashierName = staffRes.rows[0].name;
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // Customer email lookup if missing
+      let customerEmail = ord.customer_email || "";
+      if (!customerEmail && (ord.user_id || ord.customer_id)) {
+        try {
+          const uRes = await pool.query("SELECT email, phone, name FROM users WHERE id = $1", [ord.user_id || ord.customer_id]);
+          if (uRes.rows.length) {
+            customerEmail = uRes.rows[0].email || "";
+            if (!ord.customer_name || ord.customer_name === "Walk-in Customer") {
+              ord.customer_name = uRes.rows[0].name;
+            }
+            if (!ord.customer_phone) {
+              ord.customer_phone = uRes.rows[0].phone;
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // Driver lookup
+      let driverName = null;
+      if (ord.driver_id) {
+        try {
+          const dRes = await pool.query("SELECT name FROM drivers WHERE id = $1 UNION SELECT name FROM users WHERE id = $1 LIMIT 1", [ord.driver_id]);
+          if (dRes.rows.length) driverName = dRes.rows[0].name;
+        } catch (e) { /* ignore */ }
+      }
+
+      let docType = "Order Confirmation & Receipt";
+      if (isPos) {
+        docType = isPaid ? "Official POS Store Sales Receipt" : "POS Sales Slip";
+      } else if (isPaid) {
+        docType = "Official Order Payment Receipt";
+      } else {
+        docType = "Customer Order Confirmation";
+      }
 
       return res.json({
         valid: true,
         documentType: docType,
         isReceipt: isPaid || cleanRef.startsWith("REC-"),
         isPaid,
+        isPos,
         reference: docRef,
         orderId: ord.id,
+        orderRef: ord.order_ref || ord.id,
         invoiceReference: `INV-${ord.id}`,
         receiptReference: `REC-${ord.id}`,
         securityCode: computedSecurityCode,
         securityCodeMatched: isCodeMatch,
         channel: isPos ? "Physical Store (POS)" : (ord.source || "Web Storefront"),
+        posSessionId: ord.pos_session_id || null,
+        cashier: cashierName,
+        driver: driverName,
+        deliveryCity: ord.delivery_city || null,
+        deliveryRef: ord.delivery_ref || null,
         status: isPaid ? "Confirmed & Settled" : (ord.status || "Pending"),
         statusCode: ord.status,
         fulfillmentStatus: ord.delivery_status || ord.status,
+        customerConfirmed: Boolean(ord.customer_confirmed),
+        customerConfirmedAt: ord.customer_confirmed_at || null,
+        driverConfirmed: Boolean(ord.driver_confirmed),
+        driverConfirmedAt: ord.driver_confirmed_at || null,
+        deliveredAt: ord.delivered_at || null,
         issuedDate: ord.created_at,
         dueDate: ord.created_at,
         paidDate: isPaid ? (ord.updated_at || ord.created_at) : null,
         customer: {
-          name: ord.customer_name || "Walk-in Customer",
+          name: ord.customer_name || (isPos ? "Walk-in Retail Customer" : "Valued Customer"),
           phone: ord.customer_phone || "",
-          email: "",
+          email: customerEmail,
           address: ord.address || ord.delivery_city || "Abia State, Nigeria",
         },
         items,
@@ -312,7 +381,9 @@ router.get("/document", async (req, res, next) => {
         },
         company,
         verifiedAt: new Date().toISOString(),
-        authenticityNotice: "Official genuine Bems Farms order & sale verified against system records.",
+        authenticityNotice: isPos
+          ? "Official genuine Bems Farms POS sales receipt verified against register database."
+          : "Official genuine Bems Farms order & delivery receipt verified against system records.",
       });
     }
 

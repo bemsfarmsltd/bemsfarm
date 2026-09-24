@@ -172,6 +172,20 @@ export default function VerifyDocumentPage() {
                 >
                   INV-2026-0007
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { setInputRef('POS-1001'); setInputCode(''); performVerification('POS-1001', ''); }}
+                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
+                >
+                  POS-1001 (Store Sale)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setInputRef('BF-MUFN4UJ1'); setInputCode(''); performVerification('BF-MUFN4UJ1', ''); }}
+                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
+                >
+                  BF-MUFN4UJ1 (Order Receipt)
+                </button>
               </div>
               <span className="text-gray-400">RC 1849204 · Registered in Nigeria</span>
             </div>
@@ -312,6 +326,78 @@ export default function VerifyDocumentPage() {
                 </div>
               </div>
 
+              {/* POS Sales Confirmation Telemetry */}
+              {result.isPos && (
+                <div className="bg-[#f0f7f3] border border-[#b8dbc6] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 bg-[#123d27] text-white rounded-lg text-sm flex-shrink-0">
+                      🏪
+                    </span>
+                    <div>
+                      <div className="font-bold text-[#123d27] text-sm">Official In-Store POS Sale Confirmation</div>
+                      <div className="text-gray-600 text-[11px]">
+                        Processed and authenticated at Bems Farms Central Retail Hub (Abia State).
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 font-mono text-xs flex-wrap">
+                    {result.cashier && (
+                      <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
+                        Cashier: <strong className="text-gray-900">{result.cashier}</strong>
+                      </span>
+                    )}
+                    {result.posSessionId && (
+                      <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
+                        Session: <strong className="text-gray-900">#{result.posSessionId}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Delivery Confirmation Telemetry */}
+              {result.customerConfirmed && (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-600 text-white rounded-lg flex-shrink-0">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-emerald-900">Delivery Receipt Confirmed by Customer</div>
+                      <div className="text-emerald-700 text-[11px]">
+                        The recipient officially inspected and confirmed safe receipt of the goods.
+                      </div>
+                    </div>
+                  </div>
+                  {result.customerConfirmedAt && (
+                    <div className="font-mono text-xs text-emerald-900 bg-white/90 px-3 py-1 rounded-lg border border-emerald-200">
+                      Confirmed: <strong>{new Date(result.customerConfirmedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Delivery Logistics & Driver Information */}
+              {(result.driver || result.deliveredAt || result.deliveryRef) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">🚚</span>
+                    <span>
+                      {result.driver ? <><strong>Courier:</strong> {result.driver}</> : 'Fulfilled by Bems Logistics'}
+                      {result.deliveryCity && <> · <strong>Destination:</strong> {result.deliveryCity}</>}
+                      {result.deliveryRef && <> · <strong>Waybill:</strong> <span className="font-mono">{result.deliveryRef}</span></>}
+                    </span>
+                  </div>
+                  {result.deliveredAt && (
+                    <div className="text-[11px] font-mono text-slate-500">
+                      Delivered: {new Date(result.deliveredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Itemized Table */}
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Itemized Produce &amp; Goods</h3>
@@ -439,6 +525,23 @@ export default function VerifyDocumentPage() {
                   </p>
                 </div>
               )}
+
+              {/* Barcode & Registry Authentication Strip */}
+              <div className="pt-6 border-t border-gray-100 flex flex-col items-center justify-center text-center">
+                <div
+                  className="w-48 sm:w-64 h-7 my-1 opacity-80"
+                  style={{
+                    background: 'repeating-linear-gradient(90deg, #000 0 1.5px, transparent 1.5px 3.5px, #000 3.5px 5.5px, transparent 5.5px 7.5px, #000 7.5px 9px, transparent 9px 12px)'
+                  }}
+                  aria-hidden="true"
+                />
+                <div className="font-mono text-xs font-bold tracking-widest text-[#123d27]">
+                  {result.reference}
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5 uppercase tracking-wider">
+                  Official Bems Farms Document Barcode · Code 128 Compliant
+                </div>
+              </div>
 
               {/* Actions Footer */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-gray-100 no-print">

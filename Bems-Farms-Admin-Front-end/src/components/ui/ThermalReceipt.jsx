@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
 import api from '../../lib/api'
 
 function Barcode({ value }) {
@@ -135,6 +136,8 @@ export function printThermalReceipt() {
     .thermal-receipt__note { margin: 4px 0; padding: 4px 8px; border-radius: 4px; background: #f5f5f5; font-size: 10px; overflow-wrap: anywhere; font-style: italic; text-align: center; }
     .thermal-receipt__footer { padding-top: 5px; border-top: 1px dashed #000; text-align: center; display: flex; flex-direction: column; align-items: center; }
     .thermal-receipt__footer strong { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; margin-bottom: 1px; }
+    .thermal-receipt__qr-wrap { margin: 4px auto 3px; text-align: center; }
+    .thermal-receipt__qr-wrap img { display: block; margin: 0 auto; image-rendering: pixelated; }
     .thermal-receipt__footer small { font-size: 9.5px; color: #444; font-family: monospace; margin-top: 2px; }
     .thermal-receipt__barcode { width: 70%; height: 20px; margin: 2px auto 2px; background: repeating-linear-gradient(90deg,#000 0 1.5px,transparent 1.5px 3.5px,#000 3.5px 6px,transparent 6px 8px,#000 8px 9.5px,transparent 9.5px 13px); opacity: 0.9; }
     .thermal-receipt__real-barcode { margin: 3px auto 2px; display: block; shape-rendering: crispEdges; }
@@ -229,6 +232,31 @@ export default function ThermalReceipt({
   const calculatedSubtotal = items.reduce((sum, item) => sum + Number(item.total ?? Number(item.price || 0) * Number(item.qty || 1)), 0)
   const safeSubtotal = Number(subtotal ?? calculatedSubtotal)
 
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  const verifyUrl = receiptNumber 
+    ? `https://bemsfarms.com/verify?ref=${encodeURIComponent(receiptNumber)}`
+    : 'https://bemsfarms.com/verify'
+
+  useEffect(() => {
+    let isMounted = true
+    if (receiptNumber) {
+      QRCode.toDataURL(verifyUrl, {
+        width: 140,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      }).then(url => {
+        if (isMounted) setQrDataUrl(url)
+      }).catch(err => {
+        console.warn('Thermal QR generation error:', err)
+      })
+    }
+    return () => { isMounted = false }
+  }, [verifyUrl, receiptNumber])
+
   return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`${isInvoice ? 'Invoice' : isCustomerReceipt ? 'Receipt' : 'Receipt'} ${receiptNumber || ''}`}>
     <header className="thermal-receipt__brand">
       {enabled('pos_receipt_show_logo') && (
@@ -298,6 +326,31 @@ export default function ThermalReceipt({
     {note && <p className="thermal-receipt__note"><strong>Note:</strong> {note}</p>}
     <footer className="thermal-receipt__footer">
       <strong>{receiptFooter}</strong>
+
+      {/* Scannable Verification QR Code */}
+      {qrDataUrl && (
+        <div className="thermal-receipt__qr-wrap" style={{ margin: '5px auto 4px', textAlign: 'center' }}>
+          <img
+            src={qrDataUrl}
+            alt="Scan to verify receipt"
+            style={{
+              width: settings.pos_receipt_paper_size === '58' ? '28mm' : '32mm',
+              height: settings.pos_receipt_paper_size === '58' ? '28mm' : '32mm',
+              display: 'block',
+              margin: '0 auto',
+              imageRendering: 'pixelated',
+            }}
+          />
+          <div style={{ fontSize: '8.5px', fontWeight: 800, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: '2px' }}>
+            SCAN TO VERIFY RECEIPT
+          </div>
+          <div style={{ fontSize: '8px', color: '#333', fontFamily: 'monospace' }}>
+            bemsfarms.com/verify
+          </div>
+        </div>
+      )}
+
+      {/* Code128 Barcode */}
       {enabled('pos_receipt_show_barcode') && (
         receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />
       )}
