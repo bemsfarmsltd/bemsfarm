@@ -368,7 +368,7 @@ async function processUnresponsiveAssignments(
         FROM orders o
         LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
         WHERE o.driver_id IS NULL
-          AND o.status = 'packed_ready'
+          AND o.status IN ('packed', 'packed_ready', 'awaiting_driver_confirmation')
           AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%')
           AND COALESCE(o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
       ) sub
