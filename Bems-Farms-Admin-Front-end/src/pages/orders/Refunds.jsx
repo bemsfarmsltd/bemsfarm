@@ -123,6 +123,10 @@ export default function Refunds() {
           processedBy: r.processed_by_name || 'Staff',
           processedOn: (r.updated_at || r.created_at || '').slice(0, 10),
           inspectionNotes: r.inspection_notes || r.description || '',
+          bankName: r.bank_name || '',
+          accountNumber: r.account_number || '',
+          accountName: r.account_name || '',
+          initiatorType: r.initiator_type || 'customer',
         }
       })
 
@@ -1043,6 +1047,16 @@ export default function Refunds() {
                             </div>
                           </div>
 
+                          {selected.bankName && (
+                            <div className="mb-3 p-2.5 rounded bg-success-subtle border border-success-subtle d-flex align-items-center justify-content-between" style={{ fontSize: 12 }}>
+                              <div>
+                                <span className="fw-bold text-success"><i className="ri-bank-line me-1"/> Customer Refund Account (Section 16):</span>
+                                <div className="fw-medium text-dark">{selected.bankName} · {selected.accountNumber} ({selected.accountName})</div>
+                              </div>
+                              <span className="badge bg-success">NUBAN Attached</span>
+                            </div>
+                          )}
+
                           {/* Decision buttons */}
                           <div className="p-3 rounded mt-2" style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
                             <div className="fw-medium mb-3" style={{ fontSize: 13 }}>Select Final Action</div>
@@ -1166,6 +1180,15 @@ export default function Refunds() {
                           <div className="mt-3 pt-3 border-top">
                             <div className="text-muted mb-1" style={{ fontSize: 11 }}>INSPECTION NOTES</div>
                             <div className="fst-italic text-muted">"{selected.inspectionNotes}"</div>
+                          </div>
+                        )}
+                        {selected.bankName && (
+                          <div className="mt-3 pt-3 border-top bg-light p-2.5 rounded">
+                            <div className="text-muted mb-1 fw-bold text-success" style={{ fontSize: 11 }}>
+                              <i className="ri-bank-line me-1"/> CUSTOMER REFUND ACCOUNT (SECTION 16)
+                            </div>
+                            <div className="fw-medium text-dark">{selected.bankName} · {selected.accountNumber}</div>
+                            <div className="text-muted" style={{ fontSize: 12 }}>{selected.accountName}</div>
                           </div>
                         )}
                       </div>
