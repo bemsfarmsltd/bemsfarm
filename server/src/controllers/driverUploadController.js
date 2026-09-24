@@ -82,8 +82,17 @@ const uploadProofPhoto = async (req, res, next) => {
 
       return res.status(201).json({
         status: "success",
+        success: true,
         message: "Proof photo uploaded successfully",
         url: fileUrl,
+        photo_url: fileUrl,
+        photoUrl: fileUrl,
+        data: {
+          url: fileUrl,
+          photo_url: fileUrl,
+          photoUrl: fileUrl,
+          filename: file.filename,
+        },
         filename: file.filename,
         size: file.size,
         mimetype: file.mimetype
@@ -113,8 +122,17 @@ const uploadProofPhoto = async (req, res, next) => {
 
       return res.status(201).json({
         status: "success",
+        success: true,
         message: "Proof photo saved successfully",
         url: fileUrl,
+        photo_url: fileUrl,
+        photoUrl: fileUrl,
+        data: {
+          url: fileUrl,
+          photo_url: fileUrl,
+          photoUrl: fileUrl,
+          filename: savedFilename,
+        },
         filename: savedFilename,
         size: buffer.length,
         mimetype: `image/${ext.replace(".", "")}`

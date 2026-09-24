@@ -559,7 +559,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     const delivery = deliveryCheck.rows[0];
     const actualOrderId = delivery.actual_order_id;
     const finalProofNote = proof_note || note || null;
-    let finalProofPhoto = proof_photo || photo || req.body.image || (Array.isArray(req.body.proof_photos) ? req.body.proof_photos[0] : null);
+    let finalProofPhoto = proof_photo || photo || req.body.photo_url || req.body.photoUrl || req.body.image || req.body.imageUrl || req.body.image_url || req.body.url || (Array.isArray(req.body.proof_photos) ? req.body.proof_photos[0] : null);
     if (finalProofPhoto && typeof finalProofPhoto === 'string' && (finalProofPhoto.startsWith('data:image') || finalProofPhoto.length > 500)) {
       try {
         let base64Data = finalProofPhoto;
@@ -928,12 +928,12 @@ const updateDeliveryStatus = async (req, res, next) => {
       `
       UPDATE orders 
       SET 
-        status = $1,
-        tracking_status = $2,
-        driver_confirmed = CASE WHEN $1 = 'delivered' THEN true ELSE driver_confirmed END,
-        driver_confirmed_at = CASE WHEN $1 = 'delivered' THEN COALESCE(driver_confirmed_at, NOW()) ELSE driver_confirmed_at END,
-        driver_arrived_at = CASE WHEN $1 = 'arrived' OR $2 = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
-        delivered_at = CASE WHEN $1 = 'delivered' OR $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
+        status = $1::varchar,
+        tracking_status = $2::varchar,
+        driver_confirmed = CASE WHEN $1::varchar = 'delivered' THEN true ELSE driver_confirmed END,
+        driver_confirmed_at = CASE WHEN $1::varchar = 'delivered' THEN COALESCE(driver_confirmed_at, NOW()) ELSE driver_confirmed_at END,
+        driver_arrived_at = CASE WHEN $1::varchar = 'arrived' OR $2::varchar = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
+        delivered_at = CASE WHEN $1::varchar = 'delivered' OR $2::varchar = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
         proof_photo = COALESCE($3, proof_photo),
         proof_photos = COALESCE($4::jsonb, proof_photos),
         item_proofs = COALESCE($5::jsonb, item_proofs),
@@ -950,8 +950,8 @@ const updateDeliveryStatus = async (req, res, next) => {
       UPDATE delivery_assignments 
       SET 
         driver_response = CASE 
-          WHEN $1 = 'assigned' OR $1 = 'awaiting_pickup' OR $1 = 'en_route' OR $1 = 'arrived' OR $1 = 'delivered' THEN 'accepted'
-          WHEN $1 = 'cancelled' THEN 'rejected'
+          WHEN $1::varchar = 'assigned' OR $1::varchar = 'awaiting_pickup' OR $1::varchar = 'en_route' OR $1::varchar = 'arrived' OR $1::varchar = 'delivered' THEN 'accepted'
+          WHEN $1::varchar = 'cancelled' THEN 'rejected'
           ELSE driver_response
         END,
         response_at = NOW(),
