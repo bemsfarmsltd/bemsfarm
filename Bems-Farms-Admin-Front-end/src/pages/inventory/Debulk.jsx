@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
@@ -103,7 +103,7 @@ export default function Debulk() {
         status: 'error',
         severity: 'danger',
         isFatal: true,
-        title: 'Identical Product Error',
+        title: 'Identical Product Selected',
         message: 'Source carton and target pieces cannot be the exact same product.',
       }
     }
@@ -120,14 +120,14 @@ export default function Debulk() {
     const categoryLabelSource = sourceProduct.category || sourceProduct.category_name || 'Category A'
     const categoryLabelTarget = targetProduct.category || targetProduct.category_name || 'Category B'
 
-    // High confidence: Same category and shared core product name keyword (e.g. "Eggs" and "Eggs", "Garri" and "Garri")
+    // High confidence: Same category and shared core keyword
     if (sameCategory && sharedWords.length > 0) {
       return {
         status: 'perfect',
         severity: 'success',
         isFatal: false,
-        title: 'Perfect Product Match',
-        message: `Both items belong to "${categoryLabelSource}" and share product keyword "${sharedWords.join(', ')}". High confidence match!`,
+        title: 'Verified Item Match',
+        message: `Both items belong to "${categoryLabelSource}" and match product keyword "${sharedWords.join(', ')}". High confidence match!`,
       }
     }
 
@@ -137,8 +137,8 @@ export default function Debulk() {
         status: 'moderate',
         severity: 'info',
         isFatal: false,
-        title: 'Category Matched (Verify Names)',
-        message: `Both items are in "${categoryLabelSource}", but titles differ ("${sourceProduct.name}" vs "${targetProduct.name}"). Ensure this is intentional.`,
+        title: 'Category Matched (Check Titles)',
+        message: `Both items belong to "${categoryLabelSource}", but titles differ ("${sourceProduct.name}" vs "${targetProduct.name}").`,
       }
     }
 
@@ -147,8 +147,8 @@ export default function Debulk() {
       status: 'mismatch',
       severity: 'warning',
       isFatal: false,
-      title: 'Cross-Category Mismatch Warning',
-      message: `Caution: Source "${sourceProduct.name}" (${categoryLabelSource}) and Target "${targetProduct.name}" (${categoryLabelTarget}) appear to be different items across different categories!`,
+      title: 'Item & Category Mismatch Warning',
+      message: `Warning: Source "${sourceProduct.name}" (${categoryLabelSource}) and Target "${targetProduct.name}" (${categoryLabelTarget}) are completely different items across different categories!`,
     }
   }, [sourceProduct, targetProduct])
 
@@ -164,7 +164,7 @@ export default function Debulk() {
     }
   }, [sourceProduct])
 
-  // Smart Recommended Target Products (Filters catalog to matching category/name items)
+  // Smart Recommended Target Products
   const recommendedTargetProducts = useMemo(() => {
     if (!sourceProduct) return products
 
@@ -216,10 +216,10 @@ export default function Debulk() {
     if (matched) {
       if (!sourceProductId) {
         setSourceProductId(String(matched.id))
-        toast.success(`Source carton set: "${matched.name}"`)
+        toast.success(`Source carton selected: "${matched.name}"`)
       } else {
         setTargetProductId(String(matched.id))
-        toast.success(`Target piece set: "${matched.name}"`)
+        toast.success(`Target piece selected: "${matched.name}"`)
       }
       setBarcodeScanInput('')
     } else {
@@ -246,7 +246,7 @@ export default function Debulk() {
   // Final Execution
   const handleConfirmAndExecute = async () => {
     if (compatibility.status === 'mismatch' && !mismatchOverrideChecked) {
-      return toast.error('Please check the safety confirmation box to verify this cross-category conversion.')
+      return toast.error('Please check the confirmation box to verify this cross-category conversion.')
     }
 
     setSubmitting(true)
@@ -294,87 +294,74 @@ export default function Debulk() {
   }, [movements, historySearch])
 
   return (
-    <div className="container-fluid py-4 px-md-4">
-      {/* ── TOP EXECUTIVE BANNER ── */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
-        <div className="card-body p-4 text-white">
-          <div className="row align-items-center g-3">
-            <div className="col-12 col-lg-7">
-              <div className="d-flex align-items-center gap-3 mb-2">
-                <span
-                  className="d-inline-flex align-items-center justify-content-center rounded-3 shadow-sm"
-                  style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}
-                >
-                  <i className="ri-inbox-unarchive-line fs-24"></i>
-                </span>
-                <div>
-                  <h3 className="fw-bold mb-0 text-white tracking-tight">Debulk &amp; Unbundle Studio</h3>
-                  <div className="text-white-50 fs-13 d-flex align-items-center gap-2 mt-1">
-                    <span>Inventory</span>
-                    <span>&bull;</span>
-                    <span className="text-warning-emphasis fw-medium">Bulk Cartons &rarr; Loose Retail Pieces</span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-white-50 fs-13 mb-0 mt-2" style={{ maxWidth: 580 }}>
-                Safely unpack wholesale cartons or crates into individual retail shelf units with real-time perpetual inventory balance, category validation guards, and audit trails.
-              </p>
-            </div>
+    <div className="container-fluid">
+      {/* ── STANDARD BEMS FARMS PAGE HEADING (NO DARK BANNER) ── */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex align-items-md-center justify-content-between">
+        <div>
+          <h6 className="flex-grow-1 mb-0 fw-bold d-flex align-items-center gap-2">
+            <i className="ri-inbox-unarchive-line text-success fs-18"></i>
+            Debulk &amp; Unbundle Inventory
+          </h6>
+          <ul className="breadcrumb flex-shrink-0 mb-0">
+            <li className="breadcrumb-item"><Link to="/products">Inventory</Link></li>
+            <li className="breadcrumb-item active">Debulk &amp; Unbundle</li>
+          </ul>
+        </div>
 
-            <div className="col-12 col-lg-5 text-lg-end">
-              <div className="d-inline-flex align-items-center gap-2 bg-white bg-opacity-10 p-2 rounded-3 backdrop-blur">
-                <button
-                  type="button"
-                  className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${activeTab === 'studio' ? 'btn-warning text-dark shadow-sm' : 'text-white'}`}
-                  onClick={() => setActiveTab('studio')}
-                >
-                  <i className="ri-tools-line me-1"></i> Conversion Studio
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm px-3 fw-bold rounded-2 transition-all ${activeTab === 'ledger' ? 'btn-warning text-dark shadow-sm' : 'text-white'}`}
-                  onClick={() => setActiveTab('ledger')}
-                >
-                  <i className="ri-file-list-3-line me-1"></i> Audit Ledger ({movements.length})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-dark text-white-50 border-0 rounded-2"
-                  onClick={() => { loadMetadata(); fetchHistory() }}
-                  disabled={loading || loadingMovements}
-                  title="Refresh Inventory"
-                >
-                  <i className={`ri-refresh-line ${loading || loadingMovements ? 'ri-spin' : ''}`}></i>
-                </button>
-              </div>
-            </div>
+        {/* Header Action Buttons (Matching other pages) */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="btn-group btn-group-sm">
+            <button
+              type="button"
+              className={`btn ${activeTab === 'studio' ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('studio')}
+            >
+              <i className="ri-tools-line me-1"></i> Conversion Studio
+            </button>
+            <button
+              type="button"
+              className={`btn ${activeTab === 'ledger' ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('ledger')}
+            >
+              <i className="ri-file-list-3-line me-1"></i> Audit Ledger ({movements.length})
+            </button>
           </div>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 shadow-sm"
+            onClick={() => { loadMetadata(); fetchHistory() }}
+            disabled={loading || loadingMovements}
+            title="Refresh Product Stock"
+          >
+            <i className={`ri-refresh-line ${loading || loadingMovements ? 'ri-spin' : ''}`} /> Refresh
+          </button>
         </div>
       </div>
 
-      {/* ── KPI METRICS STRIP ── */}
+      {/* ── KPI METRICS STRIP (GREEN THEMED) ── */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-xs rounded-3 bg-white p-3 h-100">
+          <div className="card shadow-sm border-0 p-3 h-100 bg-white rounded-3">
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <div className="text-muted fs-12 fw-semibold text-uppercase">Total Operations</div>
-                <h3 className="fw-bold mb-0 text-dark mt-1">{movements.length}</h3>
+                <h4 className="fw-bold mb-0 text-dark mt-1">{movements.length}</h4>
               </div>
-              <div className="rounded-3 p-2 bg-warning-subtle text-warning">
+              <div className="rounded-3 p-2 bg-success-subtle text-success">
                 <i className="ri-history-line fs-20" />
               </div>
             </div>
-            <div className="text-muted fs-11 mt-2">Unbundling events recorded</div>
+            <div className="text-muted fs-11 mt-2">Breakdowns logged</div>
           </div>
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-xs rounded-3 bg-white p-3 h-100">
+          <div className="card shadow-sm border-0 p-3 h-100 bg-white rounded-3">
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <div className="text-muted fs-12 fw-semibold text-uppercase">Cartons Unpacked</div>
-                <h3 className="fw-bold mb-0 text-danger mt-1">-{totalCartonsDebulked}</h3>
+                <h4 className="fw-bold mb-0 text-danger mt-1">-{totalCartonsDebulked}</h4>
               </div>
               <div className="rounded-3 p-2 bg-danger-subtle text-danger">
                 <i className="ri-archive-line fs-20" />
@@ -385,60 +372,60 @@ export default function Debulk() {
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-xs rounded-3 bg-white p-3 h-100">
+          <div className="card shadow-sm border-0 p-3 h-100 bg-white rounded-3">
             <div className="d-flex align-items-center justify-content-between">
               <div>
-                <div className="text-muted fs-12 fw-semibold text-uppercase">Safeguard Guard</div>
-                <h3 className="fw-bold mb-0 text-success mt-1">Active</h3>
+                <div className="text-muted fs-12 fw-semibold text-uppercase">Mismatch Guard</div>
+                <h4 className="fw-bold mb-0 text-success mt-1">Active</h4>
               </div>
               <div className="rounded-3 p-2 bg-success-subtle text-success">
                 <i className="ri-shield-check-line fs-20" />
               </div>
             </div>
-            <div className="text-muted fs-11 mt-2">Category &amp; stem verification</div>
+            <div className="text-muted fs-11 mt-2">Item category verified</div>
           </div>
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-xs rounded-3 bg-white p-3 h-100">
+          <div className="card shadow-sm border-0 p-3 h-100 bg-white rounded-3">
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <div className="text-muted fs-12 fw-semibold text-uppercase">POS Sync</div>
-                <h3 className="fw-bold mb-0 text-primary mt-1">Instant</h3>
+                <h4 className="fw-bold mb-0 text-success mt-1">Real-Time</h4>
               </div>
-              <div className="rounded-3 p-2 bg-primary-subtle text-primary">
+              <div className="rounded-3 p-2 bg-success-subtle text-success">
                 <i className="ri-wireless-charging-line fs-20" />
               </div>
             </div>
-            <div className="text-muted fs-11 mt-2">Ready for counter sale</div>
+            <div className="text-muted fs-11 mt-2">Available for retail sale</div>
           </div>
         </div>
       </div>
 
       {/* ── TAB 1: CONVERSION STUDIO ── */}
       {activeTab === 'studio' && (
-        <div className="row g-4">
+        <div className="row g-4 mb-4">
           {/* Left Column: Interactive Form */}
           <div className="col-12 col-xl-7">
-            <div className="card border-0 shadow-xs rounded-4 bg-white overflow-hidden">
-              <div className="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+            <div className="card shadow-sm border-0 rounded-3 bg-white">
+              <div className="card-header bg-white border-bottom py-3 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                   <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                    <i className="ri-dashboard-3-line text-warning"></i>
-                    Debulk Setup &amp; Item Verification
+                    <i className="ri-tools-line text-success"></i>
+                    Unbundle Configuration &amp; Item Verification
                   </h6>
-                  <div className="text-muted fs-12">Pair the wholesale container with its single retail counterpart</div>
+                  <div className="text-muted fs-12">Pair the wholesale container with its individual retail piece</div>
                 </div>
 
                 {/* Barcode Scanner Gun Quick-Entry */}
-                <form onSubmit={handleBarcodeScanSubmit} className="d-none d-md-flex align-items-center gap-1">
-                  <div className="input-group input-group-sm" style={{ width: 230 }}>
-                    <span className="input-group-text bg-light border-end-0">
-                      <i className="ri-barcode-line text-muted"></i>
+                <form onSubmit={handleBarcodeScanSubmit} className="d-flex align-items-center gap-1">
+                  <div className="input-group input-group-sm" style={{ width: 220 }}>
+                    <span className="input-group-text bg-white text-muted">
+                      <i className="ri-barcode-line text-success"></i>
                     </span>
                     <input
                       type="text"
-                      className="form-control border-start-0"
+                      className="form-control"
                       placeholder="Scan Barcode / SKU..."
                       value={barcodeScanInput}
                       onChange={(e) => setBarcodeScanInput(e.target.value)}
@@ -447,14 +434,14 @@ export default function Debulk() {
                 </form>
               </div>
 
-              <div className="card-body p-4">
+              <div className="card-body p-3 p-md-4">
                 <form onSubmit={handleRequestExecution}>
                   {/* STEP 1: SOURCE CARTON */}
-                  <div className="p-3 rounded-3 mb-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div className="p-3 rounded-3 mb-3 bg-light border">
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-warning text-dark rounded-circle" style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
-                        <label className="fw-bold text-dark fs-14 mb-0">Select Bulk / Wholesale Item (To Open)</label>
+                        <span className="badge bg-success text-white rounded-circle" style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
+                        <label className="fw-bold text-dark fs-13 mb-0">Select Bulk / Wholesale Item (To Open)</label>
                       </div>
                       {sourceProduct && (
                         <span className={`badge ${sourceStock > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1`}>
@@ -468,17 +455,16 @@ export default function Debulk() {
                       value={sourceProductId}
                       onChange={(val) => {
                         setSourceProductId(val)
-                        // Auto-reset target if previously set to same
                         if (String(val) === String(targetProductId)) {
                           setTargetProductId('')
                         }
                       }}
-                      placeholder="Search or scan source carton (e.g. Eggs 30-Pack, Crate, Garri 50kg)..."
+                      placeholder="Search or scan source carton (e.g. Eggs 30-Pack, Garri 50kg)..."
                       required
                     />
 
                     {sourceProduct && (
-                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted">
+                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted flex-wrap">
                         <span>Category: <strong className="text-dark">{sourceProduct.category || sourceProduct.category_name || 'General'}</strong></span>
                         {sourceProduct.sku && <span>SKU: <code className="text-dark">{sourceProduct.sku}</code></span>}
                         {sourceProduct.barcode && <span>Barcode: <code className="text-dark">{sourceProduct.barcode}</code></span>}
@@ -487,14 +473,14 @@ export default function Debulk() {
                   </div>
 
                   {/* STEP 2: TARGET RETAIL PIECE */}
-                  <div className="p-3 rounded-3 mb-4" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div className="p-3 rounded-3 mb-3 bg-light border">
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <div className="d-flex align-items-center gap-2">
                         <span className="badge bg-success text-white rounded-circle" style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
-                        <label className="fw-bold text-dark fs-14 mb-0">Select Retail Pieces Product (To Receive Units)</label>
+                        <label className="fw-bold text-dark fs-13 mb-0">Select Retail Pieces Product (To Receive Units)</label>
                       </div>
                       {targetProduct && (
-                        <span className="badge bg-primary-subtle text-primary px-2 py-1">
+                        <span className="badge bg-success-subtle text-success px-2 py-1">
                           Current Shelf: <strong>{targetStock}</strong> pieces
                         </span>
                       )}
@@ -502,11 +488,11 @@ export default function Debulk() {
 
                     {/* Filter Toggle pills for Target Product */}
                     {sourceProduct && (
-                      <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
                         <span className="fs-11 text-muted">
                           {targetFilterMode === 'recommended' ? (
                             <span className="text-success fw-medium">
-                              <i className="ri-magic-line me-1"></i> Showing items related to "{sourceProduct.category || 'Source'}"
+                              <i className="ri-check-line me-1"></i> Filtered to items related to "{sourceProduct.category || 'Source'}"
                             </span>
                           ) : (
                             <span>Showing all products in catalog</span>
@@ -522,7 +508,7 @@ export default function Debulk() {
                           </button>
                           <button
                             type="button"
-                            className={`btn btn-xs py-0 px-2 ${targetFilterMode === 'all' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                            className={`btn btn-xs py-0 px-2 ${targetFilterMode === 'all' ? 'btn-secondary' : 'btn-outline-secondary'}`}
                             onClick={() => setTargetFilterMode('all')}
                           >
                             Browse All
@@ -540,7 +526,7 @@ export default function Debulk() {
                     />
 
                     {targetProduct && (
-                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted">
+                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted flex-wrap">
                         <span>Category: <strong className="text-dark">{targetProduct.category || targetProduct.category_name || 'General'}</strong></span>
                         {targetProduct.sku && <span>SKU: <code className="text-dark">{targetProduct.sku}</code></span>}
                         {targetProduct.barcode && <span>Barcode: <code className="text-dark">{targetProduct.barcode}</code></span>}
@@ -550,8 +536,8 @@ export default function Debulk() {
 
                   {/* ── SAFEGUARD COMPATIBILITY STATUS BANNER ── */}
                   {sourceProduct && targetProduct && (
-                    <div className={`alert alert-${compatibility.severity} d-flex align-items-start gap-3 p-3 rounded-3 mb-4 shadow-xs border-0`}>
-                      <span className="fs-20 flex-shrink-0">
+                    <div className={`alert alert-${compatibility.severity} d-flex align-items-start gap-2 p-3 rounded-3 mb-3 border-0`}>
+                      <span className="fs-18 flex-shrink-0 mt-1">
                         {compatibility.status === 'perfect' && <i className="ri-checkbox-circle-fill text-success" />}
                         {compatibility.status === 'moderate' && <i className="ri-information-fill text-info" />}
                         {compatibility.status === 'mismatch' && <i className="ri-alert-fill text-warning" />}
@@ -565,13 +551,13 @@ export default function Debulk() {
                   )}
 
                   {/* STEP 3: QUANTITY & MULTIPLIER CONFIGURATION */}
-                  <div className="row g-3 mb-4">
+                  <div className="row g-3 mb-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label fw-bold text-dark fs-13 mb-1 d-flex align-items-center justify-content-between">
                         <span>Cartons to Open</span>
-                        <span className="text-muted fs-11">Wholesale Count</span>
+                        <span className="text-muted fs-11">Bulk Quantity</span>
                       </label>
-                      <div className="input-group">
+                      <div className="input-group input-group-sm">
                         <button
                           type="button"
                           className="btn btn-outline-secondary"
@@ -581,7 +567,7 @@ export default function Debulk() {
                         </button>
                         <input
                           type="number"
-                          className={`form-control text-center fw-bold fs-15 ${isStockInsufficient ? 'is-invalid' : ''}`}
+                          className={`form-control text-center fw-bold fs-14 ${isStockInsufficient ? 'is-invalid' : ''}`}
                           min="1"
                           max={sourceStock > 0 ? sourceStock : 9999}
                           value={cartonsToBreak}
@@ -610,7 +596,7 @@ export default function Debulk() {
                       </label>
                       <input
                         type="number"
-                        className="form-control text-center fw-bold fs-15"
+                        className="form-control form-control-sm text-center fw-bold fs-14"
                         min="1"
                         step="any"
                         value={piecesPerCarton}
@@ -622,7 +608,7 @@ export default function Debulk() {
                           <button
                             key={preset}
                             type="button"
-                            className="btn btn-xs btn-outline-light text-dark border py-0 px-2 fs-10"
+                            className="btn btn-xs btn-outline-secondary py-0 px-2 fs-10"
                             onClick={() => setPiecesPerCarton(preset)}
                           >
                             {preset}x
@@ -635,7 +621,7 @@ export default function Debulk() {
                   {/* Warehouse & Notes Row */}
                   <div className="row g-3 mb-4">
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark fs-13 mb-1">Target Storage Location</label>
+                      <label className="form-label fw-semibold text-dark fs-12 mb-1">Target Storage Location</label>
                       <select
                         className="form-select form-select-sm"
                         value={warehouseId}
@@ -649,11 +635,11 @@ export default function Debulk() {
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark fs-13 mb-1">Audit Reason / Note</label>
+                      <label className="form-label fw-semibold text-dark fs-12 mb-1">Audit Reason / Note</label>
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="e.g. Broken down for front display shelf"
+                        placeholder="e.g. Unboxed for retail shelf display"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                       />
@@ -664,9 +650,9 @@ export default function Debulk() {
                   <button
                     type="submit"
                     disabled={!sourceProductId || !targetProductId || isStockInsufficient || compatibility.status === 'error'}
-                    className="btn btn-warning w-100 py-3 fw-bold text-dark rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2 fs-15"
+                    className="btn btn-success w-100 py-2 fw-bold text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
                   >
-                    <i className="ri-shield-flash-line fs-18"></i>
+                    <i className="ri-shield-check-line fs-18"></i>
                     Verify &amp; Execute Debulking ({countToBreak} Ctn &rarr; {piecesGained} Pcs)
                   </button>
                 </form>
@@ -677,9 +663,9 @@ export default function Debulk() {
           {/* Right Column: High-Tech Conversion Pipeline & Activity */}
           <div className="col-12 col-xl-5">
             {/* 1. Live Interactive Pipeline Simulation */}
-            <div className="card border-0 shadow-xs rounded-4 bg-white p-4 mb-4">
+            <div className="card shadow-sm border-0 rounded-3 bg-white p-3 p-md-4 mb-4">
               <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <i className="ri-pulse-line text-success"></i>
+                <i className="ri-equalizer-line text-success"></i>
                 Stock Balance Simulation
               </h6>
 
@@ -687,8 +673,8 @@ export default function Debulk() {
                 <div className="row g-2 align-items-center text-center">
                   {/* Source Carton Node */}
                   <div className="col-5">
-                    <div className="p-3 bg-white rounded-3 shadow-xs border">
-                      <div className="text-danger fw-bold fs-20">-{countToBreak}</div>
+                    <div className="p-2 p-md-3 bg-white rounded-3 shadow-xs border">
+                      <div className="text-danger fw-bold fs-18">-{countToBreak}</div>
                       <div className="text-truncate fw-semibold text-dark fs-12 mt-1" title={sourceProduct?.name}>
                         {sourceProduct?.name || 'Bulk Carton'}
                       </div>
@@ -702,17 +688,17 @@ export default function Debulk() {
                   <div className="col-2">
                     <div
                       className="rounded-circle d-inline-flex align-items-center justify-content-center shadow-xs"
-                      style={{ width: 34, height: 34, background: '#FEF3C7', color: '#B45309' }}
+                      style={{ width: 32, height: 32, background: '#DCFCE7', color: '#166534' }}
                     >
-                      <i className="ri-arrow-right-line fs-18"></i>
+                      <i className="ri-arrow-right-line fs-16"></i>
                     </div>
                     <div className="text-muted fs-10 mt-1 fw-bold">&times;{multiplier}</div>
                   </div>
 
                   {/* Target Pieces Node */}
                   <div className="col-5">
-                    <div className="p-3 bg-white rounded-3 shadow-xs border">
-                      <div className="text-success fw-bold fs-20">+{piecesGained}</div>
+                    <div className="p-2 p-md-3 bg-white rounded-3 shadow-xs border">
+                      <div className="text-success fw-bold fs-18">+{piecesGained}</div>
                       <div className="text-truncate fw-semibold text-dark fs-12 mt-1" title={targetProduct?.name}>
                         {targetProduct?.name || 'Retail Pieces'}
                       </div>
@@ -727,24 +713,24 @@ export default function Debulk() {
               {/* Conversion Rules Reminder */}
               <div className="bg-white p-3 rounded-3 border fs-12 text-muted">
                 <div className="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
-                  <i className="ri-information-line text-primary"></i>
+                  <i className="ri-information-line text-success"></i>
                   Safeguards Guarantee:
                 </div>
                 <ul className="mb-0 ps-3 fs-11 leading-relaxed">
                   <li>Wholesale cartons are permanently decremented upon unboxing.</li>
                   <li>Retail piece counts are immediately visible for checkout at the POS.</li>
-                  <li>Cost price and accounting general ledger values remain 100% balanced.</li>
+                  <li>Cost price and accounting inventory balances remain 100% synchronized.</li>
                 </ul>
               </div>
             </div>
 
             {/* 2. Recent Debulk Log Preview */}
-            <div className="card border-0 shadow-xs rounded-4 bg-white p-4">
+            <div className="card shadow-sm border-0 rounded-3 bg-white p-3 p-md-4">
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <h6 className="fw-bold text-dark mb-0">Recent Operations</h6>
+                <h6 className="fw-bold text-dark mb-0">Recent Debulking Operations</h6>
                 <button
                   type="button"
-                  className="btn btn-sm btn-link text-warning p-0 fw-bold fs-12 text-decoration-none"
+                  className="btn btn-sm btn-link text-success p-0 fw-bold fs-12 text-decoration-none"
                   onClick={() => setActiveTab('ledger')}
                 >
                   View All &rarr;
@@ -781,61 +767,58 @@ export default function Debulk() {
 
       {/* ── TAB 2: AUDIT LEDGER (FULL SCREEN HISTORY) ── */}
       {activeTab === 'ledger' && (
-        <div className="card border-0 shadow-xs rounded-4 bg-white overflow-hidden">
-          <div className="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div>
-              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <i className="ri-history-line text-warning"></i>
-                Debulking Audit Ledger
-              </h6>
-              <div className="text-muted fs-12">Complete chronological record of all carton-to-piece unbundling events</div>
+        <div className="card shadow-sm border-0 rounded-3 bg-white mb-4">
+          <div className="card-body p-3 p-md-4">
+            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+              <div className="search-box" style={{ minWidth: 260 }}>
+                <div className="position-relative">
+                  <input
+                    type="text"
+                    className="form-control form-control-sm ps-4"
+                    placeholder="Filter by product, reference, notes..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                  />
+                  <i className="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted" style={{ fontSize: 14 }}></i>
+                </div>
+              </div>
+
+              <span className="text-muted fs-13">
+                Total operations recorded: <strong>{filteredHistory.length}</strong>
+              </span>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
-              <div className="input-group input-group-sm" style={{ width: 240 }}>
-                <span className="input-group-text bg-light border-end-0">
-                  <i className="ri-search-line text-muted"></i>
-                </span>
-                <input
-                  type="text"
-                  className="form-control border-start-0"
-                  placeholder="Filter by product, ref..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="card-body p-0">
-            {loadingMovements ? (
-              <div className="text-center py-5 text-muted">
-                <div className="spinner-border spinner-border-sm text-warning mb-2" role="status" />
-                <div className="fs-13">Loading historical movements...</div>
-              </div>
-            ) : filteredHistory.length === 0 ? (
-              <div className="text-center py-5 text-muted px-4">
-                <i className="ri-file-search-line fs-32 text-muted mb-2 d-block" />
-                <h6 className="fw-bold text-dark">No Matching Debulking Records</h6>
-                <p className="fs-12 text-muted mb-0">Use the Conversion Studio tab to process carton breakdown operations.</p>
-              </div>
-            ) : (
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0 fs-13">
-                  <thead className="table-light fs-12 text-uppercase text-muted">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0 fs-13">
+                <thead className="table-light fs-12 text-uppercase text-muted">
+                  <tr>
+                    <th className="ps-3 py-3">Date / Time</th>
+                    <th>Reference</th>
+                    <th>Source Bulk Product</th>
+                    <th className="text-center">Cartons Opened</th>
+                    <th>Conversion Notes &amp; Balance</th>
+                    <th className="text-end pe-3">Authorized By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingMovements ? (
                     <tr>
-                      <th className="ps-4 py-3">Date / Time</th>
-                      <th>Reference ID</th>
-                      <th>Source Bulk Product</th>
-                      <th className="text-center">Cartons Opened</th>
-                      <th>Conversion Notes &amp; Balance</th>
-                      <th className="text-end pe-4">Authorized By</th>
+                      <td colSpan="6" className="text-center py-5 text-muted">
+                        <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
+                        <span>Loading historical movements...</span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredHistory.map((m) => (
+                  ) : filteredHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="text-center py-5 text-muted">
+                        <i className="ri-inbox-unarchive-line fs-32 text-secondary mb-2 d-block"></i>
+                        No debulking records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredHistory.map((m) => (
                       <tr key={m.id}>
-                        <td className="ps-4 text-nowrap text-muted fs-12">
+                        <td className="ps-3 text-nowrap text-muted fs-12">
                           {new Date(m.created_at).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: 'short',
@@ -866,17 +849,17 @@ export default function Debulk() {
                             Carton Stock: {m.before_qty ?? '-'} &rarr; {m.after_qty ?? '-'}
                           </div>
                         </td>
-                        <td className="text-end pe-4 text-nowrap text-muted fs-12">
+                        <td className="text-end pe-3 text-nowrap text-muted fs-12">
                           <span className="badge bg-secondary-subtle text-secondary">
                             {m.user_name || 'Staff Operator'}
                           </span>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -886,18 +869,18 @@ export default function Debulk() {
         <div
           className="modal fade show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1055 }}
         >
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 540 }}>
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-              <div className="modal-header border-bottom py-3 px-4" style={{ background: '#f8fafc' }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 520 }}>
+            <div className="modal-content border-0 shadow rounded-3 overflow-hidden">
+              <div className="modal-header border-bottom py-3 px-4 bg-light">
                 <div className="d-flex align-items-center gap-2">
-                  <span className="rounded-circle p-2 bg-warning-subtle text-warning">
-                    <i className="ri-shield-check-line fs-20"></i>
+                  <span className="rounded-circle p-2 bg-success-subtle text-success">
+                    <i className="ri-shield-check-line fs-18"></i>
                   </span>
                   <div>
-                    <h6 className="modal-title fw-bold text-dark mb-0">Pre-Flight Safety Verification</h6>
-                    <div className="text-muted fs-11">Confirm items before updating physical inventory</div>
+                    <h6 className="modal-title fw-bold text-dark mb-0">Confirm Debulking Operation</h6>
+                    <div className="text-muted fs-11">Double-check items before updating stock</div>
                   </div>
                 </div>
                 <button
@@ -921,7 +904,7 @@ export default function Debulk() {
                       <div className="text-muted fs-11 mt-1">Category: {sourceProduct?.category || 'General'}</div>
                     </div>
 
-                    <div className="col-2 text-center text-warning fs-20">
+                    <div className="col-2 text-center text-success fs-20">
                       <i className="ri-arrow-right-line" />
                     </div>
 
@@ -939,13 +922,13 @@ export default function Debulk() {
                 {/* Compatibility Warning in Modal */}
                 {compatibility.status === 'mismatch' ? (
                   <div className="alert alert-warning p-3 rounded-3 mb-3 border-0">
-                    <div className="fw-bold fs-13 d-flex align-items-center gap-2 mb-1">
+                    <div className="fw-bold fs-13 d-flex align-items-center gap-2 mb-1 text-dark">
                       <i className="ri-alert-fill text-warning fs-16"></i>
-                      Cross-Category Warning
+                      Item &amp; Category Mismatch Alert
                     </div>
                     <div className="fs-12 leading-relaxed text-dark">
-                      You are unbundling <strong>{sourceProduct?.name}</strong> into <strong>{targetProduct?.name}</strong>.
-                      These two items have different categories.
+                      You are about to unbundle <strong>{sourceProduct?.name}</strong> into <strong>{targetProduct?.name}</strong>.
+                      These two products have different categories.
                     </div>
                     <div className="form-check mt-3 pt-2 border-top">
                       <input
@@ -983,7 +966,7 @@ export default function Debulk() {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-warning btn-sm px-4 fw-bold text-dark shadow-sm d-flex align-items-center gap-1"
+                  className="btn btn-success btn-sm px-4 fw-bold text-white shadow-sm d-flex align-items-center gap-1"
                   onClick={handleConfirmAndExecute}
                   disabled={submitting || (compatibility.status === 'mismatch' && !mismatchOverrideChecked)}
                 >
