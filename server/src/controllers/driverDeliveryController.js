@@ -42,6 +42,10 @@ function formatDelivery(row) {
     ? new Date(row.assigned_at).toISOString() 
     : (row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString());
 
+  const isPendingPickup = !row.goods_confirmed_by_driver && !row.picked_up_at && !row.driver_picked_up && ['assigned', 'accepted', 'awaiting_pickup'].includes(String(row.delivery_status || row.status || ''));
+  const activeDeliveryStatus = isPendingPickup ? 'assigned' : String(row.delivery_status || row.status || 'assigned');
+  const activeOrderStatus = isPendingPickup ? 'driver_assigned' : String(row.order_status || 'awaiting_driver_confirmation');
+
   return {
     ...row,
     id: deliveryId,
@@ -49,16 +53,16 @@ function formatDelivery(row) {
     deliveryId: deliveryId,
     delivery_ref: deliveryRef,
     deliveryRef: deliveryRef,
-    delivery_status: String(row.delivery_status || row.status || 'assigned'),
-    status: String(row.status || row.delivery_status || 'assigned'),
+    delivery_status: activeDeliveryStatus,
+    status: activeDeliveryStatus,
     order_id: rawOrderId,
     orderId: rawOrderId,
     order_ref: orderRef,
     orderRef: orderRef,
     order_number: orderRef || rawOrderId,
     orderNumber: orderRef || rawOrderId,
-    order_status: String(row.order_status || 'awaiting_driver_confirmation'),
-    tracking_status: String(row.tracking_status || 'awaiting_driver_confirmation'),
+    order_status: activeOrderStatus,
+    tracking_status: activeOrderStatus,
     delivery_address: String(row.delivery_address || 'Abia State, Nigeria'),
     delivery_city: String(row.delivery_city || 'Umuahia'),
     zone_name: String(row.zone_name || 'Umuahia Central'),
@@ -950,8 +954,10 @@ const acceptDelivery = async (req, res, next) => {
       UPDATE deliveries 
       SET 
         driver_id = $2,
-        status = 'accepted',
+        status = 'assigned',
         accepted_at = NOW(),
+        goods_confirmed_by_driver = false,
+        picked_up_at = NULL,
         updated_at = NOW()
       WHERE id = $1
       `,
@@ -960,11 +966,14 @@ const acceptDelivery = async (req, res, next) => {
 
     await client.query(
       `UPDATE orders 
-       SET status = 'in_transit',
-           tracking_status = 'in_transit',
+       SET status = 'driver_assigned',
+           tracking_status = 'driver_assigned',
+           delivery_status = 'assigned',
            driver_id = $2,
            driver_accepted_at = NOW(),
            driver_response = 'accepted',
+           driver_picked_up = false,
+           picked_up_at = NULL,
            updated_at = NOW() 
        WHERE id = $1`,
       [delivery.actual_order_id, driverId]
@@ -995,7 +1004,7 @@ const acceptDelivery = async (req, res, next) => {
       actor_role: 'driver',
       action: 'driver_accepted_delivery',
       previous_state: 'packed',
-      new_state: 'in_transit',
+      new_state: 'driver_assigned',
       metadata: { delivery_id: delivery.id }
     });
 
@@ -1012,14 +1021,20 @@ const acceptDelivery = async (req, res, next) => {
       orderRef: orderRef,
       order_number: orderRef,
       orderNumber: orderRef,
-      status: "accepted",
-      delivery_status: "accepted",
+      status: "assigned",
+      delivery_status: "assigned",
+      order_status: "driver_assigned",
+      tracking_status: "driver_assigned",
+      goods_confirmed: false,
     };
 
     res.json({
       success: true,
-      status: "success",
-      message: "Delivery accepted successfully",
+      status: "assigned",
+      delivery_status: "assigned",
+      order_status: "driver_assigned",
+      tracking_status: "driver_assigned",
+      message: "Delivery accepted successfully. Please proceed to store to collect goods.",
       delivery_id: parseInt(delivery.id, 10) || 0,
       deliveryId: parseInt(delivery.id, 10) || 0,
       order_id: delivery.actual_order_id,
