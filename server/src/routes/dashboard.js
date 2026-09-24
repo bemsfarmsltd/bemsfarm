@@ -298,7 +298,7 @@ router.get("/overview", async (req, res, next) => {
       q(`SELECT
            p.name, p.sku,
            SUM(oi.quantity) AS units_sold,
-           SUM(oi.subtotal) AS total_revenue
+           COALESCE(SUM(COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0))), 0) AS total_revenue
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN orders o ON oi.order_id = o.id
@@ -495,7 +495,7 @@ router.get("/sales", async (req, res, next) => {
            p.name,
            p.sku,
            SUM(oi.quantity) AS sold,
-           SUM(oi.subtotal) AS revenue,
+           COALESCE(SUM(COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0))), 0) AS revenue,
            0 AS trend
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
@@ -520,7 +520,7 @@ router.get("/sales", async (req, res, next) => {
       // Category revenue in period
       q(`SELECT
            cat.name AS category,
-           COALESCE(SUM(oi.subtotal), 0) AS revenue
+           COALESCE(SUM(COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0))), 0) AS revenue
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN categories cat ON p.category_id = cat.id
@@ -562,7 +562,7 @@ router.get("/sales", async (req, res, next) => {
          ORDER BY r.created_at DESC
          LIMIT 10`),
 
-      q(`SELECT p.name, p.sku, SUM(oi.quantity) AS qty_sold, SUM(oi.subtotal) AS revenue
+      q(`SELECT p.name, p.sku, SUM(oi.quantity) AS qty_sold, COALESCE(SUM(COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0))), 0) AS revenue
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          JOIN products p ON oi.product_id = p.id
