@@ -11,28 +11,30 @@ export default function Sidebar() {
   // First sub-category route mapping for each rail category
   const CATEGORY_FIRST_ROUTES = {
     dashboards: '/dashboard?tab=overview',
+    pos: '/pos',
+    inventory: '/inventory/stock-in',
     products: '/products',
-    inventory: '/inventory/schedule',
     orders: '/orders',
     deliveries: '/deliveries/active',
     customers: '/customers',
-    onboarding: '/onboarding',
     finance: '/accounts/transactions',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
+    onboarding: '/onboarding',
     settings: '/settings/general',
     godeye: '/god-eye',
   }
 
   // Role helpers
   const is = (...roles) => hasRole(...roles)
-  const showProducts  = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showInventory = is('superadmin', 'admin', 'manager', 'kitchen_staff')
+  const showProducts  = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showOrders    = is('superadmin', 'admin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff')
   const showDelivery  = is('superadmin', 'admin', 'manager', 'delivery_manager')
   const showCustomers = is('superadmin', 'admin', 'manager', 'cashier')
-  const showStaff     = is('superadmin', 'admin', 'manager')
   const showFinance   = is('superadmin', 'admin', 'manager', 'accountant')
+  const showReports   = is('superadmin', 'admin', 'manager', 'accountant')
+  const showStaff     = is('superadmin', 'admin', 'manager')
   const showChefAI    = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
@@ -44,18 +46,18 @@ export default function Sidebar() {
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
     if (path.startsWith('/dashboard')) return 'dashboards'
-    if (path.startsWith('/products')) return 'products'
+    if (path.startsWith('/pos')) return 'pos'
     if (path.startsWith('/inventory')) return 'inventory'
+    if (path.startsWith('/products')) return 'products'
     if (path.startsWith('/orders')) return 'orders'
     if (path.startsWith('/deliveries')) return 'deliveries'
     if (path.startsWith('/customers')) return 'customers'
-    if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings/team') || path.startsWith('/settings/staff') || path.startsWith('/settings/roles')) return 'onboarding'
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
+    if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings/team') || path.startsWith('/settings/staff') || path.startsWith('/settings/roles')) return 'onboarding'
     if (path.startsWith('/settings')) return 'settings'
     if (path.startsWith('/god-eye')) return 'godeye'
-    if (path.startsWith('/pos')) return 'pos'
     return 'dashboards'
   }
 
@@ -425,6 +427,7 @@ export default function Sidebar() {
           <div className="rail-nav-list">
 
             {/* Dashboards */}
+            {/* 1. Dashboards */}
             <button
               type="button"
               className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
@@ -435,20 +438,19 @@ export default function Sidebar() {
               <span className="rail-label">Dashboards</span>
             </button>
 
-            {/* Products */}
-            {showProducts && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('products')}
-                title="Products & Catalog"
+            {/* 2. Point of Sale (POS) */}
+            {showPOS && (
+              <Link
+                to="/pos"
+                className={`rail-btn ${activeTab === 'pos' ? 'active' : ''}`}
+                title="Point of Sale (POS Terminal)"
               >
-                <i className="ri-price-tag-3-line rail-icon"></i>
-                <span className="rail-label">Products</span>
-              </button>
+                <i className="ri-shopping-cart-2-line rail-icon text-success"></i>
+                <span className="rail-label">Point of Sale</span>
+              </Link>
             )}
 
-            {/* Inventory */}
+            {/* 3. Inventory (BEFORE Products) */}
             {showInventory && (
               <button
                 type="button"
@@ -461,7 +463,20 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Orders */}
+            {/* 4. Products & Catalog */}
+            {showProducts && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('products')}
+                title="Products & Catalog"
+              >
+                <i className="ri-price-tag-3-line rail-icon"></i>
+                <span className="rail-label">Products</span>
+              </button>
+            )}
+
+            {/* 5. Orders */}
             {showOrders && (
               <button
                 type="button"
@@ -474,7 +489,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Deliveries */}
+            {/* 6. Deliveries */}
             {showDelivery && (
               <button
                 type="button"
@@ -487,7 +502,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Customers */}
+            {/* 7. Customers */}
             {showCustomers && (
               <button
                 type="button"
@@ -500,20 +515,33 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Finance */}
+            {/* 8. Finance */}
             {showFinance && (
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
                 onClick={() => handleCategoryClick('finance')}
-                title="Finance"
+                title="Finance & Accounts"
               >
                 <i className="ri-bank-card-line rail-icon"></i>
                 <span className="rail-label">Finance</span>
               </button>
             )}
 
-            {/* Chef AI */}
+            {/* 9. Reports */}
+            {showReports && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('reports')}
+                title="Analytics & Reports"
+              >
+                <i className="ri-bar-chart-box-line rail-icon"></i>
+                <span className="rail-label">Reports</span>
+              </button>
+            )}
+
+            {/* 10. Chef Bems AI */}
             {showChefAI && (
               <button
                 type="button"
@@ -526,7 +554,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Onboarding */}
+            {/* 11. Team Onboarding */}
             {showStaff && (
               <button
                 type="button"
@@ -539,7 +567,20 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* God Eye Audit — superadmin only */}
+            {/* 12. Settings */}
+            {showSettings && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('settings')}
+                title="System Settings"
+              >
+                <i className="ri-settings-3-line rail-icon"></i>
+                <span className="rail-label">Settings</span>
+              </button>
+            )}
+
+            {/* 13. God Eye Audit — superadmin only */}
             {showGodEye && (
               <button
                 type="button"
@@ -550,19 +591,6 @@ export default function Sidebar() {
               >
                 <span className="rail-icon" style={{ fontSize: 18, lineHeight: 1 }}>👁️</span>
                 <span className="rail-label" style={{ fontWeight: activeTab === 'godeye' ? 700 : 500 }}>God Eye</span>
-              </button>
-            )}
-
-            {/* Settings */}
-            {showSettings && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('settings')}
-                title="System Settings"
-              >
-                <i className="ri-settings-3-line rail-icon"></i>
-                <span className="rail-label">Settings</span>
               </button>
             )}
           </div>
@@ -589,15 +617,15 @@ export default function Sidebar() {
             <div className="sub-panel-header">
               <div className="sub-panel-title">
                 {activeTab === 'dashboards' && 'Dashboards'}
-                {activeTab === 'products' && 'Products & Catalog'}
                 {activeTab === 'inventory' && 'Stock & Warehouses'}
+                {activeTab === 'products' && 'Products & Catalog'}
                 {activeTab === 'orders' && 'Sales & Orders'}
                 {activeTab === 'deliveries' && 'Operations & Dispatch'}
                 {activeTab === 'customers' && 'Customer CRM'}
-                {activeTab === 'onboarding' && 'Team Onboarding'}
-                {activeTab === 'finance' && 'Finance'}
+                {activeTab === 'finance' && 'Finance & Accounts'}
                 {activeTab === 'reports' && 'Analytics & Reports'}
                 {activeTab === 'chef' && 'Chef Bems AI'}
+                {activeTab === 'onboarding' && 'Team & Onboarding'}
                 {activeTab === 'stores' && 'Multi-Store Network'}
                 {activeTab === 'settings' && 'System Settings'}
               </div>
@@ -667,7 +695,68 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 2. PRODUCTS */}
+            {/* 2. INVENTORY */}
+            {activeTab === 'inventory' && (
+              <>
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
+                  <NavLink to="/inventory/stock-in" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Restock Products</span>
+                    <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Stock In</span>
+                  </NavLink>
+                )}
+                <NavLink to="/inventory/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Restock Calendar</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Plan</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/debulk" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Debulk &amp; Unbundle</span>
+                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>De-bulk</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Stock Transfer</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/stock-out" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Stock Out (Dispatch)</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/adjustment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Adjustments</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/batches" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Batches &amp; Expiry</span>
+                  </NavLink>
+                )}
+                <NavLink to="/inventory/alerts" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Low Stock Alerts</span>
+                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>Alert</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/warehouses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Warehouses</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/valuation" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Valuation</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/lost-items" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Lost &amp; Damaged</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 3. PRODUCTS */}
             {activeTab === 'products' && (
               <>
                 <NavLink to="/products" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -684,9 +773,6 @@ export default function Sidebar() {
                 <NavLink to="/products/units" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Units of Measure</span>
                 </NavLink>
-                <NavLink to="/products/reviews" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Customer Reviews</span>
-                </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/products/barcode" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Barcode Generator</span>
@@ -697,66 +783,9 @@ export default function Sidebar() {
                     <span>Bulk Export</span>
                   </NavLink>
                 )}
-              </>
-            )}
-
-            {/* 3. INVENTORY */}
-            {activeTab === 'inventory' && (
-              <>
-                <NavLink to="/inventory/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Restock Calendar</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Plan</span>
+                <NavLink to="/products/reviews" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Customer Reviews</span>
                 </NavLink>
-                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
-                  <NavLink to="/inventory/stock-in" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Restock Products</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/stock-out" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Stock Out (Dispatch)</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/adjustment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Adjustments</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/debulk" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Debulk &amp; Unbundle</span>
-                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>De-bulk</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Stock Transfer</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/batches" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Batches &amp; Expiry</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/warehouses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Warehouses</span>
-                  </NavLink>
-                )}
-                <NavLink to="/inventory/alerts" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Low Stock Alerts</span>
-                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>Alert</span>
-                </NavLink>
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/valuation" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Valuation</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/lost-items" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Lost &amp; Damaged</span>
-                  </NavLink>
-                )}
               </>
             )}
 
@@ -823,33 +852,7 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 7. ONBOARDING */}
-            {activeTab === 'onboarding' && (
-              <>
-                <Link
-                  to="/onboarding"
-                  className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
-                >
-                  <span>Staff Directory</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Active</span>
-                </Link>
-                <Link
-                  to="/onboarding?tab=onboarding"
-                  className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
-                >
-                  <span>Team Onboarding</span>
-                  <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>Invites</span>
-                </Link>
-                <Link
-                  to="/onboarding?tab=roles"
-                  className={`dual-sub-link ${isOnboardingTabActive('roles') ? 'active' : ''}`}
-                >
-                  <span>Roles &amp; Permissions</span>
-                </Link>
-              </>
-            )}
-
-            {/* 8. FINANCE */}
+            {/* 7. FINANCE */}
             {activeTab === 'finance' && (
               <>
                 <NavLink to="/accounts/transactions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -870,7 +873,7 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 9. REPORTS */}
+            {/* 8. REPORTS */}
             {activeTab === 'reports' && (
               <>
                 <NavLink to="/reports/sales" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -892,7 +895,7 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 10. CHEF BEMS AI */}
+            {/* 9. CHEF BEMS AI */}
             {activeTab === 'chef' && (
               <>
                 <NavLink to="/chef-bems/conversations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -922,6 +925,32 @@ export default function Sidebar() {
                 <NavLink to="/chef-bems/meal-associations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Meal &amp; Recipe Associations</span>
                 </NavLink>
+              </>
+            )}
+
+            {/* 10. ONBOARDING */}
+            {activeTab === 'onboarding' && (
+              <>
+                <Link
+                  to="/onboarding"
+                  className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
+                >
+                  <span>Staff Directory</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Active</span>
+                </Link>
+                <Link
+                  to="/onboarding?tab=onboarding"
+                  className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
+                >
+                  <span>Team Onboarding</span>
+                  <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>Invites</span>
+                </Link>
+                <Link
+                  to="/onboarding?tab=roles"
+                  className={`dual-sub-link ${isOnboardingTabActive('roles') ? 'active' : ''}`}
+                >
+                  <span>Roles &amp; Permissions</span>
+                </Link>
               </>
             )}
 
