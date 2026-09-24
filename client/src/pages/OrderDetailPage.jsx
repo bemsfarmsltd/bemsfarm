@@ -117,6 +117,12 @@ const STATUS_CONFIG = {
     stepIndex: 3,
     desc: "Courier assigned and heading to store counter for goods pickup",
   },
+  accepted: {
+    label: "Courier Assigned",
+    bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
+    stepIndex: 3,
+    desc: "Courier assigned and heading to store counter for goods pickup",
+  },
   awaiting_pickup: {
     label: "Awaiting Store Pickup",
     bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",

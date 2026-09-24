@@ -11,7 +11,8 @@ const DEFAULT_STATUS_CFG = {
 }
 
 const STATUS_CFG = {
-  assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
+  assigned:           { label: 'Assigned',          color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
+  accepted:           { label: 'Accepted',          color: '#06b6d4', bg: '#cffafe', icon: 'ri-checkbox-circle-line' },
   driver_assigned:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   awaiting_pickup:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   packed_ready:       { label: 'Packed & Ready',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-archive-line'         },

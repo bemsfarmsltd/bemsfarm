@@ -157,7 +157,7 @@ async function autoAssignClosestDriver(
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
             AND del.order_id != $1
-            AND del.status IN ('assigned', 'awaiting_pickup', 'en_route', 'arrived')
+            AND del.status IN ('assigned', 'accepted', 'awaiting_pickup', 'picked_up', 'en_route', 'arrived')
         )
         ${excludedCondition}
       `,

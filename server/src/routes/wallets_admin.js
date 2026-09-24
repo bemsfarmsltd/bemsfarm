@@ -66,7 +66,7 @@ router.delete("/drivers/:id", requireRole("superadmin", "manager", "admin"), asy
     const driver = driverRes.rows[0];
 
     const activeDelivery = await client.query(
-      "SELECT id, status FROM deliveries WHERE driver_id = $1 AND status IN ('assigned', 'picked_up', 'out_for_delivery', 'en_route', 'arrived')",
+      "SELECT id, status FROM deliveries WHERE driver_id = $1 AND status IN ('assigned', 'accepted', 'awaiting_pickup', 'picked_up', 'out_for_delivery', 'en_route', 'arrived')",
       [id]
     );
 

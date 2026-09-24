@@ -6,7 +6,7 @@ const { autoAssignClosestDriver } = require("../services/dispatchEngine");
 // Normalize driver status string input
 function normalizeStatus(status) {
   const s = String(status || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-  if (s === "accepted") return "assigned";
+  if (s === "accepted") return "accepted";
   if (s === "picked_up" || s === "picking_up" || s === "goods_collected" || s === "pickup_confirmed" || s === "at_store") return "picked_up";
   if (s === "out_for_delivery" || s === "en_route" || s === "on_the_way" || s === "in_transit") return "en_route";
   if (s === "arrived" || s === "driver_arrived" || s === "at_location") return "arrived";
@@ -129,14 +129,14 @@ const getActiveDeliveries = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE d.driver_id = $1
-        AND d.status NOT IN ('delivered', 'cancelled')
+        AND d.status NOT IN ('delivered', 'cancelled', 'assigned')
       ORDER BY 
         CASE 
           WHEN d.status = 'arrived' THEN 1
           WHEN d.status = 'en_route' THEN 2
           WHEN d.status = 'picked_up' THEN 3
           WHEN d.status = 'awaiting_pickup' THEN 4
-          WHEN d.status = 'assigned' THEN 5
+          WHEN d.status = 'accepted' THEN 5
           ELSE 6
         END,
         d.assigned_at ASC
@@ -224,10 +224,10 @@ const getAvailableDeliveries = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE (
-        (d.driver_id = $1 AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
+        (d.driver_id = $1 AND d.status = 'assigned')
         OR (d.driver_id IS NULL AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
       )
-      AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted')
+      AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted', 'accepted', 'picked_up', 'en_route', 'arrived')
       ORDER BY 
         CASE 
           WHEN d.driver_id = $1 THEN 1
@@ -517,7 +517,7 @@ const updateDeliveryStatus = async (req, res, next) => {
     let acceptedAt = delivery.accepted_at;
     let arrivedAt = delivery.arrived_at;
 
-    if (rawStatus === "accepted" || deliveryStatus === "assigned") {
+    if (rawStatus === "accepted" || deliveryStatus === "accepted") {
       acceptedAt = new Date();
       orderStatus = "driver_assigned";
       trackingStatus = "driver_assigned";
@@ -904,7 +904,7 @@ const acceptDelivery = async (req, res, next) => {
       UPDATE deliveries 
       SET 
         driver_id = $2,
-        status = 'assigned',
+        status = 'accepted',
         accepted_at = NOW(),
         updated_at = NOW()
       WHERE id = $1
@@ -966,8 +966,8 @@ const acceptDelivery = async (req, res, next) => {
       orderRef: orderRef,
       order_number: orderRef,
       orderNumber: orderRef,
-      status: "assigned",
-      delivery_status: "assigned",
+      status: "accepted",
+      delivery_status: "accepted",
     };
 
     res.json({
