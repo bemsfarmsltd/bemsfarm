@@ -86,6 +86,8 @@ function formatDelivery(row) {
     delivered_at: row.delivered_at ? new Date(row.delivered_at).toISOString() : null,
     customer_confirmed_at: row.customer_confirmed_at ? new Date(row.customer_confirmed_at).toISOString() : null,
     customer_confirmed: Boolean(row.customer_confirmed),
+    driver_confirmed_at: row.driver_confirmed_at ? new Date(row.driver_confirmed_at).toISOString() : null,
+    driver_confirmed: Boolean(row.driver_confirmed),
     can_complete_delivery: Boolean(row.can_complete_delivery),
     eta_minutes: etaMinutes,
     estimated_duration_mins: etaMinutes,
@@ -135,9 +137,11 @@ const getActiveDeliveries = async (req, res, next) => {
         d.item_proofs,
         d.arrived_at,
         d.failure_reason,
-        COALESCE(d.customer_confirmed, false) AS customer_confirmed,
-        d.customer_confirmed_at,
-        (COALESCE(d.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
+        COALESCE(d.customer_confirmed, o.customer_confirmed, false) AS customer_confirmed,
+        COALESCE(d.customer_confirmed_at, o.customer_confirmed_at) AS customer_confirmed_at,
+        COALESCE(o.driver_confirmed, false) AS driver_confirmed,
+        o.driver_confirmed_at,
+        (COALESCE(d.customer_confirmed, o.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
         o.id AS order_id,
         o.order_ref,
         o.status AS order_status,
@@ -231,9 +235,11 @@ const getAvailableDeliveries = async (req, res, next) => {
         d.item_proofs,
         d.arrived_at,
         d.failure_reason,
-        COALESCE(d.customer_confirmed, false) AS customer_confirmed,
-        d.customer_confirmed_at,
-        (COALESCE(d.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
+        COALESCE(d.customer_confirmed, o.customer_confirmed, false) AS customer_confirmed,
+        COALESCE(d.customer_confirmed_at, o.customer_confirmed_at) AS customer_confirmed_at,
+        COALESCE(o.driver_confirmed, false) AS driver_confirmed,
+        o.driver_confirmed_at,
+        (COALESCE(d.customer_confirmed, o.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
         o.id AS order_id,
         o.order_ref,
         o.status AS order_status,
@@ -435,9 +441,11 @@ const getDeliveryDetails = async (req, res, next) => {
         d.item_proofs,
         d.arrived_at,
         d.failure_reason,
-        COALESCE(d.customer_confirmed, false) AS customer_confirmed,
-        d.customer_confirmed_at,
-        (COALESCE(d.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
+        COALESCE(d.customer_confirmed, o.customer_confirmed, false) AS customer_confirmed,
+        COALESCE(d.customer_confirmed_at, o.customer_confirmed_at) AS customer_confirmed_at,
+        COALESCE(o.driver_confirmed, false) AS driver_confirmed,
+        o.driver_confirmed_at,
+        (COALESCE(d.customer_confirmed, o.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
         o.id AS order_id,
         o.order_ref,
         o.status AS order_status,
@@ -885,6 +893,8 @@ const updateDeliveryStatus = async (req, res, next) => {
       SET 
         status = $1,
         tracking_status = $2,
+        driver_confirmed = CASE WHEN $1 = 'delivered' THEN true ELSE driver_confirmed END,
+        driver_confirmed_at = CASE WHEN $1 = 'delivered' THEN COALESCE(driver_confirmed_at, NOW()) ELSE driver_confirmed_at END,
         driver_arrived_at = CASE WHEN $1 = 'arrived' OR $2 = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
         delivered_at = CASE WHEN $1 = 'delivered' OR $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
         updated_at = NOW()
@@ -1357,6 +1367,13 @@ const confirmPickup = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/deliveries/:orderId/confirm-delivery ──────────────
+// Explicitly confirm delivery completion by driver
+const confirmDelivery = async (req, res, next) => {
+  req.body.status = "delivered";
+  return updateDeliveryStatus(req, res, next);
+};
+
 module.exports = {
   getActiveDeliveries,
   getAvailableDeliveries,
@@ -1366,5 +1383,6 @@ module.exports = {
   acceptDelivery,
   declineDelivery,
   confirmPickup,
+  confirmDelivery,
 };
 

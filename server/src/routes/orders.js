@@ -538,6 +538,10 @@ router.get("/track/:code", async (req, res, next) => {
          created_at,
          delivered_at,
          COALESCE(orders.driver_arrived_at, delivery.arrived_at) AS arrived_at,
+         COALESCE(orders.customer_confirmed, delivery.customer_confirmed, false) AS customer_confirmed,
+         COALESCE(orders.customer_confirmed_at, delivery.customer_confirmed_at) AS customer_confirmed_at,
+         COALESCE(orders.driver_confirmed, false) AS driver_confirmed,
+         orders.driver_confirmed_at,
          updated_at,
          delivery.eta_minutes,
          ROUND(location.latitude::numeric, 3) AS driver_lat,
@@ -545,7 +549,7 @@ router.get("/track/:code", async (req, res, next) => {
          location.recorded_at AS location_updated_at
        FROM orders
        LEFT JOIN LATERAL (
-         SELECT d.driver_id, d.eta_minutes, d.arrived_at
+         SELECT d.driver_id, d.eta_minutes, d.arrived_at, d.customer_confirmed, d.customer_confirmed_at
          FROM deliveries d
          WHERE d.order_id = orders.id
          ORDER BY d.created_at DESC
@@ -599,6 +603,10 @@ router.get("/:id", protect, async (req, res, next) => {
          o.created_at,
          COALESCE(delivery.delivered_at, o.updated_at) AS delivered_at,
          COALESCE(o.driver_arrived_at, delivery.arrived_at) AS arrived_at,
+         COALESCE(o.customer_confirmed, delivery.customer_confirmed, false) AS customer_confirmed,
+         COALESCE(o.customer_confirmed_at, delivery.customer_confirmed_at) AS customer_confirmed_at,
+         COALESCE(o.driver_confirmed, false) AS driver_confirmed,
+         o.driver_confirmed_at,
          o.updated_at,
          o.cancelled_at,
          o.cancel_reason,
@@ -864,10 +872,11 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
 });
 
 // ─────────────────────────────────────────────
-// CONFIRM DELIVERY (CUSTOMER APP/WEB)
-// Customer inspects goods and clicks "Confirm Delivery"
+// CONFIRM DELIVERY RECEIVED (CUSTOMER APP / WEB)
+// Customer inspects goods and clicks "Confirm Delivery Received"
+// Records customer confirmation, timestamp, order reference and notifies driver
 // ─────────────────────────────────────────────
-router.patch("/:id/confirm", protect, async (req, res, next) => {
+const handleCustomerConfirm = async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
@@ -876,7 +885,12 @@ router.patch("/:id/confirm", protect, async (req, res, next) => {
 
     // Fetch order
     const orderRes = await client.query(
-      `SELECT * FROM orders WHERE (id = $1 OR order_ref = $1) AND user_id = $2 FOR UPDATE`,
+      `SELECT o.*, d.id as delivery_id, d.driver_id, d.status as delivery_status
+       FROM orders o
+       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+         AND (o.user_id = $2 OR o.customer_id = $2)
+       FOR UPDATE OF o`,
       [id, req.user.id]
     );
 
@@ -887,51 +901,114 @@ router.patch("/:id/confirm", protect, async (req, res, next) => {
 
     const order = orderRes.rows[0];
 
-    // Update orders table
+    // Must be in transit, arrived, shipped, out_for_delivery, or picked_up
+    const validStatuses = ["in_transit", "driver_assigned", "shipped", "out_for_delivery", "arrived", "driver_arrived", "picked_up"];
+    if (!validStatuses.includes(order.status) && !validStatuses.includes(order.tracking_status)) {
+      if (order.status === "delivered") {
+        await client.query("ROLLBACK");
+        return res.json({
+          success: true,
+          message: "Delivery already completed and confirmed.",
+          order_id: order.id,
+          order_ref: order.order_ref || order.id,
+          customer_confirmed: true,
+          driver_confirmed: true,
+          status: "delivered",
+        });
+      }
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Cannot confirm delivery for order currently in '${order.status}' status` });
+    }
+
+    // 1. Record Customer Confirmation & Timestamp
+    const now = new Date();
     await client.query(
-      `
-      UPDATE orders 
-      SET 
-        customer_confirmed = true,
-        customer_confirmed_at = NOW(),
-        status = 'delivered',
-        tracking_status = 'delivered',
-        delivered_at = COALESCE(delivered_at, NOW()),
-        updated_at = NOW()
-      WHERE id = $1
-      `,
-      [order.id]
+      `UPDATE orders 
+       SET customer_confirmed = true,
+           customer_confirmed_at = COALESCE(customer_confirmed_at, $1),
+           updated_at = NOW()
+       WHERE id = $2`,
+      [now, order.id]
     );
 
-    // Update deliveries table
-    await client.query(
-      `
-      UPDATE deliveries 
-      SET 
-        customer_confirmed = true,
-        customer_confirmed_at = NOW(),
-        updated_at = NOW()
-      WHERE order_id = $1
-      `,
-      [order.id]
-    );
+    if (order.delivery_id) {
+      await client.query(
+        `UPDATE deliveries 
+         SET customer_confirmed = true,
+             customer_confirmed_at = COALESCE(customer_confirmed_at, $1),
+             updated_at = NOW()
+         WHERE id = $2`,
+        [now, order.delivery_id]
+      );
+    }
+
+    // 2. Audit log customer confirmation
+    await logOrderAudit(client, {
+      order_id: order.id,
+      actor_id: req.user.id,
+      actor_name: req.user.name,
+      actor_role: 'customer',
+      action: 'customer_delivery_confirmed',
+      previous_state: order.status,
+      new_state: order.status,
+      metadata: {
+        customer_confirmed: true,
+        order_ref: order.order_ref || order.id,
+        confirmed_at: now
+      }
+    });
+
+    // 3. Check if driver has already confirmed
+    const driverHasConfirmed = Boolean(order.driver_confirmed);
+    let finalStatus = order.status;
+
+    if (driverHasConfirmed) {
+      finalStatus = "delivered";
+      await client.query(
+        `UPDATE orders
+         SET status = 'delivered',
+             tracking_status = 'delivered',
+             delivered_at = COALESCE(delivered_at, $1),
+             updated_at = NOW()
+         WHERE id = $2`,
+        [now, order.id]
+      );
+      if (order.delivery_id) {
+        await client.query(
+          `UPDATE deliveries
+           SET status = 'delivered',
+               delivered_at = COALESCE(delivered_at, $1),
+               updated_at = NOW()
+           WHERE id = $2`,
+          [now, order.delivery_id]
+        );
+      }
+    }
 
     await client.query("COMMIT");
 
     res.json({
-      message: "Delivery confirmed successfully. Thank you for shopping with Bems Farms!",
+      success: true,
+      message: driverHasConfirmed
+        ? "Delivery confirmed and completed successfully! Thank you for choosing Bems Farms."
+        : "Delivery receipt confirmed! Waiting for driver confirmation.",
       order_id: order.id,
+      order_ref: order.order_ref || order.id,
       customer_confirmed: true,
-      status: "delivered",
+      customer_confirmed_at: now,
+      driver_confirmed: driverHasConfirmed,
+      status: finalStatus,
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Confirm delivery error:", err.message);
+    console.error("Customer confirm delivery error:", err.message);
     next(err);
   } finally {
     client.release();
   }
-});
+};
+
+router.patch("/:id/confirm", protect, handleCustomerConfirm);
 
 // ─────────────────────────────────────────────
 // REPORT ISSUE (CUSTOMER APP/WEB)
@@ -1025,132 +1102,7 @@ router.post(
 // ─────────────────────────────────────────────
 // CUSTOMER DELIVERY CONFIRMATION (Sections 38 & 40)
 // ─────────────────────────────────────────────
-router.post("/:id/confirm-receipt", protect, async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const { id } = req.params;
-
-    const orderRes = await client.query(
-      `SELECT o.*, d.id as delivery_id, d.driver_id, d.status as delivery_status,
-              d.driver_confirmed as del_driver_confirmed
-       FROM orders o
-       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
-       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
-         AND o.user_id = $2
-       FOR UPDATE OF o`,
-      [id, req.user.id]
-    );
-
-    if (!orderRes.rows.length) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    const order = orderRes.rows[0];
-
-    // Must be in transit or driver arrived
-    const validStatuses = ["in_transit", "driver_assigned", "shipped", "out_for_delivery"];
-    if (!validStatuses.includes(order.status) && !validStatuses.includes(order.tracking_status)) {
-      if (order.status === "delivered") {
-        await client.query("ROLLBACK");
-        return res.json({ message: "Delivery already confirmed as delivered", status: "delivered" });
-      }
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: `Cannot confirm delivery for order currently in '${order.status}' status` });
-    }
-
-    // Record customer confirmation
-    await client.query(
-      `UPDATE orders
-       SET customer_confirmed = true,
-           customer_confirmed_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [order.id]
-    );
-
-    if (order.delivery_id) {
-      await client.query(
-        `UPDATE deliveries
-         SET customer_confirmed = true,
-             customer_confirmed_at = NOW(),
-             updated_at = NOW()
-         WHERE id = $1`,
-        [order.delivery_id]
-      );
-    }
-
-    // Check if driver has already confirmed or admin override exists
-    const driverHasConfirmed = Boolean(order.driver_confirmed || order.del_driver_confirmed || order.delivery_override_by);
-    let finalStatus = order.status;
-
-    if (driverHasConfirmed) {
-      // Both confirmed -> transition to DELIVERED
-      finalStatus = "delivered";
-      await client.query(
-        `UPDATE orders
-         SET status = 'delivered',
-             tracking_status = 'delivered',
-             delivered_at = NOW(),
-             updated_at = NOW()
-         WHERE id = $1`,
-        [order.id]
-      );
-
-      if (order.delivery_id) {
-        await client.query(
-          `UPDATE deliveries
-           SET status = 'delivered',
-               delivered_at = NOW(),
-               updated_at = NOW()
-           WHERE id = $1`,
-          [order.delivery_id]
-        );
-      }
-
-      await logOrderAudit(client, {
-        order_id: order.id,
-        actor_id: req.user.id,
-        actor_name: req.user.name,
-        actor_role: 'customer',
-        action: 'delivery_completed',
-        previous_state: order.status,
-        new_state: 'delivered',
-        metadata: { customer_confirmed: true, driver_confirmed: true }
-      });
-    } else {
-      // Customer confirmed, awaiting driver confirmation
-      await logOrderAudit(client, {
-        order_id: order.id,
-        actor_id: req.user.id,
-        actor_name: req.user.name,
-        actor_role: 'customer',
-        action: 'customer_delivery_confirmed',
-        previous_state: order.status,
-        new_state: order.status,
-        metadata: { customer_confirmed: true, driver_confirmed: false }
-      });
-    }
-
-    await client.query("COMMIT");
-
-    res.json({
-      success: true,
-      message: driverHasConfirmed
-        ? "Delivery completed and confirmed successfully! Thank you for choosing BEMS Farms."
-        : "Receipt confirmed! Awaiting final courier drop-off confirmation.",
-      status: finalStatus,
-      customer_confirmed: true,
-      driver_confirmed: driverHasConfirmed
-    });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    next(err);
-  } finally {
-    client.release();
-  }
-});
+router.post("/:id/confirm-receipt", protect, handleCustomerConfirm);
 
 module.exports = router;
 
