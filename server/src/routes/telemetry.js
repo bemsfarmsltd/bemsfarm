@@ -27,8 +27,8 @@ router.post(['/product-click','/demand-click'],optionalAuth,async(req,res,next)=
       const recent=req.user ? await db.query("SELECT id FROM product_demand_telemetry WHERE product_id=$1 AND user_id=$2 AND created_at>NOW()-INTERVAL '1 minute'",[p.id,req.user.id]):{rowCount:0};
       if(!recent.rowCount){
         await db.query(`INSERT INTO product_demand_telemetry(product_id,product_name,source,user_id) VALUES($1,$2,$3,$4)`,[p.id,p.name,String(req.body.source||'catalog').slice(0,50),req.user?.id||null]);
-        await db.query(`INSERT INTO notifications(type,title,body,is_read) SELECT 'low_stock',$1,$2,false WHERE NOT EXISTS
-          (SELECT 1 FROM notifications WHERE type='low_stock' AND title=$1 AND created_at>NOW()-INTERVAL '15 minutes')`,
+        await db.query(`INSERT INTO notifications(type,title,body,is_read) SELECT 'low_stock',$1::varchar,$2::text,false WHERE NOT EXISTS
+          (SELECT 1 FROM notifications WHERE type='low_stock' AND title=$1::varchar AND created_at>NOW()-INTERVAL '15 minutes')`,
           [`Out-of-stock demand: ${p.name}`.slice(0,200),'Customer demand recorded. Review Customer CRM → Product demand before purchasing.']);
       }
       await db.query('COMMIT');res.status(201).json({success:true});
