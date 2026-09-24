@@ -74,18 +74,19 @@ const uploadDoc = multer({
 // Upload Proof of Delivery (POD) photo from mobile camera
 const uploadProofPhoto = async (req, res, next) => {
   try {
-    // 1. If multipart file was uploaded via multer
-    if (req.file) {
+    // 1. If multipart file was uploaded via multer (accepts 'photo', 'image', 'file', 'proof', etc.)
+    const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['photo', 'image', 'file', 'proof', 'proof_photo'].includes(f.fieldname)) || req.files[0])) || null;
+    if (file) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const fileUrl = `${baseUrl}/uploads/proofs/${req.file.filename}`;
+      const fileUrl = `${baseUrl}/uploads/proofs/${file.filename}`;
 
       return res.status(201).json({
         status: "success",
         message: "Proof photo uploaded successfully",
         url: fileUrl,
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype
+        filename: file.filename,
+        size: file.size,
+        mimetype: file.mimetype
       });
     }
 

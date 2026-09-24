@@ -77,8 +77,8 @@ router.post("/deliveries/:orderId/status", driverProtect, driverDeliveryControll
 router.post("/deliveries/:orderId/request-return", driverProtect, driverDeliveryController.requestReturnByDriver);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 
-// ── 3. Proof of Delivery (POD) Image Upload ──────────────────────────
-router.post("/upload/proof", driverProtect, driverUploadController.upload.single("image"), driverUploadController.uploadProofPhoto);
+// ── 3. Proof of Delivery (POD) Image Upload (accepts 'photo', 'image', 'file', etc.) ──
+router.post("/upload/proof", driverProtect, driverUploadController.upload.any(), driverUploadController.uploadProofPhoto);
 
 // ── 4. Location Telemetry ────────────────────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);
