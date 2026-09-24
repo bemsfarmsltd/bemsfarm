@@ -257,7 +257,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
 
     const productIds = [...requested.keys()];
     const productRows = await client.query(
-      `SELECT id, name, price, stock, available_for_sale
+      `SELECT id, name, price, stock, available_for_sale, sku, barcode, unit
        FROM products WHERE id = ANY($1::int[]) AND status != 'archived' FOR UPDATE`,
       [productIds],
     );
@@ -286,7 +286,15 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       const unitPrice = parseFloat(p.price);
       const lineTotal = unitPrice * quantity;
       subtotal += lineTotal;
-      orderItemRows.push({ productId, quantity, unitPrice });
+      orderItemRows.push({
+        productId,
+        productName: p.name,
+        sku: p.sku || '',
+        unit: p.unit || '',
+        quantity,
+        unitPrice,
+        subtotal: lineTotal,
+      });
     }
 
     // Coupon discount is recomputed here from the coupons table — the
@@ -354,9 +362,9 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     // Stock deduction occurs ONLY when items are scanned at POS during packing.
     for (const item of orderItemRows) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price, scanned_quantity)
-         VALUES ($1, $2, $3, $4, 0)`,
-        [orderId, item.productId, item.quantity, item.unitPrice],
+        `INSERT INTO order_items (order_id, product_id, product_name, sku, unit, quantity, unit_price, price, subtotal, total_price, scanned_quantity)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $8, 0)`,
+        [orderId, item.productId, item.productName, item.sku, item.unit, item.quantity, item.unitPrice, item.subtotal],
       );
     }
 

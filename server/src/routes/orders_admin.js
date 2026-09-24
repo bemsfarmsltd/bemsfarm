@@ -163,6 +163,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
               'product_id', oi.product_id,
               'name', COALESCE(p.name, 'Item'),
               'sku', COALESCE(p.sku, ''),
+              'barcode', COALESCE(p.barcode, ''),
               'quantity', oi.quantity,
               'qty', oi.quantity,
               'price', oi.price,
@@ -1051,6 +1052,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
           oi.*,
           COALESCE(oi.product_name, p.name, 'Item') AS name,
           COALESCE(oi.sku, p.sku, '') AS sku,
+          COALESCE(p.barcode, '') AS barcode,
           p.image_url,
           COALESCE(oi.unit_price, oi.price, 0) AS unit_price,
           COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)) AS subtotal

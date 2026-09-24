@@ -215,6 +215,7 @@ export default function OrderDetail() {
     items: items.map(it => ({
       name: it.product_name || it.name || 'Agro Commodity',
       sku: it.sku || '',
+      barcode: it.barcode || '',
       unit: it.unit || 'unit',
       qty: it.quantity || it.qty || 1,
       price: it.unit_price || it.price || 0,
@@ -414,7 +415,7 @@ export default function OrderDetail() {
                   <thead className="table-light">
                     <tr>
                       <th>Product</th>
-                      <th>SKU</th>
+                      <th>SKU / Barcode</th>
                       <th className="text-center">Qty</th>
                       <th className="text-end">Unit Price</th>
                       <th className="text-end">Total</th>
@@ -437,7 +438,17 @@ export default function OrderDetail() {
                             <td>
                               <div className="fw-medium">{item.name || item.product_name || 'Produce Item'}</div>
                             </td>
-                            <td className="text-muted small">{item.sku || '—'}</td>
+                            <td className="small">
+                              {item.barcode && (
+                                <div className="font-monospace text-dark d-flex align-items-center gap-1">
+                                  <i className="ri-barcode-line text-muted"></i>
+                                  <span>{item.barcode}</span>
+                                </div>
+                              )}
+                              {item.sku ? (
+                                <div className="text-muted fs-xs">{item.sku}</div>
+                              ) : (!item.barcode ? <span className="text-muted">—</span> : null)}
+                            </td>
                             <td className="text-center">{itemQty} {item.unit || ''}</td>
                             <td className="text-end">{fmt(itemPrice)}</td>
                             <td className="text-end fw-bold">{fmt(itemTotal)}</td>
