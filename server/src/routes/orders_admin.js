@@ -144,6 +144,11 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         d.accepted_at AS driver_accepted_at,
         da.driver_response,
         d.attempts, d.eta_minutes,
+        COALESCE(d.proof_photo, o.proof_photo) AS proof_photo,
+        COALESCE(d.proof_photos, o.proof_photos) AS proof_photos,
+        COALESCE(d.item_proofs, o.item_proofs) AS item_proofs,
+        COALESCE(d.proof_note, o.proof_note) AS proof_note,
+        COALESCE(d.proof_note, o.proof_note) AS delivery_notes,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
         (
           SELECT STRING_AGG(COALESCE(p.name, 'Item'), ', ' ORDER BY oi.id) 
@@ -1007,7 +1012,12 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         d.accepted_at AS driver_accepted_at,
         da.driver_response,
         d.attempts, d.eta_minutes, d.dispatched_at, d.arrived_at, d.delivered_at,
-        d.proof_photos, d.item_proofs, d.proof_note AS delivery_notes, d.failure_reason
+        COALESCE(d.proof_photo, o.proof_photo) AS proof_photo,
+        COALESCE(d.proof_photos, o.proof_photos) AS proof_photos,
+        COALESCE(d.item_proofs, o.item_proofs) AS item_proofs,
+        COALESCE(d.proof_note, o.proof_note) AS proof_note,
+        COALESCE(d.proof_note, o.proof_note) AS delivery_notes,
+        d.failure_reason
       FROM orders o
       LEFT JOIN users c ON o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id

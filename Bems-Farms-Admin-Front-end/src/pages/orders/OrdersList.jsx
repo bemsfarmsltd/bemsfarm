@@ -248,6 +248,11 @@ export default function OrdersList() {
             driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'Vehicle', active: true } : null,
             driverAccepted: Boolean(o.driver_accepted_at || o.driver_response === 'accepted'),
             driverResponse: o.driver_response || (o.driver_accepted_at ? 'accepted' : 'pending'),
+            proofPhoto: o.proof_photo || null,
+            proofPhotos: Array.isArray(o.proof_photos) ? o.proof_photos : [],
+            itemProofs: Array.isArray(o.item_proofs) ? o.item_proofs : [],
+            deliveryNotes: o.delivery_notes || o.proof_note || null,
+            deliveredAt: o.delivered_at || null,
             attempts: o.attempts || 0,
             timeline: [
               { status: parsedStatus, time: safeFormatDate(o.created_at, ''), note: `Order placed via ${getChannelCfg(channelKey).label}`, by: 'System' }
@@ -976,6 +981,11 @@ export default function OrdersList() {
                             <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
                               <i className="ri-user-star-line text-success" style={{ fontSize: 12 }} />
                               <span>{order.driver.name}</span>
+                              {Boolean(order.proofPhoto || (Array.isArray(order.proofPhotos) && order.proofPhotos.length > 0)) && (
+                                <span className="badge bg-success-subtle text-success border border-success-subtle ms-1" style={{ fontSize: 9 }} title="Proof of delivery photo available">
+                                  <i className="ri-camera-lens-line me-0.5" />POD
+                                </span>
+                              )}
                             </div>
                             <div className="text-muted" style={{ fontSize: 10 }}>{order.driver.phone}</div>
                             {order.driver.bike && (
@@ -1375,6 +1385,90 @@ export default function OrdersList() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Proof of Delivery (POD) Image & Handover Notes */}
+                      {Boolean(
+                        selected.proofPhoto ||
+                        selected.proof_photo ||
+                        (Array.isArray(selected.proofPhotos) && selected.proofPhotos.length > 0) ||
+                        (Array.isArray(selected.proof_photos) && selected.proof_photos.length > 0) ||
+                        (Array.isArray(selected.itemProofs) && selected.itemProofs.length > 0) ||
+                        (Array.isArray(selected.item_proofs) && selected.item_proofs.length > 0) ||
+                        selected.deliveryNotes ||
+                        selected.delivery_notes ||
+                        selected.proof_note
+                      ) && (
+                        <div className="card border mb-3 p-3 bg-success-subtle border-success-subtle shadow-xs">
+                          <div className="d-flex align-items-center justify-content-between mb-2">
+                            <div className="fw-bold small text-success-emphasis d-flex align-items-center gap-1">
+                              <i className="ri-camera-lens-line fs-15 text-success" />
+                              <span>Proof of Delivery (Handover Confirmed)</span>
+                            </div>
+                            <span className="badge bg-success text-white" style={{ fontSize: 10 }}>
+                              <i className="ri-checkbox-circle-line me-1" />Courier Snapped
+                            </span>
+                          </div>
+
+                          {(() => {
+                            const rawPhotos = [
+                              selected.proofPhoto,
+                              selected.proof_photo,
+                              ...(Array.isArray(selected.proofPhotos) ? selected.proofPhotos : []),
+                              ...(Array.isArray(selected.proof_photos) ? selected.proof_photos : []),
+                              ...(Array.isArray(selected.itemProofs) ? selected.itemProofs.map(p => typeof p === 'string' ? p : p.photo_url || p.url) : []),
+                              ...(Array.isArray(selected.item_proofs) ? selected.item_proofs.map(p => typeof p === 'string' ? p : p.photo_url || p.url) : []),
+                            ].filter(Boolean)
+
+                            const uniquePhotos = Array.from(new Set(rawPhotos))
+
+                            if (uniquePhotos.length === 0) return null
+
+                            return (
+                              <div className="d-flex flex-wrap gap-2 my-2">
+                                {uniquePhotos.map((url, pIdx) => (
+                                  <a
+                                    key={pIdx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="d-block position-relative rounded-3 overflow-hidden border shadow-xs text-decoration-none"
+                                    style={{ width: 120, height: 120, background: '#0f172a' }}
+                                    title="Click to view full image in high resolution"
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Proof ${pIdx + 1}`}
+                                      className="w-100 h-100"
+                                      style={{ objectFit: 'cover' }}
+                                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                    />
+                                    <div
+                                      className="position-absolute bottom-0 start-0 end-0 text-white text-center py-1 fw-medium"
+                                      style={{ fontSize: 10, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}
+                                    >
+                                      <i className="ri-zoom-in-line me-1" />Photo #{pIdx + 1}
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
+                            )
+                          })()}
+
+                          {(selected.deliveryNotes || selected.delivery_notes || selected.proof_note) && (
+                            <div className="bg-white p-2.5 rounded border border-success-subtle mt-2 small">
+                              <div className="text-muted fw-bold" style={{ fontSize: 10, letterSpacing: '0.03em' }}>DRIVER HANDOVER NOTE:</div>
+                              <div className="text-dark mt-0.5">{selected.deliveryNotes || selected.delivery_notes || selected.proof_note}</div>
+                            </div>
+                          )}
+
+                          <div className="text-muted mt-2 d-flex align-items-center justify-content-between" style={{ fontSize: 11 }}>
+                            <span>Courier: <strong>{selected.driver?.name || 'Delivery Driver'}</strong></span>
+                            {(selected.deliveredAt || selected.delivered_at) && (
+                              <span>Delivered: {safeFormatDate(selected.deliveredAt || selected.delivered_at, '')}</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {selected.disputeReason && (
                         <div className="alert alert-danger p-3 mb-2 small">

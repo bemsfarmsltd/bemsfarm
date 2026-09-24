@@ -73,6 +73,7 @@ router.post("/deliveries/:orderId/confirm-pickup", driverProtect, driverDelivery
 router.post("/deliveries/:orderId/confirm-delivery", driverProtect, driverDeliveryController.confirmDelivery);
 router.post("/deliveries/:orderId/confirm", driverProtect, driverDeliveryController.confirmDelivery);
 router.patch("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
+router.post("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
 router.post("/deliveries/:orderId/request-return", driverProtect, driverDeliveryController.requestReturnByDriver);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 

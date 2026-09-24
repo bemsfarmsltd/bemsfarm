@@ -559,7 +559,31 @@ const updateDeliveryStatus = async (req, res, next) => {
     const delivery = deliveryCheck.rows[0];
     const actualOrderId = delivery.actual_order_id;
     const finalProofNote = proof_note || note || null;
-    const finalProofPhoto = proof_photo || photo || (Array.isArray(req.body.proof_photos) ? req.body.proof_photos[0] : null);
+    let finalProofPhoto = proof_photo || photo || req.body.image || (Array.isArray(req.body.proof_photos) ? req.body.proof_photos[0] : null);
+    if (finalProofPhoto && typeof finalProofPhoto === 'string' && (finalProofPhoto.startsWith('data:image') || finalProofPhoto.length > 500)) {
+      try {
+        let base64Data = finalProofPhoto;
+        let ext = ".jpg";
+        if (finalProofPhoto.startsWith('data:image')) {
+          const matches = finalProofPhoto.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (matches && matches.length === 3) {
+            ext = `.${matches[1].toLowerCase() === 'jpeg' ? 'jpg' : matches[1].toLowerCase()}`;
+            base64Data = matches[2];
+          }
+        }
+        const crypto = require("crypto");
+        const fs = require("fs");
+        const path = require("path");
+        const filename = `POD_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+        const proofUploadDir = path.join(__dirname, "../../uploads/proofs");
+        if (!fs.existsSync(proofUploadDir)) fs.mkdirSync(proofUploadDir, { recursive: true });
+        fs.writeFileSync(path.join(proofUploadDir, filename), Buffer.from(base64Data, "base64"));
+        const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        finalProofPhoto = `${baseUrl}/uploads/proofs/${filename}`;
+      } catch (podErr) {
+        console.warn("Could not save base64 proof photo to disk:", podErr.message);
+      }
+    }
     const finalProofPhotos = Array.isArray(req.body.proof_photos)
       ? JSON.stringify(req.body.proof_photos)
       : (finalProofPhoto ? JSON.stringify([finalProofPhoto]) : null);
@@ -734,34 +758,47 @@ const updateDeliveryStatus = async (req, res, next) => {
       );
 
       // Record commission entry for this delivery drop
-      await client.query(
-        `
-        INSERT INTO driver_commissions (
-          driver_id, commission_per_delivery, total_earned, unpaid_balance, 
-          status, deliveries, base_amount, net_payout, created_at
-        )
-        VALUES ($1, $2, $2, $2, 'pending', 1, $2, $2, NOW())
-        `,
-        [driverId, commission]
-      );
+      try {
+        await client.query(
+          `
+          INSERT INTO driver_commissions (
+            driver_id, week_start, week_end, commission_per_delivery, total_earned, unpaid_balance, 
+            status, deliveries, base_amount, net_payout, created_at
+          )
+          VALUES (
+            $1, 
+            date_trunc('week', NOW())::date, 
+            (date_trunc('week', NOW()) + interval '6 days')::date,
+            $2, $2, $2, 'pending', 1, $2, $2, NOW()
+          )
+          `,
+          [driverId, commission]
+        );
+      } catch (commErr) {
+        console.warn("Driver commission drop record non-fatal warning:", commErr.message);
+      }
 
       // Record in driver_wallet_ledger
       const delRef = delivery.delivery_ref || `DEL-${delivery.id}`;
-      await client.query(
-        `
-        INSERT INTO driver_wallet_ledger (
-          driver_id, type, category, amount, reference, description, performed_by, created_at
-        )
-        VALUES ($1, 'credit', 'delivery_commission', $2, $3, $4, $5, NOW())
-        `,
-        [
-          driverId,
-          commission,
-          delRef,
-          `Zone Delivery Drop: ${zoneName} (Customer Fee: ₦${customerDeliveryFee.toLocaleString()} → Driver Earning: ₦${commission.toLocaleString()})`,
-          null,
-        ]
-      );
+      try {
+        await client.query(
+          `
+          INSERT INTO driver_wallet_ledger (
+            driver_id, type, category, amount, reference, description, performed_by, created_at
+          )
+          VALUES ($1, 'credit', 'delivery_commission', $2, $3, $4, $5, NOW())
+          `,
+          [
+            driverId,
+            commission,
+            delRef,
+            `Zone Delivery Drop: ${zoneName} (Customer Fee: ₦${customerDeliveryFee.toLocaleString()} → Driver Earning: ₦${commission.toLocaleString()})`,
+            null,
+          ]
+        );
+      } catch (wErr) {
+        console.warn("Driver wallet ledger record non-fatal warning:", wErr.message);
+      }
 
       // ── DOUBLE-ENTRY POSTINGS FOR ORDER DELIVERY & COGS ───────────
       try {
@@ -897,10 +934,14 @@ const updateDeliveryStatus = async (req, res, next) => {
         driver_confirmed_at = CASE WHEN $1 = 'delivered' THEN COALESCE(driver_confirmed_at, NOW()) ELSE driver_confirmed_at END,
         driver_arrived_at = CASE WHEN $1 = 'arrived' OR $2 = 'driver_arrived' THEN COALESCE(driver_arrived_at, NOW()) ELSE driver_arrived_at END,
         delivered_at = CASE WHEN $1 = 'delivered' OR $2 = 'delivered' THEN COALESCE(delivered_at, NOW()) ELSE delivered_at END,
+        proof_photo = COALESCE($3, proof_photo),
+        proof_photos = COALESCE($4::jsonb, proof_photos),
+        item_proofs = COALESCE($5::jsonb, item_proofs),
+        proof_note = COALESCE($6, proof_note),
         updated_at = NOW()
-      WHERE id = $3
+      WHERE id = $7
       `,
-      [orderStatus, trackingStatus, actualOrderId]
+      [orderStatus, trackingStatus, finalProofPhoto, finalProofPhotos, finalItemProofs, finalProofNote, actualOrderId]
     );
 
     // Sync delivery_assignments table
