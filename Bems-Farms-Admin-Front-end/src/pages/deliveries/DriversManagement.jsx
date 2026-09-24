@@ -479,27 +479,37 @@ export default function DriversManagement() {
       </div>
 
       {/* Primary Mode Tabs (Fleet vs Payouts) */}
-      <div className="d-flex align-items-center gap-2 mb-4 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 460 }}>
+      <div className="d-flex align-items-center gap-2 mb-4 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 480 }}>
         <button
           type="button"
-          className={`btn btn-sm flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
-            tabMode === 'fleet' ? 'btn-white shadow-sm text-emerald' : 'text-muted'
+          className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+            tabMode === 'fleet' ? 'btn-success text-white shadow-sm' : 'btn-light text-dark'
           }`}
+          style={{
+            backgroundColor: tabMode === 'fleet' ? '#16a34a' : '#f8fafc',
+            color: tabMode === 'fleet' ? '#ffffff' : '#334155',
+            border: tabMode === 'fleet' ? '1px solid #15803d' : '1px solid #e2e8f0',
+          }}
           onClick={() => setTabMode('fleet')}
         >
           <i className="ri-truck-line fs-16" />
           <span>🚚 Fleet Directory ({drivers.length})</span>
           {stats.pendingCompliance > 0 && (
-            <span className="badge bg-amber-subtle text-amber rounded-pill px-2 py-0.5 fs-10" style={{ background: '#fef3c7', color: '#d97706' }}>
+            <span className="badge rounded-pill px-2 py-0.5 fs-10" style={{ background: '#fef3c7', color: '#d97706' }}>
               {stats.pendingCompliance} pending
             </span>
           )}
         </button>
         <button
           type="button"
-          className={`btn btn-sm flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
-            tabMode === 'payouts' ? 'btn-white shadow-sm text-primary' : 'text-muted'
+          className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+            tabMode === 'payouts' ? 'btn-primary text-white shadow-sm' : 'btn-light text-dark'
           }`}
+          style={{
+            backgroundColor: tabMode === 'payouts' ? '#2563eb' : '#f8fafc',
+            color: tabMode === 'payouts' ? '#ffffff' : '#334155',
+            border: tabMode === 'payouts' ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
+          }}
           onClick={() => setTabMode('payouts')}
         >
           <i className="ri-wallet-3-line fs-16" />
@@ -1113,9 +1123,20 @@ export default function DriversManagement() {
                   {!payoutLoading && filteredPayouts.length === 0 && (
                     <tr>
                       <td colSpan={7} className="text-center text-muted py-5">
-                        <div className="fs-24 mb-1">💳</div>
-                        <div className="fw-bold text-dark">No payout requests found</div>
-                        <small>When drivers request balance withdrawals from the Driver App, they will appear here.</small>
+                        <div className="fs-32 mb-2">💳</div>
+                        <div className="fw-bold text-dark fs-16 mb-1">No Payout Requests Pending</div>
+                        <div className="text-muted small mb-3" style={{ maxWidth: 460, margin: '0 auto' }}>
+                          This tab tracks driver withdrawal requests when couriers cash out their delivery earnings.
+                          None have been submitted yet.
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-success fw-bold px-3.5 py-2 rounded-pill d-inline-flex align-items-center gap-2 shadow-sm"
+                          onClick={() => setTabMode('fleet')}
+                        >
+                          <i className="ri-truck-line fs-15" />
+                          <span>Switch to Fleet Directory ({drivers.length} Driver{drivers.length !== 1 ? 's' : ''})</span>
+                        </button>
                       </td>
                     </tr>
                   )}
