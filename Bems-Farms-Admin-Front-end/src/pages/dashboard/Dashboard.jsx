@@ -1032,7 +1032,7 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
             <i className="ri-fire-line text-danger" style={{ fontSize: 16 }} />
             <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Top Revenue Generating Products</h6>
           </div>
-          <Link to="/products/list" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Manage Catalog →</Link>
+          <Link to="/products" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Manage Catalog →</Link>
         </div>
         <div className="card-body p-0">
           <Table>
