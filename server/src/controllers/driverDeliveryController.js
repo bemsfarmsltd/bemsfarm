@@ -759,28 +759,40 @@ const updateDeliveryStatus = async (req, res, next) => {
 
       // Record commission entry for this delivery drop
       try {
+        await client.query("SAVEPOINT sp_commission");
         await client.query(
           `
           INSERT INTO driver_commissions (
             driver_id, week_start, week_end, commission_per_delivery, total_earned, unpaid_balance, 
-            status, deliveries, base_amount, net_payout, created_at
+            status, deliveries, trips, base_amount, net_payout, created_at
           )
           VALUES (
             $1, 
             date_trunc('week', NOW())::date, 
             (date_trunc('week', NOW()) + interval '6 days')::date,
-            $2, $2, $2, 'pending', 1, $2, $2, NOW()
+            $2, $2, $2, 'pending', 1, 1, $2, $2, NOW()
           )
+          ON CONFLICT (driver_id, week_start) DO UPDATE SET
+            deliveries = COALESCE(driver_commissions.deliveries, 0) + 1,
+            trips = COALESCE(driver_commissions.trips, 0) + 1,
+            total_earned = COALESCE(driver_commissions.total_earned, 0) + EXCLUDED.total_earned,
+            unpaid_balance = COALESCE(driver_commissions.unpaid_balance, 0) + EXCLUDED.unpaid_balance,
+            base_amount = COALESCE(driver_commissions.base_amount, 0) + EXCLUDED.base_amount,
+            net_payout = COALESCE(driver_commissions.net_payout, 0) + EXCLUDED.net_payout,
+            commission_per_delivery = EXCLUDED.commission_per_delivery
           `,
           [driverId, commission]
         );
+        await client.query("RELEASE SAVEPOINT sp_commission");
       } catch (commErr) {
+        await client.query("ROLLBACK TO SAVEPOINT sp_commission").catch(() => {});
         console.warn("Driver commission drop record non-fatal warning:", commErr.message);
       }
 
       // Record in driver_wallet_ledger
       const delRef = delivery.delivery_ref || `DEL-${delivery.id}`;
       try {
+        await client.query("SAVEPOINT sp_wallet_ledger");
         await client.query(
           `
           INSERT INTO driver_wallet_ledger (
@@ -796,12 +808,15 @@ const updateDeliveryStatus = async (req, res, next) => {
             null,
           ]
         );
+        await client.query("RELEASE SAVEPOINT sp_wallet_ledger");
       } catch (wErr) {
+        await client.query("ROLLBACK TO SAVEPOINT sp_wallet_ledger").catch(() => {});
         console.warn("Driver wallet ledger record non-fatal warning:", wErr.message);
       }
 
       // ── DOUBLE-ENTRY POSTINGS FOR ORDER DELIVERY & COGS ───────────
       try {
+        await client.query("SAVEPOINT sp_double_entry");
         // 1. Double-Entry Delivery Commission: Dr Delivery Expense (5210), Cr Driver Wallet Payable (2120)
         await postGeneralJournal(client, {
           source_module: "driver_wallet",
@@ -842,7 +857,9 @@ const updateDeliveryStatus = async (req, res, next) => {
             });
           }
         }
+        await client.query("RELEASE SAVEPOINT sp_double_entry");
       } catch (finErr) {
+        await client.query("ROLLBACK TO SAVEPOINT sp_double_entry").catch(() => {});
         console.warn("Delivery completion double-entry non-fatal warning:", finErr.message);
       }
 
