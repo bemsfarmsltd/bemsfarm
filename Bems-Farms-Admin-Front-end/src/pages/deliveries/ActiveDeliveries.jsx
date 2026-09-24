@@ -65,6 +65,8 @@ export default function ActiveDeliveries() {
   const [retryNote, setRetryNote]       = useState('')
   const [cancelReason, setCancelReason] = useState('')
   const [cancelStep, setCancelStep]     = useState(1) // 1=reason, 2=return-goods, 3=done
+  const [expandedDelItems, setExpandedDelItems] = useState({})
+  const toggleDelItems = (delId) => setExpandedDelItems(prev => ({ ...prev, [delId]: !prev[delId] }))
 
   // Load live active deliveries from backend
   const fetchActiveDeliveries = useCallback(async () => {
@@ -599,17 +601,67 @@ export default function ActiveDeliveries() {
                     </a>
                   </div>
 
-                  {/* Items preview */}
+                  {/* Items preview with dropdown for complete goods */}
                   <div className="border rounded p-2" style={{ background: '#f8fafc', fontSize: 12 }}>
-                    {del.items.map((item, i) => (
-                      <div key={i} className="d-flex justify-content-between">
-                        <span>{item.name}</span>
-                        <span className="text-muted">{item.qty}</span>
-                      </div>
-                    ))}
-                    <div className="border-top mt-1 pt-1 fw-bold d-flex justify-content-between">
-                      <span>Order Total</span><span>{fmt(del.total)}</span>
-                    </div>
+                    {(() => {
+                      const items = del.items || [];
+                      const isExpanded = !!expandedDelItems[del.id];
+                      const previewLimit = 2;
+                      const hasMore = items.length > previewLimit;
+                      const visibleItems = hasMore && !isExpanded ? items.slice(0, previewLimit) : items;
+
+                      return (
+                        <>
+                          <div className="d-flex align-items-center justify-content-between mb-1 pb-1 border-bottom">
+                            <span className="text-muted fw-bold" style={{ fontSize: 11 }}>
+                              📦 Goods ({items.length} {items.length === 1 ? 'item' : 'items'})
+                            </span>
+                            {hasMore && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleDelItems(del.id);
+                                }}
+                                className="btn btn-sm btn-link text-decoration-none p-0 fw-bold text-success"
+                                style={{ fontSize: 11 }}
+                              >
+                                {isExpanded ? '▲ Hide' : `▼ View all (${items.length})`}
+                              </button>
+                            )}
+                          </div>
+
+                          {visibleItems.map((item, i) => (
+                            <div key={i} className="d-flex justify-content-between py-0.5">
+                              <span className="text-truncate me-2" style={{ maxWidth: 200 }}>{item.name}</span>
+                              <span className="text-muted flex-shrink-0">{item.qty}</span>
+                            </div>
+                          ))}
+
+                          {hasMore && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleDelItems(del.id);
+                              }}
+                              className="btn btn-sm btn-outline-success w-100 py-1 px-2 mt-1.5 d-flex align-items-center justify-content-center gap-1 shadow-none"
+                              style={{ fontSize: 11, fontWeight: 600 }}
+                            >
+                              <span>
+                                {isExpanded
+                                  ? '▲ Collapse Goods List'
+                                  : `▼ Click to View Complete Goods (${items.length} items · ${items.length - previewLimit} more)`}
+                              </span>
+                            </button>
+                          )}
+
+                          <div className="border-top mt-1.5 pt-1 fw-bold d-flex justify-content-between">
+                            <span>Order Total</span><span>{fmt(del.total)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Driver */}

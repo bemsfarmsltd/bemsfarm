@@ -123,6 +123,7 @@ export default function OrdersList() {
   // Modals & selection
   const [activeModal, setActiveModal]   = useState(null)
   const [selected, setSelected]         = useState(null)
+  const [expandModalItems, setExpandModalItems] = useState(false)
 
   // Modal form inputs
   const [pickingStaff, setPickingStaff]     = useState('')
@@ -308,6 +309,7 @@ export default function OrdersList() {
   const openModal = async (type, order, meta = {}) => {
     setSelected(order)
     setActiveModal(type)
+    setExpandModalItems(false)
     setAssignDriverId('')
     setDisputeDecision('')
     setDisputeNote('')
@@ -1337,36 +1339,84 @@ export default function OrdersList() {
                         </div>
                       </div>
 
-                      {/* Items breakdown */}
+                      {/* Items breakdown with dropdown toggle for complete goods */}
                       <div className="card border mb-3 p-3">
-                        <div className="fw-bold mb-2 small">Order Items ({selected.items?.length || 0})</div>
-                        {selected.items && selected.items.length > 0 ? (
-                          <table className="table table-sm mb-0 align-middle">
-                            <thead className="table-light">
-                              <tr>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th className="text-end">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selected.items.map((it, idx) => (
-                                <tr key={it.id || idx}>
-                                  <td>
-                                    <div className="fw-medium small">{it.name}</div>
-                                    {it.sku && <div className="text-muted" style={{ fontSize: 10 }}>SKU: {it.sku}</div>}
-                                  </td>
-                                  <td className="small">{it.qty} {it.unit || ''}</td>
-                                  <td className="small">{fmt(it.price)}</td>
-                                  <td className="text-end small fw-medium">{fmt(it.total)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <div className="text-muted small py-2">No individual product items specified (Direct POS transaction).</div>
-                        )}
+                        {(() => {
+                          const items = selected.items || [];
+                          const previewLimit = 4;
+                          const hasMore = items.length > previewLimit;
+                          const visibleItems = hasMore && !expandModalItems ? items.slice(0, previewLimit) : items;
+
+                          return (
+                            <>
+                              <div className="d-flex align-items-center justify-content-between mb-2">
+                                <div className="fw-bold small d-flex align-items-center gap-1.5">
+                                  <span>Order Items ({items.length})</span>
+                                  {hasMore && !expandModalItems && (
+                                    <span className="badge bg-light text-secondary border fw-normal" style={{ fontSize: 10 }}>
+                                      Showing 4 of {items.length}
+                                    </span>
+                                  )}
+                                </div>
+                                {hasMore && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandModalItems(!expandModalItems)}
+                                    className="btn btn-sm btn-link text-decoration-none p-0 fw-bold text-primary"
+                                    style={{ fontSize: 12 }}
+                                  >
+                                    {expandModalItems ? "▲ Collapse Goods" : `▼ View Complete Goods (${items.length})`}
+                                  </button>
+                                )}
+                              </div>
+
+                              {items.length > 0 ? (
+                                <>
+                                  <table className="table table-sm mb-0 align-middle">
+                                    <thead className="table-light">
+                                      <tr>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th className="text-end">Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {visibleItems.map((it, idx) => (
+                                        <tr key={it.id || idx}>
+                                          <td>
+                                            <div className="fw-medium small">{it.name}</div>
+                                            {it.sku && <div className="text-muted" style={{ fontSize: 10 }}>SKU: {it.sku}</div>}
+                                          </td>
+                                          <td className="small">{it.qty} {it.unit || ''}</td>
+                                          <td className="small">{fmt(it.price)}</td>
+                                          <td className="text-end small fw-medium">{fmt(it.total)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+
+                                  {hasMore && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandModalItems(!expandModalItems)}
+                                      className="btn btn-sm btn-outline-primary w-100 mt-2 py-1.5 d-flex align-items-center justify-content-center gap-1 shadow-none"
+                                      style={{ fontSize: 12, fontWeight: 600 }}
+                                    >
+                                      <span>
+                                        {expandModalItems
+                                          ? `▲ Collapse Goods List (Showing all ${items.length})`
+                                          : `▼ Click to View Complete Goods (${items.length} items · ${items.length - previewLimit} more)`}
+                                      </span>
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="text-muted small py-2">No individual product items specified (Direct POS transaction).</div>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         <div className="border-top pt-2 mt-3">
                           <div className="d-flex justify-content-between small text-muted">

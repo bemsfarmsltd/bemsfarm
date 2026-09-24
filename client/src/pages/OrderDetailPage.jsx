@@ -257,6 +257,7 @@ export default function OrderDetailPage() {
   const [returnAccountName, setReturnAccountName] = useState("");
   const [submittingReturn, setSubmittingReturn] = useState(false);
   const [refundAccountSubmitting, setRefundAccountSubmitting] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -988,49 +989,92 @@ export default function OrderDetailPage() {
             <div className="lg:col-span-5 space-y-6">
               {/* ── ITEMS IN THIS ORDER ── */}
               <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-slate-200/90 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-extrabold text-slate-900">
-                    Ordered Produce ({items.length})
-                  </h2>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    Fresh Stock
-                  </span>
-                </div>
+                {(() => {
+                  const previewLimit = 4;
+                  const hasMore = items.length > previewLimit;
+                  const visibleItems = hasMore && !showAllItems ? items.slice(0, previewLimit) : items;
 
-                <div className="space-y-3.5 divide-y divide-slate-100">
-                  {items.map((item, i) => (
-                    <div key={i} className={`flex items-center gap-3.5 ${i > 0 ? "pt-3.5" : ""}`}>
-                      <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                        <img
-                          src={getProductImage(item)}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.src =
-                              "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
-                          {item.name || `Produce Item #${i + 1}`}
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-extrabold text-slate-900">
+                            Ordered Produce ({items.length})
+                          </h2>
+                          {hasMore && !showAllItems && (
+                            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                              Showing 4 of {items.length}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                          <span>Qty: <strong className="text-slate-800">{item.quantity}</strong></span>
-                          <span>·</span>
-                          <span className="font-bold text-emerald-800">
-                            ₦{Number(item.price || item.unit_price || 0).toLocaleString()} each
+                        {hasMore ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllItems(!showAllItems)}
+                            className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 transition-all cursor-pointer"
+                          >
+                            <span>{showAllItems ? "▲ Collapse Goods" : `▼ View All (${items.length})`}</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            Fresh Stock
                           </span>
-                        </div>
+                        )}
                       </div>
 
-                      <div className="text-sm font-black text-slate-900 tabular-nums">
-                        ₦{(Number(item.quantity) * Number(item.price || item.unit_price || 0)).toLocaleString()}
+                      <div className="space-y-3.5 divide-y divide-slate-100">
+                        {visibleItems.map((item, i) => (
+                          <div key={i} className={`flex items-center gap-3.5 ${i > 0 ? "pt-3.5" : ""}`}>
+                            <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                              <img
+                                src={getProductImage(item)}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src =
+                                    "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
+                                }}
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                                {item.name || `Produce Item #${i + 1}`}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                                <span>Qty: <strong className="text-slate-800">{item.quantity}</strong></span>
+                                <span>·</span>
+                                <span className="font-bold text-emerald-800">
+                                  ₦{Number(item.price || item.unit_price || 0).toLocaleString()} each
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="text-sm font-black text-slate-900 tabular-nums">
+                              ₦{(Number(item.quantity) * Number(item.price || item.unit_price || 0)).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+
+                      {hasMore && (
+                        <div className="pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllItems(!showAllItems)}
+                            className="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100/90 active:bg-emerald-200/90 text-emerald-800 border border-emerald-200/90 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                          >
+                            <span>
+                              {showAllItems
+                                ? `▲ Collapse Goods List (Showing all ${items.length} items)`
+                                : `▼ Click to View Complete Goods (${items.length} items · ${items.length - previewLimit} more)`}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* ── BILL BREAKDOWN ── */}
                 <div className="border-t-2 border-slate-100 mt-5 pt-4 space-y-2.5 text-xs">

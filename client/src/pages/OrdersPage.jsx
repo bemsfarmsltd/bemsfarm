@@ -347,6 +347,12 @@ export default function OrdersPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
+  // Dropdown collapsible items state for complete goods
+  const [expandedOrders, setExpandedOrders] = useState({});
+  const toggleOrderItems = (orderId) => {
+    setExpandedOrders((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
+  };
+
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     clearTimeout(showToast._t);
@@ -909,46 +915,103 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {/* ── CARD BODY (ORDER ITEMS LIST) ── */}
-                      <div className="p-5 flex-1 space-y-3 divide-y divide-slate-100">
-                        {(order.items || []).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex items-center gap-3.5 ${idx > 0 ? "pt-3" : ""}`}
-                          >
-                            <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                              <img
-                                src={getProductImage(item)}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
-                                }}
-                              />
-                            </div>
+                      {/* ── CARD BODY (ORDER ITEMS LIST WITH DROPDOWN) ── */}
+                      {(() => {
+                        const items = order.items || [];
+                        const isExpanded = !!expandedOrders[order.id];
+                        const previewLimit = 2;
+                        const hasMore = items.length > previewLimit;
+                        const visibleItems = hasMore && !isExpanded ? items.slice(0, previewLimit) : items;
 
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
-                                {item.name}
-                              </h4>
-                              <div className="flex flex-wrap items-center gap-2 mt-1">
-                                <span className="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md tabular-nums">
-                                  ₦{(parseFloat(item.price) || 0).toLocaleString()} each
-                                </span>
-                                <span className="text-xs font-bold text-slate-600">
-                                  Qty: <strong className="text-slate-900">{item.quantity}</strong>
-                                </span>
-                                {Number(item.quantity) > 1 && (
-                                  <span className="text-xs font-semibold text-slate-500 tabular-nums">
-                                    = ₦{((parseFloat(item.price) || 0) * Number(item.quantity)).toLocaleString()}
+                        return (
+                          <div className="p-5 flex-1 space-y-3">
+                            {/* Items Header with Dropdown Badge */}
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <span>📦 Goods ({items.length} {items.length === 1 ? "item" : "items"})</span>
+                                {hasMore && !isExpanded && (
+                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-bold border border-slate-200">
+                                    Showing 2 of {items.length}
                                   </span>
                                 )}
-                              </div>
+                              </span>
+                              {hasMore && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOrderItems(order.id);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 transition-all cursor-pointer"
+                                >
+                                  <span>{isExpanded ? "▲ Collapse" : `▼ View All (${items.length})`}</span>
+                                </button>
+                              )}
                             </div>
+
+                            {/* Items List */}
+                            <div className="space-y-3 divide-y divide-slate-100">
+                              {visibleItems.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center gap-3.5 ${idx > 0 ? "pt-3" : ""}`}
+                                >
+                                  <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    <img
+                                      src={getProductImage(item)}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.src =
+                                          "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80";
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                                      {item.name}
+                                    </h4>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                      <span className="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md tabular-nums">
+                                        ₦{(parseFloat(item.price) || 0).toLocaleString()} each
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-600">
+                                        Qty: <strong className="text-slate-900">{item.quantity}</strong>
+                                      </span>
+                                      {Number(item.quantity) > 1 && (
+                                        <span className="text-xs font-semibold text-slate-500 tabular-nums">
+                                          = ₦{((parseFloat(item.price) || 0) * Number(item.quantity)).toLocaleString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Dropdown Expand Button at Bottom */}
+                            {hasMore && (
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOrderItems(order.id);
+                                  }}
+                                  className="w-full py-2.5 px-4 bg-emerald-50/80 hover:bg-emerald-100 active:bg-emerald-200/80 text-emerald-800 border border-emerald-200/90 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+                                >
+                                  <span>
+                                    {isExpanded
+                                      ? `▲ Collapse Goods List (Showing all ${items.length} items)`
+                                      : `▼ Click to View Complete Goods (${items.length} items · ${items.length - previewLimit} more)`}
+                                  </span>
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })()}
 
                       {/* ── TOTAL & BILL SUMMARY BAR ── */}
                       <div className="bg-slate-50/90 px-5 py-3 border-t border-slate-100 flex items-center justify-between">
