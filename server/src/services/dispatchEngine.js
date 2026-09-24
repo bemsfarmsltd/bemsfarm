@@ -345,7 +345,9 @@ async function processUnresponsiveAssignments(
         LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
         LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
         WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
-          AND o.status IN ('packed', 'packed_ready', 'awaiting_driver_confirmation', 'driver_assigned')
+          AND o.status IN ('packed', 'packed_ready', 'driver_assigned')
+          AND o.delivered_at IS NULL
+          AND COALESCE(o.customer_confirmed, false) = false
           AND d.status = 'assigned'
           AND d.accepted_at IS NULL
           AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
@@ -368,7 +370,9 @@ async function processUnresponsiveAssignments(
         FROM orders o
         LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
         WHERE o.driver_id IS NULL
-          AND o.status IN ('packed', 'packed_ready', 'awaiting_driver_confirmation')
+          AND o.status IN ('packed', 'packed_ready')
+          AND o.delivered_at IS NULL
+          AND COALESCE(o.customer_confirmed, false) = false
           AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%')
           AND COALESCE(o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
       ) sub
