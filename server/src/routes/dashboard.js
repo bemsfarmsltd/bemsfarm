@@ -52,6 +52,20 @@ function parseDateFilter(query = {}) {
   const customFrom = query.from;
   const customTo = query.to;
 
+  const buildOrdersWhere = (col) => {
+    if (range === 'custom' && customFrom && customTo) {
+      return `${col} >= '${customFrom} 00:00:00'::timestamp AND ${col} <= '${customTo} 23:59:59'::timestamp`;
+    }
+    if (range === '7d') return `${col} >= NOW() - INTERVAL '7 days'`;
+    if (range === '12d') return `${col} >= NOW() - INTERVAL '12 days'`;
+    if (range === '1m' || range === '30d' || range === 'month') return `${col} >= NOW() - INTERVAL '30 days'`;
+    if (range === '1y' || range === '365d' || range === 'year') return `${col} >= NOW() - INTERVAL '1 year'`;
+    return `DATE(${col}) = CURRENT_DATE`;
+  };
+
+  const ordersWhere = buildOrdersWhere('created_at');
+  const ordersJoinWhere = buildOrdersWhere('o.created_at');
+
   if (range === 'custom' && customFrom && customTo) {
     const fromStr = `${customFrom} 00:00:00`;
     const toStr = `${customTo} 23:59:59`;
@@ -59,7 +73,8 @@ function parseDateFilter(query = {}) {
       range: 'custom',
       label: `${customFrom} to ${customTo}`,
       isFiltered: true,
-      ordersWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
+      ordersWhere,
+      ordersJoinWhere,
       incomeWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
       returnsWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
       attendanceWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
@@ -75,7 +90,8 @@ function parseDateFilter(query = {}) {
       range: '7d',
       label: 'Last 7 Days',
       isFiltered: true,
-      ordersWhere: `created_at >= NOW() - INTERVAL '7 days'`,
+      ordersWhere,
+      ordersJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
       returnsWhere: `created_at >= NOW() - INTERVAL '7 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
@@ -89,7 +105,8 @@ function parseDateFilter(query = {}) {
       range: '12d',
       label: 'Last 12 Days',
       isFiltered: true,
-      ordersWhere: `created_at >= NOW() - INTERVAL '12 days'`,
+      ordersWhere,
+      ordersJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
       returnsWhere: `created_at >= NOW() - INTERVAL '12 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
@@ -103,7 +120,8 @@ function parseDateFilter(query = {}) {
       range: '1m',
       label: 'Last 1 Month (30 Days)',
       isFiltered: true,
-      ordersWhere: `created_at >= NOW() - INTERVAL '30 days'`,
+      ordersWhere,
+      ordersJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
       returnsWhere: `created_at >= NOW() - INTERVAL '30 days'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
@@ -117,7 +135,8 @@ function parseDateFilter(query = {}) {
       range: '1y',
       label: 'Last 1 Year',
       isFiltered: true,
-      ordersWhere: `created_at >= NOW() - INTERVAL '1 year'`,
+      ordersWhere,
+      ordersJoinWhere,
       incomeWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
       returnsWhere: `created_at >= NOW() - INTERVAL '1 year'`,
       attendanceWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
@@ -131,7 +150,8 @@ function parseDateFilter(query = {}) {
     range: 'today',
     label: 'Today',
     isFiltered: false,
-    ordersWhere: `DATE(created_at) = CURRENT_DATE`,
+    ordersWhere,
+    ordersJoinWhere,
     incomeWhere: `DATE(date) = CURRENT_DATE`,
     returnsWhere: `DATE(created_at) = CURRENT_DATE`,
     attendanceWhere: `date = CURRENT_DATE`,
@@ -234,7 +254,7 @@ router.get("/overview", async (req, res, next) => {
            ) AS items
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
@@ -274,7 +294,7 @@ router.get("/overview", async (req, res, next) => {
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY total_revenue DESC
@@ -435,7 +455,7 @@ router.get("/sales", async (req, res, next) => {
       q1(`SELECT COUNT(DISTINCT oi.product_id) AS count
           FROM order_items oi
           JOIN orders o ON oi.order_id = o.id
-          WHERE ${filter.ordersWhere}
+          WHERE ${filter.ordersJoinWhere}
             AND o.status NOT IN ('cancelled')`),
 
       // Revenue last 7 days (daily)
@@ -472,7 +492,7 @@ router.get("/sales", async (req, res, next) => {
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY revenue DESC
@@ -485,7 +505,7 @@ router.get("/sales", async (req, res, next) => {
            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
@@ -497,7 +517,7 @@ router.get("/sales", async (req, res, next) => {
          JOIN products p ON oi.product_id = p.id
          JOIN categories cat ON p.category_id = cat.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY cat.name
          ORDER BY revenue DESC
@@ -538,7 +558,7 @@ router.get("/sales", async (req, res, next) => {
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          JOIN products p ON oi.product_id = p.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY revenue DESC
@@ -645,7 +665,7 @@ router.get("/finance", async (req, res, next) => {
 
       // 6. Driver Delivery Commission Accruals in period
       q1(`SELECT
-            COALESCE(SUM(commission_amount), 0) AS total_commissions,
+            COALESCE(SUM(total_earned), 0) AS total_commissions,
             COUNT(*) AS total_trips
           FROM driver_commissions
           WHERE ${filter.ordersWhere}`),
@@ -736,7 +756,7 @@ router.get("/finance", async (req, res, next) => {
            o.created_at
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
-         WHERE ${filter.ordersWhere}
+         WHERE ${filter.ordersJoinWhere}
            AND o.status NOT IN ('cancelled')
          ORDER BY o.created_at DESC
          LIMIT 25`),
