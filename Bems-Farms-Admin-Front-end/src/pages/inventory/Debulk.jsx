@@ -145,13 +145,13 @@ export default function Debulk() {
             </span>
             Debulk &amp; Unbundle Inventory
           </h4>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-0 fs-13">
-              <li className="breadcrumb-item"><Link to="/dashboard">Dashboard</Link></li>
-              <li className="breadcrumb-item"><Link to="/products">Inventory</Link></li>
-              <li className="breadcrumb-item active" aria-current="page">Debulk &amp; Unbundle</li>
-            </ol>
-          </nav>
+          <div className="d-flex align-items-center gap-1 fs-12 text-muted mt-1">
+            <Link to="/dashboard" className="text-muted text-decoration-none">Dashboard</Link>
+            <span className="text-muted">/</span>
+            <Link to="/products" className="text-muted text-decoration-none">Inventory</Link>
+            <span className="text-muted">/</span>
+            <span className="text-dark fw-medium">Debulk &amp; Unbundle</span>
+          </div>
         </div>
         <div className="d-flex align-items-center gap-2">
           <button
