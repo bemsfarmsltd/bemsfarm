@@ -116,8 +116,13 @@ BEGIN
       target_order_status := 'driver_assigned';
       target_tracking_status := 'driver_assigned';
     WHEN 'awaiting_pickup' THEN
-      target_order_status := 'driver_assigned';
-      target_tracking_status := 'driver_assigned';
+      IF NEW.driver_id IS NOT NULL THEN
+        target_order_status := 'driver_assigned';
+        target_tracking_status := 'driver_assigned';
+      ELSE
+        target_order_status := 'awaiting_driver_confirmation';
+        target_tracking_status := 'awaiting_driver_confirmation';
+      END IF;
     WHEN 'picked_up' THEN
       target_order_status := 'picked_up';
       target_tracking_status := 'picked_up';
@@ -147,7 +152,7 @@ BEGIN
       status = target_order_status,
       tracking_status = target_tracking_status,
       delivery_status = NEW.status,
-      driver_id = COALESCE(NEW.driver_id, orders.driver_id),
+      driver_id = NEW.driver_id,
       driver_picked_up = CASE WHEN NEW.status IN ('picked_up', 'en_route', 'arrived', 'delivered') THEN true ELSE orders.driver_picked_up END,
       picked_up_at = CASE WHEN NEW.status IN ('picked_up', 'en_route', 'arrived', 'delivered') THEN COALESCE(NEW.picked_up_at, orders.picked_up_at, NOW()) ELSE orders.picked_up_at END,
       delivered_at = CASE WHEN NEW.status = 'delivered' THEN COALESCE(NEW.delivered_at, orders.delivered_at, NOW()) ELSE orders.delivered_at END,
@@ -158,7 +163,7 @@ BEGIN
       AND (status IS DISTINCT FROM target_order_status 
            OR tracking_status IS DISTINCT FROM target_tracking_status
            OR delivery_status IS DISTINCT FROM NEW.status
-           OR (NEW.driver_id IS NOT NULL AND driver_id IS DISTINCT FROM NEW.driver_id));
+           OR driver_id IS DISTINCT FROM NEW.driver_id);
   END IF;
 
   -- B. Keep driver availability & status strictly synchronized with actual delivery state

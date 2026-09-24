@@ -74,7 +74,7 @@ export default function ActiveDeliveries() {
       const rawDeliveries = res.data?.deliveries || []
       const mapped = rawDeliveries.map((d) => {
         let s = d.status
-        if (s === 'driver_assigned') s = 'assigned'
+        if (s === 'driver_assigned' || s === 'awaiting_pickup') s = 'assigned'
         if (s === 'picked_up') s = 'picked_up'
         if (s === 'out_for_delivery') s = 'shipped'
         if (s === 'in_transit') s = 'shipped'
@@ -83,14 +83,14 @@ export default function ActiveDeliveries() {
           id: d.delivery_ref || `DEL-${d.id}`,
           orderId: String(d.order_id || 'ORD-001'),
           status: s,
-          driver: {
+          driver: (d.driver_id || d.driver_name) ? {
             id: d.driver_id,
-            name: d.driver_name || 'Assigned Driver',
+            name: d.driver_name || (d.driver_id ? `Driver #${d.driver_id}` : 'Assigned Driver'),
             phone: d.driver_phone || '—',
             bike: d.driver_plate || d.vehicle_type || 'Vehicle',
             zone: d.zone || 'Umuahia / Abia State',
             active: true,
-          },
+          } : null,
           customer: {
             name: d.customer_name || 'Customer',
             phone: d.customer_phone || '—',
@@ -613,20 +613,43 @@ export default function ActiveDeliveries() {
                   </div>
 
                   {/* Driver */}
-                  <div className="d-flex align-items-center gap-2 p-2 border rounded"
-                    style={{ background: cfg.bg + '40' }}>
-                    <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                      style={{ width: 32, height: 32, background: cfg.color, color: '#fff', fontSize: 11 }}>
-                      {del.driver.name.split(' ').map(n => n[0]).join('')}
+                  {del.driver ? (
+                    <div className="d-flex align-items-center gap-2 p-2 border rounded"
+                      style={{ background: cfg.bg + '40' }}>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width: 32, height: 32, background: cfg.color, color: '#fff', fontSize: 11 }}>
+                        {del.driver.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div className="flex-grow-1">
+                        <div className="fw-medium" style={{ fontSize: 12 }}>{del.driver.name}</div>
+                        <div className="text-muted" style={{ fontSize: 11 }}>{del.driver.phone} · {del.driver.bike}</div>
+                      </div>
+                      <a href={`tel:${del.driver.phone}`} className="btn btn-sm btn-outline-secondary" title="Call Driver">
+                        <i className="ri-phone-line" />
+                      </a>
                     </div>
-                    <div className="flex-grow-1">
-                      <div className="fw-medium" style={{ fontSize: 12 }}>{del.driver.name}</div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{del.driver.phone} · {del.driver.bike}</div>
+                  ) : (
+                    <div className="d-flex align-items-center justify-content-between p-2 border rounded" style={{ background: '#fffbeb', borderColor: '#fef3c7' }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: 32, height: 32, background: '#fef3c7', color: '#b45309', fontSize: 14 }}>
+                          <i className="ri-user-search-line" />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: 12 }}>No Driver Assigned</div>
+                          <div className="text-muted" style={{ fontSize: 10 }}>Awaiting courier dispatch</div>
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-sm btn-outline-primary py-0 px-2 fw-medium"
+                        style={{ fontSize: 11 }}
+                        onClick={() => openModal('reassign', del)}
+                        title="Assign Driver"
+                      >
+                        <i className="ri-user-add-line me-1" />Assign
+                      </button>
                     </div>
-                    <a href={`tel:${del.driver.phone}`} className="btn btn-sm btn-outline-secondary" title="Call Driver">
-                      <i className="ri-phone-line" />
-                    </a>
-                  </div>
+                  )}
 
                   {/* ETA + Dispatch */}
                   <div className="d-flex gap-2">
@@ -690,15 +713,22 @@ export default function ActiveDeliveries() {
                     {/* Awaiting pickup — Confirm Handover or Reassign */}
                     {del.status === 'assigned' && (
                       <>
+                        {del.driver ? (
+                          <button
+                            className="btn btn-sm btn-outline-success flex-fill fw-bold"
+                            onClick={() => confirmPickupHandover(del)}
+                            title="Confirm driver is at the store picking up the goods"
+                          >
+                            <i className="ri-hand-coin-line me-1" />Confirm Pickup
+                          </button>
+                        ) : null}
                         <button
-                          className="btn btn-sm btn-outline-success flex-fill fw-bold"
-                          onClick={() => confirmPickupHandover(del)}
-                          title="Confirm driver is at the store picking up the goods"
+                          className={`btn btn-sm ${del.driver ? 'btn-outline-primary' : 'btn-primary flex-fill fw-bold'}`}
+                          onClick={() => openModal('reassign', del)}
+                          title={del.driver ? "Reassign Driver" : "Assign Driver"}
                         >
-                          <i className="ri-hand-coin-line me-1" />Confirm Pickup
-                        </button>
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openModal('reassign', del)} title="Reassign Driver">
-                          <i className="ri-user-follow-line" />
+                          <i className="ri-user-add-line me-1" />
+                          {del.driver ? '' : 'Assign Driver'}
                         </button>
                       </>
                     )}
@@ -762,20 +792,32 @@ export default function ActiveDeliveries() {
                 {/* Driver */}
                 <div>
                   <div className="text-muted small mb-1 fw-medium">Driver</div>
-                  <div className="d-flex align-items-center gap-2 p-2 border rounded">
-                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                      style={{ width: 36, height: 36, fontSize: 12 }}>
-                      {selected.driver.name.split(' ').map(n => n[0]).join('')}
+                  {selected.driver ? (
+                    <div className="d-flex align-items-center gap-2 p-2 border rounded">
+                      <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                        style={{ width: 36, height: 36, fontSize: 12 }}>
+                        {selected.driver.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div className="flex-grow-1">
+                        <div className="fw-medium">{selected.driver.name}</div>
+                        <div className="small text-muted">{selected.driver.phone} · {selected.driver.bike}</div>
+                        <div className="small text-muted">{selected.driver.zone}</div>
+                      </div>
+                      <a href={`tel:${selected.driver.phone}`} className="btn btn-sm btn-success">
+                        <i className="ri-phone-line me-1" />Call
+                      </a>
                     </div>
-                    <div className="flex-grow-1">
-                      <div className="fw-medium">{selected.driver.name}</div>
-                      <div className="small text-muted">{selected.driver.phone} · {selected.driver.bike}</div>
-                      <div className="small text-muted">{selected.driver.zone}</div>
+                  ) : (
+                    <div className="d-flex align-items-center justify-content-between p-2.5 border rounded" style={{ background: '#fffbeb', borderColor: '#fef3c7' }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="ri-user-search-line text-warning fs-18" />
+                        <span className="small text-danger fw-bold">No driver currently assigned</span>
+                      </div>
+                      <button className="btn btn-sm btn-primary" onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }}>
+                        <i className="ri-user-add-line me-1" />Assign Driver
+                      </button>
                     </div>
-                    <a href={`tel:${selected.driver.phone}`} className="btn btn-sm btn-success">
-                      <i className="ri-phone-line me-1" />Call
-                    </a>
-                  </div>
+                  )}
                 </div>
                 {/* Items */}
                 <div>
@@ -819,7 +861,7 @@ export default function ActiveDeliveries() {
                 )}
                 <div className="d-flex gap-2 pt-2 border-top">
                   <button className="btn btn-outline-primary flex-fill" onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }}>
-                    <i className="ri-user-add-line me-1" />Reassign Driver
+                    <i className="ri-user-add-line me-1" />{selected.driver ? 'Reassign Driver' : 'Assign Driver'}
                   </button>
                   <button className="btn btn-outline-secondary" onClick={closeModal}>Close</button>
                 </div>
@@ -831,16 +873,20 @@ export default function ActiveDeliveries() {
           {activeModal === 'reassign' && (
             <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460 }}>
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                <h5 className="mb-0">Reassign Driver</h5>
+                <h5 className="mb-0">{selected.driver ? 'Reassign Driver' : 'Assign Driver'}</h5>
                 <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
                 <div className="small text-muted mb-3 p-2 border rounded bg-light">
                   <strong>{selected.id}</strong> · {selected.customer.name} · {selected.customer.address}
                 </div>
-                <div className="mb-2 small text-muted">Current driver: <strong>{selected.driver.name}</strong></div>
-                <label className="form-label fw-medium small">Select Replacement Driver</label>
-                {drivers.filter(d => d.active && d.id !== selected.driver.id).map(driver => (
+                <div className="mb-2 small text-muted">
+                  Current driver: <strong>{selected.driver?.name || 'None (Unassigned)'}</strong>
+                </div>
+                <label className="form-label fw-medium small">
+                  {selected.driver ? 'Select Replacement Driver' : 'Select Driver to Assign'}
+                </label>
+                {drivers.filter(d => d.active && (!selected.driver || d.id !== selected.driver.id)).map(driver => (
                   <div key={driver.id}
                     className="d-flex align-items-center gap-3 p-3 border rounded mb-2"
                     style={{ cursor: 'pointer',
@@ -858,10 +904,14 @@ export default function ActiveDeliveries() {
                     {Number(reassignDriverId) === driver.id && <i className="ri-checkbox-circle-fill text-primary fs-18" />}
                   </div>
                 ))}
+                {drivers.filter(d => d.active && (!selected.driver || d.id !== selected.driver.id)).length === 0 && (
+                  <div className="alert alert-warning small mb-0">No other active drivers available in the fleet.</div>
+                )}
                 <div className="d-flex gap-2 mt-3">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
                   <button className="btn btn-primary flex-fill" onClick={reassignDriver} disabled={!reassignDriverId}>
-                    <i className="ri-user-add-line me-1" />Reassign & Notify
+                    <i className="ri-user-add-line me-1" />
+                    {selected.driver ? 'Reassign & Notify' : 'Assign & Notify'}
                   </button>
                 </div>
               </div>
@@ -907,7 +957,7 @@ export default function ActiveDeliveries() {
               <div className="p-4">
                 <div className="alert alert-success mb-3 small">
                   <i className="ri-checkbox-circle-line me-1" />
-                  Confirming that <strong>{selected.customer.name}</strong>'s order has been successfully delivered by <strong>{selected.driver.name}</strong>.
+                  Confirming that <strong>{selected.customer.name}</strong>'s order has been successfully delivered{selected.driver ? <> by <strong>{selected.driver.name}</strong></> : null}.
                   This order will be marked as <strong>Delivered</strong> and removed from active deliveries.
                 </div>
                 <div className="small text-muted mb-3">
@@ -944,7 +994,7 @@ export default function ActiveDeliveries() {
                 <div className="border rounded p-3 mb-4" style={{ background:'#fffbeb', fontSize:12 }}>
                   <div className="fw-medium small mb-2" style={{ color:'#92400e' }}>What happened (Attempt {selected.attempts} of 2):</div>
                   {[
-                    { icon:'ri-truck-line',         text:`${selected.driver.name} arrived at delivery location` },
+                    { icon:'ri-truck-line',         text:`${selected.driver?.name || 'Courier'} arrived at delivery location` },
                     { icon:'ri-tap-line',            text:'Driver tapped CUSTOMER UNAVAILABLE on Driver App' },
                     { icon:'ri-notification-3-line', text:'System sent push notification + SMS to customer' },
                     { icon:'ri-timer-line',          text:'15-minute timer expired — customer did not respond' },
@@ -1055,15 +1105,25 @@ export default function ActiveDeliveries() {
                       </div>
                       <h5>Instruct Driver to Return Goods</h5>
                       <p className="text-muted small mb-0">
-                        Call or message <strong>{selected.driver.name}</strong> ({selected.driver.phone}) and instruct them to bring all goods back to the Bems Farms store immediately.
+                        {selected.driver ? (
+                          <>Call or message <strong>{selected.driver.name}</strong> ({selected.driver.phone}) and instruct them to bring all goods back to the Bems Farms store immediately.</>
+                        ) : (
+                          <>No driver currently assigned to this order. Inspect returned goods at store counter.</>
+                        )}
                       </p>
                     </div>
 
-                    <div className="alert alert-warning small mb-4">
-                      <i className="ri-phone-line me-1"/>
-                      <strong>Call {selected.driver.name}:</strong> {selected.driver.phone}
-                      <br/>Driver is returning goods from: <strong>{selected.customer.address}</strong>
-                    </div>
+                    {selected.driver ? (
+                      <div className="alert alert-warning small mb-4">
+                        <i className="ri-phone-line me-1"/>
+                        <strong>Call {selected.driver.name}:</strong> {selected.driver.phone}
+                        <br/>Driver is returning goods from: <strong>{selected.customer.address}</strong>
+                      </div>
+                    ) : (
+                      <div className="alert alert-secondary small mb-4">
+                        No courier currently assigned.
+                      </div>
+                    )}
 
                     {/* Summary of goods */}
                     <div className="border rounded p-3 mb-4" style={{ fontSize:12 }}>
