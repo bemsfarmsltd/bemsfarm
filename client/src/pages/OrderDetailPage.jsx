@@ -163,26 +163,26 @@ const STATUS_CONFIG = {
   arrived: {
     label: "Courier Arrived",
     bg: "#D1FAE5", color: "#065F46", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 4,
+    stepIndex: 5,
     desc: "Courier is at your doorstep or entrance",
   },
   driver_arrived: {
     label: "Courier Arrived",
     bg: "#D1FAE5", color: "#065F46", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 4,
+    stepIndex: 5,
     desc: "Courier is at your doorstep or entrance",
   },
   // ── Delivered ──
   delivered: {
     label: "Delivered Successfully",
     bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
-    stepIndex: 5,
+    stepIndex: 6,
     desc: "Order has been safely delivered to your doorstep",
   },
   completed: {
     label: "Delivered Successfully",
     bg: "#F0FDF4", color: "#15803D", border: "#BBF7D0", dot: "#22C55E",
-    stepIndex: 5,
+    stepIndex: 6,
     desc: "Order has been completed and delivered",
   },
   // ── Cancelled ──
@@ -201,19 +201,19 @@ const STATUS_CONFIG = {
   return_requested: {
     label: "Return Requested",
     bg: "#FEF3C7", color: "#B45309", border: "#FDE68A", dot: "#F59E0B",
-    stepIndex: 5,
+    stepIndex: 6,
     desc: "A return request has been submitted and is under admin review",
   },
   return_approved: {
     label: "Return Approved",
     bg: "#ECFDF5", color: "#047857", border: "#A7F3D0", dot: "#10B981",
-    stepIndex: 5,
+    stepIndex: 6,
     desc: "Return approved. Refund processing is underway",
   },
   returned: {
     label: "Returned & Closed",
     bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE", dot: "#3B82F6",
-    stepIndex: 5,
+    stepIndex: 6,
     desc: "Goods have been returned and order resolved",
   },
 };
@@ -224,7 +224,8 @@ const MILESTONE_STEPS = [
   { key: "confirmed", label: "Confirmed", desc: "Payment Verified" },
   { key: "processing", label: "Processing", desc: "Inspected & Packed" },
   { key: "packed", label: "Packed", desc: "Ready at Store" },
-  { key: "shipped", label: "In Transit", desc: "Driver Picked Up" },
+  { key: "shipped", label: "In Transit", desc: "Driver En Route" },
+  { key: "driver_arrived", label: "Arrived", desc: "At Destination" },
   { key: "delivered", label: "Delivered", desc: "Doorstep Arrival" },
 ];
 

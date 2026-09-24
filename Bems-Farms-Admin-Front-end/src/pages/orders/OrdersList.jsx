@@ -27,6 +27,8 @@ const STATUS_CFG = {
   in_transit:                   { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
   shipped:                      { label: 'In Transit',                 color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
   out_for_delivery:             { label: 'Out for Delivery',           color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  arrived:                      { label: 'Courier Arrived',            color: '#059669', bg: '#d1fae5', icon: 'ri-map-pin-user-line'        },
+  driver_arrived:               { label: 'Courier Arrived',            color: '#059669', bg: '#d1fae5', icon: 'ri-map-pin-user-line'        },
   delivery_attempted:           { label: 'Delivery Exception',         color: '#ea580c', bg: '#ffedd5', icon: 'ri-route-line'               },
   delivery_exception:           { label: 'Delivery Exception',         color: '#ea580c', bg: '#ffedd5', icon: 'ri-alert-line'               },
   customer_unreachable:         { label: 'Customer Unreachable',       color: '#ea580c', bg: '#ffedd5', icon: 'ri-phone-missed-line'        },
@@ -68,14 +70,15 @@ const ORDER_STATUS_TABS = [
   { key: 'packed',             label: 'Packed & Ready',     statuses: ['packed', 'packed_ready'] },
   { key: 'awaiting_driver',    label: 'Awaiting Driver',    statuses: ['awaiting_driver_confirmation'] },
   { key: 'in_transit',         label: 'In Transit',         statuses: ['in_transit', 'assigned', 'driver_assigned', 'shipped', 'out_for_delivery'] },
+  { key: 'arrived',            label: 'Courier Arrived',    statuses: ['arrived', 'driver_arrived'] },
   { key: 'delivery_exception', label: 'Delivery Exception', statuses: ['delivery_exception', 'customer_unreachable', 'delivery_attempted'] },
   { key: 'delivered',          label: 'Delivered',          statuses: ['delivered', 'completed'] },
   { key: 'returns',            label: 'Returns',            statuses: ['return_requested', 'return_approved'] },
   { key: 'cancelled',          label: 'Cancelled',          statuses: ['cancelled', 'refunded', 'failed'] },
 ]
 
-const PIPELINE = ['paid', 'processing', 'packed', 'assigned', 'shipped', 'delivered']
-const pipelineIdx = (s) => (['delivery_attempted'].includes(s) ? PIPELINE.indexOf('shipped') : PIPELINE.indexOf(s))
+const PIPELINE = ['paid', 'processing', 'packed', 'assigned', 'shipped', 'driver_arrived', 'delivered']
+const pipelineIdx = (s) => (['delivery_attempted'].includes(s) ? PIPELINE.indexOf('shipped') : (s === 'arrived' ? PIPELINE.indexOf('driver_arrived') : PIPELINE.indexOf(s)))
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 const calcSub = (items = []) => items.reduce((s, i) => s + (Number(i.total) || (Number(i.price || 0) * Number(i.qty || 1))), 0)
@@ -165,6 +168,9 @@ export default function OrdersList() {
           if (parsedStatus === 'packed_ready') parsedStatus = 'packed'
           if (parsedStatus === 'driver_assigned') parsedStatus = 'assigned'
           if (parsedStatus === 'out_for_delivery') parsedStatus = 'shipped'
+          if (parsedStatus === 'arrived' || parsedStatus === 'driver_arrived' || o.delivery_status === 'arrived' || o.tracking_status === 'driver_arrived' || (o.driver_arrived_at && !['delivered', 'completed', 'cancelled', 'returned'].includes(parsedStatus))) {
+            parsedStatus = 'driver_arrived'
+          }
           if (parsedStatus === 'completed') parsedStatus = 'delivered'
 
           let channelKey = 'online'
@@ -372,7 +378,7 @@ export default function OrdersList() {
       total:             orders.length,
       newOrders:         orders.filter(o => ['paid', 'new_order', 'pending', 'confirmed'].includes(o.status)).length,
       inProgress:        orders.filter(o => ['processing', 'packed', 'assigned', 'packed_ready', 'driver_assigned'].includes(o.status)).length,
-      outForDelivery:    orders.filter(o => ['shipped', 'out_for_delivery'].includes(o.status)).length,
+      outForDelivery:    orders.filter(o => ['shipped', 'out_for_delivery', 'driver_arrived', 'arrived'].includes(o.status)).length,
       deliveryAttempted: orders.filter(o => o.status === 'delivery_attempted').length,
       delivered:         orders.filter(o => ['delivered', 'completed'].includes(o.status)).length,
       disputes:          orders.filter(o => o.status === 'dispute').length,
@@ -965,7 +971,7 @@ export default function OrdersList() {
                       {order.status === 'cancelled' ? (
                         <span className="text-muted" style={{ fontSize: 11 }}>— (Cancelled)</span>
                       ) : order.driver ? (
-                        order.driverAccepted || ['driver_assigned', 'out_for_delivery', 'shipped', 'delivered', 'completed'].includes(order.status) ? (
+                        order.driverAccepted || ['driver_assigned', 'out_for_delivery', 'shipped', 'driver_arrived', 'arrived', 'delivered', 'completed'].includes(order.status) ? (
                           <div>
                             <div style={{ fontSize: 12 }} className="fw-semibold text-dark d-flex align-items-center gap-1">
                               <i className="ri-user-star-line text-success" style={{ fontSize: 12 }} />
@@ -1020,7 +1026,7 @@ export default function OrdersList() {
                         >
                           <i className="ri-eye-line" />
                         </button>
-                        {!(order.invoice_printed || ['processing', 'packed_ready', 'packed', 'assigned', 'shipped', 'out_for_delivery', 'delivered', 'completed', 'cancelled'].includes(order.status)) ? (
+                        {!(order.invoice_printed || ['processing', 'packed_ready', 'packed', 'assigned', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived', 'delivered', 'completed', 'cancelled'].includes(order.status)) ? (
                           <button
                             className="btn btn-sm btn-success fw-bold px-2"
                             title="Print Invoice (Packing List) — Orders must always print invoice first"
@@ -1066,7 +1072,7 @@ export default function OrdersList() {
                             <i className="ri-user-add-line" />
                           </button>
                         )}
-                        {Boolean(order.driver || ['assigned', 'driver_assigned', 'in_transit', 'shipped', 'out_for_delivery'].includes(order.status)) && (
+                        {Boolean(order.driver || ['assigned', 'driver_assigned', 'in_transit', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived'].includes(order.status)) && (
                           <>
                             <button
                               className="btn btn-sm btn-outline-warning"
@@ -1084,7 +1090,7 @@ export default function OrdersList() {
                             </button>
                           </>
                         )}
-                        {['in_transit', 'assigned', 'driver_assigned', 'shipped', 'out_for_delivery', 'delivery_attempted', 'delivery_exception'].includes(order.status) && (
+                        {['in_transit', 'assigned', 'driver_assigned', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived', 'delivery_attempted', 'delivery_exception'].includes(order.status) && (
                           <button
                             className="btn btn-sm btn-outline-success"
                             title="Override Delivery (Section 41)"
@@ -1459,7 +1465,7 @@ export default function OrdersList() {
                             <i className="ri-user-add-line me-1" />Assign Delivery Driver
                           </button>
                         )}
-                        {['assigned', 'shipped', 'delivery_attempted'].includes(selected.status) && selected.driver && (
+                        {['assigned', 'shipped', 'driver_arrived', 'arrived', 'delivery_attempted'].includes(selected.status) && selected.driver && (
                           <button
                             className="btn btn-warning btn-sm"
                             onClick={() => { closeModal(); setTimeout(() => openModal('assign', selected, { assignType: 'manual_reassign' }), 100) }}

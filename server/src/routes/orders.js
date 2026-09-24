@@ -33,6 +33,8 @@ const VALID_STATUSES = [
   "driver_assigned",
   "shipped",
   "out_for_delivery",
+  "arrived",
+  "driver_arrived",
   "delivery_exception",
   "customer_unreachable",
   "delivered",

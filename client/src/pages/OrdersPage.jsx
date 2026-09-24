@@ -256,7 +256,7 @@ const STATUS_CONFIG = {
     dot: "#10B981",
     cardAccent: "border-t-emerald-600",
     headerBg: "bg-emerald-50/80",
-    stepIndex: 4,
+    stepIndex: 5,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -272,7 +272,7 @@ const STATUS_CONFIG = {
     dot: "#10B981",
     cardAccent: "border-t-emerald-600",
     headerBg: "bg-emerald-50/80",
-    stepIndex: 4,
+    stepIndex: 5,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -303,7 +303,7 @@ const STATUS_CONFIG = {
     dot: "#22C55E",
     cardAccent: "border-t-teal-600",
     headerBg: "bg-teal-50/60",
-    stepIndex: 5,
+    stepIndex: 6,
     icon: (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -327,7 +327,7 @@ const STATUS_CONFIG = {
   },
 };
 
-const STEPS = ["Placed", "Confirmed", "Processing", "Packed", "In Transit", "Delivered"];
+const STEPS = ["Placed", "Confirmed", "Processing", "Packed", "In Transit", "Arrived", "Delivered"];
 
 export default function OrdersPage() {
   const navigate = useNavigate();

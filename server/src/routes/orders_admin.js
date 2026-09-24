@@ -1290,10 +1290,11 @@ router.patch(
       if (nextStatus === 'assigned') nextStatus = 'driver_assigned';
       if (nextStatus === 'picked_up' || nextStatus === 'picking_up') nextStatus = 'picked_up';
       if (nextStatus === 'shipped' || nextStatus === 'in_transit') nextStatus = 'out_for_delivery';
+      if (nextStatus === 'arrived') nextStatus = 'driver_arrived';
       if (nextStatus === 'completed') nextStatus = 'delivered';
       if (nextStatus === 'new_order' || nextStatus === 'pending') nextStatus = 'paid';
 
-      const VALID_STATUSES = ["paid", "confirmed", "processing", "packed_ready", "driver_assigned", "picked_up", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
+      const VALID_STATUSES = ["paid", "confirmed", "processing", "packed_ready", "driver_assigned", "picked_up", "out_for_delivery", "driver_arrived", "arrived", "delivery_attempted", "delivered", "cancelled", "dispute"];
       if (!VALID_STATUSES.includes(nextStatus)) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });

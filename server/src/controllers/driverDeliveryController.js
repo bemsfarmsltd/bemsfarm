@@ -667,7 +667,7 @@ const updateDeliveryStatus = async (req, res, next) => {
       });
     } else if (deliveryStatus === "arrived") {
       arrivedAt = new Date();
-      orderStatus = "shipped";
+      orderStatus = "driver_arrived";
       trackingStatus = "driver_arrived";
       await logOrderAudit(client, {
         order_id: actualOrderId,
