@@ -42,14 +42,23 @@ function formatDelivery(row) {
     ? new Date(row.assigned_at).toISOString() 
     : (row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString());
 
-  // If driver has not accepted yet, status MUST be 'awaiting_pickup' so mobile app routes it to "New Assigned (Accept/Decline)" tab
+  // Status resolution for mobile app
   const rawStatus = String(row.delivery_status || row.status || 'awaiting_pickup');
   const hasAccepted = Boolean(row.accepted_at || row.driver_accepted_at || row.goods_confirmed_by_driver || row.picked_up_at || row.driver_picked_up);
 
   let activeDeliveryStatus = rawStatus;
   let activeOrderStatus = String(row.order_status || 'awaiting_pickup');
 
-  if (!hasAccepted && (rawStatus === 'awaiting_pickup' || rawStatus === 'assigned' || rawStatus === 'pending')) {
+  if (row.driver_response === 'rejected' || rawStatus === 'declined' || rawStatus === 'rejected') {
+    activeDeliveryStatus = 'declined';
+    activeOrderStatus = 'declined';
+  } else if (row.driver_response === 'timed_out' || rawStatus === 'timed_out') {
+    activeDeliveryStatus = 'cancelled';
+    activeOrderStatus = 'cancelled';
+  } else if (rawStatus === 'cancelled' || activeOrderStatus === 'cancelled') {
+    activeDeliveryStatus = 'cancelled';
+    activeOrderStatus = 'cancelled';
+  } else if (!hasAccepted && (rawStatus === 'awaiting_pickup' || rawStatus === 'assigned' || rawStatus === 'pending')) {
     activeDeliveryStatus = 'awaiting_pickup';
     activeOrderStatus = 'awaiting_driver_confirmation';
   } else if (hasAccepted && rawStatus === 'awaiting_pickup') {
@@ -358,7 +367,16 @@ const getDeliveryHistory = async (req, res, next) => {
       SELECT 
         d.id AS delivery_id,
         d.delivery_ref,
-        d.status AS delivery_status,
+        CASE
+          WHEN o.status = 'cancelled' OR d.status = 'cancelled' THEN 'cancelled'
+          WHEN da.driver_response = 'rejected' THEN 'declined'
+          WHEN da.driver_response = 'timed_out' THEN 'cancelled'
+          WHEN d.status = 'delivered' THEN 'delivered'
+          WHEN d.status = 'delivery_attempted' THEN 'failed'
+          ELSE COALESCE(da.driver_response, d.status, 'cancelled')
+        END AS delivery_status,
+        da.driver_response,
+        da.rejection_reason AS driver_note,
         d.assigned_at,
         d.dispatched_at,
         d.delivered_at,
@@ -372,6 +390,7 @@ const getDeliveryHistory = async (req, res, next) => {
         o.id AS order_id,
         o.order_ref,
         o.total AS order_total,
+        o.status AS order_status,
         o.payment_method,
         o.payment_status,
         COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
@@ -391,8 +410,15 @@ const getDeliveryHistory = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT driver_response, rejection_reason, created_at, response_at
+        FROM delivery_assignments
+        WHERE delivery_id = d.id AND driver_id = $1
+        ORDER BY id DESC
+        LIMIT 1
+      ) da ON true
       WHERE ${conditions.join(" AND ")}
-      ORDER BY COALESCE(d.delivered_at, d.updated_at, d.created_at) DESC
+      ORDER BY COALESCE(d.delivered_at, da.response_at, d.updated_at, d.created_at) DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
       `,
       params
