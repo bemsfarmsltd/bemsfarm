@@ -549,6 +549,25 @@ const updateDeliveryStatus = async (req, res, next) => {
     const rawStatus = String(status).toLowerCase().trim();
     const deliveryStatus = normalizeStatus(rawStatus);
 
+    // Guard: only allow statuses the deliveries table actually accepts.
+    // If the driver app sends 'declined'/'rejected', the dedicated /decline endpoint
+    // must be used. Any other unknown value is rejected immediately.
+    const VALID_DELIVERY_STATUSES = ['accepted', 'awaiting_pickup', 'picked_up', 'en_route', 'arrived', 'delivered', 'delivery_attempted', 'cancelled'];
+    if (!VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
+      if (deliveryStatus === 'declined' || deliveryStatus === 'rejected' || rawStatus === 'declined' || rawStatus === 'rejected') {
+        return res.status(400).json({
+          success: false,
+          message: "To decline an assigned order, use POST /api/driver/deliveries/:orderId/decline",
+          correct_endpoint: `POST /api/driver/deliveries/${orderId}/decline`,
+          hint: "Send { reason: 'unavailable' } in the request body."
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Invalid delivery status '${rawStatus}'. Valid values are: accepted, picked_up, en_route, arrived, delivered, delivery_attempted, cancelled.`
+      });
+    }
+
     await client.query("BEGIN");
 
     // Fetch delivery record
