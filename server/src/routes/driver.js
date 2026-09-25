@@ -16,6 +16,7 @@ const driverIncidentController = require("../controllers/driverIncidentControlle
 const driverEmergencyController = require("../controllers/driverEmergencyController");
 const driverStatsController = require("../controllers/driverStatsController");
 const driverBankAccountController = require("../controllers/driverBankAccountController");
+const driverChatController = require("../controllers/driverChatController");
 
 // ── Root Driver API Info / Health ──────────────────────────────────
 router.get("/", (req, res) => {
@@ -145,5 +146,16 @@ router.get("/incidents", driverProtect, driverIncidentController.getDriverIncide
 // ── 9. Emergency SOS / Panic Alerts ──────────────────────────────────
 router.post("/emergency", driverProtect, driverEmergencyController.triggerEmergency);
 router.post("/emergency/:id/cancel", driverProtect, driverEmergencyController.cancelEmergency);
+
+// ── 10. Driver Dispatch Support Live Chat & AI Assistant ─────────────
+router.get("/support/messages", driverProtect, driverChatController.getMessages);
+router.post("/support/messages", driverProtect, driverChatController.sendMessage);
+router.get("/support/reference-options", driverProtect, driverChatController.getReferenceOptions);
+router.post("/support/read", driverProtect, driverChatController.markAsRead);
+
+// Aliases for mobile app compatibility
+router.get("/chat/messages", driverProtect, driverChatController.getMessages);
+router.post("/chat/messages", driverProtect, driverChatController.sendMessage);
+router.get("/chat/reference-options", driverProtect, driverChatController.getReferenceOptions);
 
 module.exports = router;

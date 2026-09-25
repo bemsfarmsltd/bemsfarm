@@ -578,6 +578,72 @@ router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin")
   }
 });
 
+// ── GET /api/admin/customers/conversations/driver-inbox ────────────
+// Centralized Dispatch Support Chat inbox for admin staff to see all driver inquiries
+router.get("/conversations/driver-inbox", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        dc.id AS conversation_id,
+        dc.driver_id,
+        dc.status,
+        dc.last_message,
+        dc.last_message_at,
+        dc.active_order_id,
+        dc.active_delivery_id,
+        d.name AS driver_name,
+        d.phone AS driver_phone,
+        d.email AS driver_email,
+        d.status AS driver_status,
+        d.vehicle_type,
+        d.vehicle_plate,
+        COUNT(dm.id) FILTER (WHERE dm.sender_type = 'driver' AND dm.is_read = FALSE) AS unread_count
+      FROM driver_conversations dc
+      JOIN drivers d ON d.id = dc.driver_id
+      LEFT JOIN driver_messages dm ON dm.conversation_id = dc.id
+      GROUP BY dc.id, dc.driver_id, dc.status, dc.last_message, dc.last_message_at, dc.active_order_id, dc.active_delivery_id, d.id, d.name, d.phone, d.email, d.status, d.vehicle_type, d.vehicle_plate
+      ORDER BY dc.last_message_at DESC;
+    `);
+
+    res.json({ conversations: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const driverSupport = require('../services/driverSupportService');
+router.get('/drivers/:id/messages', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
+  try {
+    const drv = await driverSupport.resolveDriver(req.params.id);
+    res.json(await driverSupport.getDriverMessages(drv.id));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
+});
+
+router.post('/drivers/:id/messages', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
+  try {
+    const drv = await driverSupport.resolveDriver(req.params.id);
+    const { message, order_id, delivery_id } = req.body;
+    res.status(201).json(await driverSupport.sendDriverMessage(drv.id, message, req.user, { order_id, delivery_id }));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
+});
+
+router.post('/drivers/:id/messages/read', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
+  try {
+    const drv = await driverSupport.resolveDriver(req.params.id);
+    await driverSupport.markDriverRead(drv.id, 'driver');
+    res.json({ success: true });
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
+});
+
 // ── GET /api/admin/customers/procurement/demand-ranking ────────────
 // Out-of-stock items clicked by customers for the procurement next-purchase list
 router.get("/procurement/demand-ranking", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {

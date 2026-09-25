@@ -98,13 +98,12 @@ app.use('/api/audit', require('./routes/audit'));
       `);
       if (driverCheck.rows.length === 0) {
         const sqlDriver = fs.readFileSync(path.join(__dirname, 'db/driver_tables_migration.sql'), 'utf8');
-        await pool.query(sqlDriver);
-        console.log('✅ Driver App schema ready.');
-      } else {
-        console.log('✅ Driver App schema verified.');
-      }
+    // Chat Support & Order Referencing schema migration
+    try {
+      const { initChatSupportTables } = require('./db/migrate_chat_support');
+      await initChatSupportTables();
     } catch (e) {
-      console.warn('[driver-app] Driver migration notice:', e.message?.slice(0,120));
+      console.warn('[chat-support] Schema init notice:', e.message?.slice(0, 120));
     }
 
     // Start automated driver assignment timeout worker (5 min threshold, checks every 30s)
