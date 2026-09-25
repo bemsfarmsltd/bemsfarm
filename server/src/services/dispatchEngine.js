@@ -177,15 +177,6 @@ async function autoAssignClosestDriver(
       WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
         AND COALESCE(da.is_available, d.is_available, true) = true
         AND COALESCE(da.is_on_delivery, false) = false
-        -- 10-MINUTE TELEMETRY FRESHNESS RULE:
-        -- Driver must have an active GPS ping, heartbeat, or status toggle within the last 10 minutes.
-        AND GREATEST(
-          dl.recorded_at,
-          d.last_location_at,
-          da.last_ping_at,
-          d.last_toggled_at,
-          da.last_toggled_at
-        ) >= NOW() - INTERVAL '10 minutes'
         AND NOT EXISTS (
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
@@ -623,7 +614,8 @@ async function processUnresponsiveAssignments(
  * If a driver has is_available = true, but no heartbeat, GPS ping, or toggle in > 15 minutes,
  * they are automatically transitioned to 'off_duty' so the fleet ledger stays accurate.
  */
-async function sweepStaleDriverAvailability(staleMinutes = 15) {
+async function sweepStaleDriverAvailability(staleMinutes = 1440) {
+  // Only sweep drivers who have been completely dormant for over 24 hours (1440 minutes)
   try {
     const sweepResult = await pool.query(
       `
@@ -658,7 +650,7 @@ async function sweepStaleDriverAvailability(staleMinutes = 15) {
           AND da.is_on_delivery = false
         `
       ).catch(() => {});
-      console.log(`📡 Stale driver telemetry sweep: marked ${sweepResult.rows.length} unreachable driver(s) as off_duty.`);
+      console.log(`📡 Dormant driver sweep: marked ${sweepResult.rows.length} driver(s) as off_duty.`);
     }
   } catch (err) {
     console.error("[dispatch-worker] sweepStaleDriverAvailability error:", err.message);
@@ -680,41 +672,7 @@ async function restartAutoAssignEngine(options = {}) {
 
   isAutoAssignRunning = true;
   try {
-    // 1. Release any stale/abandoned assignments where a driver was assigned but never accepted
-    // and the driver went off-duty or hasn't pinged in > 5 minutes.
-    await pool.query(`
-      UPDATE deliveries d
-      SET driver_id = NULL, status = 'awaiting_pickup', updated_at = NOW()
-      FROM drivers dr
-      LEFT JOIN driver_availability da ON dr.id = da.driver_id
-      WHERE d.driver_id = dr.id
-        AND d.accepted_at IS NULL
-        AND d.status IN ('assigned', 'awaiting_pickup')
-        AND (
-          dr.status IN ('off_duty', 'suspended', 'inactive')
-          OR COALESCE(da.is_available, dr.is_available, true) = false
-          OR GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes'
-        )
-    `).catch((err) => console.warn("[dispatchEngine] Stale assignment release notice:", err.message));
-
-    // Also update order status if driver went offline without accepting
-    await pool.query(`
-      UPDATE orders o
-      SET driver_id = NULL, status = 'awaiting_driver_confirmation', tracking_status = 'awaiting_driver_confirmation', updated_at = NOW()
-      FROM drivers dr
-      LEFT JOIN driver_availability da ON dr.id = da.driver_id
-      WHERE o.driver_id = dr.id
-        AND o.status IN ('awaiting_pickup', 'driver_assigned')
-        AND o.delivered_at IS NULL
-        AND COALESCE(o.customer_confirmed, false) = false
-        AND (
-          dr.status IN ('off_duty', 'suspended', 'inactive')
-          OR COALESCE(da.is_available, dr.is_available, true) = false
-          OR GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes'
-        )
-    `).catch((err) => console.warn("[dispatchEngine] Stale order driver release notice:", err.message));
-
-    // 2. Check if there are active online drivers currently available
+    // 1. Check if there are active online drivers currently available
     const onlineDriversRes = await pool.query(`
       SELECT d.id, d.name, d.phone
       FROM drivers d
@@ -729,13 +687,6 @@ async function restartAutoAssignEngine(options = {}) {
       WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
         AND COALESCE(da.is_available, d.is_available, true) = true
         AND COALESCE(da.is_on_delivery, false) = false
-        AND GREATEST(
-          dl.recorded_at,
-          d.last_location_at,
-          da.last_ping_at,
-          d.last_toggled_at,
-          da.last_toggled_at
-        ) >= NOW() - INTERVAL '10 minutes'
         AND NOT EXISTS (
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
