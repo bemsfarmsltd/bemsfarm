@@ -1378,8 +1378,19 @@ const declineDelivery = async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    // ── Fetch driver name for broadcast messages ──
+    let driverName = "Courier";
     try {
-      const { broadcastOrderUpdated, broadcastDeliveryUpdated } = require("../services/socketService");
+      const drvRes = await pool.query("SELECT name FROM drivers WHERE id = $1", [driverId]);
+      driverName = drvRes.rows[0]?.name || "Courier";
+    } catch (_) {}
+
+    const orderRef = delivery.order_ref || delivery.actual_order_id;
+
+    try {
+      const { broadcastOrderUpdated, broadcastDeliveryUpdated, broadcastDispatchAlert } = require("../services/socketService");
+
+      // 1. Update delivery and order state across all connected clients
       broadcastDeliveryUpdated({
         delivery_id: delivery.id,
         order_id: delivery.actual_order_id,
@@ -1389,10 +1400,20 @@ const declineDelivery = async (req, res, next) => {
       });
       broadcastOrderUpdated({
         id: delivery.actual_order_id,
-        order_ref: delivery.order_ref,
+        order_ref: orderRef,
         status: "awaiting_driver_confirmation",
         tracking_status: "awaiting_driver_confirmation",
         driver_id: null,
+      });
+
+      // 2. Immediately notify admin with a popup — this is what the admin sees.
+      // Previously this only fired 5 mins later via the timeout handler. Now it's instant.
+      broadcastDispatchAlert({
+        order_id: delivery.actual_order_id,
+        order_ref: orderRef,
+        delivery_id: delivery.id,
+        alert_type: "driver_declined",
+        message: `🚫 ${driverName} declined Order #${orderRef}${reason && reason !== "unavailable" ? ` — Reason: ${reason}${notes ? `: ${notes}` : ""}` : ""}. Seeking next available courier...`,
       });
     } catch (_) {}
 
@@ -1403,7 +1424,6 @@ const declineDelivery = async (req, res, next) => {
       );
     } catch (e) {}
 
-    const orderRef = delivery.order_ref || delivery.actual_order_id;
     res.json({
       success: true,
       status: "success",
