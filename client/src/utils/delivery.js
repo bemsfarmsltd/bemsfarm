@@ -6,8 +6,11 @@
 // Mirrors server/src/routes/orders.js's getDeliveryFee, which computes the
 // actual charge — the two must stay in sync or Monnify payment verification
 // will reject a legitimate payment as "amount does not match order total".
-export const STANDARD_DELIVERY_FEE = 1500;
+export const STANDARD_DELIVERY_FEE = 1000;
 
-export function getDeliveryFee(subtotal) {
+export function getDeliveryFee(subtotal, zoneFee = null) {
+  if (zoneFee !== null && zoneFee !== undefined && !isNaN(Number(zoneFee))) {
+    return Number(zoneFee);
+  }
   return STANDARD_DELIVERY_FEE;
 }

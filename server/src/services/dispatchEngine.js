@@ -245,9 +245,9 @@ async function autoAssignClosestDriver(
         `
         INSERT INTO deliveries (
           delivery_ref, order_id, driver_id, status, assigned_at, 
-          delivery_address, eta_minutes, created_at
+          delivery_address, eta_minutes, zone_id, delivery_fee, created_at
         )
-        VALUES ($1, $2, $3, 'awaiting_pickup', NOW(), $4, $5, NOW())
+        VALUES ($1, $2, $3, 'awaiting_pickup', NOW(), $4, $5, $6, $7, NOW())
         RETURNING id
         `,
         [
@@ -256,6 +256,8 @@ async function autoAssignClosestDriver(
           bestDriver.id,
           order.address || "Customer Delivery Address",
           Math.max(15, Math.round(bestDriver.distanceKm * 4)),
+          order.zone_id || null,
+          order.delivery_fee || null,
         ]
       );
       deliveryId = newDelRes.rows[0].id;

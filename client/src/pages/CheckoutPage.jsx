@@ -70,6 +70,36 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState(null);
 
+  // Delivery Zone State
+  const [selectedZone, setSelectedZone] = useState({
+    zone_id: "ZONE001",
+    zone_name: "Umuahia Urban & Metro",
+    delivery_fee: 1000,
+    estimated_eta: "30–60 mins",
+  });
+
+  const resolveDeliveryZone = async (lat, lng, addressText, city, state) => {
+    try {
+      const res = await api.post("/locations/verify", {
+        latitude: lat,
+        longitude: lng,
+        address: addressText,
+        city: city,
+        state: state,
+      });
+      if (res.data?.zone) {
+        setSelectedZone({
+          zone_id: res.data.zone.zone_id || "ZONE001",
+          zone_name: res.data.zone.zone_name || "Standard Delivery Zone",
+          delivery_fee: Number(res.data.zone.delivery_fee) || 1000,
+          estimated_eta: res.data.zone.estimated_delivery_time || "30–60 mins",
+        });
+      }
+    } catch (e) {
+      console.warn("Zone verification error:", e);
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       setSavedAddresses([]);
@@ -93,7 +123,14 @@ export default function CheckoutPage() {
             address: defaultAddr.street_address || "",
             city: defaultAddr.city || "",
             state: defaultAddr.state || f.state || "Abia State",
+            latitude: defaultAddr.latitude || null,
+            longitude: defaultAddr.longitude || null,
           }));
+          if (defaultAddr.latitude && defaultAddr.longitude) {
+            resolveDeliveryZone(defaultAddr.latitude, defaultAddr.longitude, defaultAddr.street_address, defaultAddr.city, defaultAddr.state);
+          } else if (defaultAddr.street_address || defaultAddr.city) {
+            resolveDeliveryZone(null, null, defaultAddr.street_address, defaultAddr.city, defaultAddr.state);
+          }
         } else {
           setDeliveryMode("custom");
           setSaveAsDefault(true);
@@ -122,6 +159,11 @@ export default function CheckoutPage() {
       latitude: addr.latitude || null,
       longitude: addr.longitude || null,
     }));
+    if (addr.latitude && addr.longitude) {
+      resolveDeliveryZone(addr.latitude, addr.longitude, addr.street_address, addr.city, addr.state);
+    } else if (addr.street_address || addr.city) {
+      resolveDeliveryZone(null, null, addr.street_address, addr.city, addr.state);
+    }
   };
 
   const handleUseCustomAddress = () => {
@@ -135,9 +177,15 @@ export default function CheckoutPage() {
       latitude: null,
       longitude: null,
     }));
+    setSelectedZone({
+      zone_id: "ZONE001",
+      zone_name: "Umuahia Urban & Metro",
+      delivery_fee: 1000,
+      estimated_eta: "30–60 mins",
+    });
   };
 
-  const DELIVERY = getDeliveryFee(cartSubtotal);
+  const DELIVERY = getDeliveryFee(cartSubtotal, selectedZone?.delivery_fee);
   const discount = appliedCoupon?.discount || 0;
   const total = Math.max(0, cartSubtotal + DELIVERY - discount);
 
@@ -248,7 +296,9 @@ export default function CheckoutPage() {
 
     return {
       items: refreshedItems,
-      total: subtotal + getDeliveryFee(subtotal) - calculatedDiscount,
+      total: subtotal + getDeliveryFee(subtotal, selectedZone?.delivery_fee) - calculatedDiscount,
+      zone_id: selectedZone?.zone_id || "ZONE001",
+      delivery_fee: selectedZone?.delivery_fee || 1000,
     };
   };
 
@@ -279,10 +329,14 @@ export default function CheckoutPage() {
     const payload = {
       items: checkout.items,
       total: checkout.total,
+      zone_id: checkout.zone_id || selectedZone?.zone_id || "ZONE001",
+      delivery_fee: checkout.delivery_fee || selectedZone?.delivery_fee || 1000,
       payment_method: payMethod,
       payment_ref: ref || undefined,
       checkout_intent_id: checkout.intentId || undefined,
       address: `${form.address}, ${form.city}, ${form.state}`,
+      city: form.city,
+      state: form.state,
       latitude: form.latitude,
       longitude: form.longitude,
       coupon_code: appliedCoupon?.code || undefined,
@@ -346,8 +400,12 @@ export default function CheckoutPage() {
         items: checkout.items,
         payment_ref: paymentReference,
         address: `${form.address}, ${form.city}, ${form.state}`,
+        city: form.city,
+        state: form.state,
         latitude: form.latitude,
         longitude: form.longitude,
+        zone_id: checkout.zone_id || selectedZone?.zone_id,
+        delivery_fee: checkout.delivery_fee || selectedZone?.delivery_fee,
         coupon_code: appliedCoupon?.code || undefined,
       });
       checkout = { ...checkout, intentId: intent.data.intentId, total: Number(intent.data.total) };
@@ -1048,6 +1106,16 @@ export default function CheckoutPage() {
                           latitude: place.latitude,
                           longitude: place.longitude,
                         }));
+                        if (place.zone_id || place.delivery_fee) {
+                          setSelectedZone({
+                            zone_id: place.zone_id || "ZONE001",
+                            zone_name: place.zone_name || "Standard Delivery Zone",
+                            delivery_fee: Number(place.delivery_fee) || 1000,
+                            estimated_eta: place.estimated_delivery_time || "30–60 mins",
+                          });
+                        } else if (place.latitude && place.longitude) {
+                          resolveDeliveryZone(place.latitude, place.longitude, place.address, place.city, matchedState || place.state);
+                        }
                       }}
                       placeholder="Plot 14 Admiralty Way, Lekki Phase 1, Opposite Hub"
                       className=""
@@ -1575,8 +1643,16 @@ export default function CheckoutPage() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <span style={{ fontSize: "13px", color: "#6B7280" }}>Doorstep Delivery</span>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>Doorstep Delivery</span>
+                        <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: "6px", backgroundColor: "#E8F5E9", color: "#1B5E20" }}>
+                          {selectedZone?.zone_name || "Standard Zone"}
+                        </span>
+                      </div>
+                      {selectedZone?.estimated_eta && (
+                        <span style={{ fontSize: "11px", color: "#9CA3AF" }}>Est. ETA: {selectedZone.estimated_eta}</span>
+                      )}
                     </div>
                     <span style={{ fontSize: "14px", color: "#111827", fontWeight: 700 }}>
                       ₦{DELIVERY.toLocaleString()}

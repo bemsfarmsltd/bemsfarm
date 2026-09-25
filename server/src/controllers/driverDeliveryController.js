@@ -66,6 +66,14 @@ function formatDelivery(row) {
     activeOrderStatus = 'driver_assigned';
   }
 
+  const driverEarning = row.driver_earning !== null && row.driver_earning !== undefined 
+    ? parseFloat(row.driver_earning) 
+    : (row.driver_earning_fee ? parseFloat(row.driver_earning_fee) : 700.0);
+
+  const zoneDeliveryFee = row.zone_delivery_fee !== null && row.zone_delivery_fee !== undefined
+    ? parseFloat(row.zone_delivery_fee)
+    : (row.delivery_fee ? parseFloat(row.delivery_fee) : 1000.0);
+
   return {
     ...row,
     id: deliveryId,
@@ -85,7 +93,12 @@ function formatDelivery(row) {
     tracking_status: activeOrderStatus,
     delivery_address: String(row.delivery_address || 'Abia State, Nigeria'),
     delivery_city: String(row.delivery_city || 'Umuahia'),
-    zone_name: String(row.zone_name || 'Umuahia Central'),
+    zone_id: String(row.zone_id || 'ZONE001'),
+    zone_name: String(row.zone_name || 'Standard Delivery Zone'),
+    driver_earning: driverEarning,
+    driver_earning_fee: driverEarning,
+    driver_payout: driverEarning,
+    zone_delivery_fee: zoneDeliveryFee,
     customer_name: String(row.customer_name || 'Customer'),
     customer_phone: String(row.customer_phone || ''),
     customer_email: String(row.customer_email || ''),
@@ -114,7 +127,7 @@ function formatDelivery(row) {
     attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
     order_total: row.order_total !== null && row.order_total !== undefined ? parseFloat(row.order_total) : 0.0,
     subtotal: row.subtotal !== null && row.subtotal !== undefined ? parseFloat(row.subtotal) : 0.0,
-    delivery_fee: row.delivery_fee !== null && row.delivery_fee !== undefined ? parseFloat(row.delivery_fee) : 0.0,
+    delivery_fee: zoneDeliveryFee,
     customer_lat: customerLat,
     customer_lng: customerLng,
     delivery_lat: customerLat,
@@ -181,7 +194,10 @@ const getActiveDeliveries = async (req, res, next) => {
         o.delivery_city,
         o.latitude AS customer_lat,
         o.longitude AS customer_lng,
-        dz.zone_name,
+        COALESCE(d.zone_id, o.zone_id, 'ZONE001') AS zone_id,
+        COALESCE(dz.zone_name, 'Standard Delivery Zone') AS zone_name,
+        COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2), 700) AS driver_earning,
+        COALESCE(dz.delivery_fee, o.delivery_fee, 1000) AS zone_delivery_fee,
         (
           SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -202,7 +218,7 @@ const getActiveDeliveries = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
-      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       WHERE d.driver_id = $1
         AND ${statusFilter}
       ORDER BY 
@@ -279,7 +295,10 @@ const getAvailableDeliveries = async (req, res, next) => {
         o.delivery_city,
         o.latitude AS customer_lat,
         o.longitude AS customer_lng,
-        dz.zone_name,
+        COALESCE(d.zone_id, o.zone_id, 'ZONE001') AS zone_id,
+        COALESCE(dz.zone_name, 'Standard Delivery Zone') AS zone_name,
+        COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2), 700) AS driver_earning,
+        COALESCE(dz.delivery_fee, o.delivery_fee, 1000) AS zone_delivery_fee,
         (
           SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -300,7 +319,7 @@ const getAvailableDeliveries = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
-      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       WHERE (
         -- Old-style: delivery directly assigned to this driver and not yet accepted
         (d.driver_id = $1 AND d.status IN ('awaiting_pickup', 'assigned') AND d.accepted_at IS NULL)
@@ -395,6 +414,10 @@ const getDeliveryHistory = async (req, res, next) => {
         o.payment_status,
         COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
         COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        COALESCE(d.zone_id, o.zone_id, 'ZONE001') AS zone_id,
+        COALESCE(dz.zone_name, 'Standard Delivery Zone') AS zone_name,
+        COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2), 700) AS driver_earning,
+        COALESCE(dz.delivery_fee, o.delivery_fee, 1000) AS zone_delivery_fee,
         (
           SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -410,6 +433,7 @@ const getDeliveryHistory = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       LEFT JOIN LATERAL (
         SELECT driver_response, rejection_reason, created_at, response_at
         FROM delivery_assignments
@@ -507,8 +531,10 @@ const getDeliveryDetails = async (req, res, next) => {
         o.delivery_city,
         o.latitude AS customer_lat,
         o.longitude AS customer_lng,
-        dz.zone_name,
-        dz.delivery_fee AS zone_delivery_fee,
+        COALESCE(d.zone_id, o.zone_id, 'ZONE001') AS zone_id,
+        COALESCE(dz.zone_name, 'Standard Delivery Zone') AS zone_name,
+        COALESCE(dz.driver_earning_fee, ROUND(dz.delivery_fee * 0.70, 2), 700) AS driver_earning,
+        COALESCE(dz.delivery_fee, o.delivery_fee, 1000) AS zone_delivery_fee,
         (
           SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -529,7 +555,7 @@ const getDeliveryDetails = async (req, res, next) => {
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
-      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       WHERE (d.driver_id = $1 OR d.driver_id IS NULL)
         AND (d.order_id = $2 OR d.id::text = $2 OR d.delivery_ref = $2 OR o.order_ref = $2)
       LIMIT 1

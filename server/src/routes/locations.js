@@ -477,4 +477,5 @@ router.post("/verify", async (req, res, next) => {
   }
 });
 
+router.matchDeliveryZone = matchDeliveryZone;
 module.exports = router;

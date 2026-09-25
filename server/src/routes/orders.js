@@ -47,14 +47,65 @@ const VALID_STATUSES = [
 
 const VALID_PAYMENT_METHODS = ["monnify", "cod"];
 
-// Must mirror client/src/utils/delivery.js exactly — Cart and Checkout used
-// to disagree (Cart: free above ₦15,000, Checkout: flat ₦500), and this
-// value is also what a Monnify payment is checked against, so any mismatch
-// here means a customer paying the amount they were shown gets rejected
-// with "amount does not match order total".
-const STANDARD_DELIVERY_FEE = 1500;
-function getDeliveryFee(subtotal) {
-  return STANDARD_DELIVERY_FEE;
+// Zonal delivery fee resolution helper
+async function ensureOrdersZonalColumns() {
+  try {
+    await pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS zone_id VARCHAR(50);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10,2) DEFAULT 1000;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10,2);
+      ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS zone_id VARCHAR(50);
+      ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10,2);
+      ALTER TABLE checkout_intents ADD COLUMN IF NOT EXISTS zone_id VARCHAR(50);
+      ALTER TABLE checkout_intents ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10,2);
+    `);
+  } catch (e) {
+    console.warn("[zonal-pricing] Column check warning:", e.message);
+  }
+}
+ensureOrdersZonalColumns();
+
+async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address, city, state }) {
+  let matchedZone = null;
+  
+  // 1. If explicit zone_id provided, look it up in delivery_zones
+  if (zone_id) {
+    const res = await client.query(
+      "SELECT * FROM delivery_zones WHERE zone_id = $1 AND status = 'active'",
+      [zone_id]
+    );
+    if (res.rows.length > 0) {
+      matchedZone = res.rows[0];
+    }
+  }
+
+  // 2. If not found by zone_id, use matchDeliveryZone algorithm
+  if (!matchedZone) {
+    const locationsRouter = require("./locations");
+    if (typeof locationsRouter.matchDeliveryZone === "function") {
+      matchedZone = await locationsRouter.matchDeliveryZone(latitude, longitude, address, city, state);
+    }
+  }
+
+  // 3. If still not matched, fallback to lowest active zone
+  if (!matchedZone) {
+    const fallback = await client.query(
+      "SELECT * FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC LIMIT 1"
+    );
+    if (fallback.rows.length > 0) {
+      matchedZone = fallback.rows[0];
+    }
+  }
+
+  const deliveryFee = matchedZone ? parseFloat(matchedZone.delivery_fee) || 1000 : 1000;
+  const zoneId = matchedZone ? matchedZone.zone_id : "ZONE001";
+  const zoneName = matchedZone ? matchedZone.zone_name : "Umuahia Urban & Metro";
+
+  return {
+    zone_id: zoneId,
+    zone_name: zoneName,
+    delivery_fee: deliveryFee,
+  };
 }
 
 // Create the server-owned payment snapshot before the customer opens
@@ -113,16 +164,44 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
       discount = coupon.discount;
     }
 
+    const zoneInfo = await resolveZoneAndFee(client, {
+      zone_id: req.body.zone_id,
+      latitude: req.body.latitude,
+      longitude: req.body.longitude,
+      address: req.body.address,
+      city: req.body.city,
+      state: req.body.state,
+    });
+
     const id = crypto.randomUUID();
-    const total = subtotal - discount + getDeliveryFee(subtotal);
+    const total = subtotal - discount + zoneInfo.delivery_fee;
     await client.query(
       `INSERT INTO checkout_intents
-       (id, user_id, payment_ref, items, coupon_code, address, latitude, longitude, total, status, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW() + INTERVAL '30 minutes')`,
-      [id, req.user.id, req.body.payment_ref, JSON.stringify(items), req.body.coupon_code || null, req.body.address, req.body.latitude || null, req.body.longitude || null, total],
+       (id, user_id, payment_ref, items, coupon_code, address, latitude, longitude, zone_id, delivery_fee, total, status, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', NOW() + INTERVAL '30 minutes')`,
+      [
+        id,
+        req.user.id,
+        req.body.payment_ref,
+        JSON.stringify(items),
+        req.body.coupon_code || null,
+        req.body.address,
+        req.body.latitude || null,
+        req.body.longitude || null,
+        zoneInfo.zone_id,
+        zoneInfo.delivery_fee,
+        total,
+      ],
     );
     await client.query("COMMIT");
-    res.status(201).json({ intentId: id, total, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() });
+    res.status(201).json({ 
+      intentId: id, 
+      total, 
+      deliveryFee: zoneInfo.delivery_fee, 
+      zoneId: zoneInfo.zone_id, 
+      zoneName: zoneInfo.zone_name,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() 
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);
@@ -159,7 +238,7 @@ router.get("/checkout-intent/:id", protect, async (req, res, next) => {
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
-  let { items, payment_method, payment_ref, payment_reference, transaction_reference, address, delivery_address, latitude, longitude, source, coupon_code, checkout_intent_id } = req.body;
+  let { items, payment_method, payment_ref, payment_reference, transaction_reference, address, delivery_address, latitude, longitude, zone_id, delivery_fee, city, state, source, coupon_code, checkout_intent_id } = req.body;
 
   // Normalize payment method aliases (e.g., "card", "cashOnDelivery", "monnify", "cod")
   const rawMethod = String(payment_method || "monnify").toLowerCase().trim().replace(/[\s-_]+/g, "");
@@ -233,6 +312,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       address = intent.rows[0].address;
       latitude = intent.rows[0].latitude;
       longitude = intent.rows[0].longitude;
+      zone_id = intent.rows[0].zone_id || zone_id;
+      delivery_fee = intent.rows[0].delivery_fee || delivery_fee;
       coupon_code = intent.rows[0].coupon_code || undefined;
     }
 
@@ -311,7 +392,17 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       couponDiscount = couponResult.discount;
     }
 
-    const total = subtotal - couponDiscount + getDeliveryFee(subtotal);
+    // Resolve zonal delivery fee dynamically
+    const zoneInfo = await resolveZoneAndFee(client, {
+      zone_id,
+      latitude,
+      longitude,
+      address,
+      city,
+      state,
+    });
+
+    const total = subtotal - couponDiscount + zoneInfo.delivery_fee;
 
     // Reconcile: the amount actually paid via Monnify must match the
     // server-computed total (protects against a tampered client-side amount).
@@ -339,12 +430,15 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
 
     await client.query(
       `INSERT INTO orders
-       (id, user_id, total, discount_amount, status, payment_status, tracking_status, payment_method, payment_ref, address, latitude, longitude, created_at, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13)`,
+       (id, user_id, total, subtotal, delivery_fee, zone_id, discount_amount, status, payment_status, tracking_status, payment_method, payment_ref, address, latitude, longitude, created_at, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), $16)`,
       [
         orderId,
         req.user.id,
         total,
+        subtotal,
+        zoneInfo.delivery_fee,
+        zoneInfo.zone_id,
         couponDiscount,
         status,
         paymentStatus,
