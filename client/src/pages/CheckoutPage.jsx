@@ -9,7 +9,7 @@ import { getDeliveryFee } from "../utils/delivery";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import AddressAutocomplete from "../components/ui/AddressAutocomplete";
-import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
+import { NIGERIAN_STATES, normalizeNigerianState, resolveNigerianPostalCode } from "../utils/nigerianStates";
 
 const MONNIFY_API_KEY = import.meta.env.VITE_MONNIFY_API_KEY || "";
 const MONNIFY_CONTRACT_CODE = import.meta.env.VITE_MONNIFY_CONTRACT_CODE || "";
@@ -47,6 +47,7 @@ export default function CheckoutPage() {
     address: "",
     city: "",
     state: "Abia State",
+    postalCode: "440221",
     latitude: null,
     longitude: null,
   });
@@ -115,6 +116,7 @@ export default function CheckoutPage() {
           const defaultAddr = list.find((a) => a.is_default) || list[0];
           setSelectedAddressId(defaultAddr.id);
           setDeliveryMode("saved");
+          const defaultPostcode = defaultAddr.postal_code || defaultAddr.postalCode || resolveNigerianPostalCode(defaultAddr.state, defaultAddr.city, "", defaultAddr.street_address);
           setForm((f) => ({
             ...f,
             fullName: defaultAddr.receiver_name || f.fullName || user.name || "",
@@ -123,6 +125,7 @@ export default function CheckoutPage() {
             address: defaultAddr.street_address || "",
             city: defaultAddr.city || "",
             state: defaultAddr.state || f.state || "Abia State",
+            postalCode: defaultPostcode || "440221",
             latitude: defaultAddr.latitude || null,
             longitude: defaultAddr.longitude || null,
           }));
@@ -139,6 +142,7 @@ export default function CheckoutPage() {
             fullName: f.fullName || user.name || "",
             email: f.email || user.email || "",
             phone: f.phone || user.phone || "",
+            postalCode: resolveNigerianPostalCode(f.state || "Abia State", f.city, "", f.address),
           }));
         }
       })
@@ -149,6 +153,7 @@ export default function CheckoutPage() {
   const handleSelectSavedAddress = (addr) => {
     setSelectedAddressId(addr.id);
     setDeliveryMode("saved");
+    const matchedPostcode = addr.postal_code || addr.postalCode || resolveNigerianPostalCode(addr.state, addr.city, "", addr.street_address);
     setForm((f) => ({
       ...f,
       fullName: addr.receiver_name || f.fullName || user?.name || "",
@@ -156,6 +161,7 @@ export default function CheckoutPage() {
       address: addr.street_address || "",
       city: addr.city || "",
       state: addr.state || "Abia State",
+      postalCode: matchedPostcode || "440221",
       latitude: addr.latitude || null,
       longitude: addr.longitude || null,
     }));
@@ -174,6 +180,7 @@ export default function CheckoutPage() {
       ...f,
       address: "",
       city: "",
+      postalCode: resolveNigerianPostalCode(f.state || "Abia State", "", "", ""),
       latitude: null,
       longitude: null,
     }));
@@ -203,8 +210,19 @@ export default function CheckoutPage() {
     document.body.appendChild(s);
   }, []);
 
-  const setField = (field) => (e) =>
-    setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setField = (field) => (e) => {
+    const val = e.target.value;
+    setForm((f) => {
+      const updated = { ...f, [field]: val };
+      if (field === "state" || field === "city" || field === "address") {
+        const previousAuto = resolveNigerianPostalCode(f.state, f.city, "", f.address);
+        if (!f.postalCode || f.postalCode === previousAuto || f.postalCode === "440221") {
+          updated.postalCode = resolveNigerianPostalCode(updated.state, updated.city, "", updated.address);
+        }
+      }
+      return updated;
+    });
+  };
 
   const validateForm = () => {
     const { fullName, email, phone, address, city, latitude, longitude } = form;
@@ -306,6 +324,7 @@ export default function CheckoutPage() {
     if (!user) return;
     try {
       if (saveAsDefault && form.address.trim()) {
+        const pCode = form.postalCode || resolveNigerianPostalCode(form.state, form.city, "", form.address);
         await api.post("/addresses", {
           label: deliveryMode === "custom" ? "Alternate Address" : "Permanent Delivery",
           receiver_name: form.fullName,
@@ -313,6 +332,7 @@ export default function CheckoutPage() {
           street_address: form.address,
           city: form.city,
           state: form.state,
+          postal_code: pCode,
           latitude: form.latitude,
           longitude: form.longitude,
           is_default: true,
@@ -1096,13 +1116,14 @@ export default function CheckoutPage() {
                       onChange={setField("address")}
                       onPlaceSelected={(place) => {
                         const matchedState = normalizeNigerianState(place.state);
+                        const autoPostal = place.postal_code || place.postcode || resolveNigerianPostalCode(matchedState || place.state, place.city || place.lga, "", place.address);
                         setForm((prev) => ({
                           ...prev,
                           // Keep customer's typed address verbatim
                           address: (prev.address && prev.address.trim().length >= 3) ? prev.address : (place.address || prev.address),
                           city: place.city || place.lga || prev.city,
                           state: matchedState || prev.state,
-                          postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
+                          postalCode: autoPostal || "440221",
                           latitude: place.latitude,
                           longitude: place.longitude,
                         }));

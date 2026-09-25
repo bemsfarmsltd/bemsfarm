@@ -13,6 +13,7 @@ async function initChatSupportTables() {
       ALTER TABLE customer_messages ADD COLUMN IF NOT EXISTS order_id VARCHAR(100);
       ALTER TABLE customer_messages ADD COLUMN IF NOT EXISTS delivery_id INTEGER;
       ALTER TABLE customer_messages ADD COLUMN IF NOT EXISTS metadata JSONB;
+      ALTER TABLE user_addresses ADD COLUMN IF NOT EXISTS postal_code VARCHAR(30);
     `);
 
     // 2. Driver Support Conversations

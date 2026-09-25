@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "re
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
-import { normalizeNigerianState } from "../../utils/nigerianStates";
+import { normalizeNigerianState, resolveNigerianPostalCode } from "../../utils/nigerianStates";
 
 // Fix Leaflet icon URLs in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -254,7 +254,7 @@ export default function VerifiedLocationModal({
     const city = verifiedData?.city || verifiedData?.lga || "Umuahia";
     const lga = verifiedData?.lga || verifiedData?.city || "Umuahia North";
     const state = normalizeNigerianState(verifiedData?.state || "Abia");
-    const postalCode = verifiedData?.postal_code || verifiedData?.postcode || "440221";
+    const postalCode = verifiedData?.postal_code || verifiedData?.postcode || resolveNigerianPostalCode(state, city || lga, "", finalAddress);
     const zoneId = verifiedData?.zone?.zone_id || "ZONE001";
     const deliveryFee = verifiedData?.zone?.delivery_fee || 1000;
 

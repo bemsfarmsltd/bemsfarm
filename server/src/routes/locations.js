@@ -95,16 +95,23 @@ const NIGERIA_POSTAL_CODES = {
   "zamfara": { default: "860001", "gusau": "860241" }
 };
 
-function resolvePostalCode(stateName, cityName, postcodeHint = "") {
+function resolvePostalCode(stateName, cityName, postcodeHint = "", addressText = "") {
   if (postcodeHint && String(postcodeHint).trim().length >= 4 && !isNaN(Number(String(postcodeHint).trim()))) {
     return String(postcodeHint).trim();
   }
+  if (addressText) {
+    const match6 = String(addressText).match(/\b(\d{6})\b/);
+    if (match6) return match6[1];
+    const match5 = String(addressText).match(/\b(\d{5})\b/);
+    if (match5) return match5[1];
+  }
   const sClean = String(stateName || "").toLowerCase().replace(/state/gi, '').trim();
   const cClean = String(cityName || "").toLowerCase().trim();
+  const aClean = String(addressText || "").toLowerCase().trim();
   const stateDict = NIGERIA_POSTAL_CODES[sClean] || NIGERIA_POSTAL_CODES["abia"];
   if (stateDict) {
     for (const [k, code] of Object.entries(stateDict)) {
-      if (k !== "default" && cClean.includes(k)) {
+      if (k !== "default" && (cClean.includes(k) || aClean.includes(k))) {
         return code;
       }
     }
@@ -439,7 +446,7 @@ router.post("/verify", async (req, res, next) => {
       }
     }
 
-    const postalCode = resolvePostalCode(detectedState, detectedCity || detectedLGA, detectedPostcode);
+    const postalCode = resolvePostalCode(detectedState, detectedCity || detectedLGA, detectedPostcode, formattedAddress || address || "");
 
     // 3. Match against delivery zones
     const matchedZone = await matchDeliveryZone(
@@ -478,4 +485,5 @@ router.post("/verify", async (req, res, next) => {
 });
 
 router.matchDeliveryZone = matchDeliveryZone;
+router.resolvePostalCode = resolvePostalCode;
 module.exports = router;

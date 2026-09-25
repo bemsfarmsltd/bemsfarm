@@ -9,7 +9,7 @@ import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
-import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
+import { NIGERIAN_STATES, normalizeNigerianState, resolveNigerianPostalCode } from "../utils/nigerianStates";
 
 export default function ProfilePage() {
   const { user, isLoggedIn, updateUser, logout } = useAuth();
@@ -848,7 +848,15 @@ export default function ProfilePage() {
                           </label>
                           <select
                             value={addressForm.state}
-                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                            onChange={(e) => {
+                              const nextState = e.target.value;
+                              const nextPostcode = resolveNigerianPostalCode(nextState, addressForm.city, "", addressForm.street_address);
+                              setAddressForm(prev => ({
+                                ...prev,
+                                state: nextState,
+                                postal_code: (!prev.postal_code || prev.postal_code === resolveNigerianPostalCode(prev.state, prev.city, "", prev.street_address)) ? nextPostcode : prev.postal_code,
+                              }));
+                            }}
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
                           >
                             {NIGERIAN_STATES.map((s) => (
@@ -863,16 +871,24 @@ export default function ProfilePage() {
                           </label>
                           <AddressAutocomplete
                             value={addressForm.street_address}
-                            onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })}
+                            onChange={(e) => {
+                              const nextAddr = e.target.value;
+                              setAddressForm(prev => ({
+                                ...prev,
+                                street_address: nextAddr,
+                                postal_code: resolveNigerianPostalCode(prev.state, prev.city, "", nextAddr),
+                              }));
+                            }}
                             onPlaceSelected={(place) => {
                               const matchedState = normalizeNigerianState(place.state);
+                              const autoPostcode = place.postal_code || place.postcode || resolveNigerianPostalCode(matchedState || place.state, place.city || place.lga, "", place.address);
                               setAddressForm(prev => ({
                                 ...prev,
                                 // Preserve customer's typed street address
                                 street_address: (prev.street_address && prev.street_address.trim().length >= 3) ? prev.street_address : (place.address || prev.street_address),
                                 city: place.city || place.lga || prev.city,
                                 state: matchedState || prev.state,
-                                postal_code: place.postal_code || place.postcode || prev.postal_code || "440221",
+                                postal_code: autoPostcode || "440221",
                                 latitude: place.latitude,
                                 longitude: place.longitude,
                               }));
@@ -890,7 +906,14 @@ export default function ProfilePage() {
                           </label>
                           <input
                             value={addressForm.city}
-                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                            onChange={(e) => {
+                              const nextCity = e.target.value;
+                              setAddressForm(prev => ({
+                                ...prev,
+                                city: nextCity,
+                                postal_code: resolveNigerianPostalCode(prev.state, nextCity, "", prev.street_address),
+                              }));
+                            }}
                             placeholder="e.g. Umuahia / Lekki"
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#143c2d]"
                           />

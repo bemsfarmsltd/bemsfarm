@@ -25,7 +25,7 @@ router.post("/", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const { label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default } = req.body;
+    const { label, receiver_name, receiver_phone, street_address, city, state, postal_code, latitude, longitude, is_default } = req.body;
     if (!street_address?.trim()) {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Street address is required" });
@@ -47,10 +47,12 @@ router.post("/", async (req, res, next) => {
       await client.query("UPDATE user_addresses SET is_default=false WHERE user_id=$1", [req.user.id]);
     }
 
+    const cleanPostcode = postal_code || (street_address ? (street_address.match(/\b(\d{6})\b/)?.[1] || street_address.match(/\b(\d{5})\b/)?.[1]) : null) || "440221";
+
     const result = await client.query(
-      `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()) RETURNING *`,
-      [req.user.id, label || "Home", receiver_name || null, receiver_phone || null, street_address.trim(), city || null, state || null, latNum, lngNum, makeDefault],
+      `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, postal_code, latitude, longitude, is_default, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW()) RETURNING *`,
+      [req.user.id, label || "Home", receiver_name || null, receiver_phone || null, street_address.trim(), city || null, state || null, cleanPostcode, latNum, lngNum, makeDefault],
     );
 
     await client.query("COMMIT");
@@ -67,7 +69,7 @@ router.patch("/:id", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const { label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default } = req.body;
+    const { label, receiver_name, receiver_phone, street_address, city, state, postal_code, latitude, longitude, is_default } = req.body;
 
     const existing = await client.query("SELECT id FROM user_addresses WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
     if (!existing.rows.length) {
@@ -87,11 +89,12 @@ router.patch("/:id", async (req, res, next) => {
          street_address = COALESCE($4, street_address),
          city           = COALESCE($5, city),
          state          = COALESCE($6, state),
-         latitude       = COALESCE($7, latitude),
-         longitude      = COALESCE($8, longitude),
-         is_default     = COALESCE($9, is_default),
+         postal_code    = COALESCE($7, postal_code),
+         latitude       = COALESCE($8, latitude),
+         longitude      = COALESCE($9, longitude),
+         is_default     = COALESCE($10, is_default),
          updated_at     = NOW()
-       WHERE id=$10 AND user_id=$11 RETURNING *`,
+       WHERE id=$11 AND user_id=$12 RETURNING *`,
       [
         label || null,
         receiver_name || null,
@@ -99,6 +102,7 @@ router.patch("/:id", async (req, res, next) => {
         street_address || null,
         city || null,
         state || null,
+        postal_code || null,
         latitude || null,
         longitude || null,
         typeof is_default === "boolean" ? is_default : null,
