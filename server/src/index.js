@@ -98,6 +98,15 @@ app.use('/api/audit', require('./routes/audit'));
       `);
       if (driverCheck.rows.length === 0) {
         const sqlDriver = fs.readFileSync(path.join(__dirname, 'db/driver_tables_migration.sql'), 'utf8');
+        await pool.query(sqlDriver);
+        console.log('✅ Driver management tables ready.');
+      } else {
+        console.log('✅ Driver management tables verified.');
+      }
+    } catch (e) {
+      console.warn('[driver-tables] Migration notice:', e.message?.slice(0,120));
+    }
+
     // Chat Support & Order Referencing schema migration
     try {
       const { initChatSupportTables } = require('./db/migrate_chat_support');
