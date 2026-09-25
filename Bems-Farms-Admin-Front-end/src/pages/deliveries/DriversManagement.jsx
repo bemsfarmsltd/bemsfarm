@@ -844,10 +844,15 @@ export default function DriversManagement() {
                           {/* Earnings & Settlement Bank */}
                           <td>
                             <div className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</div>
-                            <div className="d-flex align-items-center gap-1 mt-0.5" style={{ fontSize: 11 }}>
+                            <div className="d-flex align-items-center flex-wrap gap-1 mt-0.5" style={{ fontSize: 11 }}>
                               <span className="badge bg-light text-dark border font-monospace px-1.5 py-0.5">
                                 {driver.bank_name ? `${driver.bank_name} · ${driver.account_number || 'No NUBAN'}` : (driver.account_number || 'Bank Not Set')}
                               </span>
+                              {Array.isArray(driver.bank_accounts) && driver.bank_accounts.length > 1 && (
+                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1 py-0.5" style={{ fontSize: 10 }}>
+                                  +{driver.bank_accounts.length - 1} more
+                                </span>
+                              )}
                               {driver.account_number && (
                                 <button
                                   type="button"
@@ -1461,11 +1466,41 @@ export default function DriversManagement() {
                         {selected.vehicle_plate || 'No Plate'} · DL: {selected.license_number || 'Pending'}
                       </span>
                     </div>
-                    <div className="col-sm-6">
-                      <span className="text-muted d-block fs-11 text-uppercase fw-bold">Commission Payout Account</span>
-                      <span className="text-dark font-monospace">
-                        {selected.bank_name || 'Bank'} — {selected.account_number || '—'} ({selected.account_name || '—'})
+                    <div className="col-12">
+                      <span className="text-muted d-block fs-11 text-uppercase fw-bold mb-1">
+                        Commission Payout &amp; Withdrawal Accounts ({Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0 ? selected.bank_accounts.length : (selected.account_number ? 1 : 0)})
                       </span>
+                      {(() => {
+                        const accs = (Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0)
+                          ? selected.bank_accounts
+                          : (selected.account_number ? [{
+                              bank_name: selected.bank_name || 'Bank',
+                              account_number: selected.account_number,
+                              account_name: selected.account_name || selected.name,
+                              is_default: true,
+                            }] : []);
+
+                        if (accs.length === 0) {
+                          return <span className="text-muted fs-12">No payout account configured</span>
+                        }
+
+                        return (
+                          <div className="d-flex flex-wrap gap-2">
+                            {accs.map((a, i) => (
+                              <div key={a.id || i} className="p-2 border rounded bg-light-subtle d-flex align-items-center gap-2 fs-12">
+                                <i className="ri-bank-line text-primary" />
+                                <div>
+                                  <div className="fw-semibold text-dark">
+                                    {a.bank_name}{' '}
+                                    {a.is_default && <span className="badge bg-success-subtle text-success fs-10 px-1 py-0 border">Default</span>}
+                                  </div>
+                                  <div className="text-muted font-monospace fs-11">{a.account_number} · {a.account_name}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1733,24 +1768,98 @@ export default function DriversManagement() {
                       </div>
                     </div>
 
-                    {/* Withdrawal Outflow Bank */}
-                    <div className="row g-2 fs-12">
-                      <div className="col-6">
-                        <span className="text-muted d-block fs-11">Commission Rate</span>
-                        <strong className="text-dark font-monospace">{fmt(selected.commission_per_delivery || 500)} / drop</strong>
+                    {/* Commission Rate */}
+                    <div className="mb-2.5 pb-2 border-bottom d-flex align-items-center justify-content-between">
+                      <span className="text-muted fs-12">Driver Commission Rate</span>
+                      <strong className="text-dark font-monospace fs-13">{fmt(selected.commission_per_delivery || 500)} / drop</strong>
+                    </div>
+
+                    {/* Withdrawal Outflow Bank Accounts */}
+                    <div className="mb-1">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className="text-muted fs-11 text-uppercase fw-bold d-flex align-items-center gap-1">
+                          <i className="ri-bank-line text-primary" />
+                          Registered Withdrawal &amp; Payout Accounts
+                        </span>
+                        <span className="badge bg-light text-muted border fs-10">
+                          {((Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0) ? selected.bank_accounts.length : (selected.account_number ? 1 : 0))} account{((Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0) ? selected.bank_accounts.length : (selected.account_number ? 1 : 0)) === 1 ? '' : 's'}
+                        </span>
                       </div>
-                      <div className="col-6">
-                        <span className="text-muted d-block fs-11">Withdrawal Bank</span>
-                        <strong className="text-dark">{selected.bank_name || 'Not Configured'}</strong>
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted d-block fs-11">Withdrawal Account No</span>
-                        <strong className="text-primary font-monospace">{selected.account_number || '—'}</strong>
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted d-block fs-11">Withdrawal Account Name</span>
-                        <span className="text-dark">{selected.account_name || selected.name}</span>
-                      </div>
+
+                      {(() => {
+                        const accounts = (Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0)
+                          ? selected.bank_accounts
+                          : (selected.account_number ? [{
+                              id: 'legacy',
+                              bank_name: selected.bank_name || 'Personal Bank',
+                              account_number: selected.account_number,
+                              account_name: selected.account_name || selected.name,
+                              is_default: true,
+                              is_verified: true,
+                            }] : [])
+
+                        if (accounts.length === 0) {
+                          return (
+                            <div className="p-2.5 bg-light rounded text-muted fs-12 text-center">
+                              No withdrawal bank accounts configured yet.
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <div className="d-flex flex-column gap-2">
+                            {accounts.map((acc, idx) => (
+                              <div
+                                key={acc.id || idx}
+                                className="bg-white p-2.5 rounded-2 border d-flex align-items-center justify-content-between shadow-xs"
+                                style={{
+                                  borderLeft: acc.is_default ? '3px solid #16a34a' : '1px solid #e5e7eb',
+                                }}
+                              >
+                                <div className="d-flex align-items-center gap-2.5">
+                                  <div
+                                    className="d-flex align-items-center justify-content-center rounded-circle text-primary bg-primary-subtle"
+                                    style={{ width: 32, height: 32, flexShrink: 0 }}
+                                  >
+                                    <i className="ri-bank-line fs-14" />
+                                  </div>
+                                  <div>
+                                    <div className="d-flex align-items-center gap-1.5">
+                                      <span className="fw-bold text-dark fs-12">{acc.bank_name || 'Bank'}</span>
+                                      {acc.is_default && (
+                                        <span className="badge bg-success-subtle text-success fs-10 px-1.5 py-0.5 border border-success-subtle">
+                                          Default
+                                        </span>
+                                      )}
+                                      {acc.is_verified && (
+                                        <span className="badge bg-primary-subtle text-primary fs-10 px-1.5 py-0.5 border border-primary-subtle">
+                                          Verified
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="d-flex align-items-center gap-2 text-muted fs-11 mt-0.5">
+                                      <span className="font-monospace text-dark fw-semibold">{acc.account_number}</span>
+                                      <span>•</span>
+                                      <span>{acc.account_name || selected.name}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-light text-muted border d-flex align-items-center gap-1 px-2 py-1 fs-11"
+                                  title="Copy NUBAN"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(acc.account_number)
+                                    toast.success(`Copied NUBAN: ${acc.account_number}`)
+                                  }}
+                                >
+                                  <i className="ri-file-copy-line" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 

@@ -685,7 +685,26 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         (SELECT o.id FROM deliveries d2
          JOIN orders o ON d2.order_id = o.id
          WHERE d2.driver_id = dr.id AND d2.status NOT IN ('delivered','cancelled')
-         LIMIT 1)                                                   AS current_order
+         LIMIT 1)                                                   AS current_order,
+        (
+          SELECT COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', dba.id,
+                'bank_name', dba.bank_name,
+                'bank_code', dba.bank_code,
+                'account_number', dba.account_number,
+                'account_name', dba.account_name,
+                'is_default', COALESCE(dba.is_default, false),
+                'is_verified', COALESCE(dba.is_verified, false),
+                'created_at', dba.created_at
+              ) ORDER BY dba.is_default DESC, dba.id DESC
+            ),
+            '[]'::json
+          )
+          FROM driver_bank_accounts dba
+          WHERE dba.driver_id = dr.id
+        ) AS bank_accounts
       FROM drivers dr
       LEFT JOIN driver_availability da ON dr.id = da.driver_id
       LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id

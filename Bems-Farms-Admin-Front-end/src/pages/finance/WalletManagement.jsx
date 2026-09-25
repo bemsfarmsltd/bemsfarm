@@ -757,9 +757,16 @@ export default function WalletManagement() {
                       <td>
                         <div className="d-flex align-items-center gap-2">
                           <div>
-                            <span className="font-monospace font-weight-bold text-dark" style={{ fontSize: 13 }}>
-                              {driver.account_number || 'NUBAN Not Set'}
-                            </span>
+                            <div className="d-flex align-items-center gap-1">
+                              <span className="font-monospace font-weight-bold text-dark" style={{ fontSize: 13 }}>
+                                {driver.account_number || 'NUBAN Not Set'}
+                              </span>
+                              {Array.isArray(driver.bank_accounts) && driver.bank_accounts.length > 1 && (
+                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-1 py-0" style={{ fontSize: 10 }}>
+                                  +{driver.bank_accounts.length - 1} more
+                                </span>
+                              )}
+                            </div>
                             <div className="text-primary font-weight-bold" style={{ fontSize: 11 }}>
                               {driver.bank_name || 'Bank Not Configured'}
                             </div>

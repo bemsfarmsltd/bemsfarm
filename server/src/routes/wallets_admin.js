@@ -143,6 +143,25 @@ router.get("/summary", async (req, res, next) => {
         dr.bank_name,
         dr.account_number,
         dr.account_name,
+        (
+          SELECT COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', dba.id,
+                'bank_name', dba.bank_name,
+                'bank_code', dba.bank_code,
+                'account_number', dba.account_number,
+                'account_name', dba.account_name,
+                'is_default', COALESCE(dba.is_default, false),
+                'is_verified', COALESCE(dba.is_verified, false),
+                'created_at', dba.created_at
+              ) ORDER BY dba.is_default DESC, dba.id DESC
+            ),
+            '[]'::json
+          )
+          FROM driver_bank_accounts dba
+          WHERE dba.driver_id = dr.id
+        ) AS bank_accounts,
         (SELECT COUNT(*) FROM deliveries WHERE driver_id = dr.id AND status = 'delivered') AS total_delivered,
         (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = dr.id AND status IN ('paid', 'approved')) AS total_paid,
         (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = dr.id AND status = 'pending') AS pending_payouts,
