@@ -293,17 +293,18 @@ const getAvailableDeliveries = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE (
+        -- Old-style: delivery directly assigned to this driver and not yet accepted
         (d.driver_id = $1 AND d.status IN ('awaiting_pickup', 'assigned') AND d.accepted_at IS NULL)
-        OR (d.driver_id IS NULL AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
+        -- New-style: offer sent via delivery_assignments (driver_id stays NULL until acceptance)
+        OR EXISTS (
+          SELECT 1 FROM delivery_assignments da
+          WHERE da.delivery_id = d.id
+            AND da.driver_id = $1
+            AND da.driver_response = 'pending'
+        )
       )
       AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted', 'accepted', 'picked_up', 'en_route', 'arrived')
-      ORDER BY 
-        CASE 
-          WHEN d.driver_id = $1 THEN 1
-          ELSE 2
-        END,
-        d.assigned_at DESC, 
-        d.id DESC
+      ORDER BY d.assigned_at DESC, d.id DESC
       `,
       [driverId]
     );
@@ -329,7 +330,11 @@ const getDeliveryHistory = async (req, res, next) => {
     const { page = 1, limit = 20, from_date, to_date } = req.query;
     const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
 
-    const conditions = ["d.driver_id = $1", "d.status IN ('delivered', 'cancelled', 'delivery_attempted')"];
+    // History = completed deliveries OR offers this driver declined/timed-out on.
+    // We use delivery_assignments to catch declined offers where driver_id was cleared from deliveries.
+    const conditions = [
+      "(d.driver_id = $1 AND d.status IN ('delivered', 'cancelled', 'delivery_attempted') OR EXISTS (SELECT 1 FROM delivery_assignments da WHERE da.delivery_id = d.id AND da.driver_id = $1 AND da.driver_response IN ('rejected', 'timed_out')))"
+    ];
     const params = [driverId];
 
     if (from_date) {
