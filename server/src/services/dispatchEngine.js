@@ -737,14 +737,18 @@ async function restartAutoAssignEngine(options = {}) {
       AND o.delivered_at IS NULL
       AND COALESCE(o.customer_confirmed, false) = false
       AND (o.source IS NULL OR o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%' OR o.delivery_status = 'pending' OR o.delivery_status = 'awaiting_pickup')
-      -- Skip orders that already have a pending (unaccepted) offer extended to a driver
+      -- Skip orders that already have a live unaccepted offer extended to a driver.
+      -- The only events that should clear this state are:
+      --   1. Driver accepts  → accepted_at stamped → this guard stops matching
+      --   2. Driver declines → driver_id set to NULL → this guard stops matching
+      --   3. 5-min timeout   → processUnresponsiveAssignments explicitly reassigns
+      -- The periodic restartAutoAssignEngine must NEVER re-offer in between.
       AND NOT EXISTS (
         SELECT 1 FROM deliveries pending_del
         WHERE (pending_del.order_id = o.id::text OR pending_del.order_id = o.order_ref)
           AND pending_del.driver_id IS NOT NULL
           AND pending_del.accepted_at IS NULL
           AND pending_del.status IN ('assigned', 'awaiting_pickup')
-          AND pending_del.assigned_at >= NOW() - INTERVAL '10 minutes'
       )
       ORDER BY o.created_at ASC
       LIMIT 15
