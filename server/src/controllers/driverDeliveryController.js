@@ -554,19 +554,14 @@ const updateDeliveryStatus = async (req, res, next) => {
     const rawStatus = String(status).toLowerCase().trim();
     const deliveryStatus = normalizeStatus(rawStatus);
 
+    // If driver app sends 'declined'/'rejected' to the status endpoint, seamlessly route to declineDelivery
+    if (deliveryStatus === 'declined' || deliveryStatus === 'rejected' || rawStatus === 'declined' || rawStatus === 'rejected') {
+      return declineDelivery(req, res, next);
+    }
+
     // Guard: only allow statuses the deliveries table actually accepts.
-    // If the driver app sends 'declined'/'rejected', the dedicated /decline endpoint
-    // must be used. Any other unknown value is rejected immediately.
     const VALID_DELIVERY_STATUSES = ['accepted', 'awaiting_pickup', 'picked_up', 'en_route', 'arrived', 'delivered', 'delivery_attempted', 'cancelled'];
     if (!VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
-      if (deliveryStatus === 'declined' || deliveryStatus === 'rejected' || rawStatus === 'declined' || rawStatus === 'rejected') {
-        return res.status(400).json({
-          success: false,
-          message: "To decline an assigned order, use POST /api/driver/deliveries/:orderId/decline",
-          correct_endpoint: `POST /api/driver/deliveries/${orderId}/decline`,
-          hint: "Send { reason: 'unavailable' } in the request body."
-        });
-      }
       return res.status(400).json({
         success: false,
         message: `Invalid delivery status '${rawStatus}'. Valid values are: accepted, picked_up, en_route, arrived, delivered, delivery_attempted, cancelled.`
@@ -1316,20 +1311,22 @@ const declineDelivery = async (req, res, next) => {
 
     await client.query("BEGIN");
 
-    // Find the delivery AND verify this driver actually has a pending offer for it.
-    // IMPORTANT: In our dispatch flow, deliveries.driver_id is intentionally NULL
-    // until the driver accepts — the actual mapping lives in delivery_assignments.
-    // We MUST verify via delivery_assignments, not deliveries.driver_id, otherwise
-    // any driver could decline any order.
+    // Find the delivery associated with this order/delivery identifier and driver
     const deliveryRes = await client.query(
       `
       SELECT d.*, o.order_ref, o.id as actual_order_id
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      JOIN delivery_assignments da ON da.delivery_id = d.id
-        AND da.driver_id = $2
-        AND da.driver_response = 'pending'
       WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
+        AND (
+          d.driver_id = $2
+          OR o.driver_id = $2
+          OR d.driver_id IS NULL
+          OR EXISTS (
+            SELECT 1 FROM delivery_assignments da
+            WHERE da.delivery_id = d.id AND da.driver_id = $2
+          )
+        )
       FOR UPDATE OF d
       `,
       [orderId, driverId]
@@ -1337,10 +1334,11 @@ const declineDelivery = async (req, res, next) => {
 
     if (deliveryRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, status: "error", message: "No active pending offer found for this driver on this order." });
+      return res.status(404).json({ success: false, status: "error", message: "Delivery not found or not currently offered to you." });
     }
 
     const delivery = deliveryRes.rows[0];
+    const fullReason = `${reason}${notes ? `: ${notes}` : ""}`;
 
     // Remove driver so it returns to unassigned queue for other drivers
     await client.query(
@@ -1355,24 +1353,37 @@ const declineDelivery = async (req, res, next) => {
         updated_at = NOW()
       WHERE id = $3
       `,
-      [`${reason}${notes ? `: ${notes}` : ""}`, driverId, delivery.id]
+      [fullReason, driverId, delivery.id]
     );
 
-    // Update assignment record if exists
-    await client.query(
+    // Update assignment record to rejected; if no assignment row exists, insert one so History tab catches it
+    const updateDa = await client.query(
       `
       UPDATE delivery_assignments 
       SET driver_response = 'rejected', rejection_reason = $1, response_at = NOW()
       WHERE delivery_id = $2 AND driver_id = $3
+      RETURNING id
       `,
-      [reason, delivery.id, driverId]
+      [fullReason, delivery.id, driverId]
     );
+
+    if (updateDa.rowCount === 0) {
+      await client.query(
+        `
+        INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, rejection_reason, response_at, created_at)
+        VALUES ($1, $2, 'direct', 'rejected', $3, NOW(), NOW())
+        ON CONFLICT DO NOTHING
+        `,
+        [delivery.id, driverId, fullReason]
+      ).catch(() => {});
+    }
 
     // Ensure order reflects that no driver is assigned and is awaiting next courier confirmation
     await client.query(
       `
       UPDATE orders
       SET driver_id = NULL,
+          driver_response = 'rejected',
           status = 'awaiting_driver_confirmation',
           tracking_status = 'awaiting_driver_confirmation',
           updated_at = NOW()
