@@ -437,34 +437,38 @@ const BANK_CODES = {
 // Resolve & Verify 10-digit Nigerian NUBAN account number before withdrawal
 const resolveBankAccount = async (req, res, next) => {
   try {
-    const { account_number, bank_code, bank_name } = req.body;
+    const rawAccNumber = req.body.account_number || req.body.accountNumber || req.body.account || req.body.accountNo;
+    const rawBankCode = req.body.bank_code || req.body.bankCode || req.body.code;
+    const rawBankName = req.body.bank_name || req.body.bankName || req.body.bank;
 
-    const cleanAccNumber = String(account_number || "").trim();
-    if (!cleanAccNumber || !/^\d{10}$/.test(cleanAccNumber)) {
+    const cleanAccNumber = String(rawAccNumber || "").trim().replace(/\D/g, "");
+    if (!cleanAccNumber || cleanAccNumber.length !== 10) {
       return res.status(400).json({
         status: "error",
         is_valid: false,
+        isValid: false,
         message: "Valid 10-digit Nigerian NUBAN account number is required",
       });
     }
 
-    if (!bank_code && !bank_name) {
+    if (!rawBankCode && !rawBankName) {
       return res.status(400).json({
         status: "error",
         is_valid: false,
+        isValid: false,
         message: "Bank code or bank name is required for account resolution",
       });
     }
 
-    let targetCode = bank_code ? String(bank_code).trim() : null;
-    let matchedBankName = bank_name || null;
+    let targetCode = rawBankCode ? String(rawBankCode).trim() : null;
+    let matchedBankName = rawBankName || null;
 
-    if (!targetCode && bank_name) {
-      const parenMatch = String(bank_name).match(/\((\d+)\)/);
+    if (!targetCode && rawBankName) {
+      const parenMatch = String(rawBankName).match(/\((\d+)\)/);
       if (parenMatch) {
         targetCode = parenMatch[1];
       } else {
-        const cleanBankName = String(bank_name).trim();
+        const cleanBankName = String(rawBankName).trim();
         targetCode = BANK_CODES[cleanBankName] ||
           Object.entries(BANK_CODES).find(([k]) => cleanBankName.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(cleanBankName.toLowerCase()))?.[1] ||
           null;
@@ -545,23 +549,47 @@ const resolveBankAccount = async (req, res, next) => {
       return res.status(400).json({
         status: "error",
         is_valid: false,
+        isValid: false,
         account_number: cleanAccNumber,
+        accountNumber: cleanAccNumber,
         bank_code: targetCode,
+        bankCode: targetCode,
         bank_name: matchedBankName || "Commercial Bank",
+        bankName: matchedBankName || "Commercial Bank",
         message: liveLookupError
           ? `Could not verify account: ${liveLookupError}`
           : "Invalid account number or destination bank code. Please verify details and try again."
       });
     }
 
+    const payload = {
+      account_name: verifiedAccountName,
+      accountName: verifiedAccountName,
+      account_number: cleanAccNumber,
+      accountNumber: cleanAccNumber,
+      bank_code: targetCode,
+      bankCode: targetCode,
+      bank_name: matchedBankName || "Commercial Bank",
+      bankName: matchedBankName || "Commercial Bank",
+      is_valid: true,
+      isValid: true,
+    };
+
     res.json({
       status: "success",
       is_valid: true,
+      isValid: true,
       account_number: cleanAccNumber,
+      accountNumber: cleanAccNumber,
       bank_code: targetCode,
+      bankCode: targetCode,
       bank_name: matchedBankName || "Commercial Bank",
+      bankName: matchedBankName || "Commercial Bank",
       account_name: verifiedAccountName,
+      accountName: verifiedAccountName,
       message: `Account name verified: ${verifiedAccountName}`,
+      data: payload,
+      account: payload,
       raw: rawResult
     });
   } catch (err) {

@@ -88,8 +88,19 @@ router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbea
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
 router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
-router.post("/bank/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
+
+// Bank Verification & Account Resolution Endpoints
+router.post("/bank/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/bank/verify", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/banks/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/banks/verify", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/bank-accounts/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/bank-accounts/verify", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/saved-banks/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/saved-banks/verify", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/verify-bank", optionalDriverProtect, driverEarningsController.resolveBankAccount);
+router.post("/resolve-bank", optionalDriverProtect, driverEarningsController.resolveBankAccount);
 
 // ── 5b. Saved Bank Accounts for Payouts ───────────────────────────────
 router.get("/bank-accounts", driverProtect, driverBankAccountController.getSavedBankAccounts);
