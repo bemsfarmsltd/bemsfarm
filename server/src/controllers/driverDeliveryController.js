@@ -42,9 +42,20 @@ function formatDelivery(row) {
     ? new Date(row.assigned_at).toISOString() 
     : (row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString());
 
-  const isPendingPickup = !row.goods_confirmed_by_driver && !row.picked_up_at && !row.driver_picked_up && ['assigned', 'accepted', 'awaiting_pickup'].includes(String(row.delivery_status || row.status || ''));
-  const activeDeliveryStatus = isPendingPickup ? 'assigned' : String(row.delivery_status || row.status || 'assigned');
-  const activeOrderStatus = isPendingPickup ? 'driver_assigned' : String(row.order_status || 'awaiting_driver_confirmation');
+  // If driver has not accepted yet, status MUST be 'awaiting_pickup' so mobile app routes it to "New Assigned (Accept/Decline)" tab
+  const rawStatus = String(row.delivery_status || row.status || 'awaiting_pickup');
+  const hasAccepted = Boolean(row.accepted_at || row.driver_accepted_at || row.goods_confirmed_by_driver || row.picked_up_at || row.driver_picked_up);
+
+  let activeDeliveryStatus = rawStatus;
+  let activeOrderStatus = String(row.order_status || 'awaiting_pickup');
+
+  if (!hasAccepted && (rawStatus === 'awaiting_pickup' || rawStatus === 'assigned' || rawStatus === 'pending')) {
+    activeDeliveryStatus = 'awaiting_pickup';
+    activeOrderStatus = 'awaiting_pickup';
+  } else if (hasAccepted && rawStatus === 'awaiting_pickup') {
+    activeDeliveryStatus = 'assigned';
+    activeOrderStatus = 'driver_assigned';
+  }
 
   return {
     ...row,
@@ -113,10 +124,10 @@ const getActiveDeliveries = async (req, res, next) => {
     const requestedStatus = (req.query.status || req.query.type || "").toLowerCase().trim();
 
     let statusFilter = "d.status NOT IN ('delivered', 'cancelled')";
-    if (requestedStatus === "assigned" || requestedStatus === "new" || requestedStatus === "available") {
-      statusFilter = "d.status = 'assigned'";
+    if (requestedStatus === "assigned" || requestedStatus === "new" || requestedStatus === "available" || requestedStatus === "awaiting_pickup") {
+      statusFilter = "(d.status IN ('awaiting_pickup', 'assigned') AND d.accepted_at IS NULL)";
     } else if (requestedStatus === "active") {
-      statusFilter = "d.status NOT IN ('delivered', 'cancelled', 'assigned')";
+      statusFilter = "d.status NOT IN ('delivered', 'cancelled', 'awaiting_pickup') AND (d.accepted_at IS NOT NULL OR d.status NOT IN ('assigned', 'awaiting_pickup'))";
     }
 
     const result = await pool.query(
@@ -280,7 +291,7 @@ const getAvailableDeliveries = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE (
-        (d.driver_id = $1 AND d.status = 'assigned')
+        (d.driver_id = $1 AND d.status IN ('awaiting_pickup', 'assigned') AND d.accepted_at IS NULL)
         OR (d.driver_id IS NULL AND d.status IN ('assigned', 'awaiting_pickup', 'pending'))
       )
       AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted', 'accepted', 'picked_up', 'en_route', 'arrived')
@@ -1583,5 +1594,6 @@ module.exports = {
   confirmPickup,
   confirmDelivery,
   requestReturnByDriver,
+  formatDelivery,
 };
 

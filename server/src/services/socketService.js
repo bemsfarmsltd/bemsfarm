@@ -147,14 +147,28 @@ function broadcastDriverTelemetry(telemetry) {
 }
 
 function broadcastDriverLocation(location) {
-  emitEvent("driver:location", {
+  const locPayload = {
     driver_id: location?.driver_id,
+    driverId: location?.driver_id,
+    order_id: location?.order_id || null,
+    orderId: location?.order_id || null,
+    delivery_id: location?.delivery_id || null,
+    deliveryId: location?.delivery_id || null,
     latitude: location?.latitude,
     longitude: location?.longitude,
     heading: location?.heading,
     speed: location?.speed,
+    accuracy: location?.accuracy,
     recorded_at: location?.recorded_at || new Date().toISOString(),
-  });
+  };
+
+  emitEvent("driver:location", locPayload);
+
+  // If tied to an active order, emit to specific order listeners
+  if (location?.order_id) {
+    emitEvent(`order:${location.order_id}:location`, locPayload);
+    emitEvent("order:location", locPayload);
+  }
 }
 
 function broadcastStockUpdated(stock) {

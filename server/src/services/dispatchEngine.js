@@ -231,7 +231,7 @@ async function autoAssignClosestDriver(
           delivery_ref, order_id, driver_id, status, assigned_at, 
           delivery_address, eta_minutes, created_at
         )
-        VALUES ($1, $2, $3, 'assigned', NOW(), $4, $5, NOW())
+        VALUES ($1, $2, $3, 'awaiting_pickup', NOW(), $4, $5, NOW())
         RETURNING id
         `,
         [
@@ -247,20 +247,20 @@ async function autoAssignClosestDriver(
       await client.query(
         `
         UPDATE deliveries
-        SET driver_id = $1, status = 'assigned', assigned_at = NOW(), accepted_at = NULL, updated_at = NOW()
+        SET driver_id = $1, status = 'awaiting_pickup', assigned_at = NOW(), accepted_at = NULL, updated_at = NOW()
         WHERE id = $2
         `,
         [bestDriver.id, deliveryId]
       );
     }
 
-    // Update order with assigned driver_id but keep status as 'processing' (or current status).
-    // The status will only advance to 'driver_assigned' when the driver accepts in the driver app.
-    // This prevents showing a false 'Driver Assigned' status to the customer before acceptance.
+    // Update order with assigned driver_id and set status to 'awaiting_pickup'.
+    // The driver app receives it in the New Assigned (Accept/Decline) tab.
+    // The status will advance to 'driver_assigned' when the driver clicks Accept.
     await client.query(
       `
       UPDATE orders
-      SET driver_id = $1, updated_at = NOW()
+      SET driver_id = $1, status = 'awaiting_pickup', tracking_status = 'driver_assigned', updated_at = NOW()
       WHERE id = $2
       `,
       [bestDriver.id, order.id]
@@ -309,12 +309,12 @@ async function autoAssignClosestDriver(
         order_id: order.id,
         driver_id: bestDriver.id,
         driver_name: bestDriver.name,
-        status: "assigned",
+        status: "awaiting_pickup",
       });
       broadcastOrderUpdated({
         id: order.id,
         order_ref: order.order_ref,
-        status: "driver_assigned",
+        status: "awaiting_pickup",
         driver_id: bestDriver.id,
         driver_name: bestDriver.name,
       });

@@ -1,11 +1,21 @@
 const pool = require("../db/pool");
 
 // ── POST /api/driver/location ────────────────────────────────────────
-// Record periodic GPS coordinates from driver's device
+// Record periodic GPS coordinates from driver's device, with order_id and timestamp support
 const updateLocation = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
-    const { latitude, longitude, heading, speed, accuracy } = req.body;
+    const {
+      latitude,
+      longitude,
+      heading,
+      speed,
+      accuracy,
+      order_id,
+      orderId,
+      timestamp,
+      recorded_at,
+    } = req.body;
 
     if (latitude === undefined || longitude === undefined) {
       return res.status(400).json({ message: "latitude and longitude are required" });
@@ -18,11 +28,45 @@ const updateLocation = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid latitude or longitude values" });
     }
 
+    // Resolve order_id: from request body, or auto-detect driver's active delivery
+    let targetOrderId = order_id || orderId || req.body.order_ref || req.body.orderRef || null;
+    let targetDeliveryId = req.body.delivery_id || req.body.deliveryId || null;
+
+    if (!targetOrderId) {
+      try {
+        const activeDel = await pool.query(
+          `SELECT d.id AS delivery_id, d.order_id, o.order_ref
+           FROM deliveries d
+           JOIN orders o ON d.order_id = o.id
+           WHERE d.driver_id = $1 
+             AND d.status IN ('picked_up', 'en_route', 'out_for_delivery', 'arrived', 'assigned', 'awaiting_pickup')
+           ORDER BY d.assigned_at DESC LIMIT 1`,
+          [driverId]
+        );
+        if (activeDel.rows.length) {
+          targetOrderId = activeDel.rows[0].order_ref || activeDel.rows[0].order_id;
+          targetDeliveryId = activeDel.rows[0].delivery_id;
+        }
+      } catch (_) {}
+    }
+
+    // Parse timestamp if provided by mobile app
+    let recordedAt = new Date();
+    const rawTime = timestamp || recorded_at;
+    if (rawTime) {
+      const parsedTime = new Date(rawTime);
+      if (!isNaN(parsedTime.getTime())) {
+        recordedAt = parsedTime;
+      }
+    }
+
     const result = await pool.query(
       `
-      INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, accuracy, recorded_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-      RETURNING id, driver_id, latitude, longitude, heading, speed, accuracy, recorded_at
+      INSERT INTO driver_locations (
+        driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at
       `,
       [
         driverId,
@@ -31,6 +75,9 @@ const updateLocation = async (req, res, next) => {
         heading !== undefined ? parseFloat(heading) : null,
         speed !== undefined ? parseFloat(speed) : null,
         accuracy !== undefined ? parseFloat(accuracy) : null,
+        targetOrderId ? String(targetOrderId) : null,
+        targetDeliveryId ? parseInt(targetDeliveryId, 10) : null,
+        recordedAt,
       ]
     );
 
@@ -51,12 +98,15 @@ const updateLocation = async (req, res, next) => {
       const { broadcastDriverLocation, broadcastDriverTelemetry } = require("../services/socketService");
       broadcastDriverLocation({
         driver_id: driverId,
+        order_id: targetOrderId,
+        orderId: targetOrderId,
+        delivery_id: targetDeliveryId,
         latitude: lat,
         longitude: lng,
         heading: heading !== undefined ? parseFloat(heading) : null,
         speed: speed !== undefined ? parseFloat(speed) : null,
         accuracy: accuracy !== undefined ? parseFloat(accuracy) : null,
-        recorded_at: new Date().toISOString(),
+        recorded_at: recordedAt.toISOString(),
       });
       broadcastDriverTelemetry({
         driver_id: driverId,
@@ -68,6 +118,8 @@ const updateLocation = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
+      order_id: targetOrderId,
+      orderId: targetOrderId,
       location: result.rows[0],
     });
   } catch (err) {

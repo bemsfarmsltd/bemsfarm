@@ -532,11 +532,11 @@ router.patch(
       const d = driver.rows[0];
 
       await client.query(
-        "UPDATE deliveries SET driver_id=$1, status='assigned', assigned_at=NOW(), updated_at=NOW() WHERE id=$2",
+        "UPDATE deliveries SET driver_id=$1, status='awaiting_pickup', accepted_at=NULL, assigned_at=NOW(), updated_at=NOW() WHERE id=$2",
         [driver_id, req.params.id],
       );
       await client.query(
-        "UPDATE orders SET driver_id=$1, updated_at=NOW() WHERE id=$2",
+        "UPDATE orders SET driver_id=$1, status='awaiting_pickup', tracking_status='driver_assigned', updated_at=NOW() WHERE id=$2",
         [driver_id, del.rows[0].order_id],
       );
 

@@ -1710,13 +1710,13 @@ router.patch(
       const d = driver.rows[0];
       const prevDriverId = orderRow.driver_id;
 
-      // Update order
+      // Update order to awaiting_pickup so driver mobile app shows Accept/Decline
       await client.query(
-        "UPDATE orders SET driver_id=$1, status='driver_assigned', tracking_status='driver_assigned', updated_at=NOW() WHERE id=$2",
+        "UPDATE orders SET driver_id=$1, status='awaiting_pickup', tracking_status='driver_assigned', updated_at=NOW() WHERE id=$2",
         [driver_id, orderRow.id],
       );
 
-      // Create or update delivery record
+      // Create or update delivery record with awaiting_pickup
       const existingDelivery = await client.query(
         "SELECT id FROM deliveries WHERE order_id=$1 OR order_id=$2",
         [orderRow.id, orderRow.order_ref || orderRow.id],
@@ -1726,14 +1726,14 @@ router.patch(
       if (existingDelivery.rows.length) {
         deliveryId = existingDelivery.rows[0].id;
         await client.query(
-          "UPDATE deliveries SET driver_id=$1, status='assigned', assigned_at=NOW(), updated_at=NOW() WHERE id=$2",
+          "UPDATE deliveries SET driver_id=$1, status='awaiting_pickup', accepted_at=NULL, assigned_at=NOW(), updated_at=NOW() WHERE id=$2",
           [driver_id, deliveryId],
         );
       } else {
         const del = await client.query(
           `
-        INSERT INTO deliveries (delivery_ref, order_id, driver_id, delivery_address, status, assigned_at, created_at)
-        VALUES ($1,$2,$3,$4,'assigned',NOW(),NOW()) RETURNING id
+        INSERT INTO deliveries (delivery_ref, order_id, driver_id, delivery_address, status, accepted_at, assigned_at, created_at)
+        VALUES ($1,$2,$3,$4,'awaiting_pickup',NULL,NOW(),NOW()) RETURNING id
       `,
           [
             `DEL-${Date.now()}`,
