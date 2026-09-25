@@ -121,25 +121,24 @@ async function autoAssignClosestDriver(
       };
     }
 
-    // Auto-collect all drivers who have already rejected or timed out on this delivery.
-    // This ensures that no matter which code path calls autoAssignClosestDriver,
-    // a driver who declined or was timed out is NEVER re-offered the same order.
-    if (order.delivery_id) {
-      try {
-        const prevRejectedRes = await client.query(
-          `SELECT DISTINCT driver_id FROM delivery_assignments
-           WHERE delivery_id = $1
-             AND driver_response IN ('rejected', 'timed_out')
-             AND driver_id IS NOT NULL`,
-          [order.delivery_id]
-        );
-        prevRejectedRes.rows.forEach(r => {
-          if (r.driver_id && !excludedDriverIds.includes(r.driver_id)) {
-            excludedDriverIds.push(r.driver_id);
-          }
-        });
-      } catch (_) {}
-    }
+    // Auto-collect all drivers who have already had an assignment or offer on this delivery/order
+    // (whether rejected, timed out, or previously pending).
+    // This ensures that a driver who declined or was timed out is NEVER re-offered the same order.
+    try {
+      const prevRejectedRes = await client.query(
+        `SELECT DISTINCT da.driver_id 
+         FROM delivery_assignments da
+         JOIN deliveries d ON da.delivery_id = d.id
+         WHERE (d.id = $1 OR d.order_id = $2::text OR d.order_id = $3::text)
+           AND da.driver_id IS NOT NULL`,
+        [order.delivery_id || 0, String(order.id), String(order.order_ref || order.id)]
+      );
+      prevRejectedRes.rows.forEach(r => {
+        if (r.driver_id && !excludedDriverIds.includes(r.driver_id)) {
+          excludedDriverIds.push(r.driver_id);
+        }
+      });
+    } catch (_) {}
 
     const originLat = parseFloat(order.latitude) || storeCoords.lat;
     const originLng = parseFloat(order.longitude) || storeCoords.lng;
@@ -482,8 +481,28 @@ async function processUnresponsiveAssignments(
         `⏱️ Driver ${item.driver_name || item.driver_id} did not respond to order #${item.order_ref || item.order_id} within ${timeoutMinutes} mins. Reassigning to next closest driver...`
       );
 
-      // 1. Mark the timed out assignment as 'timed_out' if record exists
-      if (item.assignment_id) {
+      // 1. Mark all pending assignments for this delivery as 'timed_out' and clear driver
+      if (item.delivery_id) {
+        await pool.query(
+          `
+          UPDATE delivery_assignments
+          SET 
+            driver_response = 'timed_out',
+            rejection_reason = $1,
+            response_at = NOW()
+          WHERE delivery_id = $2 AND (driver_response = 'pending' OR id = $3)
+          `,
+          [
+            `Auto-timeout: Driver did not respond within ${timeoutMinutes} minutes`,
+            item.delivery_id,
+            item.assignment_id || -1,
+          ]
+        );
+        await pool.query(
+          `UPDATE deliveries SET driver_id = NULL, updated_at = NOW() WHERE id = $1`,
+          [item.delivery_id]
+        );
+      } else if (item.assignment_id) {
         await pool.query(
           `
           UPDATE delivery_assignments
