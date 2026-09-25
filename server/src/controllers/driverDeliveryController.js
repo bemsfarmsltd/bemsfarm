@@ -547,16 +547,26 @@ const updateDeliveryStatus = async (req, res, next) => {
       eta_minutes,
     } = req.body;
 
-    if (!status) {
-      return res.status(400).json({ message: "Delivery status is required" });
+    const rawStatus = String(status || req.body.action || "").toLowerCase().trim();
+    const deliveryStatus = rawStatus ? normalizeStatus(rawStatus) : "";
+
+    // If driver app sends 'declined'/'rejected', or action: 'decline', or only reason without status, seamlessly route to declineDelivery
+    if (
+      deliveryStatus === 'declined' || 
+      deliveryStatus === 'rejected' || 
+      rawStatus === 'declined' || 
+      rawStatus === 'rejected' || 
+      rawStatus === 'decline' || 
+      rawStatus === 'reject' ||
+      req.body.action === 'decline' ||
+      req.body.action === 'reject' ||
+      (req.body.reason && !status)
+    ) {
+      return declineDelivery(req, res, next);
     }
 
-    const rawStatus = String(status).toLowerCase().trim();
-    const deliveryStatus = normalizeStatus(rawStatus);
-
-    // If driver app sends 'declined'/'rejected' to the status endpoint, seamlessly route to declineDelivery
-    if (deliveryStatus === 'declined' || deliveryStatus === 'rejected' || rawStatus === 'declined' || rawStatus === 'rejected') {
-      return declineDelivery(req, res, next);
+    if (!status && !rawStatus) {
+      return res.status(400).json({ message: "Delivery status is required" });
     }
 
     // Guard: only allow statuses the deliveries table actually accepts.
@@ -1317,7 +1327,16 @@ const declineDelivery = async (req, res, next) => {
       SELECT d.*, o.order_ref, o.id as actual_order_id
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
+      WHERE (
+        d.order_id = $1 
+        OR o.order_ref = $1 
+        OR d.id::text = $1 
+        OR d.delivery_ref = $1 
+        OR o.delivery_ref = $1
+        OR o.id = $1
+        OR d.order_id ILIKE $1 
+        OR o.order_ref ILIKE $1
+      )
         AND (
           d.driver_id = $2
           OR o.driver_id = $2
@@ -1329,7 +1348,7 @@ const declineDelivery = async (req, res, next) => {
         )
       FOR UPDATE OF d
       `,
-      [orderId, driverId]
+      [String(orderId).trim(), driverId]
     );
 
     if (deliveryRes.rows.length === 0) {
