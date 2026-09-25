@@ -121,6 +121,26 @@ async function autoAssignClosestDriver(
       };
     }
 
+    // Auto-collect all drivers who have already rejected or timed out on this delivery.
+    // This ensures that no matter which code path calls autoAssignClosestDriver,
+    // a driver who declined or was timed out is NEVER re-offered the same order.
+    if (order.delivery_id) {
+      try {
+        const prevRejectedRes = await client.query(
+          `SELECT DISTINCT driver_id FROM delivery_assignments
+           WHERE delivery_id = $1
+             AND driver_response IN ('rejected', 'timed_out')
+             AND driver_id IS NOT NULL`,
+          [order.delivery_id]
+        );
+        prevRejectedRes.rows.forEach(r => {
+          if (r.driver_id && !excludedDriverIds.includes(r.driver_id)) {
+            excludedDriverIds.push(r.driver_id);
+          }
+        });
+      } catch (_) {}
+    }
+
     const originLat = parseFloat(order.latitude) || storeCoords.lat;
     const originLng = parseFloat(order.longitude) || storeCoords.lng;
 
@@ -128,7 +148,7 @@ async function autoAssignClosestDriver(
     // 1. Status not suspended, inactive, off_duty, on_delivery, in_transit
     // 2. driver_availability.is_available = true and is_on_delivery = false
     // 3. No open deliveries currently in progress (assigned, awaiting_pickup, en_route, arrived)
-    // 4. Not in excludedDriverIds (e.g. drivers who timed out for this specific order)
+    // 4. Not in excludedDriverIds (e.g. drivers who timed out or declined this specific order)
     const params = [order.id];
     let excludedCondition = "";
     if (Array.isArray(excludedDriverIds) && excludedDriverIds.length > 0) {
