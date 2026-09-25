@@ -108,6 +108,25 @@ const getEarnings = async (req, res, next) => {
       `
     );
 
+    // Saved bank accounts for payouts
+    const savedBanksResult = await pool.query(
+      `
+      SELECT 
+        id,
+        bank_name,
+        bank_code,
+        account_number,
+        account_name,
+        is_default,
+        is_verified,
+        created_at
+      FROM driver_bank_accounts
+      WHERE driver_id = $1
+      ORDER BY is_default DESC, updated_at DESC, id DESC
+      `,
+      [driverId]
+    );
+
     res.json({
       wallet: {
         total_earned: totalEarned,
@@ -125,8 +144,10 @@ const getEarnings = async (req, res, next) => {
           bank_name: driver.bank_name || null,
           account_number: driver.account_number || null,
           account_name: driver.account_name || null
-        }
+        },
+        saved_bank_accounts: savedBanksResult.rows
       },
+      saved_bank_accounts: savedBanksResult.rows,
       zone_rates: zoneRatesResult.rows.map(z => ({
         zone_id: z.zone_id,
         zone_name: z.zone_name,
@@ -162,7 +183,7 @@ const requestWithdrawal = async (req, res, next) => {
   const client = await pool.connect();
   try {
     const driverId = req.driver.id;
-    const { amount, bank_name, account_number, account_name, notes } = req.body;
+    const { amount, bank_name, account_number, account_name, notes, saved_account_id, bank_account_id } = req.body;
 
     const withdrawAmount = parseFloat(amount);
     if (!withdrawAmount || isNaN(withdrawAmount) || withdrawAmount <= 0) {
@@ -173,7 +194,7 @@ const requestWithdrawal = async (req, res, next) => {
 
     // Fetch driver for balance check and bank defaults
     const driverResult = await client.query(
-      "SELECT total_earnings, bank_name, account_number, account_name FROM drivers WHERE id = $1 FOR UPDATE",
+      "SELECT total_earnings, bank_name, account_number, account_name, name FROM drivers WHERE id = $1 FOR UPDATE",
       [driverId]
     );
 
@@ -183,9 +204,26 @@ const requestWithdrawal = async (req, res, next) => {
     }
 
     const driver = driverResult.rows[0];
-    const targetBank = bank_name || driver.bank_name;
-    const targetAccNumber = account_number || driver.account_number;
-    const targetAccName = account_name || driver.account_name;
+    let targetBank = bank_name;
+    let targetAccNumber = account_number;
+    let targetAccName = account_name;
+
+    // Check if driver selected one of their saved bank accounts
+    if (saved_account_id || bank_account_id) {
+      const accLookup = await client.query(
+        "SELECT * FROM driver_bank_accounts WHERE id = $1 AND driver_id = $2",
+        [saved_account_id || bank_account_id, driverId]
+      );
+      if (accLookup.rows.length) {
+        targetBank = accLookup.rows[0].bank_name;
+        targetAccNumber = accLookup.rows[0].account_number;
+        targetAccName = accLookup.rows[0].account_name || targetAccName;
+      }
+    }
+
+    targetBank = targetBank || driver.bank_name;
+    targetAccNumber = targetAccNumber || driver.account_number;
+    targetAccName = targetAccName || driver.account_name || driver.name;
 
     if (!targetBank || !targetAccNumber) {
       await client.query("ROLLBACK");
@@ -243,7 +281,7 @@ const requestWithdrawal = async (req, res, next) => {
       ]
     );
 
-    // If new bank details provided, save them to driver profile for future convenience
+    // If new bank details provided, save them to driver profile and saved bank accounts
     if (bank_name || account_number || account_name) {
       await client.query(
         `
@@ -257,6 +295,24 @@ const requestWithdrawal = async (req, res, next) => {
         `,
         [bank_name || null, account_number || null, account_name || null, driverId]
       );
+    }
+
+    // Ensure this account is recorded in driver_bank_accounts
+    if (targetBank && targetAccNumber) {
+      try {
+        await client.query(
+          `
+          INSERT INTO driver_bank_accounts (
+            driver_id, bank_name, account_number, account_name, is_default, is_verified, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, false, true, NOW(), NOW())
+          ON CONFLICT (driver_id, account_number, bank_name)
+          DO UPDATE SET updated_at = NOW()
+          `,
+          [driverId, targetBank, targetAccNumber, targetAccName || driver.name]
+        );
+      } catch (e) {
+        // duplicate or conflict
+      }
     }
 
     await client.query("COMMIT");

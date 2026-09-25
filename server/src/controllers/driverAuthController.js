@@ -491,11 +491,25 @@ const getMe = async (req, res, next) => {
     const driver = req.driver;
     const isVerified = isDriverApproved(driver);
 
+    // Fetch driver saved bank accounts for mobile profile
+    let savedBankAccounts = [];
+    try {
+      const bRes = await pool.query(
+        "SELECT id, bank_name, bank_code, account_number, account_name, is_default, is_verified, created_at FROM driver_bank_accounts WHERE driver_id = $1 ORDER BY is_default DESC, updated_at DESC",
+        [driver.id]
+      );
+      savedBankAccounts = bRes.rows;
+    } catch (e) {
+      // table check
+    }
+
     res.json({
       driver: {
         ...driver,
         is_available: isVerified ? driver.is_available : false,
+        saved_bank_accounts: savedBankAccounts,
       },
+      saved_bank_accounts: savedBankAccounts,
       verification: {
         status: driver.status,
         onboarding_status: driver.onboarding_status || (isVerified ? "verified" : "pending_verification"),
@@ -624,6 +638,23 @@ const updateProfile = async (req, res, next) => {
 
     const result = await pool.query(sql, params);
     const updatedDriver = result.rows[0];
+
+    // If bank account was updated, ensure it's recorded and set as default in driver_bank_accounts
+    if (bank_name && account_number) {
+      try {
+        await pool.query("UPDATE driver_bank_accounts SET is_default = false WHERE driver_id = $1", [driverId]);
+        await pool.query(
+          `INSERT INTO driver_bank_accounts (
+            driver_id, bank_name, account_number, account_name, is_default, is_verified, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, true, true, NOW(), NOW())
+          ON CONFLICT (driver_id, account_number, bank_name)
+          DO UPDATE SET is_default = true, updated_at = NOW()`,
+          [driverId, bank_name.trim(), account_number.trim(), account_name ? account_name.trim() : updatedDriver.name]
+        );
+      } catch (e) {
+        // ignore
+      }
+    }
 
     res.json({
       driver: {

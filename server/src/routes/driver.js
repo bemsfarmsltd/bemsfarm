@@ -15,6 +15,7 @@ const driverUploadController = require("../controllers/driverUploadController");
 const driverIncidentController = require("../controllers/driverIncidentController");
 const driverEmergencyController = require("../controllers/driverEmergencyController");
 const driverStatsController = require("../controllers/driverStatsController");
+const driverBankAccountController = require("../controllers/driverBankAccountController");
 
 // ── Root Driver API Info / Health ──────────────────────────────────
 router.get("/", (req, res) => {
@@ -89,6 +90,24 @@ router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
 router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
 router.post("/bank/resolve", optionalDriverProtect, driverEarningsController.resolveBankAccount);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
+
+// ── 5b. Saved Bank Accounts for Payouts ───────────────────────────────
+router.get("/bank-accounts", driverProtect, driverBankAccountController.getSavedBankAccounts);
+router.post("/bank-accounts", driverProtect, driverBankAccountController.addSavedBankAccount);
+router.post("/bank-accounts/sync", driverProtect, driverBankAccountController.syncSavedBankAccounts);
+router.patch("/bank-accounts/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
+router.post("/bank-accounts/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
+router.patch("/bank-accounts/:id", driverProtect, driverBankAccountController.updateSavedBankAccount);
+router.put("/bank-accounts/:id", driverProtect, driverBankAccountController.updateSavedBankAccount);
+router.delete("/bank-accounts/:id", driverProtect, driverBankAccountController.deleteSavedBankAccount);
+
+// Mobile Client Aliases
+router.get("/saved-banks", driverProtect, driverBankAccountController.getSavedBankAccounts);
+router.post("/saved-banks", driverProtect, driverBankAccountController.addSavedBankAccount);
+router.post("/saved-banks/sync", driverProtect, driverBankAccountController.syncSavedBankAccounts);
+router.patch("/saved-banks/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
+router.post("/saved-banks/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
+router.delete("/saved-banks/:id", driverProtect, driverBankAccountController.deleteSavedBankAccount);
 
 // ── 6. Push Tokens & In-App Notification Feed ────────────────────────
 router.post("/device-token", driverProtect, driverNotificationController.registerDeviceToken);
