@@ -1311,21 +1311,28 @@ const declineDelivery = async (req, res, next) => {
 
     await client.query("BEGIN");
 
+    // Find the delivery AND verify this driver actually has a pending offer for it.
+    // IMPORTANT: In our dispatch flow, deliveries.driver_id is intentionally NULL
+    // until the driver accepts — the actual mapping lives in delivery_assignments.
+    // We MUST verify via delivery_assignments, not deliveries.driver_id, otherwise
+    // any driver could decline any order.
     const deliveryRes = await client.query(
       `
       SELECT d.*, o.order_ref, o.id as actual_order_id
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
+      JOIN delivery_assignments da ON da.delivery_id = d.id
+        AND da.driver_id = $2
+        AND da.driver_response = 'pending'
       WHERE (d.order_id = $1 OR o.order_ref = $1 OR d.id::text = $1 OR d.delivery_ref = $1)
-        AND (d.driver_id = $2 OR d.driver_id IS NULL)
-      FOR UPDATE
+      FOR UPDATE OF d
       `,
       [orderId, driverId]
     );
 
     if (deliveryRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, status: "error", message: "Assigned delivery not found for this driver" });
+      return res.status(404).json({ success: false, status: "error", message: "No active pending offer found for this driver on this order." });
     }
 
     const delivery = deliveryRes.rows[0];
