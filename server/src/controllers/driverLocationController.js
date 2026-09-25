@@ -51,22 +51,28 @@ const updateLocation = async (req, res, next) => {
     }
 
     // Parse timestamp if provided by mobile app
-    let recordedAt = new Date();
-    const rawTime = timestamp || recorded_at;
-    if (rawTime) {
-      const parsedTime = new Date(rawTime);
+    // 1. Device GPS time: the time coordinates were captured on the driver's phone
+    let deviceTimestamp = null;
+    if (timestamp) {
+      const parsedTime = new Date(timestamp);
       if (!isNaN(parsedTime.getTime())) {
-        recordedAt = parsedTime;
+        deviceTimestamp = parsedTime;
       }
     }
+    if (!deviceTimestamp) {
+      deviceTimestamp = new Date();
+    }
+
+    // 2. Server recorded time: the exact moment the backend received and logged the request
+    const serverRecordedAt = new Date();
 
     const result = await pool.query(
       `
       INSERT INTO driver_locations (
-        driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at
+        driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, "timestamp", recorded_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id, driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING id, driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, "timestamp", recorded_at
       `,
       [
         driverId,
@@ -77,7 +83,8 @@ const updateLocation = async (req, res, next) => {
         accuracy !== undefined ? parseFloat(accuracy) : null,
         targetOrderId ? String(targetOrderId) : null,
         targetDeliveryId ? parseInt(targetDeliveryId, 10) : null,
-        recordedAt,
+        deviceTimestamp,
+        serverRecordedAt,
       ]
     );
 
@@ -105,14 +112,14 @@ const updateLocation = async (req, res, next) => {
         longitude: lng,
         heading: heading !== undefined ? parseFloat(heading) : null,
         speed: speed !== undefined ? parseFloat(speed) : null,
-        accuracy: accuracy !== undefined ? parseFloat(accuracy) : null,
-        recorded_at: recordedAt.toISOString(),
+        timestamp: deviceTimestamp.toISOString(),
+        recorded_at: serverRecordedAt.toISOString(),
       });
       broadcastDriverTelemetry({
         driver_id: driverId,
         is_available: true,
         status: "active",
-        last_ping_at: new Date().toISOString(),
+        last_ping_at: serverRecordedAt.toISOString(),
       });
     } catch (_) {}
 
@@ -120,10 +127,7 @@ const updateLocation = async (req, res, next) => {
       success: true,
       order_id: targetOrderId,
       orderId: targetOrderId,
-      location: {
-        ...result.rows[0],
-        timestamp: result.rows[0].recorded_at,
-      },
+      location: result.rows[0],
     });
   } catch (err) {
     console.error("Driver updateLocation error:", err.message);
