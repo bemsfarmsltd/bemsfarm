@@ -120,7 +120,10 @@ const updateLocation = async (req, res, next) => {
       success: true,
       order_id: targetOrderId,
       orderId: targetOrderId,
-      location: result.rows[0],
+      location: {
+        ...result.rows[0],
+        timestamp: result.rows[0].recorded_at,
+      },
     });
   } catch (err) {
     console.error("Driver updateLocation error:", err.message);

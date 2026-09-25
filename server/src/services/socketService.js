@@ -160,6 +160,7 @@ function broadcastDriverLocation(location) {
     speed: location?.speed,
     accuracy: location?.accuracy,
     recorded_at: location?.recorded_at || new Date().toISOString(),
+    timestamp: location?.recorded_at || new Date().toISOString(),
   };
 
   emitEvent("driver:location", locPayload);
