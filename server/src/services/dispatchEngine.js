@@ -714,7 +714,12 @@ async function restartAutoAssignEngine(options = {}) {
       return { success: false, processed: 0, reason: "No available online drivers" };
     }
 
-    // 3. Find all orders waiting for a courier
+    // 3. Find all orders waiting for a courier.
+    // CRITICAL: Exclude orders that already have an active pending (unaccepted) offer
+    // sent to a driver. These orders are correctly in 'awaiting_driver_confirmation'
+    // with orders.driver_id = NULL by design — but deliveries.driver_id IS NOT NULL,
+    // meaning a driver has already been offered the order and hasn't responded yet.
+    // Without this exclusion the engine re-offers the same order on every 30s tick.
     const pendingOrdersRes = await pool.query(`
       SELECT DISTINCT 
         o.id,
@@ -725,13 +730,22 @@ async function restartAutoAssignEngine(options = {}) {
       FROM orders o
       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
       WHERE (
-        (o.driver_id IS NULL AND (d.driver_id IS NULL OR d.assigned_at < NOW() - INTERVAL '5 minutes') AND o.status IN ('awaiting_driver_confirmation', 'packed_ready', 'packed'))
+        (o.driver_id IS NULL AND d.driver_id IS NULL AND o.status IN ('awaiting_driver_confirmation', 'packed_ready', 'packed'))
         OR (d.id IS NOT NULL AND d.driver_id IS NULL AND d.status IN ('pending', 'awaiting_pickup', 'assigned'))
       )
       AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'picked_up', 'out_for_delivery')
       AND o.delivered_at IS NULL
       AND COALESCE(o.customer_confirmed, false) = false
       AND (o.source IS NULL OR o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%' OR o.delivery_status = 'pending' OR o.delivery_status = 'awaiting_pickup')
+      -- Skip orders that already have a pending (unaccepted) offer extended to a driver
+      AND NOT EXISTS (
+        SELECT 1 FROM deliveries pending_del
+        WHERE (pending_del.order_id = o.id::text OR pending_del.order_id = o.order_ref)
+          AND pending_del.driver_id IS NOT NULL
+          AND pending_del.accepted_at IS NULL
+          AND pending_del.status IN ('assigned', 'awaiting_pickup')
+          AND pending_del.assigned_at >= NOW() - INTERVAL '10 minutes'
+      )
       ORDER BY o.created_at ASC
       LIMIT 15
     `);
