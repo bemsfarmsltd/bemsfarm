@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import LiveOrderMap from "../components/ui/LiveOrderMap";
 
 const DISPATCH_SLIDES = [
   {
@@ -190,24 +191,6 @@ function cleanCode(value) {
   return value.trim().replace(/^#/, "").toUpperCase();
 }
 
-function DeliveryMap({ latitude, longitude }) {
-  const lat = Number(latitude);
-  const lng = Number(longitude);
-  const spread = 0.018;
-  const bbox = `${lng - spread},${lat - spread},${lng + spread},${lat + spread}`;
-  const source = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
-
-  return (
-    <iframe
-      title="Live delivery location map"
-      src={source}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className="h-64 sm:h-72 w-full border-0 rounded-2xl overflow-hidden shadow-inner"
-    />
-  );
-}
-
 export default function TrackOrderPage() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -279,7 +262,7 @@ export default function TrackOrderPage() {
   const [statusTitle, statusText] = STATUS_COPY[status] || ["Order Status Update", "Your order status is being updated."];
   const isCancelled = status === "cancelled" || order?.status === "cancelled";
   const hasDriverLocation = Number.isFinite(Number(order?.driver_lat)) && Number.isFinite(Number(order?.driver_lng));
-  const showDriverMap = hasDriverLocation && activeIndex >= 2 && !isCancelled && !isDelivered;
+  const showDriverMap = !isCancelled && !isDelivered;
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -638,7 +621,22 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
                     ) : showDriverMap ? (
-                      <DeliveryMap latitude={order.driver_lat} longitude={order.driver_lng} />
+                      <LiveOrderMap
+                        orderId={order.order_ref || order.id}
+                        driverId={order.driver_id}
+                        customerLat={order.delivery_lat || order.lat}
+                        customerLng={order.delivery_lng || order.lng}
+                        driverLat={order.driver_lat}
+                        driverLng={order.driver_lng}
+                        driverName={order.driver_name}
+                        driverPhone={order.driver_phone}
+                        vehicleType={order.vehicle_type}
+                        vehiclePlate={order.vehicle_plate}
+                        etaMinutes={order.eta_minutes}
+                        deliveryAddress={order.destination_area || order.delivery_address || order.address}
+                        orderStatus={order.tracking_status || order.status}
+                        height="380px"
+                      />
                     ) : (
                       <div className="h-64 w-full rounded-2xl bg-slate-100 flex flex-col items-center justify-center text-center p-6 border border-slate-200">
                         <svg className="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
