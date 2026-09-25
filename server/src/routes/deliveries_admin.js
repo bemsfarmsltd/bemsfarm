@@ -1203,6 +1203,10 @@ router.patch(
         "UPDATE driver_availability SET is_available=true, last_toggled_at=NOW() WHERE driver_id=$1",
         [req.params.id]
       );
+      try {
+        const { restartAutoAssignEngine } = require("../services/dispatchEngine");
+        restartAutoAssignEngine({ triggerDriverId: req.params.id, reason: "admin_activated_driver" }).catch(() => {});
+      } catch (_) {}
       res.json({ message: "Driver activated" });
     } catch (err) {
       next(err);
@@ -1233,6 +1237,11 @@ router.patch(
         "UPDATE driver_availability SET is_available=true, last_toggled_at=NOW() WHERE driver_id=$1",
         [driver.id]
       );
+
+      try {
+        const { restartAutoAssignEngine } = require("../services/dispatchEngine");
+        restartAutoAssignEngine({ triggerDriverId: driver.id, reason: "admin_approved_driver" }).catch(() => {});
+      } catch (_) {}
 
       // Send in-app notification
       await pool.query(
@@ -1833,6 +1842,21 @@ router.post("/:id/auto-assign", requireRole("superadmin", "admin", "manager", "d
     res.json({
       message: `Delivery #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away)`,
       assignment: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/deliveries/engine/run ─────────────────────────────
+// Manually restart or force auto-assign engine sweep across all unassigned deliveries
+router.post("/engine/run", requireRole("superadmin", "admin", "manager", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { restartAutoAssignEngine } = require("../services/dispatchEngine");
+    const summary = await restartAutoAssignEngine({ reason: "admin_manual_trigger" });
+    res.json({
+      message: "Auto-assign proximity engine sweep completed",
+      summary,
     });
   } catch (err) {
     next(err);

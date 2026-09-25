@@ -158,20 +158,26 @@ async function autoAssignClosestDriver(
       WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
         AND COALESCE(da.is_available, d.is_available, true) = true
         AND COALESCE(da.is_on_delivery, false) = false
-        -- 5-MINUTE TELEMETRY FRESHNESS RULE:
-        -- Driver must have an active GPS ping, heartbeat, or status toggle within the last 5 minutes.
-        -- If their mobile data was turned off or phone died > 5 mins ago, they are automatically bypassed.
+        -- 10-MINUTE TELEMETRY FRESHNESS RULE:
+        -- Driver must have an active GPS ping, heartbeat, or status toggle within the last 10 minutes.
         AND GREATEST(
           dl.recorded_at,
           d.last_location_at,
           da.last_ping_at,
-          COALESCE(d.last_toggled_at, da.last_toggled_at)
-        ) >= NOW() - INTERVAL '5 minutes'
+          d.last_toggled_at,
+          da.last_toggled_at
+        ) >= NOW() - INTERVAL '10 minutes'
         AND NOT EXISTS (
           SELECT 1 FROM deliveries del 
           WHERE del.driver_id = d.id 
             AND del.order_id != $1
-            AND del.status IN ('assigned', 'accepted', 'awaiting_pickup', 'picked_up', 'en_route', 'arrived')
+            AND (
+              del.status IN ('accepted', 'picked_up', 'en_route', 'arrived')
+              OR (
+                del.status IN ('assigned', 'awaiting_pickup')
+                AND del.assigned_at >= NOW() - INTERVAL '5 minutes'
+              )
+            )
         )
         ${excludedCondition}
       `,
@@ -254,16 +260,16 @@ async function autoAssignClosestDriver(
       );
     }
 
-    // Update order with assigned driver_id and set status to 'awaiting_pickup'.
-    // The driver app receives it in the New Assigned (Accept/Decline) tab.
-    // The status will advance to 'driver_assigned' when the driver clicks Accept.
+    // Do NOT assign orders.driver_id or set tracking_status to 'driver_assigned' yet!
+    // The order is only mapped to the candidate driver as a dispatch invitation.
+    // orders.driver_id will be officially assigned ONLY when the driver clicks Accept.
     await client.query(
       `
       UPDATE orders
-      SET driver_id = $1, status = 'awaiting_pickup', tracking_status = 'driver_assigned', updated_at = NOW()
-      WHERE id = $2
+      SET driver_id = NULL, status = 'awaiting_driver_confirmation', tracking_status = 'awaiting_driver_confirmation', delivery_status = 'awaiting_pickup', updated_at = NOW()
+      WHERE id = $1
       `,
-      [bestDriver.id, order.id]
+      [order.id]
     );
 
     // Record delivery assignment with 'pending' status
@@ -310,13 +316,14 @@ async function autoAssignClosestDriver(
         driver_id: bestDriver.id,
         driver_name: bestDriver.name,
         status: "awaiting_pickup",
+        accepted: false,
       });
       broadcastOrderUpdated({
         id: order.id,
         order_ref: order.order_ref,
-        status: "awaiting_pickup",
-        driver_id: bestDriver.id,
-        driver_name: bestDriver.name,
+        status: "awaiting_driver_confirmation",
+        tracking_status: "awaiting_driver_confirmation",
+        driver_id: null,
       });
     } catch (_) {}
 
@@ -377,16 +384,16 @@ async function processUnresponsiveAssignments(
         LEFT JOIN delivery_assignments da ON da.delivery_id = d.id AND da.driver_id = COALESCE(o.driver_id, d.driver_id) AND da.driver_response = 'pending'
         LEFT JOIN drivers drv ON drv.id = COALESCE(o.driver_id, d.driver_id)
         WHERE COALESCE(o.driver_id, d.driver_id) IS NOT NULL
-          AND o.status IN ('packed', 'packed_ready', 'driver_assigned')
+          AND o.status IN ('packed', 'packed_ready', 'driver_assigned', 'awaiting_pickup', 'awaiting_driver_confirmation')
           AND o.delivered_at IS NULL
           AND COALESCE(o.customer_confirmed, false) = false
-          AND d.status = 'assigned'
+          AND d.status IN ('assigned', 'awaiting_pickup')
           AND d.accepted_at IS NULL
           AND COALESCE(da.created_at, d.assigned_at, o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
 
         UNION ALL
 
-        -- Category 2: Awaiting Courier (no driver assigned) for orders that are PACKED & READY
+        -- Category 2: Awaiting Courier (no driver assigned) for orders that are PACKED & READY or awaiting driver
         SELECT
           d.id AS delivery_id,
           d.delivery_ref,
@@ -401,11 +408,14 @@ async function processUnresponsiveAssignments(
           'no_driver_assigned' AS alert_case
         FROM orders o
         LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
-        WHERE o.driver_id IS NULL
-          AND o.status IN ('packed', 'packed_ready')
+        WHERE (
+          (o.driver_id IS NULL AND o.status IN ('packed', 'packed_ready', 'awaiting_driver_confirmation'))
+          OR (d.id IS NOT NULL AND d.driver_id IS NULL AND d.status IN ('pending', 'awaiting_pickup', 'assigned'))
+        )
+          AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'picked_up', 'out_for_delivery')
           AND o.delivered_at IS NULL
           AND COALESCE(o.customer_confirmed, false) = false
-          AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%')
+          AND (o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%' OR o.delivery_status = 'pending')
           AND COALESCE(o.updated_at, o.created_at) <= NOW() - ($1 * INTERVAL '1 minute')
       ) sub
       WHERE NOT EXISTS (
@@ -617,6 +627,161 @@ async function sweepStaleDriverAvailability(staleMinutes = 15) {
 }
 
 /**
+ * Restarts the auto-assign engine for all orders awaiting couriers.
+ * Automatically triggered whenever a driver comes back online, sends a live heartbeat,
+ * or is activated/approved by admin, as well as periodically by the background worker.
+ */
+let isAutoAssignRunning = false;
+async function restartAutoAssignEngine(options = {}) {
+  const { triggerDriverId = null, reason = "driver_online" } = options;
+
+  if (isAutoAssignRunning) {
+    return { status: "busy", running: true };
+  }
+
+  isAutoAssignRunning = true;
+  try {
+    // 1. Release any stale/abandoned assignments where a driver was assigned but never accepted
+    // and the driver went off-duty or hasn't pinged in > 5 minutes.
+    await pool.query(`
+      UPDATE deliveries d
+      SET driver_id = NULL, status = 'awaiting_pickup', updated_at = NOW()
+      FROM drivers dr
+      LEFT JOIN driver_availability da ON dr.id = da.driver_id
+      WHERE d.driver_id = dr.id
+        AND d.accepted_at IS NULL
+        AND d.status IN ('assigned', 'awaiting_pickup')
+        AND (
+          dr.status IN ('off_duty', 'suspended', 'inactive')
+          OR COALESCE(da.is_available, dr.is_available, true) = false
+          OR GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes'
+        )
+    `).catch((err) => console.warn("[dispatchEngine] Stale assignment release notice:", err.message));
+
+    // Also update order status if driver went offline without accepting
+    await pool.query(`
+      UPDATE orders o
+      SET driver_id = NULL, status = 'awaiting_driver_confirmation', tracking_status = 'awaiting_driver_confirmation', updated_at = NOW()
+      FROM drivers dr
+      LEFT JOIN driver_availability da ON dr.id = da.driver_id
+      WHERE o.driver_id = dr.id
+        AND o.status IN ('awaiting_pickup', 'driver_assigned')
+        AND o.delivered_at IS NULL
+        AND COALESCE(o.customer_confirmed, false) = false
+        AND (
+          dr.status IN ('off_duty', 'suspended', 'inactive')
+          OR COALESCE(da.is_available, dr.is_available, true) = false
+          OR GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) < NOW() - INTERVAL '5 minutes'
+        )
+    `).catch((err) => console.warn("[dispatchEngine] Stale order driver release notice:", err.message));
+
+    // 2. Check if there are active online drivers currently available
+    const onlineDriversRes = await pool.query(`
+      SELECT d.id, d.name, d.phone
+      FROM drivers d
+      LEFT JOIN driver_availability da ON d.id = da.driver_id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, recorded_at
+        FROM driver_locations
+        WHERE driver_id = d.id
+        ORDER BY recorded_at DESC
+        LIMIT 1
+      ) dl ON true
+      WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
+        AND COALESCE(da.is_available, d.is_available, true) = true
+        AND COALESCE(da.is_on_delivery, false) = false
+        AND GREATEST(
+          dl.recorded_at,
+          d.last_location_at,
+          da.last_ping_at,
+          d.last_toggled_at,
+          da.last_toggled_at
+        ) >= NOW() - INTERVAL '10 minutes'
+        AND NOT EXISTS (
+          SELECT 1 FROM deliveries del 
+          WHERE del.driver_id = d.id 
+            AND (
+              del.status IN ('accepted', 'picked_up', 'en_route', 'arrived')
+              OR (
+                del.status IN ('assigned', 'awaiting_pickup')
+                AND del.assigned_at >= NOW() - INTERVAL '5 minutes'
+              )
+            )
+        )
+    `);
+
+    if (onlineDriversRes.rows.length === 0) {
+      return { success: false, processed: 0, reason: "No available online drivers" };
+    }
+
+    // 3. Find all orders waiting for a courier
+    const pendingOrdersRes = await pool.query(`
+      SELECT DISTINCT 
+        o.id,
+        o.order_ref,
+        o.status,
+        o.created_at,
+        d.id AS delivery_id
+      FROM orders o
+      LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      WHERE (
+        (o.driver_id IS NULL AND (d.driver_id IS NULL OR d.assigned_at < NOW() - INTERVAL '5 minutes') AND o.status IN ('awaiting_driver_confirmation', 'packed_ready', 'packed'))
+        OR (d.id IS NOT NULL AND d.driver_id IS NULL AND d.status IN ('pending', 'awaiting_pickup', 'assigned'))
+      )
+      AND o.status NOT IN ('cancelled', 'refunded', 'delivered', 'picked_up', 'out_for_delivery')
+      AND o.delivered_at IS NULL
+      AND COALESCE(o.customer_confirmed, false) = false
+      AND (o.source IS NULL OR o.source NOT ILIKE '%pos%' AND o.source NOT ILIKE '%physical%' OR o.delivery_status = 'pending' OR o.delivery_status = 'awaiting_pickup')
+      ORDER BY o.created_at ASC
+      LIMIT 15
+    `);
+
+    if (pendingOrdersRes.rows.length === 0) {
+      return { success: true, processed: 0, message: "No pending orders awaiting drivers" };
+    }
+
+    console.log(
+      `🚀 [dispatchEngine] Driver online event detected (${reason})! Auto-assigning ${pendingOrdersRes.rows.length} pending order(s) across ${onlineDriversRes.rows.length} available driver(s)...`
+    );
+
+    const assignedResults = [];
+    for (const order of pendingOrdersRes.rows) {
+      try {
+        const assignResult = await autoAssignClosestDriver(order.id);
+        if (assignResult.success) {
+          console.log(
+            `✅ [dispatchEngine] Auto-assigned order #${order.order_ref || order.id} to driver ${assignResult.driver?.name} (${assignResult.driver?.distanceKm} km away)`
+          );
+          assignedResults.push({
+            order_id: order.id,
+            order_ref: order.order_ref,
+            driver: assignResult.driver,
+          });
+        } else {
+          console.log(`ℹ️ [dispatchEngine] Order #${order.order_ref || order.id} auto-assign notice: ${assignResult.message}`);
+          if (assignResult.message && assignResult.message.includes("No available online drivers")) {
+            break;
+          }
+        }
+      } catch (err) {
+        console.error(`[dispatchEngine] Error auto-assigning order #${order.id}:`, err.message);
+      }
+    }
+
+    return {
+      success: true,
+      processed: assignedResults.length,
+      assigned: assignedResults,
+    };
+  } catch (err) {
+    console.error("[dispatchEngine] restartAutoAssignEngine error:", err.message);
+    return { success: false, error: err.message };
+  } finally {
+    isAutoAssignRunning = false;
+  }
+}
+
+/**
  * Start the background worker that checks every 30s for timed-out driver assignments (5 mins limit)
  * and sweeps disconnected/stale drivers every 60s.
  */
@@ -632,12 +797,15 @@ function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5
     processUnresponsiveAssignments(timeoutMinutes).catch((e) => {
       console.error("[dispatch-worker] Startup check error:", e.message);
     });
+    restartAutoAssignEngine({ reason: "startup_worker_tick" }).catch(() => {});
     sweepStaleDriverAvailability(15).catch(() => {});
   }, 3000);
 
   timeoutWorkerInterval = setInterval(async () => {
     try {
       await processUnresponsiveAssignments(timeoutMinutes);
+      // Run auto-assignment check for any awaiting orders
+      await restartAutoAssignEngine({ reason: "periodic_worker_tick" });
       sweepCounter++;
       // Sweep for stale/disconnected drivers every 2 ticks (~60s)
       if (sweepCounter >= 2) {
@@ -657,6 +825,7 @@ function startAutoDispatchTimeoutWorker(intervalSeconds = 30, timeoutMinutes = 5
 module.exports = {
   calculateDistanceKm,
   autoAssignClosestDriver,
+  restartAutoAssignEngine,
   processUnresponsiveAssignments,
   sweepStaleDriverAvailability,
   startAutoDispatchTimeoutWorker,

@@ -51,7 +51,7 @@ function formatDelivery(row) {
 
   if (!hasAccepted && (rawStatus === 'awaiting_pickup' || rawStatus === 'assigned' || rawStatus === 'pending')) {
     activeDeliveryStatus = 'awaiting_pickup';
-    activeOrderStatus = 'awaiting_pickup';
+    activeOrderStatus = 'awaiting_driver_confirmation';
   } else if (hasAccepted && rawStatus === 'awaiting_pickup') {
     activeDeliveryStatus = 'assigned';
     activeOrderStatus = 'driver_assigned';
@@ -123,11 +123,13 @@ const getActiveDeliveries = async (req, res, next) => {
     const driverId = req.driver.id;
     const requestedStatus = (req.query.status || req.query.type || "").toLowerCase().trim();
 
-    let statusFilter = "d.status NOT IN ('delivered', 'cancelled')";
+    // Active deliveries are strictly orders that this driver has ACCEPTED and are not yet delivered.
+    // Unaccepted offers (accepted_at IS NULL) belong ONLY to the 'New Assigned' tab!
+    let statusFilter = "d.accepted_at IS NOT NULL AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted')";
     if (requestedStatus === "assigned" || requestedStatus === "new" || requestedStatus === "available" || requestedStatus === "awaiting_pickup") {
       statusFilter = "(d.status IN ('awaiting_pickup', 'assigned') AND d.accepted_at IS NULL)";
-    } else if (requestedStatus === "active") {
-      statusFilter = "d.status NOT IN ('delivered', 'cancelled', 'awaiting_pickup') AND (d.accepted_at IS NOT NULL OR d.status NOT IN ('assigned', 'awaiting_pickup'))";
+    } else if (requestedStatus === "active" || requestedStatus === "") {
+      statusFilter = "d.accepted_at IS NOT NULL AND d.status NOT IN ('delivered', 'cancelled', 'delivery_attempted')";
     }
 
     const result = await pool.query(
@@ -1213,6 +1215,27 @@ const acceptDelivery = async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    try {
+      const { broadcastDeliveryUpdated, broadcastOrderUpdated } = require("../services/socketService");
+      broadcastDeliveryUpdated({
+        delivery_id: delivery.id,
+        order_id: delivery.actual_order_id,
+        driver_id: driverId,
+        driver_name: req.driver.name,
+        status: "assigned",
+        accepted: true,
+        accepted_at: new Date().toISOString(),
+      });
+      broadcastOrderUpdated({
+        id: delivery.actual_order_id,
+        order_ref: delivery.order_ref,
+        status: "driver_assigned",
+        tracking_status: "driver_assigned",
+        driver_id: driverId,
+        driver_name: req.driver.name,
+      });
+    } catch (_) {}
+
     const orderRef = delivery.order_ref || delivery.actual_order_id;
     const deliveryPayload = {
       id: parseInt(delivery.id, 10) || 0,
@@ -1314,7 +1337,38 @@ const declineDelivery = async (req, res, next) => {
       [reason, delivery.id, driverId]
     );
 
+    // Ensure order reflects that no driver is assigned and is awaiting next courier confirmation
+    await client.query(
+      `
+      UPDATE orders
+      SET driver_id = NULL,
+          status = 'awaiting_driver_confirmation',
+          tracking_status = 'awaiting_driver_confirmation',
+          updated_at = NOW()
+      WHERE id = $1
+      `,
+      [delivery.actual_order_id]
+    );
+
     await client.query("COMMIT");
+
+    try {
+      const { broadcastOrderUpdated, broadcastDeliveryUpdated } = require("../services/socketService");
+      broadcastDeliveryUpdated({
+        delivery_id: delivery.id,
+        order_id: delivery.actual_order_id,
+        driver_id: null,
+        status: "awaiting_pickup",
+        declined: true,
+      });
+      broadcastOrderUpdated({
+        id: delivery.actual_order_id,
+        order_ref: delivery.order_ref,
+        status: "awaiting_driver_confirmation",
+        tracking_status: "awaiting_driver_confirmation",
+        driver_id: null,
+      });
+    } catch (_) {}
 
     // Section 23: Re-dispatch to next eligible driver immediately, excluding this driver
     try {

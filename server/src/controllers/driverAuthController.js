@@ -719,6 +719,27 @@ const toggleAvailability = async (req, res, next) => {
       [is_available, newStatus, driverId]
     );
 
+    // Broadcast live telemetry
+    try {
+      const { broadcastDriverTelemetry } = require("../services/socketService");
+      broadcastDriverTelemetry({
+        driver_id: driverId,
+        is_available,
+        status: newStatus,
+        last_ping_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    // When driver comes online, immediately trigger auto-assign engine for orders waiting for drivers!
+    if (is_available) {
+      try {
+        const { restartAutoAssignEngine } = require("../services/dispatchEngine");
+        restartAutoAssignEngine({ triggerDriverId: driverId, reason: "driver_went_online" }).catch((err) => {
+          console.warn("[toggleAvailability] restartAutoAssignEngine error:", err.message);
+        });
+      } catch (_) {}
+    }
+
     res.json({
       is_available,
       status: req.driver.status === "suspended" ? "suspended" : newStatus,
