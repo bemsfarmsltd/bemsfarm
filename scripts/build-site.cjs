@@ -33,14 +33,18 @@ execFileSync(npm, ['run', 'build'], {
   env: { ...process.env, VITE_BASE_PATH: '/admin/' },
 });
 
-const output = path.join(root, 'dist');
-rmSync(output, { recursive: true, force: true });
-mkdirSync(output, { recursive: true });
-cpSync(path.join(root, 'client/dist'), output, { recursive: true });
-cpSync(path.join(root, 'Bems-Farms-Admin-Front-end/dist'), path.join(output, 'admin'), { recursive: true });
+const staging = path.join(root, 'dist_staging');
+rmSync(staging, { recursive: true, force: true });
+mkdirSync(staging, { recursive: true });
+cpSync(path.join(root, 'client/dist'), staging, { recursive: true });
+mkdirSync(path.join(staging, 'admin'), { recursive: true });
+cpSync(path.join(root, 'Bems-Farms-Admin-Front-end/dist'), path.join(staging, 'admin'), { recursive: true });
 
 // 5. Generate .htaccess rules for SPA routing
-const rootHtaccess = `<IfModule mod_rewrite.c>
+const rootHtaccess = `Options -Indexes +FollowSymLinks
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
@@ -59,7 +63,10 @@ const rootHtaccess = `<IfModule mod_rewrite.c>
 </IfModule>
 `;
 
-const adminHtaccess = `<IfModule mod_rewrite.c>
+const adminHtaccess = `Options -Indexes +FollowSymLinks
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /admin/
   RewriteRule ^index\\.html$ - [L]
@@ -69,8 +76,16 @@ const adminHtaccess = `<IfModule mod_rewrite.c>
 </IfModule>
 `;
 
-writeFileSync(path.join(output, '.htaccess'), rootHtaccess, 'utf8');
-writeFileSync(path.join(output, 'admin', '.htaccess'), adminHtaccess, 'utf8');
+writeFileSync(path.join(staging, '.htaccess'), rootHtaccess, 'utf8');
+writeFileSync(path.join(staging, 'admin', '.htaccess'), adminHtaccess, 'utf8');
 
-console.log('✓ Successfully built unified site with SPA .htaccess rewrites: customer shop at / and admin at /admin/');
+// Copy atomically into dist without deleting folder first
+const output = path.join(root, 'dist');
+if (!existsSync(output)) {
+  mkdirSync(output, { recursive: true });
+}
+cpSync(staging, output, { recursive: true });
+rmSync(staging, { recursive: true, force: true });
+
+console.log('✓ Successfully built unified site with zero-downtime SPA .htaccess rewrites: customer shop at / and admin at /admin/');
 
