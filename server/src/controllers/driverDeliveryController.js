@@ -1054,7 +1054,7 @@ const updateDeliveryStatus = async (req, res, next) => {
       }
     }
 
-    // Sync delivery_assignments table
+    // Sync delivery_assignments table - target only the active accepted/pending assignment for this delivery + driver
     await client.query(
       `
       UPDATE delivery_assignments 
@@ -1064,9 +1064,14 @@ const updateDeliveryStatus = async (req, res, next) => {
           WHEN $1::varchar = 'cancelled' THEN 'rejected'
           ELSE driver_response
         END,
-        response_at = NOW(),
-        rejection_reason = COALESCE($2, rejection_reason)
-      WHERE delivery_id = $3 AND driver_id = $4
+        response_at = COALESCE(response_at, NOW()),
+        rejection_reason = CASE WHEN $1::varchar = 'cancelled' THEN COALESCE($2, rejection_reason) ELSE rejection_reason END
+      WHERE id = (
+        SELECT id FROM delivery_assignments
+        WHERE delivery_id = $3 AND driver_id = $4 AND driver_response IN ('pending', 'accepted')
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      )
       `,
       [deliveryStatus, finalFailureReason, delivery.id, driverId]
     );
@@ -1239,23 +1244,31 @@ const acceptDelivery = async (req, res, next) => {
       [delivery.actual_order_id, driverId]
     );
 
-    // Update assignment record if exists or insert one
-    await client.query(
-      `
-      INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, response_at, created_at)
-      VALUES ($1, $2, 'manual', 'accepted', NOW(), NOW())
-      ON CONFLICT DO NOTHING
-      `,
-      [delivery.id, driverId]
-    ).catch(() => {});
-    await client.query(
+    // Update ONLY the pending assignment for this delivery + driver (or insert a new accepted assignment if none was pending)
+    const updateDa = await client.query(
       `
       UPDATE delivery_assignments 
-      SET driver_response = 'accepted', response_at = NOW()
-      WHERE delivery_id = $1 AND driver_id = $2
+      SET driver_response = 'accepted', rejection_reason = NULL, response_at = NOW()
+      WHERE id = (
+        SELECT id FROM delivery_assignments
+        WHERE delivery_id = $1 AND driver_id = $2 AND (driver_response = 'pending' OR driver_response IS NULL)
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      )
+      RETURNING id
       `,
       [delivery.id, driverId]
     );
+
+    if (updateDa.rowCount === 0) {
+      await client.query(
+        `
+        INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, response_at, created_at)
+        VALUES ($1, $2, 'manual', 'accepted', NOW(), NOW())
+        `,
+        [delivery.id, driverId]
+      ).catch(() => {});
+    }
 
     await logOrderAudit(client, {
       order_id: delivery.actual_order_id,
@@ -1401,12 +1414,17 @@ const declineDelivery = async (req, res, next) => {
       [fullReason, driverId, delivery.id]
     );
 
-    // Update assignment record to rejected; if no assignment row exists, insert one so History tab catches it
+    // Update ONLY the pending assignment for this delivery + driver (or insert a new rejected assignment if none was pending)
     const updateDa = await client.query(
       `
       UPDATE delivery_assignments 
       SET driver_response = 'rejected', rejection_reason = $1, response_at = NOW()
-      WHERE delivery_id = $2 AND driver_id = $3
+      WHERE id = (
+        SELECT id FROM delivery_assignments
+        WHERE delivery_id = $2 AND driver_id = $3 AND (driver_response = 'pending' OR driver_response IS NULL)
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      )
       RETURNING id
       `,
       [fullReason, delivery.id, driverId]
@@ -1417,7 +1435,6 @@ const declineDelivery = async (req, res, next) => {
         `
         INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, rejection_reason, response_at, created_at)
         VALUES ($1, $2, 'direct', 'rejected', $3, NOW(), NOW())
-        ON CONFLICT DO NOTHING
         `,
         [delivery.id, driverId, fullReason]
       ).catch(() => {});
