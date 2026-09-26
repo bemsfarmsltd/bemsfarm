@@ -97,6 +97,8 @@ router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbea
 
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
+router.get("/wallet", driverProtect, driverEarningsController.getEarnings);
+router.get("/wallet/history", driverProtect, driverEarningsController.getWalletHistory);
 router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
 

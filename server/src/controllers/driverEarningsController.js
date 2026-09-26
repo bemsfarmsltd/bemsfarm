@@ -177,6 +177,115 @@ const getEarnings = async (req, res, next) => {
   }
 };
 
+// ── GET /api/driver/wallet/history ───────────────────────────────────
+// Chronological transaction feed separated into income and payouts
+const getWalletHistory = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { page = 1, limit = 50, type } = req.query;
+    const lim = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const offset = (Math.max(1, parseInt(page, 10) || 1) - 1) * lim;
+
+    // 1. Fetch balance & summary
+    const driverResult = await pool.query(
+      `SELECT total_earnings, wallet_account_number, wallet_bank_name, bank_name, account_number, account_name
+       FROM drivers WHERE id = $1`,
+      [driverId]
+    );
+    const driver = driverResult.rows[0] || {};
+    const totalEarned = parseFloat(driver.total_earnings) || 0;
+
+    const payoutSummary = await pool.query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+       FROM driver_payouts WHERE driver_id = $1`,
+      [driverId]
+    );
+    const totalPaid = parseFloat(payoutSummary.rows[0].total_paid) || 0;
+    const pendingPayouts = parseFloat(payoutSummary.rows[0].pending_payouts) || 0;
+    const availableBalance = Math.max(0, totalEarned - totalPaid - pendingPayouts);
+
+    // 2. Fetch income (commissions from deliveries)
+    const commissionsRes = await pool.query(
+      `SELECT id, week_start, week_end, trips, deliveries, commission_per_delivery, total_earned AS amount, status, created_at AS date, 'income' AS type, 'delivery_earning' AS category
+       FROM driver_commissions
+       WHERE driver_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [driverId, lim, offset]
+    );
+
+    // 3. Fetch payouts (bank withdrawals)
+    const payoutsRes = await pool.query(
+      `SELECT id, payout_ref, amount, bank_name, account_number, account_name, status, requested_at AS date, processed_at, rejection_reason, notes, 'payout' AS type, 'withdrawal' AS category
+       FROM driver_payouts
+       WHERE driver_id = $1
+       ORDER BY requested_at DESC
+       LIMIT $2 OFFSET $3`,
+      [driverId, lim, offset]
+    );
+
+    const income = commissionsRes.rows.map((c) => ({
+      id: c.id,
+      amount: parseFloat(c.amount) || 0,
+      type: "income",
+      category: c.category,
+      deliveries: parseInt(c.deliveries, 10) || 0,
+      description: `Delivery Earning (${c.deliveries || 1} drop${(c.deliveries || 1) === 1 ? "" : "s"})`,
+      status: c.status,
+      date: c.date,
+      created_at: c.date,
+    }));
+
+    const payouts = payoutsRes.rows.map((p) => ({
+      id: p.id,
+      amount: parseFloat(p.amount) || 0,
+      type: "payout",
+      category: p.category,
+      payout_ref: p.payout_ref,
+      bank_name: p.bank_name,
+      account_number: p.account_number,
+      account_name: p.account_name,
+      description: `Bank Withdrawal to ${p.bank_name || "Bank"} (${p.account_number || ""})`,
+      status: p.status,
+      date: p.date,
+      requested_at: p.date,
+      processed_at: p.processed_at,
+      rejection_reason: p.rejection_reason,
+    }));
+
+    // Combined unified chronological feed
+    const allTransactions = [...income, ...payouts].sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
+    let filteredTransactions = allTransactions;
+    if (type === "income") filteredTransactions = income;
+    if (type === "payout" || type === "payouts") filteredTransactions = payouts;
+
+    res.json({
+      success: true,
+      summary: {
+        available_balance: availableBalance,
+        total_earned: totalEarned,
+        total_paid: totalPaid,
+        pending_payouts: pendingPayouts,
+      },
+      // Explicit separated arrays:
+      income,
+      payouts,
+      // Unified array with 'type' flag:
+      transactions: filteredTransactions,
+      total_income_count: income.length,
+      total_payouts_count: payouts.length,
+    });
+  } catch (err) {
+    console.error("Driver getWalletHistory error:", err.message);
+    next(err);
+  }
+};
+
 // ── POST /api/driver/withdraw ────────────────────────────────────────
 // Request a payout/withdrawal of earnings to bank account
 const requestWithdrawal = async (req, res, next) => {
@@ -600,6 +709,7 @@ const resolveBankAccount = async (req, res, next) => {
 
 module.exports = {
   getEarnings,
+  getWalletHistory,
   requestWithdrawal,
   getBanks,
   resolveBankAccount,
