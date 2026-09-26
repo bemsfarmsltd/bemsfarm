@@ -1734,44 +1734,52 @@ export default function DriversManagement() {
                     <div className="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
                       <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
                         <i className="ri-wallet-3-line text-emerald fs-16" />
-                        Dedicated Driver Inflow Account &amp; Settlement Wallet
+                        Driver Internal Earnings Wallet &amp; Payouts
                       </span>
-                      <span className="badge bg-emerald-subtle text-emerald fs-11">Virtual Account Active</span>
+                      <span className="badge bg-emerald-subtle text-emerald fs-11">Internal Wallet Active</span>
                     </div>
                     
-                    {/* Inflow Virtual Account */}
-                    <div className="bg-white p-2.5 rounded-2 border mb-2.5">
-                      <div className="text-muted fs-11 text-uppercase fw-bold mb-1">
-                        📥 Dedicated Virtual Account (Inflow / Direct Credit)
-                      </div>
-                      <div className="d-flex align-items-center justify-content-between">
-                        <div>
-                          <div className="fw-bold text-dark fs-14 font-monospace">
-                            {selected.wallet_account_number || ('855' + String(selected.id).padStart(7, '0'))}
-                          </div>
-                          <div className="text-muted fs-11">
-                            {selected.wallet_bank_name || 'Monnify / Wema Bank'} · {selected.wallet_account_name || (`BEMS - ${selected.name?.toUpperCase()}`)}
-                          </div>
+                    {/* Internal Wallet Details */}
+                    <div className="bg-white p-2.5 rounded-2 border mb-2.5 d-flex align-items-center justify-content-between">
+                      <div>
+                        <div className="text-muted fs-11 text-uppercase fw-bold mb-0.5">
+                          Internal Driver Wallet ID
                         </div>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 px-2.5 py-1 fs-11"
-                          onClick={() => {
-                            const num = selected.wallet_account_number || ('855' + String(selected.id).padStart(7, '0'))
-                            navigator.clipboard.writeText(num)
-                            toast.success(`Copied Dedicated Account: ${num}`)
-                          }}
-                        >
-                          <i className="ri-file-copy-line" />
-                          <span>Copy</span>
-                        </button>
+                        <div className="fw-bold text-dark fs-14 font-monospace">
+                          {selected.wallet_account_number || (`DRV-${String(selected.id).padStart(4, '0')}`)}
+                        </div>
+                        <div className="text-muted fs-11">
+                          Bems Farms Internal Settlement Wallet
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="text-muted fs-11 text-uppercase fw-bold mb-0.5">
+                          Wallet Earnings Balance
+                        </div>
+                        <div className="fw-bold text-emerald fs-15 font-monospace">
+                          {fmt(selected.earnings || selected.total_earnings || 0)}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Commission Rate */}
+                    {/* Zonal Delivery Earning Rate */}
                     <div className="mb-2.5 pb-2 border-bottom d-flex align-items-center justify-content-between">
-                      <span className="text-muted fs-12">Driver Commission Rate</span>
-                      <strong className="text-dark font-monospace fs-13">{fmt(selected.commission_per_delivery || 500)} / drop</strong>
+                      <div>
+                        <span className="text-muted fs-12 d-block">Earning Model</span>
+                        <strong className="text-dark fs-13">
+                          {selected.zone ? selected.zone : (selected.zone_id ? `Assigned Zone: ${selected.zone_id}` : 'Dynamic Zonal Pricing')}
+                        </strong>
+                      </div>
+                      <div className="text-end">
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-11 px-2 py-0.5">
+                          Destination-Based Drop Payout
+                        </span>
+                        <div className="text-muted fs-11 mt-1 font-monospace fw-semibold text-dark">
+                          {selected.zone_driver_earning_fee 
+                            ? `${fmt(selected.zone_driver_earning_fee)} / drop`
+                            : '₦700 – ₦5,600 / drop (by zone)'}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Withdrawal Outflow Bank Accounts */}
@@ -2110,7 +2118,7 @@ export default function DriversManagement() {
                     </select>
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">Commission Per Delivery (₦)</label>
+                    <label className="form-label fw-medium small">Fallback Base Commission (₦)</label>
                     <input
                       className="form-control font-monospace"
                       type="number"
@@ -2118,6 +2126,7 @@ export default function DriversManagement() {
                       value={form.commission_per_delivery}
                       onChange={(e) => setField('commission_per_delivery', e.target.value)}
                     />
+                    <div className="text-muted fs-10 mt-1">Driver earns by destination zone (₦700–₦5,600). Used only if order has no zone.</div>
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-medium small">Onboarding Notes (optional)</label>
@@ -2287,7 +2296,7 @@ export default function DriversManagement() {
                   <i className="ri-error-warning-line me-1 fw-bold"></i>
                   Are you sure you want to permanently delete <strong>{selected.name}</strong> ({selected.phone || selected.email})?
                   <div className="mt-1 text-muted">
-                    This will permanently remove the driver profile, their Dedicated Virtual Account record, commission records, and GPS tracking data.
+                    This will permanently remove the driver profile, their internal wallet ledger, delivery records, and GPS tracking data.
                   </div>
                 </div>
                 <div className="d-flex gap-2">

@@ -372,8 +372,8 @@ export default function WalletManagement() {
       ID: d.id,
       Driver: d.name,
       Phone: d.phone,
-      'Dedicated DVA (Inflow)': d.wallet_account_number,
-      'Bank DVA Name': d.wallet_bank_name,
+      'Internal Wallet ID': d.wallet_account_number,
+      'Wallet Type': d.wallet_bank_name,
       'Total Earned': d.total_earned,
       'Total Disbursed': d.total_paid,
       'Pending Payout': d.pending_payouts,
@@ -1914,7 +1914,7 @@ export default function WalletManagement() {
               <div className="modal-header border-bottom border-secondary border-opacity-10">
                 <div>
                   <h5 className="modal-title font-weight-bold mb-0">Driver Financial Statement</h5>
-                  <span className="text-muted small">{statementDriver.name} &bull; DVA: {statementDriver.wallet_account_number}</span>
+                  <span className="text-muted small">{statementDriver.name} &bull; Wallet ID: {statementDriver.wallet_account_number}</span>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setStatementDriver(null)}></button>
               </div>
@@ -2341,7 +2341,7 @@ export default function WalletManagement() {
                   <i className="ri-error-warning-line me-1 fw-bold"></i>
                   Are you sure you want to permanently delete <strong>{deleteModalDriver.name}</strong> ({deleteModalDriver.phone || deleteModalDriver.email})?
                   <div className="mt-2 text-muted">
-                    This will permanently remove the driver profile, their Dedicated Virtual Account record ({deleteModalDriver.wallet_account_number}), commissions, and GPS tracking logs.
+                    This will permanently remove the driver profile, their internal wallet ledger ({deleteModalDriver.wallet_account_number}), deliveries, and GPS tracking logs.
                   </div>
                 </div>
               </div>

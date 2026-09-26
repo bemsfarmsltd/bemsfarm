@@ -678,6 +678,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         END AS status,
         dr.primary_zone_id AS zone_id,
         dz.zone_name AS zone,
+        dz.driver_earning_fee AS zone_driver_earning_fee,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
         COUNT(DISTINCT d.id)                                       AS total_assigned,
         COALESCE(AVG(df.rating), 0)                                AS rating,
@@ -711,7 +712,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       LEFT JOIN deliveries d ON d.driver_id = dr.id
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       ${whereClause}
-      GROUP BY dr.id, da.is_available, da.is_on_delivery, da.last_ping_at, da.last_toggled_at, dz.zone_name
+      GROUP BY dr.id, da.is_available, da.is_on_delivery, da.last_ping_at, da.last_toggled_at, dz.zone_name, dz.driver_earning_fee
       ORDER BY 
         CASE 
           WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification','documents_submitted') THEN 0 
@@ -816,15 +817,15 @@ router.post(
 
       const driver = insertRes.rows[0];
 
-      // Auto-assign dedicated virtual wallet account number
-      const walletAccount = '855' + String(driver.id).padStart(7, '0');
+      // Auto-assign internal Bems Farms wallet account identifier
+      const walletAccount = 'DRV-' + String(driver.id).padStart(4, '0');
       const walletAccountName = `BEMS - ${driver.name.toUpperCase()}`;
       await client.query(
-        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Monnify / Wema Bank', wallet_account_name = $2 WHERE id = $3`,
+        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Bems Farms Internal Wallet', wallet_account_name = $2 WHERE id = $3`,
         [walletAccount, walletAccountName, driver.id]
       );
       driver.wallet_account_number = walletAccount;
-      driver.wallet_bank_name = 'Monnify / Wema Bank';
+      driver.wallet_bank_name = 'Bems Farms Internal Wallet';
       driver.wallet_account_name = walletAccountName;
 
       // Save initial PIN in driver_auth
@@ -1071,15 +1072,15 @@ router.post(
 
       const driver = result.rows[0];
 
-      // Auto-assign dedicated virtual wallet account number
-      const walletAccount = '855' + String(driver.id).padStart(7, '0');
+      // Auto-assign internal Bems Farms wallet account identifier
+      const walletAccount = 'DRV-' + String(driver.id).padStart(4, '0');
       const walletAccountName = `BEMS - ${driver.name.toUpperCase()}`;
       await client.query(
-        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Monnify / Wema Bank', wallet_account_name = $2 WHERE id = $3`,
+        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Bems Farms Internal Wallet', wallet_account_name = $2 WHERE id = $3`,
         [walletAccount, walletAccountName, driver.id]
       );
       driver.wallet_account_number = walletAccount;
-      driver.wallet_bank_name = 'Monnify / Wema Bank';
+      driver.wallet_bank_name = 'Bems Farms Internal Wallet';
       driver.wallet_account_name = walletAccountName;
 
       // Set initial driver login password in driver_auth
