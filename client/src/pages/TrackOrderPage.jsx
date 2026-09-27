@@ -405,7 +405,13 @@ export default function TrackOrderPage() {
                       </span>
                       {order.eta_minutes && !isDelivered && (
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-400 text-emerald-950">
-                          ETA: ~{order.eta_minutes} mins
+                          ETA: {(() => {
+                            const m = Math.max(1, Math.round(Number(order.eta_minutes)));
+                            if (m < 60) return `~${m} mins`;
+                            const hrs = Math.floor(m / 60);
+                            const rem = m % 60;
+                            return rem > 0 ? `~${hrs} hr ${rem} mins` : `~${hrs} hrs`;
+                          })()}
                         </span>
                       )}
                       {isDelivered && (

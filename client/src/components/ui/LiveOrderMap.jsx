@@ -15,13 +15,22 @@ L.Icon.Default.mergeOptions({
 // Central Bems Farms Fulfillment Hub (Umuahia / Abia State)
 const DEFAULT_HUB_COORDS = [5.5249, 7.4943];
 
-// Tile Layer presets (CartoDB Voyager for crisp modern UI, Esri for satellite)
+function formatEtaDisplay(mins) {
+  if (mins == null || isNaN(mins)) return null;
+  const m = Math.max(1, Math.round(Number(mins)));
+  if (m < 60) return `~${m} mins`;
+  const hrs = Math.floor(m / 60);
+  const remainingMins = m % 60;
+  return remainingMins > 0 ? `~${hrs} hr ${remainingMins} mins` : `~${hrs} hrs`;
+}
+
+// Tile Layer presets (OpenStreetMap for reliable watermark-free street maps, Esri for satellite)
 const TILE_LAYERS = {
   streets: {
     name: "Streets",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    subdomains: ["a", "b", "c", "d"],
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    subdomains: ["a", "b", "c"],
     maxZoom: 19,
   },
   satellite: {
@@ -309,10 +318,10 @@ export default function LiveOrderMap({
           </div>
 
           {/* ETA Badge */}
-          {etaMinutes != null && (
+          {formatEtaDisplay(etaMinutes) && (
             <div className="bg-amber-400 text-emerald-950 px-3 py-1.5 rounded-xl shadow-lg font-black text-xs flex items-center gap-1.5 border border-amber-300">
               <span>⏱️</span>
-              <span>ETA: ~{etaMinutes} mins</span>
+              <span>ETA: {formatEtaDisplay(etaMinutes)}</span>
             </div>
           )}
         </div>
