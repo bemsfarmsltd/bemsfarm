@@ -230,6 +230,16 @@ function broadcastSupportMessage(payload) {
   });
 }
 
+function broadcastDriverMessage(payload) {
+  emitEvent("driver:support_message", payload);
+  if (payload?.driver_id) {
+    const ioInstance = getIO();
+    if (ioInstance) {
+      ioInstance.to(`driver_${payload.driver_id}`).emit("driver:support_message", payload);
+    }
+  }
+}
+
 function broadcastDashboardInvalidation(section = "all") {
   emitEvent("dashboard:update", { section, timestamp: Date.now() });
 }
@@ -248,5 +258,6 @@ module.exports = {
   broadcastDispatchAlert,
   broadcastEmergencyAlert,
   broadcastSupportMessage,
+  broadcastDriverMessage,
   broadcastDashboardInvalidation,
 };

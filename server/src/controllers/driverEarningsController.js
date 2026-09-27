@@ -707,9 +707,139 @@ const resolveBankAccount = async (req, res, next) => {
   }
 };
 
+// ── POST & GET /api/driver/wallet/statement ──────────────────────────
+// Generate or trigger an itemized account statement for driver
+const requestAccountStatement = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const body = req.body || {};
+    const query = req.query || {};
+    const startDate = body.start_date || query.start_date || body.startDate || query.startDate || null;
+    const endDate = body.end_date || query.end_date || body.endDate || query.endDate || null;
+    const email = body.email !== undefined ? body.email : query.email;
+
+    const driverRes = await pool.query(
+      "SELECT id, name, phone, email, total_earnings, wallet_account_number, bank_name, account_number, account_name FROM drivers WHERE id = $1",
+      [driverId]
+    );
+    if (!driverRes.rows.length) return res.status(404).json({ message: "Driver not found" });
+    const driver = driverRes.rows[0];
+
+    let dateWhere = "";
+    const params = [driverId];
+    if (startDate) {
+      params.push(startDate);
+      dateWhere += ` AND created_at >= $${params.length}`;
+    }
+    if (endDate) {
+      params.push(endDate);
+      dateWhere += ` AND created_at <= $${params.length}`;
+    }
+
+    // Commissions / Income
+    const commsRes = await pool.query(
+      `SELECT id, week_start, week_end, trips, deliveries, commission_per_delivery, total_earned AS amount, status, created_at AS date, 'income' AS type, 'delivery_earning' AS category, CONCAT('COM-', id) AS reference
+       FROM driver_commissions
+       WHERE driver_id = $1 ${dateWhere}
+       ORDER BY created_at DESC`,
+      params
+    );
+
+    // Payouts / Debits
+    let payoutDateWhere = "";
+    const payoutParams = [driverId];
+    if (startDate) {
+      payoutParams.push(startDate);
+      payoutDateWhere += ` AND requested_at >= $${payoutParams.length}`;
+    }
+    if (endDate) {
+      payoutParams.push(endDate);
+      payoutDateWhere += ` AND requested_at <= $${payoutParams.length}`;
+    }
+
+    const payoutsRes = await pool.query(
+      `SELECT id, payout_ref AS reference, amount, bank_name, account_number, account_name, status, requested_at AS date, processed_at, notes, 'payout' AS type, 'withdrawal' AS category
+       FROM driver_payouts
+       WHERE driver_id = $1 ${payoutDateWhere}
+       ORDER BY requested_at DESC`,
+      payoutParams
+    );
+
+    const income = commsRes.rows.map((c) => ({
+      ...c,
+      amount: parseFloat(c.amount) || 0,
+      description: `Delivery Earning (${c.deliveries || 1} drop${(c.deliveries || 1) === 1 ? "" : "s"})`,
+    }));
+
+    const payouts = payoutsRes.rows.map((p) => ({
+      ...p,
+      amount: parseFloat(p.amount) || 0,
+      description: `Withdrawal to ${p.bank_name || "Bank"} (${p.account_number || ""})`,
+    }));
+
+    const allTransactions = [...income, ...payouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
+    const totalPayouts = payouts.filter((p) => p.status === "paid" || p.status === "approved").reduce((sum, p) => sum + p.amount, 0);
+    const pendingPayouts = payouts.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.amount, 0);
+    const netBalance = Math.max(0, (parseFloat(driver.total_earnings) || 0) - totalPayouts - pendingPayouts);
+
+    const summary = {
+      driver_name: driver.name,
+      driver_id: driver.id,
+      wallet_id: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, "0")}`,
+      period_start: startDate || (allTransactions.length ? allTransactions[allTransactions.length - 1].date : null),
+      period_end: endDate || new Date().toISOString(),
+      total_income: totalIncome,
+      total_payouts: totalPayouts,
+      pending_payouts: pendingPayouts,
+      available_balance: netBalance,
+      transaction_count: allTransactions.length,
+    };
+
+    // If email delivery requested
+    let emailSent = false;
+    const recipientEmail = typeof email === "string" && email.includes("@") ? email.trim() : driver.email;
+    if (recipientEmail && (email === true || email === "true" || typeof email === "string")) {
+      try {
+        const emailService = require("../services/emailService");
+        if (typeof emailService.sendDriverStatementEmail === "function") {
+          await emailService.sendDriverStatementEmail({
+            email: recipientEmail,
+            name: driver.name,
+            summary,
+            transactions: allTransactions,
+          });
+          emailSent = true;
+        }
+      } catch (mailErr) {
+        console.warn("Statement email notice:", mailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      status: "success",
+      message: emailSent
+        ? `Account statement generated and sent to ${recipientEmail}`
+        : "Account statement generated successfully",
+      email_sent: emailSent,
+      recipient_email: emailSent ? recipientEmail : null,
+      summary,
+      transactions: allTransactions,
+      income,
+      payouts,
+    });
+  } catch (err) {
+    console.error("requestAccountStatement error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   getEarnings,
   getWalletHistory,
+  requestAccountStatement,
   requestWithdrawal,
   getBanks,
   resolveBankAccount,

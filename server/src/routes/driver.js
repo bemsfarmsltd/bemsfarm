@@ -56,9 +56,16 @@ router.post("/auth/forgot-password", driverAuthController.forgotPassword);
 router.post("/auth/reset-password", driverAuthController.resetPassword);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
 router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile);
+router.patch("/profile", driverProtect, driverAuthController.updateProfile);
+router.put("/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/availability", driverProtect, driverAuthController.toggleAvailability);
 
-// ── 2. KYC & Document Uploads (Public or Authenticated) ─────────────
+// ── 2. Profile Photo / Avatar Upload ─────────────────────────────────
+router.post("/upload/avatar", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
+router.post("/upload/photo", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
+router.post("/upload/profile-photo", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
+
+// ── 2b. KYC & Document Uploads (Public or Authenticated) ─────────────
 router.post("/upload/kyc", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
 router.post("/upload/document", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
 
@@ -99,6 +106,8 @@ router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbea
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
 router.get("/wallet", driverProtect, driverEarningsController.getEarnings);
 router.get("/wallet/history", driverProtect, driverEarningsController.getWalletHistory);
+router.get("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
+router.post("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
 router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
 

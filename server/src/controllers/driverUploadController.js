@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 const crypto = require("crypto");
+const pool = require("../db/pool");
 
 // Ensure upload directories exist
 const proofUploadDir = path.join(__dirname, "../../uploads/proofs");
@@ -13,6 +14,11 @@ if (!fs.existsSync(proofUploadDir)) {
 const docUploadDir = path.join(__dirname, "../../uploads/documents");
 if (!fs.existsSync(docUploadDir)) {
   fs.mkdirSync(docUploadDir, { recursive: true });
+}
+
+const avatarUploadDir = path.join(__dirname, "../../uploads/avatars");
+if (!fs.existsSync(avatarUploadDir)) {
+  fs.mkdirSync(avatarUploadDir, { recursive: true });
 }
 
 // Configure multer storage for Proof of Delivery
@@ -219,10 +225,98 @@ const uploadKYCDocument = async (req, res, next) => {
   }
 };
 
+// Configure multer storage for Driver Profile Photo / Avatar
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, avatarUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const driverId = req.driver?.id || "DRV";
+    const unique = `AVATAR_${driverId}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}${ext}`;
+    cb(null, unique);
+  }
+});
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 6 * 1024 * 1024 }, // 6MB limit
+  fileFilter: function (req, file, cb) {
+    const allowed = /jpeg|jpg|png|webp|heic/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mime = file.mimetype.toLowerCase();
+    if (allowed.test(ext) || allowed.test(mime)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) are permitted for profile photo"));
+    }
+  }
+});
+
+// ── POST /api/driver/upload/avatar & /api/driver/upload/profile-photo ─
+// Upload Driver Avatar / Profile picture
+const uploadProfilePhoto = async (req, res, next) => {
+  try {
+    const driverId = req.driver?.id;
+    let fileUrl = null;
+
+    if (req.file) {
+      const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      fileUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
+    } else {
+      const { image, photo, avatar, file_base64, image_base64 } = req.body || {};
+      const rawBase64 = image || photo || avatar || file_base64 || image_base64;
+      if (rawBase64 && typeof rawBase64 === "string") {
+        const matches = rawBase64.match(/^data:([a-zA-Z0-9/+-]+);base64,(.+)$/);
+        let ext = ".jpg";
+        let base64Data = rawBase64;
+        let mime = "image/jpeg";
+        if (matches && matches.length === 3) {
+          mime = matches[1].toLowerCase();
+          base64Data = matches[2];
+          if (mime.includes("png")) ext = ".png";
+          else if (mime.includes("webp")) ext = ".webp";
+        }
+        const buffer = Buffer.from(base64Data, "base64");
+        const filename = `AVATAR_${driverId || "DRV"}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}${ext}`;
+        const filePath = path.join(avatarUploadDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        fileUrl = `${baseUrl}/uploads/avatars/${filename}`;
+      }
+    }
+
+    if (!fileUrl) {
+      return res.status(400).json({ status: "error", message: "No photo file or base64 image provided" });
+    }
+
+    if (driverId) {
+      await pool.query(
+        "UPDATE drivers SET avatar_url = $1, updated_at = NOW() WHERE id = $2",
+        [fileUrl, driverId]
+      );
+    }
+
+    res.json({
+      status: "success",
+      success: true,
+      message: "Profile photo updated successfully",
+      avatar_url: fileUrl,
+      photo_url: fileUrl,
+      url: fileUrl,
+    });
+  } catch (err) {
+    console.error("uploadProfilePhoto error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   upload,
   uploadDoc,
+  uploadAvatar,
   uploadProofPhoto,
-  uploadKYCDocument
+  uploadKYCDocument,
+  uploadProfilePhoto,
 };
 
