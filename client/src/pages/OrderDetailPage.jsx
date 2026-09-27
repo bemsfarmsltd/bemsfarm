@@ -1005,8 +1005,8 @@ export default function OrderDetailPage() {
                     </div>
                   )}
 
-                  {/* Courier Banner */}
-                  {order.driver_name && (
+                  {/* Courier Banner (Visible strictly when in transit) */}
+                  {isInTransit && order.driver_name && (
                     <div className="bg-gradient-to-r from-emerald-900 to-emerald-950 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center text-2xl">

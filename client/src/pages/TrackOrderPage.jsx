@@ -509,149 +509,112 @@ export default function TrackOrderPage() {
                   </div>
                 )}
 
-                {/* Driver Details & Live Radar Map */}
-                <div className="grid md:grid-cols-12 gap-0 border-t border-slate-200">
-                  {/* Courier & Order Metadata Card */}
-                  <div className="md:col-span-5 p-5 sm:p-6 bg-slate-50 flex flex-col justify-between space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                          Dispatch Personnel
-                        </span>
-                        {order.driver_rating && (
-                          <span className="text-[11px] font-bold text-amber-700 bg-amber-100/70 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span>★</span> {Number(order.driver_rating).toFixed(1)}
+                {/* ── 1. ACTIVE TRANSIT MODE (When Courier Is En Route) ── */}
+                {isInTransit ? (
+                  <div className="grid md:grid-cols-12 gap-0 border-t border-slate-200">
+                    {/* Courier Personnel Details */}
+                    <div className="md:col-span-5 p-5 sm:p-6 bg-slate-50 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                            Dispatch Personnel
                           </span>
-                        )}
-                      </div>
-                      <h3 className="font-display text-lg font-bold text-slate-900 mt-0.5 flex items-center gap-2">
-                        <span>👤</span>
-                        <span>{order.driver_name || "BemsFarms Logistics Courier"}</span>
-                      </h3>
-
-                      {(order.vehicle_type || order.vehicle_plate) && (
-                        <div className="mt-1 text-xs text-slate-600 flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-700">Vehicle:</span>
-                          <span className="bg-slate-200/80 px-2 py-0.5 rounded text-slate-800 font-mono font-bold text-[11px]">
-                            {order.vehicle_type ? `${order.vehicle_type.toUpperCase()} ` : ""}{order.vehicle_plate || ""}
-                          </span>
-                        </div>
-                      )}
-
-                      {order.destination_area && (
-                        <div className="mt-2.5 text-xs text-slate-600">
-                          <span className="font-semibold text-slate-800">Destination:</span> {order.destination_area}
-                        </div>
-                      )}
-
-                      {order.items_summary && (
-                        <div className="mt-2 text-xs text-slate-600">
-                          <span className="font-semibold text-slate-800">Items:</span> {order.items_summary}
-                        </div>
-                      )}
-
-                      {/* Direct Courier Action Buttons */}
-                      <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                        {order.driver_phone && (
-                          <a
-                            href={`tel:${order.driver_phone}`}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white px-3.5 py-2 text-xs font-bold shadow-xs hover:bg-emerald-900 transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                            </svg>
-                            <span>Call Driver ({order.driver_phone})</span>
-                          </a>
-                        )}
-
-                        <a
-                          href="https://wa.me/2348000000000"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 text-[#0A2E1C] px-3.5 py-2 text-xs font-black shadow-xs hover:bg-amber-300 transition"
-                        >
-                          <span>WhatsApp Dispatch</span>
-                        </a>
-                      </div>
-
-                      {/* Customer Handover & Confirmation Box */}
-                      {isDelivered ? (
-                        <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                          <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
-                            <span className="text-base">🎉</span>
-                            <span>Delivery Completed Successfully</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
-                            Your package was safely delivered to your doorstep. Thank you for choosing Bems Farms!
-                          </p>
-                          {order.proof_photo && (
-                            <div className="mt-2.5 pt-2.5 border-t border-emerald-200/60">
-                              <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
-                                Proof of Delivery:
-                              </span>
-                              <a href={order.proof_photo} target="_blank" rel="noreferrer" className="inline-block group">
-                                <img
-                                  src={order.proof_photo}
-                                  alt="Proof of Delivery"
-                                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl border border-emerald-300 shadow-xs group-hover:scale-105 transition"
-                                />
-                              </a>
-                            </div>
+                          {order.driver_rating && (
+                            <span className="text-[11px] font-bold text-amber-700 bg-amber-100/70 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span>★</span> {Number(order.driver_rating).toFixed(1)}
+                            </span>
                           )}
                         </div>
-                      ) : (status === "driver_arrived" || status === "arrived" || Boolean(order.arrived_at)) && (
-                        <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                          <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
-                            <span className="text-base animate-bounce">🚚</span>
-                            <span>Courier is at your destination!</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
-                            Please meet your driver, verify your produce, and confirm delivery receipt.
-                          </p>
-                          <div className="mt-2.5 flex flex-col sm:flex-row gap-2">
-                            {order.customer_confirmed ? (
-                              <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5">
-                                <span>✓</span>
-                                <span>You confirmed delivery receipt</span>
-                              </div>
-                            ) : (
-                              <Link
-                                to={`/orders/${order.id}`}
-                                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black uppercase tracking-wider text-center shadow-md transition hover:scale-[1.01] flex items-center justify-center gap-1.5"
-                              >
-                                <span>✅</span>
-                                <span>Confirm Delivery Received</span>
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                        <h3 className="font-display text-lg font-bold text-slate-900 mt-0.5 flex items-center gap-2">
+                          <span>👤</span>
+                          <span>{order.driver_name || "BemsFarms Logistics Courier"}</span>
+                        </h3>
 
-                    <div className="pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-                      <span>Status: <strong className="text-slate-800 font-bold">{statusTitle}</strong></span>
-                      <Link to={`/orders/${order.id}`} className="font-bold text-emerald-800 hover:underline">
-                        Order Details →
-                      </Link>
-                    </div>
-                  </div>
+                        {(order.vehicle_type || order.vehicle_plate) && (
+                          <div className="mt-1 text-xs text-slate-600 flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-700">Vehicle:</span>
+                            <span className="bg-slate-200/80 px-2 py-0.5 rounded text-slate-800 font-mono font-bold text-[11px]">
+                              {order.vehicle_type ? `${order.vehicle_type.toUpperCase()} ` : ""}{order.vehicle_plate || ""}
+                            </span>
+                          </div>
+                        )}
 
-                  {/* Driver Map Preview */}
-                  <div className="md:col-span-7 p-3 bg-white flex items-center">
-                    {isDelivered ? (
-                      <div className="h-64 w-full rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-100/40 flex flex-col items-center justify-center text-center p-6 border border-emerald-200/80 shadow-xs">
-                        <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-bold shadow-md mb-2.5">
-                          ✓
+                        {order.destination_area && (
+                          <div className="mt-2.5 text-xs text-slate-600">
+                            <span className="font-semibold text-slate-800">Destination:</span> {order.destination_area}
+                          </div>
+                        )}
+
+                        {order.items_summary && (
+                          <div className="mt-2 text-xs text-slate-600">
+                            <span className="font-semibold text-slate-800">Items:</span> {order.items_summary}
+                          </div>
+                        )}
+
+                        {/* Direct Courier Action Buttons */}
+                        <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                          {order.driver_phone && (
+                            <a
+                              href={`tel:${order.driver_phone}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white px-3.5 py-2 text-xs font-bold shadow-xs hover:bg-emerald-900 transition"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                              </svg>
+                              <span>Call Driver ({order.driver_phone})</span>
+                            </a>
+                          )}
+
+                          <a
+                            href="https://wa.me/2348000000000"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 text-[#0A2E1C] px-3.5 py-2 text-xs font-black shadow-xs hover:bg-amber-300 transition"
+                          >
+                            <span>WhatsApp Dispatch</span>
+                          </a>
                         </div>
-                        <p className="text-sm font-extrabold text-emerald-950">Delivered to Destination</p>
-                        <p className="text-xs text-emerald-700 mt-1 max-w-xs leading-relaxed">
-                          Doorstep delivery has been completed successfully and received in full.
-                        </p>
-                        <div className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-bold border border-emerald-200">
-                          <span>📍</span> <span>Delivery Confirmed</span>
-                        </div>
+
+                        {/* Courier Arrival Notification */}
+                        {(status === "driver_arrived" || status === "arrived" || Boolean(order.arrived_at)) && (
+                          <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                            <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
+                              <span className="text-base animate-bounce">🚚</span>
+                              <span>Courier is at your destination!</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
+                              Please meet your driver, verify your produce, and confirm delivery receipt.
+                            </p>
+                            <div className="mt-2.5 flex flex-col sm:flex-row gap-2">
+                              {order.customer_confirmed ? (
+                                <div className="flex-1 py-2 px-3 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5">
+                                  <span>✓</span>
+                                  <span>You confirmed delivery receipt</span>
+                                </div>
+                              ) : (
+                                <Link
+                                  to={`/orders/${order.id}`}
+                                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black uppercase tracking-wider text-center shadow-md transition hover:scale-[1.01] flex items-center justify-center gap-1.5"
+                                >
+                                  <span>✅</span>
+                                  <span>Confirm Delivery Received</span>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : showDriverMap ? (
+
+                      <div className="pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                        <span>Status: <strong className="text-slate-800 font-bold">{statusTitle}</strong></span>
+                        <Link to={`/orders/${order.id}`} className="font-bold text-emerald-800 hover:underline">
+                          Order Details →
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Live Radar Map */}
+                    <div className="md:col-span-7 p-3 bg-white flex items-center">
                       <LiveOrderMap
                         orderId={order.order_ref || order.id}
                         driverId={order.driver_id}
@@ -668,108 +631,193 @@ export default function TrackOrderPage() {
                         orderStatus={order.tracking_status || order.status}
                         height="380px"
                       />
-                    ) : (
-                      <div className="w-full h-full min-h-[380px] rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 p-5 sm:p-6 border border-slate-200/90 flex flex-col justify-between shadow-xs">
-                        <div>
-                          {/* Header: Delivery Transit Information */}
-                          <div className="flex items-center justify-between pb-3.5 border-b border-slate-200/80">
-                            <div className="flex items-center gap-2">
-                              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base">
-                                📋
-                              </span>
-                              <div>
-                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
-                                  Delivery Information
-                                </h4>
-                                <p className="text-[11px] text-slate-500">
-                                  Dispatch route & estimated travel schedule
-                                </p>
-                              </div>
-                            </div>
-                            {order.eta_minutes && (
-                              <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1">
-                                <span>⏱️</span>
-                                <span>{formatTransitTime(order.eta_minutes)} travel</span>
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Highlight: Estimated Travel Time */}
-                          <div className="mt-4 p-4 rounded-2xl bg-white border border-emerald-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    </div>
+                  </div>
+                ) : isDelivered ? (
+                  /* ── 2. DELIVERED COMPLETION CARD ── */
+                  <div className="border-t border-slate-200 p-6 sm:p-8 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/40 text-center">
+                    <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center text-2xl font-bold shadow-md mx-auto mb-3">
+                      ✓
+                    </div>
+                    <h3 className="text-lg font-black text-emerald-950">Delivered to Destination</h3>
+                    <p className="text-xs text-emerald-700 mt-1 max-w-sm mx-auto leading-relaxed">
+                      Your produce order has been safely delivered to your doorstep. Thank you for choosing Bems Farms!
+                    </p>
+                    {order.destination_area && (
+                      <p className="text-xs font-semibold text-slate-700 mt-2">
+                        Delivered to: <span className="text-slate-900 font-bold">{order.destination_area}</span>
+                      </p>
+                    )}
+                    {order.items_summary && (
+                      <p className="text-xs text-slate-600 mt-1">
+                        Items: {order.items_summary}
+                      </p>
+                    )}
+                    {order.proof_photo && (
+                      <div className="mt-4 inline-block">
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                          Proof of Delivery:
+                        </span>
+                        <a href={order.proof_photo} target="_blank" rel="noreferrer" className="inline-block group">
+                          <img
+                            src={order.proof_photo}
+                            alt="Proof of Delivery"
+                            className="w-24 h-24 object-cover rounded-xl border border-emerald-300 shadow-xs group-hover:scale-105 transition mx-auto"
+                          />
+                        </a>
+                      </div>
+                    )}
+                    <div className="mt-5 flex items-center justify-center gap-3">
+                      <Link
+                        to={`/orders/${order.id}`}
+                        className="py-2.5 px-5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition shadow-xs"
+                      >
+                        View Full Order Details →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── 3. PRE-TRANSIT: ONLY DELIVERY INFORMATION ── */
+                  <div className="border-t border-slate-200 p-6 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+                    <div className="grid md:grid-cols-12 gap-6">
+                      {/* Left: Prominent Delivery Metrics & Route */}
+                      <div className="md:col-span-7 space-y-4">
+                        {/* Section Header */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold">
+                              📋
+                            </span>
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                Estimated Travel Time
-                              </span>
-                              <div className="text-xl sm:text-2xl font-black text-emerald-950 flex items-baseline gap-2 mt-0.5">
-                                <span>{formatTransitTime(order.eta_minutes) || "Calculating..."}</span>
-                                {getEstimatedDistance(order) && (
-                                  <span className="text-xs font-semibold text-slate-500 font-mono">
-                                    ({getEstimatedDistance(order)})
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-slate-600 mt-1">
-                                Direct door-to-door transit time from Bems Fulfillment Hub once courier departs.
+                              <h3 className="font-display text-base font-black text-slate-900">
+                                Delivery Information
+                              </h3>
+                              <p className="text-xs text-slate-500">
+                                Travel time, destination, and fulfillment status
                               </p>
                             </div>
-                            <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60 self-start sm:self-auto">
-                              <span>🚚</span>
-                              <span>Doorstep Dispatch</span>
-                            </div>
                           </div>
-
-                          {/* Transit Route Breakdown */}
-                          <div className="mt-4 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                              Transit Route
+                          {order.eta_minutes && (
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5">
+                              <span>⏱️</span>
+                              <span>{formatTransitTime(order.eta_minutes)} travel</span>
                             </span>
+                          )}
+                        </div>
 
-                            {/* Hub Origin */}
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5 w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
-                                🏪
-                              </div>
-                              <div className="text-xs">
-                                <p className="font-bold text-slate-800">Bems Central Fulfillment Hub</p>
-                                <p className="text-[11px] text-slate-500">Aba / Umuahia, Abia State (Packaging & Quality Sorting)</p>
-                              </div>
+                        {/* Estimated Travel Time Callout */}
+                        <div className="p-4 rounded-2xl bg-white border border-emerald-100/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                              Estimated Travel Time to Doorstep
+                            </span>
+                            <div className="text-2xl sm:text-3xl font-black text-emerald-950 flex items-baseline gap-2 mt-0.5">
+                              <span>{formatTransitTime(order.eta_minutes) || "Calculating..."}</span>
+                              {getEstimatedDistance(order) && (
+                                <span className="text-xs font-bold text-slate-500 font-mono">
+                                  ({getEstimatedDistance(order)})
+                                </span>
+                              )}
                             </div>
-
-                            {/* Route connector line */}
-                            <div className="ml-3 pl-3 border-l-2 border-dashed border-emerald-300 py-1 text-[10px] text-slate-500 flex items-center gap-2">
-                              <span>🛣️</span>
-                              <span>Direct Courier Route {getEstimatedDistance(order) ? `• ${getEstimatedDistance(order)}` : ""}</span>
-                            </div>
-
-                            {/* Destination */}
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5 w-6 h-6 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
-                                📍
-                              </div>
-                              <div className="text-xs">
-                                <p className="font-bold text-slate-800">Delivery Destination</p>
-                                <p className="text-[11px] text-slate-600 leading-snug">
-                                  {order.destination_area || order.delivery_address || order.address || "Your delivery address"}
-                                </p>
-                              </div>
-                            </div>
+                            <p className="text-xs text-slate-600 mt-1">
+                              Calculated driving duration from our Central Fulfillment Hub once courier departs.
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60 self-start sm:self-auto">
+                            <span>🚚</span>
+                            <span>Doorstep Dispatch</span>
                           </div>
                         </div>
 
-                        {/* Live Map Activation Notice */}
-                        <div className="mt-4 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3 text-amber-950">
-                          <span className="text-lg shrink-0 mt-0.5">🗺️</span>
-                          <div className="text-xs leading-relaxed">
-                            <p className="font-bold">Live GPS Map Activates During Transit</p>
-                            <p className="text-[11px] text-amber-900/80 mt-0.5">
-                              Real-time GPS telemetry and the live driver map will appear automatically on this page as soon as the courier confirms package pickup and begins transit to your doorstep.
-                            </p>
+                        {/* Transit Route Breakdown */}
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                            Fulfillment & Delivery Route
+                          </span>
+
+                          {/* Hub Origin */}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
+                              🏪
+                            </div>
+                            <div className="text-xs">
+                              <p className="font-bold text-slate-900">Origin: Bems Central Fulfillment Hub</p>
+                              <p className="text-slate-500">Aba / Umuahia, Abia State · Inspected & Packed Fresh</p>
+                            </div>
+                          </div>
+
+                          {/* Connector */}
+                          <div className="ml-3.5 pl-4 border-l-2 border-dashed border-emerald-300 py-1 text-[11px] text-slate-500 flex items-center gap-2">
+                            <span>🛣️</span>
+                            <span>Direct Dispatch Route {getEstimatedDistance(order) ? `• ${getEstimatedDistance(order)}` : ""}</span>
+                          </div>
+
+                          {/* Destination */}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 w-7 h-7 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
+                              📍
+                            </div>
+                            <div className="text-xs">
+                              <p className="font-bold text-slate-900">Destination: Delivery Address</p>
+                              <p className="text-slate-700 leading-snug mt-0.5">
+                                {order.destination_area || order.delivery_address || order.address || "Your delivery address"}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    )}
+
+                      {/* Right: Package Summary, Status Notice & Support */}
+                      <div className="md:col-span-5 space-y-4 flex flex-col justify-between">
+                        <div className="space-y-4">
+                          {/* Items Summary */}
+                          <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                              Produce in This Delivery
+                            </span>
+                            <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                              {order.items_summary || "Fresh farm produce order"}
+                            </p>
+                            <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                              <span>Security Packaging:</span>
+                              <span className="font-bold text-emerald-800">Tamper-Proof Sealed ✓</span>
+                            </div>
+                          </div>
+
+                          {/* Map & Telemetry Notice */}
+                          <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 shadow-2xs">
+                            <div className="flex items-center gap-2 text-amber-950 font-bold text-xs">
+                              <span className="text-base">🗺️</span>
+                              <span>Live Map Activates During Transit</span>
+                            </div>
+                            <p className="text-[11px] text-amber-900/80 mt-1.5 leading-relaxed">
+                              The live GPS tracking map and driver direct contact buttons will unlock on this page as soon as the courier confirms pickup and is on the road to your location.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Customer Support & Details Links */}
+                        <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+                          <a
+                            href="https://wa.me/2348000000000"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold text-center shadow-xs transition flex items-center justify-center gap-1.5"
+                          >
+                            <span>💬</span>
+                            <span>Bems Support</span>
+                          </a>
+                          <Link
+                            to={`/orders/${order.id}`}
+                            className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold text-center shadow-2xs transition flex items-center justify-center gap-1.5"
+                          >
+                            <span>Order Details →</span>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </motion.section>
           )}
