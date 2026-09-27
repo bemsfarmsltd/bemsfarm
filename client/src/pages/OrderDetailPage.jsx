@@ -591,7 +591,20 @@ export default function OrderDetailPage() {
   const isDelivered = effectiveStatus === "delivered" || order.status === "delivered";
   const isIncomplete = !isDelivered && !isCancelled;
   const isInProgress = !isDelivered && !isCancelled;
+  const isInTransit = [
+    "picked_up", "in_transit", "shipped", "en_route", "out_for_delivery", 
+    "arrived", "driver_arrived", "at_location"
+  ].includes(effectiveStatus) || Boolean(order.driver_picked_up);
   const canCancel = !["in_transit", "shipped", "out_for_delivery", "arrived", "driver_arrived", "delivered", "completed", "cancelled", "returned", "return_requested", "return_approved", "dispute"].includes(effectiveStatus) && !order.driver_picked_up;
+
+  const formatTransitHours = (minutes) => {
+    if (minutes == null || isNaN(minutes)) return null;
+    const m = Math.max(1, Math.round(Number(minutes)));
+    if (m < 60) return `~${m} mins`;
+    const hrs = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem > 0 ? `~${hrs} hr ${rem} mins` : `~${hrs} hrs`;
+  };
 
   const parsedUpdate = new Date(
     order.delivered_at || order.updated_at || order.updatedAt || order.created_at
@@ -887,37 +900,110 @@ export default function OrderDetailPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                        <span>🗺️ Real-Time Delivery Map</span>
+                        <span>{isInTransit ? "🗺️ Real-Time Delivery Map" : "📋 Delivery Transit Information"}</span>
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Live GPS tracking from Bems Farms Dispatch Hub to your doorstep.
+                        {isInTransit
+                          ? "Live GPS tracking from Bems Farms Dispatch Hub to your doorstep."
+                          : "Estimated travel schedule and route. Interactive GPS map unlocks once courier is in transit."}
                       </p>
                     </div>
                     {order.eta_minutes != null && (
                       <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-2xs">
-                        ⏱️ ETA: ~{order.eta_minutes} mins
+                        ⏱️ Travel Time: {formatTransitHours(order.eta_minutes)}
                       </span>
                     )}
                   </div>
 
-                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner relative isolate z-0">
-                    <MapErrorBoundary>
-                      <LiveOrderMap
-                        customerLat={order.customer_lat || order.latitude}
-                        customerLng={order.customer_lng || order.longitude}
-                        driverLat={order.driver_lat}
-                        driverLng={order.driver_lng}
-                        driverName={order.driver_name}
-                        driverPhone={order.driver_phone}
-                        vehicleType={order.vehicle_type}
-                        vehiclePlate={order.vehicle_plate}
-                        etaMinutes={order.eta_minutes}
-                        deliveryAddress={order.address}
-                        orderStatus={order.status}
-                        height="360px"
-                      />
-                    </MapErrorBoundary>
-                  </div>
+                  {isInTransit ? (
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner relative isolate z-0">
+                      <MapErrorBoundary>
+                        <LiveOrderMap
+                          customerLat={order.customer_lat || order.latitude}
+                          customerLng={order.customer_lng || order.longitude}
+                          driverLat={order.driver_lat}
+                          driverLng={order.driver_lng}
+                          driverName={order.driver_name}
+                          driverPhone={order.driver_phone}
+                          vehicleType={order.vehicle_type}
+                          vehiclePlate={order.vehicle_plate}
+                          etaMinutes={order.eta_minutes}
+                          deliveryAddress={order.address}
+                          orderStatus={order.status}
+                          height="360px"
+                        />
+                      </MapErrorBoundary>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+                      {/* Prominent Transit Duration Highlight */}
+                      <div className="p-4 rounded-xl bg-white border border-emerald-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Estimated Travel Time
+                          </span>
+                          <div className="text-xl sm:text-2xl font-black text-emerald-950 flex items-baseline gap-2 mt-0.5">
+                            <span>{formatTransitHours(order.eta_minutes) || "Calculating..."}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-1">
+                            Direct door-to-door transit time from Bems Fulfillment Hub once courier departs.
+                          </p>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60 self-start sm:self-auto">
+                          <span>🚚</span>
+                          <span>Doorstep Dispatch</span>
+                        </div>
+                      </div>
+
+                      {/* Transit Route Breakdown */}
+                      <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                          Transit Route
+                        </span>
+
+                        {/* Hub Origin */}
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
+                            🏪
+                          </div>
+                          <div className="text-xs">
+                            <p className="font-bold text-slate-800">Bems Central Fulfillment Hub</p>
+                            <p className="text-[11px] text-slate-500">Aba / Umuahia, Abia State (Packaging & Quality Sorting)</p>
+                          </div>
+                        </div>
+
+                        {/* Route connector line */}
+                        <div className="ml-3 pl-3 border-l-2 border-dashed border-emerald-300 py-1 text-[10px] text-slate-500 flex items-center gap-2">
+                          <span>🛣️</span>
+                          <span>Direct Courier Route</span>
+                        </div>
+
+                        {/* Destination */}
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 w-6 h-6 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
+                            📍
+                          </div>
+                          <div className="text-xs">
+                            <p className="font-bold text-slate-800">Delivery Destination</p>
+                            <p className="text-[11px] text-slate-600 leading-snug">
+                              {order.address || "Your registered delivery address"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Map Activation Notice */}
+                      <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3 text-amber-950">
+                        <span className="text-lg shrink-0 mt-0.5">🗺️</span>
+                        <div className="text-xs leading-relaxed">
+                          <p className="font-bold">Live GPS Map Activates During Transit</p>
+                          <p className="text-[11px] text-amber-900/80 mt-0.5">
+                            Real-time GPS telemetry and the live driver map will appear automatically on this page as soon as the courier confirms package pickup and begins transit to your doorstep.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Courier Banner */}
                   {order.driver_name && (
