@@ -75,39 +75,46 @@ export default function ActiveDeliveries() {
     try {
       const res = await api.get('/admin/deliveries/active')
       const rawDeliveries = res.data?.deliveries || []
-      const mapped = rawDeliveries.map((d) => {
-        let s = d.status
-        if (s === 'driver_assigned' || s === 'awaiting_pickup') s = 'assigned'
-        if (s === 'picked_up') s = 'picked_up'
-        if (s === 'out_for_delivery') s = 'shipped'
-        if (s === 'in_transit') s = 'shipped'
+      const mapped = rawDeliveries
+        .filter((d) => Boolean(
+          d.accepted_at ||
+          d.driver_accepted_at ||
+          d.driver_response === 'accepted' ||
+          ['accepted', 'picked_up', 'shipped', 'out_for_delivery', 'en_route', 'arrived'].includes(d.status)
+        ))
+        .map((d) => {
+          let s = d.status
+          if (s === 'driver_assigned' || s === 'awaiting_pickup') s = 'assigned'
+          if (s === 'picked_up') s = 'picked_up'
+          if (s === 'out_for_delivery') s = 'shipped'
+          if (s === 'in_transit') s = 'shipped'
 
-        return {
-          id: d.delivery_ref || `DEL-${d.id}`,
-          orderId: String(d.order_id || 'ORD-001'),
-          status: s,
-          driver: (d.driver_id || d.driver_name) ? {
-            id: d.driver_id,
-            name: d.driver_name || (d.driver_id ? `Driver #${d.driver_id}` : 'Assigned Driver'),
-            phone: d.driver_phone || '—',
-            bike: d.driver_plate || d.vehicle_type || 'Vehicle',
-            zone: d.zone || 'Umuahia / Abia State',
-            active: true,
-          } : null,
-          customer: {
-            name: d.customer_name || 'Customer',
-            phone: d.customer_phone || '—',
-            address: d.delivery_address || 'Abia State, Nigeria',
-          },
-          items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
-          total: parseFloat(d.order_total) || 0,
-          dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
-          eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
-          zone: d.zone || 'Umuahia Central',
-          attempts: d.attempts || 0,
-          notes: d.notes || '',
-        }
-      })
+          return {
+            id: d.delivery_ref || `DEL-${d.id}`,
+            orderId: String(d.order_id || 'ORD-001'),
+            status: s,
+            driver: (d.driver_id || d.driver_name) ? {
+              id: d.driver_id,
+              name: d.driver_name || (d.driver_id ? `Driver #${d.driver_id}` : 'Assigned Driver'),
+              phone: d.driver_phone || '—',
+              bike: d.driver_plate || d.vehicle_type || 'Vehicle',
+              zone: d.zone || 'Umuahia / Abia State',
+              active: true,
+            } : null,
+            customer: {
+              name: d.customer_name || 'Customer',
+              phone: d.customer_phone || '—',
+              address: d.delivery_address || 'Abia State, Nigeria',
+            },
+            items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
+            total: parseFloat(d.order_total) || 0,
+            dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+            eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
+            zone: d.zone || 'Umuahia Central',
+            attempts: d.attempts || 0,
+            notes: d.notes || '',
+          }
+        })
       setDeliveries(mapped)
     } catch (err) {
       console.warn('Could not fetch live active deliveries:', err.message)
@@ -547,7 +554,15 @@ export default function ActiveDeliveries() {
         {/* Status tabs */}
         <div className="border-top px-3" style={{ overflowX: 'auto' }}>
           <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
-            {[{ key: 'all', label: 'All Active' }, ...Object.entries(STATUS_CFG).map(([k, v]) => ({ key: k, label: v.label }))].map(t => (
+            {[
+              { key: 'all', label: 'All Active' },
+              { key: 'accepted', label: 'Accepted' },
+              { key: 'assigned', label: 'Awaiting Pickup' },
+              { key: 'picked_up', label: 'Goods Picked Up' },
+              { key: 'shipped', label: 'In Transit / En Route' },
+              { key: 'arrived', label: 'Arrived at Doorstep' },
+              { key: 'delivery_attempted', label: 'Delivery Attempted' },
+            ].map(t => (
               <button key={t.key} className="btn btn-sm border-0 rounded-0 py-2 px-3"
                 style={{
                   borderBottom: filterStatus === t.key ? '2px solid #6366f1' : '2px solid transparent',

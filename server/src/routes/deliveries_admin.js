@@ -30,7 +30,11 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
-    const where = ["d.status NOT IN ('delivered','cancelled')", "d.driver_id IS NOT NULL"];
+    const where = [
+      "d.status NOT IN ('delivered','cancelled')",
+      "d.driver_id IS NOT NULL",
+      "(d.accepted_at IS NOT NULL OR o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' OR d.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))"
+    ];
 
     if (status) {
       params.push(status);
@@ -47,7 +51,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       `
       SELECT
         d.id, d.delivery_ref, d.status, d.attempts,
-        d.eta_minutes, d.assigned_at, d.dispatched_at,
+        d.eta_minutes, d.assigned_at, d.dispatched_at, d.accepted_at, o.driver_accepted_at, o.driver_response,
         COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), '—') AS delivery_address,
         o.id AS order_id, o.total AS order_total, o.notes, o.source AS order_source,
         o.payment_method, o.payment_status, o.delivery_fee, o.created_at AS order_created_at,
@@ -93,16 +97,18 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       params,
     );
 
-    // Stats
+    // Stats (only deliveries accepted by driver)
     const stats = await pool.query(`
       SELECT
         COUNT(*)                                              AS total,
-        COUNT(*) FILTER (WHERE status = 'out_for_delivery')  AS en_route,
-        COUNT(*) FILTER (WHERE status IN ('assigned', 'awaiting_pickup')) AS awaiting,
-        COUNT(*) FILTER (WHERE status = 'delivery_attempted') AS attempted
-      FROM deliveries
-      WHERE status NOT IN ('delivered','cancelled')
-        AND driver_id IS NOT NULL
+        COUNT(*) FILTER (WHERE d.status IN ('out_for_delivery', 'in_transit', 'shipped', 'en_route'))  AS en_route,
+        COUNT(*) FILTER (WHERE d.status IN ('assigned', 'awaiting_pickup', 'accepted')) AS awaiting,
+        COUNT(*) FILTER (WHERE d.status = 'delivery_attempted') AS attempted
+      FROM deliveries d
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      WHERE d.status NOT IN ('delivered','cancelled')
+        AND d.driver_id IS NOT NULL
+        AND (d.accepted_at IS NOT NULL OR o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' OR d.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))
     `);
 
     res.json({ deliveries: rows.rows, stats: stats.rows[0] });

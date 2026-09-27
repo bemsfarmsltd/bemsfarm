@@ -669,17 +669,23 @@ router.get("/track/:code", async (req, res, next) => {
          ) AS items_summary
        FROM orders
        LEFT JOIN LATERAL (
-         SELECT d.driver_id, d.eta_minutes, d.arrived_at
+         SELECT d.driver_id, d.eta_minutes, d.arrived_at, d.accepted_at
          FROM deliveries d
          WHERE d.order_id = orders.id
          ORDER BY d.created_at DESC
          LIMIT 1
        ) delivery ON true
-       LEFT JOIN drivers dr ON dr.id = COALESCE(orders.driver_id, delivery.driver_id)
+       LEFT JOIN drivers dr ON dr.id = (
+         CASE 
+           WHEN orders.driver_accepted_at IS NOT NULL OR orders.driver_response = 'accepted' THEN COALESCE(orders.driver_id, delivery.driver_id)
+           WHEN delivery.accepted_at IS NOT NULL THEN delivery.driver_id
+           ELSE NULL
+         END
+       )
        LEFT JOIN LATERAL (
          SELECT dl.latitude, dl.longitude, dl.recorded_at
          FROM driver_locations dl
-         WHERE dl.driver_id = COALESCE(orders.driver_id, delivery.driver_id)
+         WHERE dl.driver_id = dr.id
          ORDER BY dl.recorded_at DESC
          LIMIT 1
        ) location ON true
@@ -783,17 +789,24 @@ router.get("/:id", protect, async (req, res, next) => {
            d.eta_minutes,
            d.assigned_at,
            d.dispatched_at,
+           d.accepted_at,
            d.zone_id
          FROM deliveries d
          WHERE d.order_id = o.id
          ORDER BY d.created_at DESC
          LIMIT 1
        ) delivery ON true
-       LEFT JOIN drivers dr ON dr.id = delivery.driver_id
+       LEFT JOIN drivers dr ON dr.id = (
+         CASE
+           WHEN o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' THEN COALESCE(o.driver_id, delivery.driver_id)
+           WHEN delivery.accepted_at IS NOT NULL THEN delivery.driver_id
+           ELSE NULL
+         END
+       )
        LEFT JOIN LATERAL (
          SELECT dl.latitude, dl.longitude, dl.heading, dl.speed, dl.recorded_at
          FROM driver_locations dl
-         WHERE dl.driver_id = delivery.driver_id
+         WHERE dl.driver_id = dr.id
          ORDER BY dl.recorded_at DESC
          LIMIT 1
        ) loc ON true
