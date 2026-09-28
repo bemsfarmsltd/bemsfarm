@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
+import { useRealtime } from '../../context/RealtimeContext'
 
 const EVENT_CATEGORIES = [
   {
@@ -124,8 +125,12 @@ export default function NotificationSettings() {
   const [settings, setSettings] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingKey, setSavingKey] = useState(null)
+  const [lastSaved, setLastSaved] = useState(null)
   const [testing, setTesting] = useState(false)
   const [testType, setTestType] = useState('order_placed')
+
+  const { soundEnabled, toggleSound, showNotificationPopup } = useRealtime()
 
   useEffect(() => {
     api.get('/admin/settings/notifications')
@@ -135,15 +140,74 @@ export default function NotificationSettings() {
   }, [])
 
   const isChecked = (key) => settings[key] !== 'false'
-  const toggleKey = (key) => setSettings(s => ({ ...s, [key]: isChecked(key) ? 'false' : 'true' }))
 
-  async function handleSave(e) {
+  // Persist a single key immediately for zero-lag instant saving
+  const persistSetting = async (key, val, label) => {
+    setSavingKey(key)
+    const updated = { ...settings, [key]: val }
+    setSettings(updated)
+    try {
+      await api.post('/admin/settings/notifications', { [key]: val })
+      setLastSaved(new Date())
+      toast.success(label, { id: `notif-${key}`, duration: 2500 })
+    } catch (err) {
+      setSettings(settings)
+      toast.error(err.response?.data?.message || `Failed to update ${label}`)
+    } finally {
+      setSavingKey(null)
+    }
+  }
+
+  // Master switches state
+  const pushMasterOn = isChecked('notif_push_enabled')
+  const emailMasterOn = isChecked('notif_email_enabled')
+  const soundMasterOn = soundEnabled !== undefined ? soundEnabled : isChecked('notif_sound_enabled')
+
+  const handleTogglePushMaster = async () => {
+    const next = pushMasterOn ? 'false' : 'true'
+    if (next === 'true' && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+    await persistSetting(
+      'notif_push_enabled',
+      next,
+      next === 'true' ? '🔔 In-App & Push Alerts enabled globally' : '🔕 In-App & Push Alerts paused globally'
+    )
+  }
+
+  const handleToggleEmailMaster = async () => {
+    const next = emailMasterOn ? 'false' : 'true'
+    await persistSetting(
+      'notif_email_enabled',
+      next,
+      next === 'true' ? '✉️ Email Alerts enabled globally' : '📧 Email Alerts paused globally'
+    )
+  }
+
+  const handleToggleSoundMaster = async () => {
+    if (toggleSound) toggleSound()
+    const next = soundMasterOn ? 'false' : 'true'
+    await persistSetting(
+      'notif_sound_enabled',
+      next,
+      next === 'true' ? '🔊 Audio Chimes enabled' : '🔇 Audio Chimes muted'
+    )
+  }
+
+  const handleToggleEvent = async (key, eventName, channelType) => {
+    const next = isChecked(key) ? 'false' : 'true'
+    const action = next === 'true' ? 'enabled' : 'disabled'
+    await persistSetting(key, next, `${eventName}: ${channelType} ${action}`)
+  }
+
+  async function handleSaveAll(e) {
     if (e) e.preventDefault()
     setSaving(true)
     try {
       const res = await api.post('/admin/settings/notifications', settings)
       setSettings(res.data.settings || {})
-      toast.success('Notification preferences saved successfully!')
+      setLastSaved(new Date())
+      toast.success('All notification preferences saved successfully!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save settings')
     } finally {
@@ -156,6 +220,30 @@ export default function NotificationSettings() {
     try {
       const res = await api.post('/admin/notifications/test', { type: testType })
       toast.success(res.data.message || 'Test notification dispatched successfully!')
+
+      // Pop immediate in-app banner for instant visual/audio feedback
+      if (showNotificationPopup) {
+        const testLabels = {
+          order_placed: { title: '🛍️ New Online Order #ORD-8821', msg: 'Order #ORD-8821 placed by Chinedu Okafor totaling ₦28,500 with 4 items.' },
+          customer_register: { title: '🎉 New Customer Registered', msg: 'Amara Kalu created a new account in Umuahia with verified GPS coordinates.' },
+          pos_sale: { title: '💳 Walk-in POS Sale Completed', msg: 'Walk-in sale of ₦14,200 completed on POS Terminal 1.' },
+          order_delivery: { title: '🛵 Driver Dispatched for Order #ORD-8821', msg: 'Courier Emeka has picked up the package and is en route.' },
+          support_message: { title: '💬 Live Customer Support Message', msg: 'Ngozi sent a message: "Hello, please is fresh catfish available today?"' },
+          ai_chat: { title: '🤖 Chef Bems AI Recommendation', msg: 'Customer requested a 4-person goat meat peppersoup recipe.' },
+          low_stock: { title: '⚠️ Low Stock Alert: Fresh Farm Eggs', msg: 'Fresh Farm Eggs inventory has dropped to 4 crates (threshold: 10).' },
+          batch_expiry: { title: '⏰ Produce Lot Expiring: Batch #LOT-2026-081', msg: 'Batch #LOT-2026-081 (Organic Bell Peppers) will expire in 4 days.' },
+          refund_request: { title: '↩️ Return Request Submitted', msg: 'Refund request of ₦6,500 submitted for Order #ORD-8750.' },
+          system_error: { title: '🔴 Critical System Error Captured', msg: 'Payment gateway timeout during webhook verification [HTTP 504]. Auto-recovered.' },
+        }
+        const item = testLabels[testType] || testLabels.order_placed
+        showNotificationPopup({
+          id: `test-${Date.now()}`,
+          type: testType,
+          title: `[TEST] ${item.title}`,
+          message: item.msg,
+          link: '/settings/notifications',
+        })
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send test notification')
     } finally {
@@ -184,10 +272,15 @@ export default function NotificationSettings() {
             Configure real-time in-app push banners, topbar bell alerts, and email notifications for every event on Bems Farms.
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <button className="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm" disabled={saving} onClick={handleSave}>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {lastSaved && (
+            <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fs-12 fw-medium d-inline-flex align-items-center gap-1.5">
+              <i className="ri-check-double-line"></i> Auto-saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+          <button className="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm" disabled={saving} onClick={handleSaveAll}>
             <i className="ri-save-line"></i>
-            {saving ? 'Saving…' : 'Save Preferences'}
+            {saving ? 'Saving…' : 'Save All Preferences'}
           </button>
         </div>
       </div>
@@ -202,61 +295,108 @@ export default function NotificationSettings() {
                   <i className="ri-broadcast-fill"></i>
                 </div>
                 <div>
-                  <h6 className="mb-1 fw-bold text-white">Global Dispatch Channels</h6>
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <h6 className="mb-0 fw-bold text-white">Global Dispatch Channels</h6>
+                    <span className="badge bg-success bg-opacity-25 text-success-subtle border border-success border-opacity-25 fs-10 px-2 py-0.5 rounded-pill">
+                      Instant Auto-Save
+                    </span>
+                  </div>
                   <p className="text-white text-opacity-75 fs-12 mb-0">Master switches to enable or pause alert delivery across the entire system.</p>
                 </div>
               </div>
             </div>
             <div className="col-12 col-lg-7">
               <div className="d-flex flex-wrap align-items-center justify-content-lg-end gap-3 gap-md-4">
-                {/* Push Master */}
-                <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-2 rounded-3">
-                  <div className="form-check form-switch m-0">
+                {/* Push Master Switch */}
+                <div
+                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
+                    pushMasterOn ? 'bg-white bg-opacity-15 border-warning border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
+                  }`}
+                  onClick={handleTogglePushMaster}
+                  style={{ minWidth: 160 }}
+                  title="Click to toggle In-App & Push alerts globally"
+                >
+                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
                     <input
-                      className="form-check-input"
+                      className="form-check-input cursor-pointer"
                       type="checkbox"
                       role="switch"
                       id="notif_push_enabled"
-                      checked={isChecked('notif_push_enabled')}
-                      onChange={() => toggleKey('notif_push_enabled')}
+                      checked={pushMasterOn}
+                      onChange={handleTogglePushMaster}
+                      disabled={savingKey === 'notif_push_enabled'}
                     />
                   </div>
-                  <label htmlFor="notif_push_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0">
-                    <i className="ri-notification-3-line text-warning me-1"></i> In-App / Push
+                  <label htmlFor="notif_push_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
+                    <span className="d-flex align-items-center gap-1">
+                      <i className={`ri-notification-3-line ${pushMasterOn ? 'text-warning' : 'text-white text-opacity-50'}`}></i>
+                      <span>In-App / Push</span>
+                    </span>
+                    <span className={`fs-10 fw-medium ${pushMasterOn ? 'text-warning' : 'text-white text-opacity-50'}`}>
+                      {savingKey === 'notif_push_enabled' ? 'Saving…' : pushMasterOn ? 'Active (Live)' : 'Paused'}
+                    </span>
                   </label>
                 </div>
 
-                {/* Email Master */}
-                <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-2 rounded-3">
-                  <div className="form-check form-switch m-0">
+                {/* Email Master Switch */}
+                <div
+                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
+                    emailMasterOn ? 'bg-white bg-opacity-15 border-info border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
+                  }`}
+                  onClick={handleToggleEmailMaster}
+                  style={{ minWidth: 160 }}
+                  title="Click to toggle Email alerts globally"
+                >
+                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
                     <input
-                      className="form-check-input"
+                      className="form-check-input cursor-pointer"
                       type="checkbox"
                       role="switch"
                       id="notif_email_enabled"
-                      checked={isChecked('notif_email_enabled')}
-                      onChange={() => toggleKey('notif_email_enabled')}
+                      checked={emailMasterOn}
+                      onChange={handleToggleEmailMaster}
+                      disabled={savingKey === 'notif_email_enabled'}
                     />
                   </div>
-                  <label htmlFor="notif_email_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0">
-                    <i className="ri-mail-line text-info me-1"></i> Email Alerts
+                  <label htmlFor="notif_email_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
+                    <span className="d-flex align-items-center gap-1">
+                      <i className={`ri-mail-line ${emailMasterOn ? 'text-info' : 'text-white text-opacity-50'}`}></i>
+                      <span>Email Alerts</span>
+                    </span>
+                    <span className={`fs-10 fw-medium ${emailMasterOn ? 'text-info' : 'text-white text-opacity-50'}`}>
+                      {savingKey === 'notif_email_enabled' ? 'Saving…' : emailMasterOn ? 'Active (Live)' : 'Paused'}
+                    </span>
                   </label>
                 </div>
 
-                {/* Sound Chime */}
-                <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-2 rounded-3">
-                  <div className="form-check form-switch m-0">
+                {/* Sound Chime Switch */}
+                <div
+                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
+                    soundMasterOn ? 'bg-white bg-opacity-15 border-success border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
+                  }`}
+                  onClick={handleToggleSoundMaster}
+                  style={{ minWidth: 160 }}
+                  title="Click to toggle Real-time Audio Chimes"
+                >
+                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
                     <input
-                      className="form-check-input"
+                      className="form-check-input cursor-pointer"
                       type="checkbox"
                       role="switch"
                       id="notif_sound_enabled"
-                      checked={isChecked('notif_sound_enabled')}
-                      onChange={() => toggleKey('notif_sound_enabled')}
+                      checked={soundMasterOn}
+                      onChange={handleToggleSoundMaster}
+                      disabled={savingKey === 'notif_sound_enabled'}
                     />
                   </div>
-                  <label htmlFor="notif_sound_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0">
-                    <i className="ri-volume-up-line text-success me-1"></i> Audio Chime
+                  <label htmlFor="notif_sound_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
+                    <span className="d-flex align-items-center gap-1">
+                      <i className={`ri-volume-up-line ${soundMasterOn ? 'text-success' : 'text-white text-opacity-50'}`}></i>
+                      <span>Audio Chime</span>
+                    </span>
+                    <span className={`fs-10 fw-medium ${soundMasterOn ? 'text-success' : 'text-white text-opacity-50'}`}>
+                      {savingKey === 'notif_sound_enabled' ? 'Saving…' : soundMasterOn ? 'Sound On' : 'Muted'}
+                    </span>
                   </label>
                 </div>
               </div>
@@ -285,15 +425,25 @@ export default function NotificationSettings() {
                   <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
                     <thead>
                       <tr className="bg-light-subtle text-muted text-uppercase fs-11 fw-bolder">
-                        <th style={{ width: '58%', padding: '10px 16px' }}>Event Action</th>
-                        <th className="text-center" style={{ width: '21%', padding: '10px 12px' }}>
+                        <th style={{ width: '56%', padding: '10px 16px' }}>Event Action</th>
+                        <th className="text-center" style={{ width: '22%', padding: '10px 12px' }}>
                           <span className="d-inline-flex align-items-center gap-1">
                             <i className="ri-notification-3-line text-primary"></i> In-App / Push
+                            {!pushMasterOn && (
+                              <span className="badge bg-warning-subtle text-warning border border-warning-subtle fs-10 px-1 py-0.5 rounded">
+                                Muted
+                              </span>
+                            )}
                           </span>
                         </th>
-                        <th className="text-center" style={{ width: '21%', padding: '10px 12px' }}>
+                        <th className="text-center" style={{ width: '22%', padding: '10px 12px' }}>
                           <span className="d-inline-flex align-items-center gap-1">
                             <i className="ri-mail-line text-info"></i> Email Alert
+                            {!emailMasterOn && (
+                              <span className="badge bg-warning-subtle text-warning border border-warning-subtle fs-10 px-1 py-0.5 rounded">
+                                Muted
+                              </span>
+                            )}
                           </span>
                         </th>
                       </tr>
@@ -329,11 +479,12 @@ export default function NotificationSettings() {
                                     role="switch"
                                     id={pushKey}
                                     checked={pushOn}
-                                    onChange={() => toggleKey(pushKey)}
+                                    onChange={() => handleToggleEvent(pushKey, ev.name, 'Push')}
+                                    disabled={savingKey === pushKey}
                                   />
                                 </div>
-                                <span className={`fs-11 fw-semibold ${pushOn ? 'text-success' : 'text-muted'}`}>
-                                  {pushOn ? 'Active' : 'Off'}
+                                <span className={`fs-11 fw-semibold ${!pushMasterOn ? 'text-muted text-opacity-50 text-decoration-line-through' : pushOn ? 'text-success' : 'text-muted'}`}>
+                                  {savingKey === pushKey ? 'Saving…' : pushOn ? (!pushMasterOn ? 'Active (Muted)' : 'Active') : 'Off'}
                                 </span>
                               </div>
                             </td>
@@ -348,11 +499,12 @@ export default function NotificationSettings() {
                                     role="switch"
                                     id={emailKey}
                                     checked={emailOn}
-                                    onChange={() => toggleKey(emailKey)}
+                                    onChange={() => handleToggleEvent(emailKey, ev.name, 'Email')}
+                                    disabled={savingKey === emailKey}
                                   />
                                 </div>
-                                <span className={`fs-11 fw-semibold ${emailOn ? 'text-info' : 'text-muted'}`}>
-                                  {emailOn ? 'Active' : 'Off'}
+                                <span className={`fs-11 fw-semibold ${!emailMasterOn ? 'text-muted text-opacity-50 text-decoration-line-through' : emailOn ? 'text-info' : 'text-muted'}`}>
+                                  {savingKey === emailKey ? 'Saving…' : emailOn ? (!emailMasterOn ? 'Active (Muted)' : 'Active') : 'Off'}
                                 </span>
                               </div>
                             </td>
@@ -403,7 +555,7 @@ export default function NotificationSettings() {
 
               <button
                 type="button"
-                className="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center gap-2 fw-semibold"
+                className="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center gap-2 fw-semibold shadow-2xs"
                 disabled={testing}
                 onClick={triggerTest}
               >

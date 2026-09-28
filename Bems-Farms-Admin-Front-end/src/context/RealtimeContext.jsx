@@ -481,7 +481,15 @@ export function RealtimeProvider({ children }) {
 export function useRealtime() {
   const ctx = useContext(RealtimeContext)
   if (!ctx) {
-    throw new Error('useRealtime must be used within a RealtimeProvider')
+    return {
+      connected: false,
+      soundEnabled: typeof window !== 'undefined' ? localStorage.getItem('bems_admin_sound_enabled') !== 'false' : true,
+      toggleSound: () => {},
+      playChime: () => {},
+      subscribe: () => () => {},
+      notify: () => {},
+      showNotificationPopup: () => {},
+    }
   }
   return ctx
 }
