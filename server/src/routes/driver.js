@@ -74,6 +74,9 @@ router.get("/deliveries/available", driverProtect, driverDeliveryController.getA
 router.get("/deliveries/new", driverProtect, driverDeliveryController.getAvailableDeliveries);
 router.get("/deliveries/active", driverProtect, driverDeliveryController.getActiveDeliveries);
 router.get("/deliveries/history", driverProtect, driverDeliveryController.getDeliveryHistory);
+router.get("/deliveries/summary", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
+router.get("/deliveries/payouts", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
+router.get("/deliveries/earned-payouts", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
 router.get("/deliveries", driverProtect, driverDeliveryController.getActiveDeliveries);
 router.get("/deliveries/:orderId", driverProtect, driverDeliveryController.getDeliveryDetails);
 router.post("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
@@ -104,6 +107,8 @@ router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbea
 
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
 router.get("/earnings", driverProtect, driverEarningsController.getEarnings);
+router.get("/earnings/payouts", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
+router.get("/earnings/summary", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
 router.get("/wallet", driverProtect, driverEarningsController.getEarnings);
 router.get("/wallet/history", driverProtect, driverEarningsController.getWalletHistory);
 router.get("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
