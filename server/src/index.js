@@ -323,4 +323,30 @@ initCrmTables()
     console.warn("CRM tables startup notice (will retry on query):", err.message?.slice(0, 120));
   });
 
+// ── Global Process Safety & Crash Shields ────────────────────────────
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("💥 SYSTEM NOTICE: Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("💥 CRITICAL SYSTEM EXCEPTION:", error);
+  // Allow PM2 process manager to restart the service cleanly
+  process.exit(1);
+});
+
+// Graceful shutdown on server reboot / deployment update
+const gracefulShutdown = () => {
+  console.log("🛑 Received shutdown signal. Closing HTTP server and DB pool cleanly...");
+  server.close(() => {
+    const pool = require("./db/pool");
+    pool.end(() => {
+      console.log("✅ All connections closed. Process terminating safely.");
+      process.exit(0);
+    });
+  });
+};
+
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
+
 module.exports = { app, server };
