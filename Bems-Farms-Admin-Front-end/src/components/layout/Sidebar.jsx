@@ -337,6 +337,7 @@ export default function Sidebar() {
       }
       
       .sidebar-icon-rail:hover ~ .sidebar-sub-panel,
+      .sidebar-icon-rail.rail-open ~ .sidebar-sub-panel,
       body.rail-is-hovered .sidebar-sub-panel {
         left: 215px;
       }
@@ -678,7 +679,6 @@ export default function Sidebar() {
                     className={`dual-sub-link ${isDashboardTabActive('ai') ? 'active' : ''}`}
                   >
                     <span>Chef Bems AI</span>
-                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>AI</span>
                   </Link>
                 )}
               </>
@@ -690,17 +690,14 @@ export default function Sidebar() {
                 {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
                   <NavLink to="/inventory/stock-in" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Restock Products</span>
-                    <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Stock In</span>
                   </NavLink>
                 )}
                 <NavLink to="/inventory/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Restock Calendar</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Plan</span>
                 </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/inventory/debulk" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Debulk &amp; Unbundle</span>
-                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>De-bulk</span>
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (
@@ -725,7 +722,6 @@ export default function Sidebar() {
                 )}
                 <NavLink to="/inventory/alerts" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Low Stock Alerts</span>
-                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>Alert</span>
                 </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/inventory/warehouses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -800,11 +796,9 @@ export default function Sidebar() {
               <>
                 <NavLink to="/deliveries/active" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Active Deliveries</span>
-                  <span className="sub-badge" style={{ background: '#EFF6FF', color: '#2563EB' }}>Live</span>
                 </NavLink>
                 <NavLink to="/deliveries/auto-assign" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Auto-Dispatch Logs</span>
-                  <span className="sub-badge" style={{ background: '#ECFDF5', color: '#059669' }}>AI</span>
                 </NavLink>
                 <NavLink to="/deliveries/map" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Delivery Map</span>
@@ -857,7 +851,6 @@ export default function Sidebar() {
                 )}
                 <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Wallet &amp; Gateway Hub</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>DVA</span>
                 </NavLink>
               </>
             )}
@@ -889,14 +882,12 @@ export default function Sidebar() {
               <>
                 <NavLink to="/chef-bems/conversations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Live Conversations</span>
-                  <span className="sub-badge" style={{ background: '#EDE9FE', color: '#7C3AED' }}>AI</span>
                 </NavLink>
                 <NavLink to="/chef-bems/meals" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Meals &amp; Recipe Bundles</span>
                 </NavLink>
                 <NavLink to="/chef-bems/stock-gaps" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Recipe Stock Gaps</span>
-                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#991B1B' }}>Stock</span>
                 </NavLink>
                 <NavLink to="/chef-bems/substitutions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Ingredient Substitutions</span>
@@ -925,14 +916,12 @@ export default function Sidebar() {
                   className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
                 >
                   <span>Staff Directory</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Active</span>
                 </Link>
                 <Link
                   to="/onboarding?tab=onboarding"
                   className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
                 >
                   <span>Team Onboarding</span>
-                  <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>Invites</span>
                 </Link>
                 <Link
                   to="/onboarding?tab=roles"
