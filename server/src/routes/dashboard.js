@@ -47,13 +47,20 @@ const PIPELINE_STAGE_MAP = {
 };
 
 // ── HELPER: Date range & timeframe parser ──────────────────────────
+function isValidDateStr(str) {
+  return typeof str === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(str.trim());
+}
+
 function parseDateFilter(query = {}) {
   const range = (query.range || 'today').toLowerCase();
-  const customFrom = query.from;
-  const customTo = query.to;
+  const rawFrom = query.from;
+  const rawTo = query.to;
+  const isCustomValid = range === 'custom' && isValidDateStr(rawFrom) && isValidDateStr(rawTo);
+  const customFrom = isCustomValid ? rawFrom.trim() : null;
+  const customTo = isCustomValid ? rawTo.trim() : null;
 
   const buildOrdersWhere = (col) => {
-    if (range === 'custom' && customFrom && customTo) {
+    if (isCustomValid) {
       return `${col} >= '${customFrom} 00:00:00'::timestamp AND ${col} <= '${customTo} 23:59:59'::timestamp`;
     }
     if (range === '7d') return `${col} >= NOW() - INTERVAL '7 days'`;
@@ -68,7 +75,7 @@ function parseDateFilter(query = {}) {
   const returnsWhere = buildOrdersWhere('created_at');
   const returnsJoinWhere = buildOrdersWhere('r.created_at');
 
-  if (range === 'custom' && customFrom && customTo) {
+  if (isCustomValid) {
     const fromStr = `${customFrom} 00:00:00`;
     const toStr = `${customTo} 23:59:59`;
     return {
@@ -308,7 +315,7 @@ function getChartSeriesQuery(filter) {
     };
   }
 
-  if (range === 'custom' && filter.from && filter.to) {
+  if (range === 'custom' && isValidDateStr(filter.from) && isValidDateStr(filter.to)) {
     return {
       revenueSql: `
         SELECT

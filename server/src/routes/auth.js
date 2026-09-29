@@ -532,6 +532,9 @@ router.post("/accept-invite", validate(authSchemas.acceptInvite), async (req, re
 // ADMIN BYPASS (One-Click Staff / Admin Auth)
 // ─────────────────────────────────────────────
 router.post("/admin-bypass", async (req, res, next) => {
+  if (process.env.NODE_ENV === "production" || process.env.ENABLE_ADMIN_BYPASS !== "true") {
+    return res.status(403).json({ message: "Admin bypass is disabled in this environment." });
+  }
   try {
     // Find an existing active superadmin or admin, or fallback to any staff role
     let result = await pool.query(

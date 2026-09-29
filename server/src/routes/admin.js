@@ -18,7 +18,7 @@ router.patch("/returns/:id", protect, adminOnly, updateReturn);
 router.post("/returns/items/:itemId/disposition", protect, adminOnly, setItemDisposition);
 
 // ── GET /api/admin/search?q= ── global topbar search across products, orders, customers, staff
-router.get("/search", protect, async (req, res, next) => {
+router.get("/search", protect, adminOnly, async (req, res, next) => {
   try {
     const q = (req.query.q || "").trim();
     if (q.length < 2) return res.json({ products: [], orders: [], customers: [], staff: [] });
