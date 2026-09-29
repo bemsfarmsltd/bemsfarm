@@ -285,7 +285,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     if (monnifyData.paymentStatus !== "PAID") {
       return res.status(402).json({ message: "Payment was not successful" });
     }
-    if (monnifyData.currency !== "NGN") {
+    const paidCurrency = monnifyData.currency || monnifyData.currencyCode || "NGN";
+    if (paidCurrency !== "NGN") {
       return res.status(402).json({ message: "Unexpected payment currency" });
     }
   }
@@ -408,7 +409,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     // server-computed total (protects against a tampered client-side amount).
     // Monnify amounts are plain Naira decimals, not kobo.
     if (method === "monnify" && !monnifyData.isMock) {
-      if (Math.abs(monnifyData.amountPaid - total) > 1) {
+      const actualPaid = parseFloat(monnifyData.amountPaid ?? monnifyData.amount ?? 0);
+      if (Math.abs(actualPaid - total) > 1) {
         await client.query("ROLLBACK");
         return res.status(402).json({
           message: "Amount paid does not match order total. Please contact support with reference " + effectivePaymentRef,
