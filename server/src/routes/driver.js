@@ -17,6 +17,7 @@ const driverEmergencyController = require("../controllers/driverEmergencyControl
 const driverStatsController = require("../controllers/driverStatsController");
 const driverBankAccountController = require("../controllers/driverBankAccountController");
 const driverChatController = require("../controllers/driverChatController");
+const driverPinController = require("../controllers/driverPinController");
 
 // ── Root Driver API Info / Health ──────────────────────────────────
 router.get("/", (req, res) => {
@@ -34,6 +35,7 @@ router.get("/", (req, res) => {
       proof_upload: "POST /api/driver/upload/proof",
       telemetry: "POST /api/driver/location",
       wallet: "GET /api/driver/earnings | GET /api/driver/banks | POST /api/driver/bank/resolve | POST /api/driver/withdraw",
+      pin_security: "POST /api/driver/pin/setup | POST /api/driver/pin/verify | GET /api/driver/pin/status | POST /api/driver/pin/reset",
       notifications: "POST /api/driver/device-token | GET /api/driver/notifications | PATCH /api/driver/notifications/:id/read | PATCH /api/driver/notifications/read-all",
       performance: "GET /api/driver/stats | GET /api/driver/performance",
       emergency_sos: "POST /api/driver/emergency | POST /api/driver/emergency/:id/cancel"
@@ -145,6 +147,18 @@ router.post("/saved-banks/sync", driverProtect, driverBankAccountController.sync
 router.patch("/saved-banks/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
 router.post("/saved-banks/:id/default", driverProtect, driverBankAccountController.setDefaultBankAccount);
 router.delete("/saved-banks/:id", driverProtect, driverBankAccountController.deleteSavedBankAccount);
+
+// ── 5c. Driver Security PIN (App Unlock & Cashout Protection) ───────────
+router.get("/pin/status", driverProtect, driverPinController.getPinStatus);
+router.get("/pin", driverProtect, driverPinController.getPinStatus);
+router.post("/pin/setup", driverProtect, driverPinController.setupPin);
+router.post("/pin/create", driverProtect, driverPinController.setupPin);
+router.post("/pin/change", driverProtect, driverPinController.setupPin);
+router.put("/pin/setup", driverProtect, driverPinController.setupPin);
+router.post("/pin/verify", driverProtect, driverPinController.verifyPin);
+router.post("/pin/validate", driverProtect, driverPinController.verifyPin);
+router.post("/pin/check", driverProtect, driverPinController.verifyPin);
+router.post("/pin/reset", driverProtect, driverPinController.resetPinWithPassword);
 
 // ── 6. Push Tokens & In-App Notification Feed ────────────────────────
 router.post("/device-token", driverProtect, driverNotificationController.registerDeviceToken);

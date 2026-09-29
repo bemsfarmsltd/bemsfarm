@@ -63,6 +63,7 @@ const driverProtect = async (req, res, next) => {
         d.wallet_account_number,
         d.wallet_bank_name,
         d.wallet_account_name,
+        (d.pin_hash IS NOT NULL) AS has_pin,
         COALESCE(da.is_available, d.is_available, false) AS is_available,
         COALESCE(da.is_on_delivery, false) AS is_on_delivery
       FROM drivers d

@@ -1,5 +1,7 @@
 const pool = require("../db/pool");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 // ── GET /api/driver/earnings ─────────────────────────────────────────
 // Get current wallet balance, commission breakdown, and payout history
@@ -292,7 +294,7 @@ const requestWithdrawal = async (req, res, next) => {
   const client = await pool.connect();
   try {
     const driverId = req.driver.id;
-    const { amount, bank_name, account_number, account_name, notes, saved_account_id, bank_account_id } = req.body;
+    const { amount, bank_name, account_number, account_name, notes, saved_account_id, bank_account_id, pin, security_pin, pin_token } = req.body;
 
     const withdrawAmount = parseFloat(amount);
     if (!withdrawAmount || isNaN(withdrawAmount) || withdrawAmount <= 0) {
@@ -301,9 +303,9 @@ const requestWithdrawal = async (req, res, next) => {
 
     await client.query("BEGIN");
 
-    // Fetch driver for balance check and bank defaults
+    // Fetch driver for balance check, bank defaults, and security PIN status
     const driverResult = await client.query(
-      "SELECT total_earnings, bank_name, account_number, account_name, name FROM drivers WHERE id = $1 FOR UPDATE",
+      "SELECT total_earnings, bank_name, account_number, account_name, name, pin_hash, pin_failed_attempts, pin_locked_until FROM drivers WHERE id = $1 FOR UPDATE",
       [driverId]
     );
 
@@ -313,6 +315,63 @@ const requestWithdrawal = async (req, res, next) => {
     }
 
     const driver = driverResult.rows[0];
+
+    // Optional PIN verification on cashout
+    const providedPin = pin || security_pin;
+    if (driver.pin_hash && (providedPin || pin_token)) {
+      if (driver.pin_locked_until && new Date(driver.pin_locked_until) > new Date()) {
+        await client.query("ROLLBACK");
+        const remainingMinutes = Math.max(1, Math.ceil((new Date(driver.pin_locked_until) - new Date()) / 60000));
+        return res.status(423).json({
+          message: `Security PIN is locked due to too many failed attempts. Try again in ${remainingMinutes} minute(s).`,
+          locked: true,
+        });
+      }
+
+      if (pin_token) {
+        try {
+          const decoded = jwt.verify(pin_token, process.env.JWT_SECRET);
+          if (decoded.driver_id !== driverId || !decoded.pin_verified) {
+            throw new Error("Invalid PIN verification token");
+          }
+        } catch (_) {
+          await client.query("ROLLBACK");
+          return res.status(401).json({ message: "Invalid or expired PIN session. Please enter your PIN again." });
+        }
+      } else if (providedPin) {
+        const isMatch = await bcrypt.compare(String(providedPin).trim(), driver.pin_hash);
+        if (!isMatch) {
+          const currentAttempts = (parseInt(driver.pin_failed_attempts, 10) || 0) + 1;
+          if (currentAttempts >= 5) {
+            await client.query(
+              "UPDATE drivers SET pin_failed_attempts = $1, pin_locked_until = NOW() + INTERVAL '15 minutes' WHERE id = $2",
+              [currentAttempts, driverId]
+            );
+            await client.query("COMMIT");
+            return res.status(401).json({
+              message: "Incorrect PIN. Account security is locked for 15 minutes.",
+              locked: true,
+            });
+          } else {
+            await client.query(
+              "UPDATE drivers SET pin_failed_attempts = $1 WHERE id = $2",
+              [currentAttempts, driverId]
+            );
+            await client.query("COMMIT");
+            return res.status(401).json({
+              message: `Incorrect PIN. ${5 - currentAttempts} attempt(s) remaining.`,
+              remaining_attempts: 5 - currentAttempts,
+            });
+          }
+        }
+        // Valid PIN - reset failed attempts
+        await client.query(
+          "UPDATE drivers SET pin_failed_attempts = 0, pin_locked_until = NULL WHERE id = $1",
+          [driverId]
+        );
+      }
+    }
+
     let targetBank = bank_name;
     let targetAccNumber = account_number;
     let targetAccName = account_name;
