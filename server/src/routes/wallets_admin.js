@@ -393,7 +393,11 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
           destinationAccountNumber: payout.account_number,
         });
       } catch (monErr) {
-        console.warn("Live Monnify disbursement notice (sandbox/offline mode):", monErr.message);
+        console.error("❌ Live Monnify disbursement failed:", monErr.message);
+        await client.query("ROLLBACK");
+        return res.status(502).json({
+          message: `Disbursement transfer failed via Monnify: ${monErr.message}. The payout remains pending and funds have not been deducted.`,
+        });
       }
     }
 

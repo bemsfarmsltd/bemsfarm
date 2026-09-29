@@ -21,8 +21,9 @@ async function getMonnifyToken() {
     return cachedToken;
   }
 
-  const apiKey = process.env.MONNIFY_API_KEY || "MK_TEST_CG14E4X8S6";
-  const secretKey = process.env.MONNIFY_SECRET_KEY || "HGK0PJ30V49T5QA1JHX5M09CE74VGC22";
+  const isProd = process.env.NODE_ENV === "production";
+  const apiKey = process.env.MONNIFY_API_KEY || (isProd ? null : "MK_TEST_CG14E4X8S6");
+  const secretKey = process.env.MONNIFY_SECRET_KEY || (isProd ? null : "HGK0PJ30V49T5QA1JHX5M09CE74VGC22");
   if (!apiKey || !secretKey) {
     throw new Error("Monnify credentials are not configured (MONNIFY_API_KEY / MONNIFY_SECRET_KEY)");
   }

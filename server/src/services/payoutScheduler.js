@@ -128,7 +128,13 @@ async function processScheduledPayouts() {
             gatewayRef = monnifyRes.reference;
           }
         } catch (monErr) {
-          console.warn("[auto-payout] Monnify transfer notice:", monErr.message);
+          console.error(`❌ [auto-payout] Monnify transfer failed for driver ${driver.id} (${driver.name}):`, monErr.message);
+          await client.query(
+            `UPDATE driver_payouts SET status = 'failed', notes = $1, updated_at = NOW() WHERE id = $2`,
+            [`Automated payout failed: ${monErr.message}`, payoutRecord.id]
+          );
+          await client.query("COMMIT");
+          continue; // Do NOT deduct ledger or mark commissions as paid!
         }
 
         // Mark as paid & update ledgers

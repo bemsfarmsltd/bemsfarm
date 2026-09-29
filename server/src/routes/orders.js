@@ -408,7 +408,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     // Reconcile: the amount actually paid via Monnify must match the
     // server-computed total (protects against a tampered client-side amount).
     // Monnify amounts are plain Naira decimals, not kobo.
-    if (method === "monnify" && !monnifyData.isMock) {
+    if (method === "monnify") {
       const actualPaid = parseFloat(monnifyData.amountPaid ?? monnifyData.amount ?? 0);
       if (Math.abs(actualPaid - total) > 1) {
         await client.query("ROLLBACK");
