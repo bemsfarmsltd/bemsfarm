@@ -109,7 +109,7 @@ async function sendMessage(customerId, message, actor, options = {}) {
   }
 
   if (resolvedOrderId) {
-    orderContext = await fetchOrderReferenceContext(resolvedOrderId);
+    orderContext = await fetchOrderReferenceContext(resolvedOrderId, actor ? null : customerId);
   }
 
   const db = await pool.connect();

@@ -21,13 +21,33 @@ if (!fs.existsSync(avatarUploadDir)) {
   fs.mkdirSync(avatarUploadDir, { recursive: true });
 }
 
+// Whitelisted file types and extensions
+const ALLOWED_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic"]);
+const ALLOWED_IMAGE_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif"
+]);
+const ALLOWED_DOC_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".pdf"]);
+const ALLOWED_DOC_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf"
+]);
+
 // Configure multer storage for Proof of Delivery
 const proofStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, proofUploadDir);
   },
   filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const ext = ALLOWED_IMAGE_EXTS.has(rawExt) ? rawExt : ".jpg";
     const unique = `POD_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     cb(null, unique);
   }
@@ -39,7 +59,8 @@ const docStorage = multer.diskStorage({
     cb(null, docUploadDir);
   },
   filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const ext = ALLOWED_DOC_EXTS.has(rawExt) ? rawExt : (file.mimetype === "application/pdf" ? ".pdf" : ".jpg");
     const docType = (req.body.doc_type || req.query.type || "DOC").toUpperCase().replace(/[^A-Z0-9_]/g, "");
     const unique = `${docType}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     cb(null, unique);
@@ -50,10 +71,9 @@ const upload = multer({
   storage: proofStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: function (req, file, cb) {
-    const allowed = /jpeg|jpg|png|webp|heic/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const mime = file.mimetype.toLowerCase();
-    if (allowed.test(ext) || allowed.test(mime)) {
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+    if (ALLOWED_IMAGE_EXTS.has(rawExt) && ALLOWED_IMAGE_MIMES.has(mime)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) are permitted"));
@@ -65,10 +85,9 @@ const uploadDoc = multer({
   storage: docStorage,
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
   fileFilter: function (req, file, cb) {
-    const allowed = /jpeg|jpg|png|webp|heic|pdf/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const mime = file.mimetype.toLowerCase();
-    if (allowed.test(ext) || allowed.test(mime) || mime === "application/pdf") {
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+    if (ALLOWED_DOC_EXTS.has(rawExt) && ALLOWED_DOC_MIMES.has(mime)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) or PDF documents are permitted"));
@@ -231,7 +250,8 @@ const avatarStorage = multer.diskStorage({
     cb(null, avatarUploadDir);
   },
   filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const ext = ALLOWED_IMAGE_EXTS.has(rawExt) ? rawExt : ".jpg";
     const driverId = req.driver?.id || "DRV";
     const unique = `AVATAR_${driverId}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}${ext}`;
     cb(null, unique);
@@ -242,10 +262,9 @@ const uploadAvatar = multer({
   storage: avatarStorage,
   limits: { fileSize: 6 * 1024 * 1024 }, // 6MB limit
   fileFilter: function (req, file, cb) {
-    const allowed = /jpeg|jpg|png|webp|heic/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const mime = file.mimetype.toLowerCase();
-    if (allowed.test(ext) || allowed.test(mime)) {
+    const rawExt = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+    if (ALLOWED_IMAGE_EXTS.has(rawExt) && ALLOWED_IMAGE_MIMES.has(mime)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) are permitted for profile photo"));
