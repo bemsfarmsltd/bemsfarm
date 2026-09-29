@@ -168,10 +168,219 @@ function parseDateFilter(query = {}) {
   };
 }
 
+// ── HELPER: Dynamic chart series generator based on selected filter ─
+function getChartSeriesQuery(filter) {
+  const range = (filter.range || 'today').toLowerCase();
+
+  if (range === 'today') {
+    return {
+      revenueSql: `
+        SELECT
+          TO_CHAR(h.hr, 'HH24:00') AS label,
+          COALESCE(SUM(o.total), 0) AS revenue
+        FROM generate_series(
+          date_trunc('day', NOW()),
+          date_trunc('hour', NOW()),
+          '1 hour'::interval
+        ) AS h(hr)
+        LEFT JOIN orders o
+          ON date_trunc('hour', o.created_at) = h.hr
+          AND o.status NOT IN ('cancelled')
+        GROUP BY h.hr
+        ORDER BY h.hr
+      `,
+      ordersSql: `
+        SELECT
+          TO_CHAR(h.hr, 'HH24:00') AS label,
+          COALESCE(COUNT(o.id), 0) AS orders
+        FROM generate_series(
+          date_trunc('day', NOW()),
+          date_trunc('hour', NOW()),
+          '1 hour'::interval
+        ) AS h(hr)
+        LEFT JOIN orders o
+          ON date_trunc('hour', o.created_at) = h.hr
+          AND o.status NOT IN ('cancelled')
+        GROUP BY h.hr
+        ORDER BY h.hr
+      `,
+    };
+  }
+
+  if (range === '12d') {
+    return {
+      revenueSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(SUM(o.total), 0) AS revenue
+        FROM generate_series(
+          CURRENT_DATE - INTERVAL '11 days',
+          CURRENT_DATE, '1 day'
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+      ordersSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(COUNT(o.id), 0) AS orders
+        FROM generate_series(
+          CURRENT_DATE - INTERVAL '11 days',
+          CURRENT_DATE, '1 day'
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+    };
+  }
+
+  if (range === '1m' || range === '30d' || range === 'month') {
+    return {
+      revenueSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(SUM(o.total), 0) AS revenue
+        FROM generate_series(
+          CURRENT_DATE - INTERVAL '29 days',
+          CURRENT_DATE, '1 day'
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+      ordersSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(COUNT(o.id), 0) AS orders
+        FROM generate_series(
+          CURRENT_DATE - INTERVAL '29 days',
+          CURRENT_DATE, '1 day'
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+    };
+  }
+
+  if (range === '1y' || range === '365d' || range === 'year') {
+    return {
+      revenueSql: `
+        SELECT
+          TO_CHAR(m.mth, 'Mon YY') AS label,
+          COALESCE(SUM(o.total), 0) AS revenue
+        FROM generate_series(
+          date_trunc('month', CURRENT_DATE - INTERVAL '11 months'),
+          date_trunc('month', CURRENT_DATE),
+          '1 month'::interval
+        ) AS m(mth)
+        LEFT JOIN orders o
+          ON date_trunc('month', o.created_at) = m.mth
+          AND o.status NOT IN ('cancelled')
+        GROUP BY m.mth
+        ORDER BY m.mth
+      `,
+      ordersSql: `
+        SELECT
+          TO_CHAR(m.mth, 'Mon YY') AS label,
+          COALESCE(COUNT(o.id), 0) AS orders
+        FROM generate_series(
+          date_trunc('month', CURRENT_DATE - INTERVAL '11 months'),
+          date_trunc('month', CURRENT_DATE),
+          '1 month'::interval
+        ) AS m(mth)
+        LEFT JOIN orders o
+          ON date_trunc('month', o.created_at) = m.mth
+          AND o.status NOT IN ('cancelled')
+        GROUP BY m.mth
+        ORDER BY m.mth
+      `,
+    };
+  }
+
+  if (range === 'custom' && filter.from && filter.to) {
+    return {
+      revenueSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(SUM(o.total), 0) AS revenue
+        FROM generate_series(
+          '${filter.from}'::date,
+          '${filter.to}'::date,
+          '1 day'::interval
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+      ordersSql: `
+        SELECT
+          TO_CHAR(d.day, 'DD Mon') AS label,
+          COALESCE(COUNT(o.id), 0) AS orders
+        FROM generate_series(
+          '${filter.from}'::date,
+          '${filter.to}'::date,
+          '1 day'::interval
+        ) AS d(day)
+        LEFT JOIN orders o
+          ON DATE(o.created_at) = d.day
+          AND o.status NOT IN ('cancelled')
+        GROUP BY d.day
+        ORDER BY d.day
+      `,
+    };
+  }
+
+  // Default: '7d' or fallback 7 days
+  return {
+    revenueSql: `
+      SELECT
+        TO_CHAR(d.day, 'Dy') AS label,
+        COALESCE(SUM(o.total), 0) AS revenue
+      FROM generate_series(
+        CURRENT_DATE - INTERVAL '6 days',
+        CURRENT_DATE, '1 day'
+      ) AS d(day)
+      LEFT JOIN orders o
+        ON DATE(o.created_at) = d.day
+        AND o.status NOT IN ('cancelled')
+      GROUP BY d.day
+      ORDER BY d.day
+    `,
+    ordersSql: `
+      SELECT
+        TO_CHAR(d.day, 'Dy') AS label,
+        COALESCE(COUNT(o.id), 0) AS orders
+      FROM generate_series(
+        CURRENT_DATE - INTERVAL '6 days',
+        CURRENT_DATE, '1 day'
+      ) AS d(day)
+      LEFT JOIN orders o
+        ON DATE(o.created_at) = d.day
+        AND o.status NOT IN ('cancelled')
+      GROUP BY d.day
+      ORDER BY d.day
+    `,
+  };
+}
+
 // ── OVERVIEW TAB ─────────────────────────────────────────────────
 router.get("/overview", async (req, res, next) => {
   try {
     const filter = parseDateFilter(req.query);
+    const chartQueries = getChartSeriesQuery(filter);
 
     const [
       revenuePeriod,
@@ -181,7 +390,7 @@ router.get("/overview", async (req, res, next) => {
       enRoute,
       lowStock,
       activeCustomers,
-      newThisWeek,
+      newThisPeriod,
       staffOnDuty,
       staffAbsent,
       pendingAi,
@@ -223,24 +432,28 @@ router.get("/overview", async (req, res, next) => {
           WHERE stock <= low_stock_threshold
             AND status = 'active'`),
 
-      // Active customers (ordered in last 30 days)
-      q1(`SELECT COUNT(DISTINCT customer_id) AS count FROM orders
-          WHERE created_at >= NOW() - INTERVAL '30 days'`),
+      // Active customers in selected period (with 30d baseline fallback)
+      q1(`SELECT
+            COUNT(DISTINCT customer_id) AS in_period,
+            (SELECT COUNT(DISTINCT customer_id) FROM orders WHERE created_at >= NOW() - INTERVAL '30 days') AS baseline_30d
+          FROM orders
+          WHERE ${filter.ordersWhere} AND status NOT IN ('cancelled')`),
 
-      // New customer signups this week
+      // New customer signups in selected period
       q1(`SELECT COUNT(*) AS count FROM users
-          WHERE role = 'user' AND joined_at >= NOW() - INTERVAL '7 days'`),
+          WHERE role = 'user' AND ${filter.usersWhere}`),
 
-      // Staff on duty today
+      // Staff on duty in selected period
       q1(`SELECT COUNT(*) AS count FROM staff_attendance
-          WHERE date = CURRENT_DATE AND status = 'present'`),
+          WHERE ${filter.attendanceWhere} AND status = 'present'`),
 
-      // Staff absent today
+      // Staff absent in selected period
       q1(`SELECT COUNT(*) AS count FROM staff_attendance
-          WHERE date = CURRENT_DATE AND status = 'absent'`),
+          WHERE ${filter.attendanceWhere} AND status = 'absent'`),
 
-      // Pending AI conversations
-      q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations WHERE bot_type='chef' AND archived=false`),
+      // Pending/active AI conversations in selected period
+      q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
+          WHERE bot_type='chef' AND ${filter.aiWhere}`),
 
       // Returns/refunds submitted in period
       q1(`SELECT COUNT(*) AS count FROM returns WHERE ${filter.returnsWhere}`),
@@ -266,33 +479,11 @@ router.get("/overview", async (req, res, next) => {
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
-      // Revenue last 7 days
-      q(`SELECT
-           TO_CHAR(d.day, 'Dy') AS label,
-           COALESCE(SUM(o.total), 0) AS revenue
-         FROM generate_series(
-           CURRENT_DATE - INTERVAL '6 days',
-           CURRENT_DATE, '1 day'
-         ) AS d(day)
-         LEFT JOIN orders o
-           ON DATE(o.created_at) = d.day
-           AND o.status NOT IN ('cancelled')
-         GROUP BY d.day
-         ORDER BY d.day`),
+      // Dynamic revenue time series matching filter
+      q(chartQueries.revenueSql),
 
-      // Orders last 7 days
-      q(`SELECT
-           TO_CHAR(d.day, 'Dy') AS label,
-           COALESCE(COUNT(o.id), 0) AS orders
-         FROM generate_series(
-           CURRENT_DATE - INTERVAL '6 days',
-           CURRENT_DATE, '1 day'
-         ) AS d(day)
-         LEFT JOIN orders o
-           ON DATE(o.created_at) = d.day
-           AND o.status NOT IN ('cancelled')
-         GROUP BY d.day
-         ORDER BY d.day`),
+      // Dynamic orders time series matching filter
+      q(chartQueries.ordersSql),
 
       // Top selling produce in period
       q(`SELECT
@@ -347,22 +538,22 @@ router.get("/overview", async (req, res, next) => {
     ]);
 
     const [activeCustomersList, staffOnDutyList] = await Promise.all([
-      // Customers who ordered in the last 30 days
+      // Customers who ordered in the selected period (or 30d baseline)
       q(`SELECT c.name, c.phone, COUNT(o.id) AS orders, COALESCE(SUM(o.total),0) AS spent
          FROM orders o
          JOIN users c ON o.customer_id = c.id
-         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+         WHERE ${filter.isFiltered ? filter.ordersJoinWhere : "o.created_at >= NOW() - INTERVAL '30 days'"}
          GROUP BY c.id, c.name, c.phone
          ORDER BY spent DESC
          LIMIT 10`),
 
-      // Staff clocked in today
-      q(`SELECT s.name, st.role, st.shift, sa.clock_in, sa.status
+      // Staff clocked in for selected period
+      q(`SELECT s.name, st.role, st.shift, sa.clock_in, sa.status, sa.date
          FROM staff_attendance sa
          JOIN staff st ON sa.staff_id = st.id
          JOIN users s ON st.user_id = s.id
-         WHERE sa.date = CURRENT_DATE
-         ORDER BY sa.clock_in ASC NULLS LAST
+         WHERE sa.${filter.attendanceWhere}
+         ORDER BY sa.date DESC, sa.clock_in ASC NULLS LAST
          LIMIT 10`),
     ]);
 
@@ -374,6 +565,9 @@ router.get("/overview", async (req, res, next) => {
     });
     pipelineMap.returned = parseInt(returnsPeriod.count || 0);
 
+    const activeCustCount = parseInt(activeCustomers.in_period || 0);
+    const baselineCustCount = parseInt(activeCustomers.baseline_30d || 0);
+
     res.json({
       filter: {
         range: filter.range,
@@ -384,13 +578,17 @@ router.get("/overview", async (req, res, next) => {
       kpis: {
         revenue_today: parseFloat(revenuePeriod.revenue || 0),
         orders_today: parseInt(revenuePeriod.orders || 0),
+        revenue_period: parseFloat(revenuePeriod.revenue || 0),
+        orders_period: parseInt(revenuePeriod.orders || 0),
         pending_orders: parseInt(pendingOrders.count || 0),
         ready_dispatch: parseInt(readyDispatch.count || 0),
         active_deliveries: parseInt(activeDeliveries.count || 0),
         en_route: parseInt(enRoute.count || 0),
         low_stock_alerts: parseInt(lowStock.count || 0),
-        active_customers: parseInt(activeCustomers.count || 0),
-        new_this_week: parseInt(newThisWeek.count || 0),
+        active_customers: activeCustCount > 0 ? activeCustCount : baselineCustCount,
+        active_customers_period: activeCustCount,
+        new_this_week: parseInt(newThisPeriod.count || 0),
+        new_in_period: parseInt(newThisPeriod.count || 0),
         staff_on_duty: parseInt(staffOnDuty.count || 0),
         staff_absent: parseInt(staffAbsent.count || 0),
         pending_ai: parseInt(pendingAi.count || 0),
@@ -413,6 +611,7 @@ router.get("/overview", async (req, res, next) => {
           orders: parseInt(r.orders),
         })),
       },
+
     });
   } catch (err) {
     next(err);
@@ -423,13 +622,14 @@ router.get("/overview", async (req, res, next) => {
 router.get("/sales", async (req, res, next) => {
   try {
     const filter = parseDateFilter(req.query);
+    const chartSeries = getChartSeriesQuery(filter);
 
     const [
       periodStats,
       monthStats,
       returnsPeriod,
       skusSold,
-      daily7d,
+      dailySeries,
       last6Months,
       topProducts,
       recentOrders,
@@ -466,19 +666,8 @@ router.get("/sales", async (req, res, next) => {
           WHERE ${filter.ordersJoinWhere}
             AND o.status NOT IN ('cancelled')`),
 
-      // Revenue last 7 days (daily)
-      q(`SELECT
-           TO_CHAR(d.day, 'Dy') AS day_label,
-           COALESCE(SUM(o.total), 0) AS revenue
-         FROM generate_series(
-           CURRENT_DATE - INTERVAL '6 days',
-           CURRENT_DATE, '1 day'
-         ) AS d(day)
-         LEFT JOIN orders o
-           ON DATE(o.created_at) = d.day
-           AND o.status NOT IN ('cancelled')
-         GROUP BY d.day
-         ORDER BY d.day`),
+      // Revenue series matching selected filter
+      q(chartSeries.revenueSql),
 
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') AS month,
@@ -582,16 +771,23 @@ router.get("/sales", async (req, res, next) => {
       },
       kpis: {
         today_revenue: parseFloat(periodStats.revenue || 0),
+        period_revenue: parseFloat(periodStats.revenue || 0),
         orders_today: parseInt(periodStats.orders || 0),
+        orders_period: parseInt(periodStats.orders || 0),
         avg_order_value: parseFloat(periodStats.avg_order || 0),
         month_revenue: parseFloat(monthStats.revenue || 0),
         orders_month: parseInt(monthStats.orders || 0),
         returns_today: parseInt(returnsPeriod.count || 0),
+        returns_period: parseInt(returnsPeriod.count || 0),
         returns_value: parseFloat(returnsPeriod.total || 0),
         skus_sold: parseInt(skusSold.count || 0),
       },
       charts: {
-        daily_7d: daily7d,
+        daily_7d: dailySeries.map((r) => ({
+          day_label: r.label || r.day_label,
+          label: r.label || r.day_label,
+          revenue: parseFloat(r.revenue || 0),
+        })),
         monthly_6m: last6Months,
         by_category: byCategory,
         by_payment: byPayment,
@@ -611,6 +807,7 @@ router.get("/sales", async (req, res, next) => {
 router.get("/finance", async (req, res, next) => {
   try {
     const filter = parseDateFilter(req.query);
+    const chartSeries = getChartSeriesQuery(filter);
 
     const [
       periodGrossStats,
@@ -623,7 +820,7 @@ router.get("/finance", async (req, res, next) => {
       monthly6m,
       byPayment,
       byChannel,
-      daily7d,
+      dailySeries,
       recentSettlements,
     ] = await Promise.all([
       // 1. Period gross revenue: orders revenue + non-order completed income in selected period
@@ -733,20 +930,8 @@ router.get("/finance", async (req, res, next) => {
          GROUP BY 1
          ORDER BY amount DESC`),
 
-      // 11. Daily Gross Inflows (Last 7 Days)
-      q(`SELECT
-           TO_CHAR(d.day, 'Dy (DD Mon)') AS label,
-           COALESCE(SUM(o.total), 0) AS revenue,
-           COALESCE(COUNT(o.id), 0) AS orders
-         FROM generate_series(
-           CURRENT_DATE - INTERVAL '6 days',
-           CURRENT_DATE, '1 day'
-         ) AS d(day)
-         LEFT JOIN orders o
-           ON DATE(o.created_at) = d.day
-           AND o.status NOT IN ('cancelled')
-         GROUP BY d.day
-         ORDER BY d.day`),
+      // 11. Dynamic Gross Inflows matching filter
+      q(chartSeries.revenueSql),
 
       // 12. Recent Financial Transactions & Order Settlements in period
       q(`SELECT
@@ -795,8 +980,10 @@ router.get("/finance", async (req, res, next) => {
       },
       kpis: {
         month_revenue: grossPeriod,
+        period_revenue: grossPeriod,
         today_revenue: grossPeriod, // represents selected period gross
         total_orders_month: parseInt(periodGrossStats.total_orders || 0),
+        total_orders_period: parseInt(periodGrossStats.total_orders || 0),
         today_orders: parseInt(periodGrossStats.total_orders || 0),
         avg_order_value: parseFloat(periodGrossStats.avg_order_value || 0),
         pos_revenue: posRev,
@@ -809,6 +996,7 @@ router.get("/finance", async (req, res, next) => {
         driver_commissions: commsPeriod,
         driver_trips: parseInt(commissionsStatsPeriod.total_trips || 0),
         refunds_month: refundsPeriod,
+        refunds_period: refundsPeriod,
         refunds_count: parseInt(refundsStatsPeriod.count || 0),
       },
       charts: {
@@ -823,8 +1011,9 @@ router.get("/finance", async (req, res, next) => {
           count: parseInt(r.count || 0),
           amount: parseFloat(r.amount || 0),
         })),
-        daily_7d: daily7d.map((r) => ({
+        daily_7d: dailySeries.map((r) => ({
           label: r.label,
+          day_label: r.label,
           revenue: parseFloat(r.revenue || 0),
           orders: parseInt(r.orders || 0),
         })),

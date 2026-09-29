@@ -46,6 +46,149 @@ function formatTimeAgo(dateStr) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+export function getPeriodLabels(range = 'today', from = '', to = '') {
+  const r = (range || 'today').toLowerCase();
+  if (r === 'today') {
+    return {
+      revenueTitle: "Today's Revenue",
+      revenueSub: (orders) => `${orders ?? 0} orders today`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new today`,
+      staffTitle: 'Staff on Duty',
+      staffSub: (absent) => `${absent ?? 0} absent today`,
+      chartRevTitle: "Today's Revenue Trend",
+      chartRevSub: 'Hourly gross receipts in Naira (₦)',
+      chartOrdersTitle: "Today's Orders",
+      chartOrdersSub: 'Hourly order volume',
+      salesVolTitle: "Today's Sales Volume",
+      salesVolSub: (orders) => `${orders ?? 0} orders today`,
+      skusSub: 'Unique products sold today',
+      returnsSub: (amt) => `${amt} refunded today`,
+      inPeriod: 'today',
+      possessive: "Today's",
+      rangeName: 'Today',
+    };
+  }
+  if (r === '7d') {
+    return {
+      revenueTitle: '7-Day Revenue',
+      revenueSub: (orders) => `${orders ?? 0} orders in last 7 days`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new this week`,
+      staffTitle: 'Staff Attendance (7 Days)',
+      staffSub: (absent) => `${absent ?? 0} absent in last 7 days`,
+      chartRevTitle: 'Revenue Trend (7 Days)',
+      chartRevSub: 'Daily gross receipts in Naira (₦)',
+      chartOrdersTitle: 'Orders Per Day (7 Days)',
+      chartOrdersSub: 'Daily order volume',
+      salesVolTitle: '7-Day Sales Volume',
+      salesVolSub: (orders) => `${orders ?? 0} orders in last 7 days`,
+      skusSub: 'Unique products sold in last 7 days',
+      returnsSub: (amt) => `${amt} refunded in last 7 days`,
+      inPeriod: 'in last 7 days',
+      possessive: '7-Day',
+      rangeName: 'Last 7 Days',
+    };
+  }
+  if (r === '12d') {
+    return {
+      revenueTitle: '12-Day Revenue',
+      revenueSub: (orders) => `${orders ?? 0} orders in last 12 days`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new in last 12 days`,
+      staffTitle: 'Staff Attendance (12 Days)',
+      staffSub: (absent) => `${absent ?? 0} absent in last 12 days`,
+      chartRevTitle: 'Revenue Trend (12 Days)',
+      chartRevSub: 'Daily gross receipts in Naira (₦)',
+      chartOrdersTitle: 'Orders Per Day (12 Days)',
+      chartOrdersSub: 'Daily order volume',
+      salesVolTitle: '12-Day Sales Volume',
+      salesVolSub: (orders) => `${orders ?? 0} orders in last 12 days`,
+      skusSub: 'Unique products sold in last 12 days',
+      returnsSub: (amt) => `${amt} refunded in last 12 days`,
+      inPeriod: 'in last 12 days',
+      possessive: '12-Day',
+      rangeName: 'Last 12 Days',
+    };
+  }
+  if (r === '1m' || r === '30d' || r === 'month') {
+    return {
+      revenueTitle: 'Monthly Revenue',
+      revenueSub: (orders) => `${orders ?? 0} orders in last 30 days`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new this month`,
+      staffTitle: 'Staff Attendance (Monthly)',
+      staffSub: (absent) => `${absent ?? 0} absent this month`,
+      chartRevTitle: 'Monthly Revenue Trend',
+      chartRevSub: 'Daily gross receipts over 30 days in Naira (₦)',
+      chartOrdersTitle: 'Orders Per Day (30 Days)',
+      chartOrdersSub: 'Daily order volume over 30 days',
+      salesVolTitle: 'Monthly Sales Volume',
+      salesVolSub: (orders) => `${orders ?? 0} orders this month`,
+      skusSub: 'Unique products sold this month',
+      returnsSub: (amt) => `${amt} refunded this month`,
+      inPeriod: 'this month',
+      possessive: 'Monthly',
+      rangeName: 'Last 1 Month',
+    };
+  }
+  if (r === '1y' || r === '365d' || r === 'year') {
+    return {
+      revenueTitle: 'Annual Revenue',
+      revenueSub: (orders) => `${orders ?? 0} orders this year`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new this year`,
+      staffTitle: 'Staff Attendance (Annual)',
+      staffSub: (absent) => `${absent ?? 0} absent this year`,
+      chartRevTitle: 'Annual Revenue Trend',
+      chartRevSub: 'Monthly gross receipts in Naira (₦)',
+      chartOrdersTitle: 'Monthly Orders Volume',
+      chartOrdersSub: 'Volume per month',
+      salesVolTitle: 'Annual Sales Volume',
+      salesVolSub: (orders) => `${orders ?? 0} orders this year`,
+      skusSub: 'Unique products sold this year',
+      returnsSub: (amt) => `${amt} refunded this year`,
+      inPeriod: 'this year',
+      possessive: 'Annual',
+      rangeName: 'Last 1 Year',
+    };
+  }
+  if (r === 'custom' && from && to) {
+    const rangeStr = `${from} to ${to}`;
+    return {
+      revenueTitle: 'Period Revenue',
+      revenueSub: (orders) => `${orders ?? 0} orders (${rangeStr})`,
+      customersSub: (cnt) => `↑ ${cnt ?? 0} new in period`,
+      staffTitle: 'Staff Attendance (Period)',
+      staffSub: (absent) => `${absent ?? 0} absent in period`,
+      chartRevTitle: `Revenue (${rangeStr})`,
+      chartRevSub: 'Gross receipts in selected window in Naira (₦)',
+      chartOrdersTitle: `Orders (${rangeStr})`,
+      chartOrdersSub: 'Order volume in selected window',
+      salesVolTitle: 'Period Sales Volume',
+      salesVolSub: (orders) => `${orders ?? 0} orders in period`,
+      skusSub: 'Unique products sold in period',
+      returnsSub: (amt) => `${amt} refunded in period`,
+      inPeriod: `(${rangeStr})`,
+      possessive: 'Period',
+      rangeName: rangeStr,
+    };
+  }
+  return {
+    revenueTitle: "Today's Revenue",
+    revenueSub: (orders) => `${orders ?? 0} orders today`,
+    customersSub: (cnt) => `↑ ${cnt ?? 0} new today`,
+    staffTitle: 'Staff on Duty',
+    staffSub: (absent) => `${absent ?? 0} absent today`,
+    chartRevTitle: "Today's Revenue Trend",
+    chartRevSub: 'Hourly gross receipts in Naira (₦)',
+    chartOrdersTitle: "Today's Orders",
+    chartOrdersSub: 'Hourly order volume',
+    salesVolTitle: "Today's Sales Volume",
+    salesVolSub: (orders) => `${orders ?? 0} orders today`,
+    skusSub: 'Unique products sold today',
+    returnsSub: (amt) => `${amt} refunded today`,
+    inPeriod: 'today',
+    possessive: "Today's",
+    rangeName: 'Today',
+  };
+}
+
 // ── Shared drill-down column presets ──────────────────────────────────────────
 
 const orderColumns = [
@@ -373,6 +516,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
 
   useEffect(() => { load() }, [load])
 
+  const period     = getPeriodLabels(range, from, to)
   const weekDays   = data?.charts?.week_revenue?.map(r => r.label) ?? []
   const revenueArr = data?.charts?.week_revenue?.map(r => Number(r.revenue)) ?? []
   const ordersArr  = data?.charts?.week_orders?.map(r => Number(r.orders)) ?? []
@@ -415,7 +559,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
   const staffTodayList      = data?.staff_today ?? []
 
   const openOrders = () => setModal({
-    title: "Today's Orders", subtitle: 'Most recent orders across all sales channels',
+    title: `${period.possessive} Orders`, subtitle: `Recent orders recorded ${period.inPeriod} across all sales channels`,
     icon: 'ri-shopping-cart-2-line', columns: orderColumns, rows: recentOrders,
   })
   const openPending = () => setModal({
@@ -432,7 +576,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
     icon: 'ri-alert-line', columns: lowStockColumns, rows: lowStock,
   })
   const openActiveCustomers = () => setModal({
-    title: 'Active Customers', subtitle: 'Ordered in the last 30 days, by spend',
+    title: 'Active Customers', subtitle: `Active shoppers recorded ${period.inPeriod}, ranked by total spend`,
     icon: 'ri-user-3-line',
     columns: [
       { key: 'name', label: 'Name' },
@@ -443,17 +587,17 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
     rows: activeCustomersList,
   })
   const openStaffToday = () => setModal({
-    title: 'Staff on Duty', subtitle: "Today's attendance log",
+    title: period.staffTitle, subtitle: `${period.rangeName} attendance log`,
     icon: 'ri-team-line', columns: staffColumns, rows: staffTodayList,
   })
   const openWeekRevenue = () => setModal({
-    title: 'Revenue This Week', subtitle: 'Daily gross receipts',
+    title: period.chartRevTitle, subtitle: period.chartRevSub,
     icon: 'ri-line-chart-line',
     columns: [{ key: 'label', label: 'Day' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
     rows: data?.charts?.week_revenue ?? [],
   })
   const openWeekOrders = () => setModal({
-    title: 'Orders Per Day', subtitle: 'Volume across the last 7 days',
+    title: period.chartOrdersTitle, subtitle: period.chartOrdersSub,
     icon: 'ri-bar-chart-grouped-line',
     columns: [{ key: 'label', label: 'Day' }, { key: 'orders', label: 'Orders', align: 'right' }],
     rows: data?.charts?.week_orders ?? [],
@@ -473,7 +617,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
       {/* 6 Executive Summary KPI Cards */}
       <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.revenue_today)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" onClick={openOrders} />
+          <StatsCard title={period.revenueTitle} value={fmtNaira(kpis.revenue_period ?? kpis.revenue_today)} sub={period.revenueSub(kpis.orders_period ?? kpis.orders_today)} riIcon="ri-money-dollar-circle-line" color="green" onClick={openOrders} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Pending Orders"    value={kpis.pending_orders ?? 0}              sub={`${kpis.ready_dispatch ?? 0} ready for dispatch`} riIcon="ri-shopping-cart-2-line"    color="amber" onClick={openPending} />
@@ -485,10 +629,10 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
           <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Requires restocking"                              riIcon="ri-alert-line"              color="red" onClick={openLowStock} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Active Customers"  value={(kpis.active_customers ?? 0).toLocaleString()} sub={`↑ ${kpis.new_this_week ?? 0} new this week`}  riIcon="ri-user-3-line"             color="purple" onClick={openActiveCustomers} />
+          <StatsCard title="Active Customers"  value={(kpis.active_customers_period ?? kpis.active_customers ?? 0).toLocaleString()} sub={period.customersSub(kpis.new_in_period ?? kpis.new_this_week)} riIcon="ri-user-3-line" color="purple" onClick={openActiveCustomers} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub={`${kpis.staff_absent ?? 0} absent today`}         riIcon="ri-team-line"               color="teal" onClick={openStaffToday} />
+          <StatsCard title={period.staffTitle} value={kpis.staff_on_duty ?? 0}               sub={period.staffSub(kpis.staff_absent)}               riIcon="ri-team-line"               color="teal" onClick={openStaffToday} />
         </div>
       </div>
 
@@ -524,8 +668,8 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
             <div className="card-body p-3">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <div>
-                  <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Revenue This Week</h6>
-                  <p className="text-muted fw-medium mb-0" style={{ fontSize: '0.72rem' }}>Daily gross receipts in Naira (₦) · click for details</p>
+                  <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>{period.chartRevTitle}</h6>
+                  <p className="text-muted fw-medium mb-0" style={{ fontSize: '0.72rem' }}>{period.chartRevSub} · click for details</p>
                 </div>
               </div>
               <div ref={revenueRef} />
@@ -535,8 +679,8 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
         <div className="col-xl-4">
           <div className="card mb-0 h-100 chart-panel-clickable" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }} onClick={openWeekOrders} role="button" tabIndex={0}>
             <div className="card-body p-3">
-              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Orders Per Day</h6>
-              <p className="text-muted fw-medium mb-2" style={{ fontSize: '0.72rem' }}>Volume across active days · click for details</p>
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>{period.chartOrdersTitle}</h6>
+              <p className="text-muted fw-medium mb-2" style={{ fontSize: '0.72rem' }}>{period.chartOrdersSub} · click for details</p>
               <div ref={ordersRef} />
             </div>
           </div>
@@ -586,7 +730,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
             </div>
             <div className="card-body p-0">
               {recentOrders.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">No orders yet today.</p>
+                <p className="text-muted text-center py-4 fs-sm">No orders recorded {period.inPeriod}.</p>
               ) : (
                 <Table>
                   <Thead><Th>Order ID</Th><Th>Customer</Th><Th>Items</Th><Th>Total</Th><Th>Status</Th><Th>Time</Th></Thead>
@@ -748,7 +892,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
             </div>
             <div className="card-body p-2.5">
               {aiConvs.length === 0 ? (
-                <p className="text-muted text-center py-3 fs-sm">No AI conversations today.</p>
+                <p className="text-muted text-center py-3 fs-sm">No AI conversations recorded {period.inPeriod}.</p>
               ) : (
                 <div className="d-flex flex-column gap-2">
                   {aiConvs.slice(0, 3).map((conv, i) => (
@@ -812,7 +956,8 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
   }, [range, from, to])
   useEffect(() => { load() }, [load])
 
-  const weekDays   = data?.charts?.daily_7d?.map(r => r.day_label) ?? []
+  const period     = getPeriodLabels(range, from, to)
+  const weekDays   = data?.charts?.daily_7d?.map(r => r.day_label || r.label) ?? []
   const revenueW   = data?.charts?.daily_7d?.map(r => Number(r.revenue)) ?? []
   const months6    = data?.charts?.monthly_6m?.map(r => r.month) ?? []
   const incomeM    = data?.charts?.monthly_6m?.map(r => Number(r.revenue)) ?? []
@@ -876,7 +1021,7 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
   const skusSoldList = data?.skus_sold_list ?? []
 
   const openReturnsToday = () => setModal({
-    title: 'Returns & Refunds Today', subtitle: 'Refund requests submitted today',
+    title: `Returns & Refunds (${period.rangeName})`, subtitle: `Refund requests submitted ${period.inPeriod}`,
     icon: 'ri-arrow-go-back-line',
     columns: [
       { key: 'order_id', label: 'Order' },
@@ -888,13 +1033,13 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
     rows: returnsTodayList,
   })
   const openSkusSold = () => setModal({
-    title: 'Unique SKUs Sold Today', subtitle: 'Products with completed sales today',
+    title: `Unique SKUs Sold (${period.rangeName})`, subtitle: `Products with completed sales ${period.inPeriod}`,
     icon: 'ri-price-tag-3-line', columns: productSoldColumns, rows: skusSoldList,
   })
   const openDaily7d = () => setModal({
-    title: 'Revenue This Week (7 Days)', subtitle: 'Daily revenue receipts',
+    title: period.chartRevTitle, subtitle: period.chartRevSub,
     icon: 'ri-line-chart-line',
-    columns: [{ key: 'day_label', label: 'Day' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
+    columns: [{ key: 'day_label', label: 'Period' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
     rows: data?.charts?.daily_7d ?? [],
   })
   const openMonthly6m = () => setModal({
@@ -908,13 +1053,13 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
     rows: data?.charts?.monthly_6m ?? [],
   })
   const openByCategory = () => setModal({
-    title: 'Sales by Category', subtitle: 'This month category distribution',
+    title: 'Sales by Category', subtitle: `Category distribution ${period.inPeriod}`,
     icon: 'ri-pie-chart-line',
     columns: [{ key: 'category', label: 'Category' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
     rows: data?.charts?.by_category ?? [],
   })
   const openByPayment = () => setModal({
-    title: 'Sales by Payment Method', subtitle: 'This month tender breakdown',
+    title: 'Sales by Payment Method', subtitle: `Tender breakdown ${period.inPeriod}`,
     icon: 'ri-bank-card-line',
     columns: [
       { key: 'method', label: 'Method', render: (r) => (r.method || '').replace(/_/g, ' ') },
@@ -929,16 +1074,16 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
       {/* 4 Unique Commercial KPI Cards */}
       <div className="row g-3 mb-3">
         <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Monthly Sales Volume" value={fmtNaira(kpis.month_revenue)} sub={`${kpis.orders_month ?? 0} orders this month`} riIcon="ri-line-chart-line" color="green" onClick={openMonthly6m} />
+          <StatsCard title={period.salesVolTitle} value={fmtNaira(kpis.period_revenue ?? kpis.today_revenue ?? kpis.month_revenue)} sub={period.salesVolSub(kpis.orders_period ?? kpis.orders_today ?? kpis.orders_month)} riIcon="ri-line-chart-line" color="green" onClick={openMonthly6m} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
           <StatsCard title="Avg Order Value (AOV)" value={fmtNaira(kpis.avg_order_value)} sub="Average transaction spend" riIcon="ri-funds-line" color="amber" onClick={openDaily7d} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Active SKUs Moving" value={kpis.skus_sold ?? 0} sub="Unique products sold today" riIcon="ri-price-tag-3-line" color="teal" onClick={openSkusSold} />
+          <StatsCard title="Active SKUs Moving" value={kpis.skus_sold ?? 0} sub={period.skusSub} riIcon="ri-price-tag-3-line" color="teal" onClick={openSkusSold} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Returns & Refunds" value={kpis.returns_today ?? 0} sub={`${fmtNaira(kpis.returns_value)} refunded today`} riIcon="ri-arrow-go-back-line" color="red" onClick={openReturnsToday} />
+          <StatsCard title="Returns & Refunds" value={kpis.returns_period ?? kpis.returns_today ?? 0} sub={period.returnsSub(fmtNaira(kpis.returns_value))} riIcon="ri-arrow-go-back-line" color="red" onClick={openReturnsToday} />
         </div>
       </div>
 
@@ -948,10 +1093,10 @@ function SalesTab({ range = 'today', from = '', to = '' }) {
           <div className="card mb-0 h-100 chart-panel-clickable" onClick={openDaily7d} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
             <div className="card-body p-3">
               <div className="d-flex align-items-center justify-content-between mb-1">
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>7-Day Revenue Velocity</h6>
-                <span className="badge bg-light text-muted border fs-xs">Daily Gross</span>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>{period.chartRevTitle}</h6>
+                <span className="badge bg-light text-muted border fs-xs">{period.rangeName}</span>
               </div>
-              <p className="text-muted fs-xs mb-2">Daily receipts trend over the past 7 days</p>
+              <p className="text-muted fs-xs mb-2">{period.chartRevSub}</p>
               <div ref={revWeekRef} />
             </div>
           </div>
@@ -1096,6 +1241,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
   }, [range, from, to])
   useEffect(() => { load() }, [load])
 
+  const period       = getPeriodLabels(range, from, to)
   const months6      = data?.charts?.monthly_6m?.map(r => r.month) ?? []
   const revenue6m    = data?.charts?.monthly_6m?.map(r => Number(r.revenue)) ?? []
   const orders6m     = data?.charts?.monthly_6m?.map(r => Number(r.orders)) ?? []
@@ -1245,7 +1391,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
 
   const openTenderBreakdown = () => setModal({
     title: 'Payment Method Settlement Breakdown',
-    subtitle: 'Receipts grouped by tender type this month',
+    subtitle: `Receipts grouped by tender type ${period.inPeriod}`,
     icon: 'ri-bank-card-line',
     columns: [
       { key: 'method', label: 'Tender Method', render: (r) => String(r.method || 'cash').replace(/_/g, ' ').toUpperCase() },
@@ -1258,7 +1404,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
 
   const openChannelBreakdown = () => setModal({
     title: 'Sales Channels Breakdown',
-    subtitle: 'POS In-store vs Online storefront receipts',
+    subtitle: `Receipts by sales channel ${period.inPeriod}`,
     icon: 'ri-store-3-line',
     columns: [
       { key: 'channel', label: 'Channel Name', render: (r) => <div className="fw-bold text-dark">{r.channel}</div> },
@@ -1282,9 +1428,9 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
       <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard
-            title="Monthly Gross Revenue"
-            value={fmtNaira(kpis.month_revenue)}
-            sub={`${kpis.total_orders_month ?? 0} orders recorded`}
+            title={`${period.possessive} Gross Revenue`}
+            value={fmtNaira(kpis.period_revenue ?? kpis.month_revenue)}
+            sub={`${kpis.total_orders_period ?? kpis.total_orders_month ?? 0} orders recorded ${period.inPeriod}`}
             riIcon="ri-money-dollar-circle-line"
             color="green"
             onClick={openMonthlyTrend}
@@ -1294,7 +1440,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
           <StatsCard
             title="POS Counter Sales"
             value={fmtNaira(kpis.pos_revenue)}
-            sub={`${kpis.pos_orders ?? 0} in-store POS orders`}
+            sub={`${kpis.pos_orders ?? 0} in-store POS orders ${period.inPeriod}`}
             riIcon="ri-calculator-line"
             color="blue"
             onClick={openChannelBreakdown}
@@ -1304,7 +1450,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
           <StatsCard
             title="Online & Storefront"
             value={fmtNaira(kpis.web_revenue)}
-            sub={`${kpis.web_orders ?? 0} web checkouts`}
+            sub={`${kpis.web_orders ?? 0} web checkouts ${period.inPeriod}`}
             riIcon="ri-shopping-cart-2-line"
             color="purple"
             onClick={openChannelBreakdown}
@@ -1324,7 +1470,7 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
           <StatsCard
             title="Driver Payout Accruals"
             value={fmtNaira(kpis.driver_commissions)}
-            sub={`${kpis.driver_trips ?? 0} delivery trips fulfilled`}
+            sub={`${kpis.driver_trips ?? 0} delivery trips ${period.inPeriod}`}
             riIcon="ri-bike-line"
             color="amber"
             onClick={openSettlements}
@@ -1333,8 +1479,8 @@ function FinanceTab({ range = 'today', from = '', to = '' }) {
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard
             title="Refund Deductions"
-            value={fmtNaira(kpis.refunds_month)}
-            sub={`${kpis.refunds_count ?? 0} refunds this month`}
+            value={fmtNaira(kpis.refunds_period ?? kpis.refunds_month)}
+            sub={`${kpis.refunds_count ?? 0} refunds ${period.inPeriod}`}
             riIcon="ri-arrow-go-back-line"
             color="red"
             onClick={openSettlements}
@@ -1790,6 +1936,7 @@ function OperationsTab({ range = 'today', from = '', to = '' }) {
   }, [range, from, to])
   useEffect(() => { load() }, [load])
 
+  const period    = getPeriodLabels(range, from, to)
   const breakdown = data?.delivery_breakdown ?? {}
   const kpis      = data?.kpis ?? {}
 
@@ -1860,7 +2007,7 @@ function OperationsTab({ range = 'today', from = '', to = '' }) {
     rows: driversOnDutyList,
   })
   const openAvgDeliveryTime = () => setModal({
-    title: 'Completed Deliveries Speed Log', subtitle: "Today's delivered dispatches and transit duration log",
+    title: 'Completed Deliveries Speed Log', subtitle: `${period.rangeName} delivered dispatches and transit duration log`,
     icon: 'ri-time-line',
     columns: [
       {
@@ -1997,7 +2144,7 @@ function OperationsTab({ range = 'today', from = '', to = '' }) {
           <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
             <div className="card-header py-2.5 px-3 border-bottom">
               <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Delivery Status Breakdown</h6>
-              <p className="text-muted fs-xs mb-0">Today's fulfillment distribution</p>
+              <p className="text-muted fs-xs mb-0">{period.possessive} fulfillment distribution</p>
             </div>
             <div className="card-body p-3">
               <div ref={deliveryRef} />
@@ -2013,7 +2160,7 @@ function OperationsTab({ range = 'today', from = '', to = '' }) {
             <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
               <div className="d-flex align-items-center gap-2">
                 <i className="ri-team-line text-primary" style={{ fontSize: 16 }} />
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Staff Attendance Today</h6>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Staff Attendance ({period.rangeName})</h6>
               </div>
               <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">{staffList.filter(s=>s.status==='present').length} Present</span>
             </div>
@@ -2022,7 +2169,7 @@ function OperationsTab({ range = 'today', from = '', to = '' }) {
                 <Thead><Th>Staff Member</Th><Th>Role</Th><Th>Shift</Th><Th>Clock In</Th><Th className="text-center pe-3">Status</Th></Thead>
                 <Tbody>
                   {staffList.length === 0 ? (
-                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No attendance records today.</Td></Tr>
+                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No attendance records for {period.inPeriod === 'today' ? 'today' : period.rangeName}.</Td></Tr>
                   ) : staffList.map((s, i) => (
                     <Tr key={i}>
                       <Td><p className="fw-bold text-dark fs-sm mb-0">{s.name}</p></Td>
@@ -2328,6 +2475,7 @@ function ChefBemsTab({ range = 'today', from = '', to = '' }) {
   }, [range, from, to])
   useEffect(() => { load() }, [load])
 
+  const period    = getPeriodLabels(range, from, to)
   const breakdown = data?.conv_breakdown ?? {}
   const kpis      = data?.kpis ?? {}
 
@@ -2436,7 +2584,7 @@ function ChefBemsTab({ range = 'today', from = '', to = '' }) {
       {/* 4 Clean AI KPI Cards */}
       <div className="row g-3 mb-3">
         <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Today's AI Inquiries" value={kpis.conversations_today ?? 0} sub="Customer recipe & produce chats" riIcon="ri-robot-line" color="blue" onClick={() => openConvs('Conversations Today', 'Most recent conversations')} />
+          <StatsCard title={`${period.possessive} AI Inquiries`} value={kpis.conversations_period ?? kpis.conversations_today ?? 0} sub="Customer recipe & produce chats" riIcon="ri-robot-line" color="blue" onClick={() => openConvs(`${period.possessive} Conversations`, `Conversations recorded ${period.inPeriod}`)} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
           <StatsCard title="Pending Inquiries" value={kpis.pending_replies ?? 0} sub="Awaiting resolution" riIcon="ri-message-3-line" color="amber" onClick={() => openConvs('Pending Replies', 'Awaiting response', convs.filter(c => c.status === 'pending'))} />
@@ -2455,7 +2603,7 @@ function ChefBemsTab({ range = 'today', from = '', to = '' }) {
           <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
             <div className="card-header py-2.5 px-3 border-bottom">
               <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>AI Conversation Status</h6>
-              <p className="text-muted fs-xs mb-0">Today's query resolution mix</p>
+              <p className="text-muted fs-xs mb-0">{period.possessive} query resolution mix</p>
             </div>
             <div className="card-body p-3">
               <div ref={aiRef} />
@@ -2474,7 +2622,7 @@ function ChefBemsTab({ range = 'today', from = '', to = '' }) {
             </div>
             <div className="card-body p-0">
               {convs.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">No customer inquiries recorded today.</p>
+                <p className="text-muted text-center py-4 fs-sm">No customer inquiries recorded for {period.inPeriod === 'today' ? 'today' : period.rangeName}.</p>
               ) : (
                 <div className="d-flex flex-column">
                   {convs.slice(0, 5).map((c, i) => (
