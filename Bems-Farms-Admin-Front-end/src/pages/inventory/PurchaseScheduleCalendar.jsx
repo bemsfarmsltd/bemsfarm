@@ -7,27 +7,31 @@ import ProductSelect from '../../components/ui/ProductSelect'
 export default function PurchaseScheduleCalendar() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Current view date
+  // Current view date & mode
   const [currentDate, setCurrentDate] = useState(() => new Date())
-  const [viewMode, setViewMode] = useState('month') // 'month' | 'agenda'
+  const [viewMode, setViewMode] = useState('month') // 'month' | 'week' | 'agenda'
 
   // Data & loading
   const [schedules, setSchedules] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'scheduled' | 'overdue' | 'received'
+  const [supplierFilter, setSupplierFilter] = useState('all')
+  const [quickFilter, setQuickFilter] = useState('all') // 'all' | 'overdue' | 'today' | 'high_value'
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Products list for dropdown
+  // Products list & warehouses for dropdowns
   const [productsList, setProductsList] = useState([])
   const [warehouses, setWarehouses] = useState([])
 
-  // Modal states
+  // Modal & Drawer states
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState(null)
+  const [dayDrawerDate, setDayDrawerDate] = useState(null) // Date string for slide-over drawer
   const [receiveModalSchedule, setReceiveModalSchedule] = useState(null)
   const [receiveQty, setReceiveQty] = useState('')
   const [receiveWarehouseId, setReceiveWarehouseId] = useState('')
   const [receivingLoading, setReceivingLoading] = useState(false)
+  const [dragOverDate, setDragOverDate] = useState(null)
 
   // Auto-Plan state
   const [autoPlanModalOpen, setAutoPlanModalOpen] = useState(false)
@@ -79,9 +83,9 @@ export default function PurchaseScheduleCalendar() {
     }
   }, [monthString, statusFilter, searchTerm])
 
-  // Fetch products & warehouses for the form dropdowns
+  // Fetch products & warehouses for form dropdowns
   useEffect(() => {
-    api.get('/admin/products', { params: { limit: 100 } })
+    api.get('/admin/products', { params: { limit: 150 } })
       .then((res) => setProductsList(res.data?.products || []))
       .catch(() => {})
 
@@ -121,16 +125,69 @@ export default function PurchaseScheduleCalendar() {
 
   // Month navigation helpers
   const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
+    if (viewMode === 'week') {
+      setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 7))
+    } else {
+      setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
+    }
   }
   const handleNextMonth = () => {
-    setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
+    if (viewMode === 'week') {
+      setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 7))
+    } else {
+      setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
+    }
   }
   const handleToday = () => {
     setCurrentDate(new Date())
   }
 
-  // Build Calendar Matrix
+  // Extract unique suppliers for filter
+  const uniqueSuppliers = useMemo(() => {
+    const set = new Set()
+    schedules.forEach((s) => {
+      if (s.supplier_name && s.supplier_name.trim()) {
+        set.add(s.supplier_name.trim())
+      }
+    })
+    return Array.from(set).sort()
+  }, [schedules])
+
+  // Filtered schedules for calendar rendering
+  const filteredSchedules = useMemo(() => {
+    return schedules.filter((s) => {
+      if (statusFilter !== 'all') {
+        const st = s.computed_status || s.status
+        if (st !== statusFilter) return false
+      }
+      if (supplierFilter !== 'all') {
+        if ((s.supplier_name || '').trim() !== supplierFilter) return false
+      }
+      if (quickFilter === 'overdue') {
+        const st = s.computed_status || s.status
+        if (st !== 'overdue') return false
+      } else if (quickFilter === 'high_value') {
+        if (Number(s.estimated_cost || 0) < 500000) return false
+      } else if (quickFilter === 'today') {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const d = s.expected_date_str || (s.expected_date ? s.expected_date.split('T')[0] : '')
+        if (d !== todayStr) return false
+      }
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase()
+        const pName = (s.product_name || '').toLowerCase()
+        const sName = (s.supplier_name || '').toLowerCase()
+        const sku = (s.product_sku || '').toLowerCase()
+        const notes = (s.notes || '').toLowerCase()
+        if (!pName.includes(q) && !sName.includes(q) && !sku.includes(q) && !notes.includes(q)) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [schedules, statusFilter, supplierFilter, quickFilter, searchTerm])
+
+  // Build Calendar Matrix for Month View
   const calendarCells = useMemo(() => {
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay() // 0 = Sunday
     const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
@@ -183,17 +240,43 @@ export default function PurchaseScheduleCalendar() {
     return cells
   }, [currentYear, currentMonth])
 
+  // Build Week View Columns (Sun - Sat)
+  const weekDays = useMemo(() => {
+    const curr = new Date(currentDate)
+    const dayOfWeek = curr.getDay()
+    const sunday = new Date(curr)
+    sunday.setDate(curr.getDate() - dayOfWeek)
+
+    const days = []
+    const todayStr = new Date().toISOString().split('T')[0]
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday)
+      d.setDate(sunday.getDate() + i)
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      days.push({
+        date: d,
+        dateStr,
+        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
+        dayNum: d.getDate(),
+        monthName: d.toLocaleString('default', { month: 'short' }),
+        isToday: dateStr === todayStr,
+      })
+    }
+    return days
+  }, [currentDate])
+
   // Map schedules by dateStr
   const schedulesByDate = useMemo(() => {
     const map = {}
-    schedules.forEach((sch) => {
+    filteredSchedules.forEach((sch) => {
       const d = sch.expected_date_str || (sch.expected_date ? sch.expected_date.split('T')[0] : '')
       if (!d) return
       if (!map[d]) map[d] = []
       map[d].push(sch)
     })
     return map
-  }, [schedules])
+  }, [filteredSchedules])
 
   // KPI Calculations
   const stats = useMemo(() => {
@@ -222,6 +305,55 @@ export default function PurchaseScheduleCalendar() {
       receivedCount,
     }
   }, [schedules])
+
+  // Drag and drop handler to reschedule item
+  const handleDragStart = (e, schedule) => {
+    e.dataTransfer.setData('text/plain', String(schedule.id))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e, dateStr) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverDate !== dateStr) {
+      setDragOverDate(dateStr)
+    }
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setDragOverDate(null)
+  }
+
+  const handleDrop = async (e, targetDateStr) => {
+    e.preventDefault()
+    setDragOverDate(null)
+    const schId = e.dataTransfer.getData('text/plain')
+    if (!schId) return
+
+    const schedule = schedules.find((s) => String(s.id) === String(schId))
+    if (!schedule) return
+
+    const oldDate = schedule.expected_date_str || (schedule.expected_date ? schedule.expected_date.split('T')[0] : '')
+    if (oldDate === targetDateStr) return
+
+    // Optimistic UI update
+    setSchedules((prev) =>
+      prev.map((s) =>
+        String(s.id) === String(schId)
+          ? { ...s, expected_date_str: targetDateStr, expected_date: targetDateStr }
+          : s
+      )
+    )
+
+    try {
+      await api.patch(`/admin/inventory/schedules/${schId}`, { expected_date: targetDateStr })
+      toast.success(`Rescheduled ${schedule.product_name} to ${targetDateStr}`)
+    } catch (err) {
+      toast.error('Failed to reschedule restock')
+      fetchSchedules() // revert
+    }
+  }
 
   // Open schedule modal for specific date
   const handleOpenScheduleForDate = (dateStr) => {
@@ -279,7 +411,6 @@ export default function PurchaseScheduleCalendar() {
       await api.post('/admin/inventory/schedules', formData)
       toast.success('Purchase scheduled successfully!')
       setScheduleModalOpen(false)
-      // clear query params if any
       if (searchParams.get('product_id')) {
         setSearchParams({})
       }
@@ -308,7 +439,6 @@ export default function PurchaseScheduleCalendar() {
         estimated_cost: it.estimated_cost,
       }))
       setAutoPlanItems(items)
-      // Auto-select all items that are not already scheduled
       const defaultSelected = items.filter((it) => !it.already_scheduled).map((it) => it.keyId)
       setSelectedPlanKeys(defaultSelected)
     } catch (err) {
@@ -319,14 +449,12 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
-  // Toggle individual item in auto-plan
   const handleTogglePlanItem = (keyId) => {
     setSelectedPlanKeys((prev) =>
       prev.includes(keyId) ? prev.filter((k) => k !== keyId) : [...prev, keyId]
     )
   }
 
-  // Toggle select all in auto-plan
   const handleToggleAllPlan = () => {
     if (selectedPlanKeys.length === autoPlanItems.length) {
       setSelectedPlanKeys([])
@@ -335,7 +463,6 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
-  // Update a field inside an auto-plan recommendation item
   const handleUpdatePlanItem = (keyId, field, value) => {
     setAutoPlanItems((prev) =>
       prev.map((it) => {
@@ -350,7 +477,6 @@ export default function PurchaseScheduleCalendar() {
     )
   }
 
-  // Execute and place auto-plan items on calendar
   const handleExecuteAutoPlan = async () => {
     const itemsToSchedule = autoPlanItems.filter((it) => selectedPlanKeys.includes(it.keyId))
     if (!itemsToSchedule.length) {
@@ -373,14 +499,12 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
-  // Open Receive Stock modal
   const handleOpenReceive = (schedule) => {
     setReceiveModalSchedule(schedule)
     setReceiveQty(String(schedule.quantity))
     setReceiveWarehouseId(warehouses[0]?.id ? String(warehouses[0].id) : '')
   }
 
-  // Confirm Receive & Stock In
   const handleConfirmReceive = async () => {
     if (!receiveModalSchedule) return
     const qty = parseInt(receiveQty)
@@ -407,7 +531,6 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
-  // Delete Schedule
   const handleDeleteSchedule = async (id) => {
     if (!window.confirm('Are you sure you want to delete this scheduled restock?')) return
     try {
@@ -420,57 +543,217 @@ export default function PurchaseScheduleCalendar() {
     }
   }
 
+  // Export CSV
+  const handleExportCSV = () => {
+    if (!schedules.length) {
+      toast.error('No schedules available to export')
+      return
+    }
+    const headers = ['Schedule ID', 'Product', 'SKU', 'Expected Date', 'Quantity', 'Unit', 'Est Cost (NGN)', 'Supplier', 'Status', 'Notes']
+    const rows = schedules.map(s => [
+      s.id,
+      `"${(s.product_name || '').replace(/"/g, '""')}"`,
+      `"${s.product_sku || ''}"`,
+      s.expected_date_str || (s.expected_date ? s.expected_date.split('T')[0] : ''),
+      s.quantity,
+      s.unit || 'pcs',
+      s.estimated_cost || 0,
+      `"${(s.supplier_name || 'Direct Farm').replace(/"/g, '""')}"`,
+      s.computed_status || s.status,
+      `"${(s.notes || '').replace(/"/g, '""')}"`
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `Bems_Farms_Restock_Schedule_${monthString}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Restock schedule exported to CSV')
+  }
+
+  // Print Delivery Checklist
+  const handlePrintChecklist = () => {
+    window.print()
+  }
+
   const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+  // Drawer day items
+  const drawerItems = dayDrawerDate ? (schedulesByDate[dayDrawerDate] || []) : []
+  const drawerTotalUnits = drawerItems.reduce((sum, s) => sum + Number(s.quantity || 0), 0)
+  const drawerTotalCost = drawerItems.reduce((sum, s) => sum + Number(s.estimated_cost || 0), 0)
+
   return (
-    <div className="container-fluid py-3">
-      {/* Top Header */}
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div className="container-fluid py-3 restock-calendar-page">
+      {/* Embedded Dynamic Calendar Styles */}
+      <style>{`
+        .calendar-day-cell {
+          transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+        }
+        .calendar-day-cell:hover {
+          background-color: #FAFAF9 !important;
+          z-index: 2;
+        }
+        .calendar-day-cell.drag-over {
+          background-color: #ECFDF5 !important;
+          outline: 2px dashed #059669;
+          outline-offset: -2px;
+        }
+        .calendar-event-pill {
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .calendar-event-pill:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+        }
+        .calendar-more-pill {
+          background-color: #F1F5F9;
+          color: #475569;
+          border: 1px solid #E2E8F0;
+          transition: all 0.15s ease;
+        }
+        .calendar-more-pill:hover {
+          background-color: #E2E8F0;
+          color: #1E293B;
+          transform: scale(1.02);
+        }
+        .day-drawer-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(15, 23, 42, 0.45);
+          backdrop-filter: blur(2px);
+          z-index: 1045;
+          animation: fadeIn 0.2s ease;
+        }
+        .day-drawer-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 520px;
+          max-width: 95vw;
+          height: 100vh;
+          background: #FFFFFF;
+          z-index: 1050;
+          box-shadow: -6px 0 30px rgba(0,0,0,0.15);
+          display: flex;
+          flex-direction: column;
+          animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .restock-print-area, .restock-print-area * {
+            visibility: visible;
+          }
+          .restock-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Top Header & Breadcrumb */}
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 no-print">
         <div>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-1 fs-xs">
-              <li className="breadcrumb-item"><Link to="/inventory/stock" className="text-decoration-none">Inventory</Link></li>
-              <li className="breadcrumb-item active" aria-current="page">Restock Calendar</li>
-            </ol>
-          </nav>
-          <h5 className="mb-0 fw-bold text-dark font-display">Purchase &amp; Restock Calendar</h5>
+          <div className="d-flex align-items-center gap-1.5 fs-xs text-muted mb-1">
+            <Link to="/inventory/stock" className="text-muted text-decoration-none hover-text-primary">Inventory</Link>
+            <i className="ri-arrow-right-s-line fs-10 text-muted"></i>
+            <span className="text-dark fw-medium">Restock Calendar</span>
+          </div>
+          <h4 className="mb-0 fw-bold text-dark font-display d-flex align-items-center gap-2">
+            <span>Purchase &amp; Restock Calendar</span>
+            <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-xs py-1 px-2 fw-medium rounded-pill">
+              Interactive Planner
+            </span>
+          </h4>
           <small className="text-muted">
-            Schedule upcoming supplier orders, farm harvest deliveries, and track stock-ins on an interactive calendar
+            Intelligent supplier deliveries, drag-and-drop scheduling, and automated inventory intake
           </small>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <div className="btn-group shadow-xs">
+          {/* View Mode Switcher */}
+          <div className="btn-group btn-group-sm bg-white p-0.5 rounded-3 border shadow-xs">
             <button
               type="button"
-              className={`btn btn-sm ${viewMode === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              className={`btn btn-sm ${viewMode === 'month' ? 'btn-primary shadow-xs' : 'btn-light border-0 text-muted'}`}
               onClick={() => setViewMode('month')}
             >
-              <i className="ri-calendar-line me-1"></i> Month View
+              <i className="ri-calendar-line me-1"></i> Month
             </button>
             <button
               type="button"
-              className={`btn btn-sm ${viewMode === 'agenda' ? 'btn-primary' : 'btn-outline-secondary'}`}
+              className={`btn btn-sm ${viewMode === 'week' ? 'btn-primary shadow-xs' : 'btn-light border-0 text-muted'}`}
+              onClick={() => setViewMode('week')}
+            >
+              <i className="ri-calendar-2-line me-1"></i> Week
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'agenda' ? 'btn-primary shadow-xs' : 'btn-light border-0 text-muted'}`}
               onClick={() => setViewMode('agenda')}
             >
               <i className="ri-list-check-2 me-1"></i> Agenda / List
             </button>
           </div>
 
+          {/* Export & Print */}
+          <div className="btn-group btn-group-sm">
+            <button
+              type="button"
+              className="btn btn-outline-secondary d-flex align-items-center gap-1 bg-white"
+              onClick={handleExportCSV}
+              title="Export schedules to Excel / CSV"
+            >
+              <i className="ri-download-2-line"></i>
+              <span className="d-none d-md-inline">Export</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary d-flex align-items-center gap-1 bg-white"
+              onClick={handlePrintChecklist}
+              title="Print delivery intake sheet"
+            >
+              <i className="ri-printer-line"></i>
+              <span className="d-none d-md-inline">Print Sheet</span>
+            </button>
+          </div>
+
+          {/* Auto-Plan Reorder Button */}
           <button
             type="button"
-            className="btn btn-outline-primary d-flex align-items-center gap-1.5 shadow-xs bg-white"
+            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5 shadow-xs bg-white py-1.5 px-3"
             onClick={handleOpenAutoPlan}
             title="Auto-analyze low stock & sales velocity to draft calendar restocks"
           >
-            <i className="ri-flashlight-line text-warning"></i>
+            <i className="ri-flashlight-line text-warning fs-5"></i>
             <span className="fw-semibold">Auto-Schedule Restock</span>
           </button>
 
+          {/* Schedule Next Purchase Button */}
           <button
             type="button"
-            className="btn btn-primary d-flex align-items-center gap-1.5 shadow-sm"
+            className="btn btn-sm btn-primary d-flex align-items-center gap-1.5 shadow-sm py-1.5 px-3"
             onClick={() => {
               const tomorrow = new Date()
               tomorrow.setDate(tomorrow.getDate() + 1)
@@ -478,13 +761,13 @@ export default function PurchaseScheduleCalendar() {
             }}
           >
             <i className="ri-add-line fs-5"></i>
-            <span>Schedule Next Purchase</span>
+            <span className="fw-semibold">Schedule Next Purchase</span>
           </button>
         </div>
       </div>
 
       {/* KPI Metrics Row */}
-      <div className="row g-3 mb-4">
+      <div className="row g-3 mb-3.5 no-print">
         {[
           {
             label: 'Upcoming Schedules',
@@ -562,24 +845,24 @@ export default function PurchaseScheduleCalendar() {
       </div>
 
       {/* Main Container Card */}
-      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden restock-print-area">
         {/* Navigation & Controls Toolbar */}
-        <div className="card-header bg-white border-bottom p-3">
+        <div className="card-header bg-white border-bottom p-3 no-print">
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            {/* Month Nav */}
+            {/* Date Navigator */}
             <div className="d-flex align-items-center gap-2">
-              <div className="btn-group btn-group-sm border rounded-2">
+              <div className="btn-group btn-group-sm border rounded-2 shadow-2xs">
                 <button
                   type="button"
                   className="btn btn-light"
                   onClick={handlePrevMonth}
-                  title="Previous Month"
+                  title={viewMode === 'week' ? "Previous Week" : "Previous Month"}
                 >
                   <i className="ri-arrow-left-s-line"></i>
                 </button>
                 <button
                   type="button"
-                  className="btn btn-light fw-bold"
+                  className="btn btn-light fw-bold px-2.5"
                   onClick={handleToday}
                 >
                   Today
@@ -588,33 +871,43 @@ export default function PurchaseScheduleCalendar() {
                   type="button"
                   className="btn btn-light"
                   onClick={handleNextMonth}
-                  title="Next Month"
+                  title={viewMode === 'week' ? "Next Week" : "Next Month"}
                 >
                   <i className="ri-arrow-right-s-line"></i>
                 </button>
               </div>
 
-              <h5 className="fw-bold font-display text-dark mb-0 ms-2">
-                {monthName}
+              <h5 className="fw-bold font-display text-dark mb-0 ms-1">
+                {viewMode === 'week' 
+                  ? `Week of ${weekDays[0].monthName} ${weekDays[0].dayNum} – ${weekDays[6].monthName} ${weekDays[6].dayNum}, ${currentYear}`
+                  : monthName
+                }
               </h5>
+
+              {/* Drag instruction badge */}
+              <span className="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 fs-11 fw-normal d-none d-lg-inline-flex align-items-center gap-1">
+                <i className="ri-drag-drop-line"></i> Drag items between days to reschedule
+              </span>
             </div>
 
             {/* Filters */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Search */}
               <div className="position-relative" style={{ minWidth: '180px' }}>
                 <input
                   type="text"
                   className="form-control form-control-sm ps-4"
-                  placeholder="Filter product or supplier…"
+                  placeholder="Filter product, supplier…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <i className="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted fs-xs"></i>
               </div>
 
+              {/* Status Filter */}
               <select
                 className="form-select form-select-sm"
-                style={{ width: '140px' }}
+                style={{ width: '135px' }}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -624,6 +917,22 @@ export default function PurchaseScheduleCalendar() {
                 <option value="received">Received</option>
               </select>
 
+              {/* Supplier Filter */}
+              {uniqueSuppliers.length > 0 && (
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: '150px' }}
+                  value={supplierFilter}
+                  onChange={(e) => setSupplierFilter(e.target.value)}
+                >
+                  <option value="all">All Suppliers ({uniqueSuppliers.length})</option>
+                  {uniqueSuppliers.map((sup) => (
+                    <option key={sup} value={sup}>{sup}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Refresh Button */}
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
@@ -634,14 +943,49 @@ export default function PurchaseScheduleCalendar() {
               </button>
             </div>
           </div>
+
+          {/* Quick Filter Badges */}
+          <div className="d-flex align-items-center gap-1.5 mt-2.5 pt-2 border-top">
+            <span className="text-muted fs-11 text-uppercase fw-semibold me-1">Quick Filters:</span>
+            <button
+              type="button"
+              className={`btn btn-xs rounded-pill px-2.5 ${quickFilter === 'all' ? 'btn-dark' : 'btn-light border text-muted'}`}
+              onClick={() => setQuickFilter('all')}
+            >
+              All Items ({filteredSchedules.length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs rounded-pill px-2.5 ${quickFilter === 'today' ? 'btn-success' : 'btn-light border text-muted'}`}
+              onClick={() => setQuickFilter(quickFilter === 'today' ? 'all' : 'today')}
+            >
+              <i className="ri-calendar-check-line me-1"></i> Today's Deliveries
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs rounded-pill px-2.5 ${quickFilter === 'overdue' ? 'btn-danger' : 'btn-light border text-muted'}`}
+              onClick={() => setQuickFilter(quickFilter === 'overdue' ? 'all' : 'overdue')}
+            >
+              <i className="ri-alert-line me-1"></i> Critical / Overdue ({stats.overdueCount})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-xs rounded-pill px-2.5 ${quickFilter === 'high_value' ? 'btn-primary' : 'btn-light border text-muted'}`}
+              onClick={() => setQuickFilter(quickFilter === 'high_value' ? 'all' : 'high_value')}
+            >
+              <i className="ri-funds-line me-1"></i> High Value (&gt;₦500k)
+            </button>
+          </div>
         </div>
 
-        {/* View Mode: Month Grid */}
+        {/* ── VIEW 1: MONTH GRID (Anti-Clutter with +X more clustering) ── */}
         {viewMode === 'month' && (
           <div className="calendar-grid-container p-0">
             {/* Days of week header */}
-            <div className="d-grid text-center py-2 bg-light border-bottom text-muted fw-semibold fs-xs text-uppercase"
-                 style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            <div
+              className="d-grid text-center py-2 bg-light border-bottom text-muted fw-bold fs-xs text-uppercase tracking-wider"
+              style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}
+            >
               {daysOfWeek.map((day) => (
                 <div key={day}>{day}</div>
               ))}
@@ -652,41 +996,77 @@ export default function PurchaseScheduleCalendar() {
               className="d-grid"
               style={{
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                minHeight: '620px',
-                backgroundColor: '#EFECE6',
+                minHeight: '660px',
+                backgroundColor: '#E5E7EB',
                 gap: '1px',
               }}
             >
               {calendarCells.map((cell, idx) => {
                 const daySchedules = schedulesByDate[cell.dateStr] || []
+                const isOver = dragOverDate === cell.dateStr
+                const dayTotalCost = daySchedules.reduce((sum, s) => sum + Number(s.estimated_cost || 0), 0)
+                const dayTotalQty = daySchedules.reduce((sum, s) => sum + Number(s.quantity || 0), 0)
+
+                // Clustering: show top 3, rest in "+X more" pill
+                const visibleItems = daySchedules.slice(0, 3)
+                const hiddenCount = daySchedules.length - 3
+
                 return (
                   <div
                     key={idx}
-                    className={`calendar-day-cell bg-white p-1.5 d-flex flex-column position-relative ${
+                    className={`calendar-day-cell bg-white p-2 d-flex flex-column position-relative cursor-pointer ${
                       !cell.isCurrentMonth ? 'opacity-40 bg-light-subtle' : ''
-                    } ${cell.isToday ? 'border border-2 border-success' : ''}`}
-                    style={{ minHeight: '110px' }}
+                    } ${cell.isToday ? 'border border-2 border-success bg-success bg-opacity-5' : ''} ${
+                      isOver ? 'drag-over' : ''
+                    }`}
+                    style={{ minHeight: '125px' }}
+                    onDragOver={(e) => handleDragOver(e, cell.dateStr)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, cell.dateStr)}
+                    onClick={() => {
+                      if (daySchedules.length > 0) {
+                        setDayDrawerDate(cell.dateStr)
+                      } else if (cell.isCurrentMonth) {
+                        handleOpenScheduleForDate(cell.dateStr)
+                      }
+                    }}
                   >
-                    {/* Date Number & Quick Add */}
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <span
-                        className={`fs-xs fw-bold rounded-circle d-inline-flex align-items-center justify-content-center ${
-                          cell.isToday
-                            ? 'bg-success text-white'
-                            : cell.isCurrentMonth
-                            ? 'text-dark'
-                            : 'text-muted'
-                        }`}
-                        style={{ width: '22px', height: '22px' }}
-                      >
-                        {cell.dayNum}
-                      </span>
+                    {/* Date Number, Daily Summary & Quick Add */}
+                    <div className="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-1">
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span
+                          className={`fs-xs fw-bold rounded-circle d-inline-flex align-items-center justify-content-center shadow-2xs ${
+                            cell.isToday
+                              ? 'bg-success text-white'
+                              : cell.isCurrentMonth
+                              ? 'text-dark'
+                              : 'text-muted'
+                          }`}
+                          style={{ width: '24px', height: '24px' }}
+                        >
+                          {cell.dayNum}
+                        </span>
+
+                        {/* Daily Total Summary Badge if items exist */}
+                        {daySchedules.length > 0 && (
+                          <span
+                            className="badge bg-light text-dark border border-gray-200 fs-10 py-0.5 px-1.5 fw-semibold d-none d-md-inline-block text-truncate"
+                            title={`Total: ${dayTotalQty} units (₦${dayTotalCost.toLocaleString()})`}
+                            style={{ maxWidth: '85px' }}
+                          >
+                            {dayTotalCost > 0 ? `₦${Math.round(dayTotalCost / 1000)}k` : `${dayTotalQty}u`}
+                          </span>
+                        )}
+                      </div>
 
                       {cell.isCurrentMonth && (
                         <button
                           type="button"
                           className="btn btn-xs btn-link text-muted p-0 opacity-50 hover-opacity-100 text-decoration-none"
-                          onClick={() => handleOpenScheduleForDate(cell.dateStr)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenScheduleForDate(cell.dateStr)
+                          }}
                           title={`Schedule purchase for ${cell.dateStr}`}
                         >
                           <i className="ri-add-line fs-6"></i>
@@ -694,34 +1074,52 @@ export default function PurchaseScheduleCalendar() {
                       )}
                     </div>
 
-                    {/* Events list */}
-                    <div className="d-flex flex-column gap-1 overflow-y-auto flex-grow-1" style={{ maxHeight: '95px' }}>
-                      {daySchedules.map((sch) => {
+                    {/* Events list: Top 3 items */}
+                    <div className="d-flex flex-column gap-1 flex-grow-1 overflow-hidden">
+                      {visibleItems.map((sch) => {
                         const status = sch.computed_status || sch.status
                         const isOverdue = status === 'overdue'
                         const isReceived = status === 'received'
 
-                        let badgeBg = 'bg-primary-subtle text-primary border-primary-subtle'
-                        if (isReceived) badgeBg = 'bg-success-subtle text-success border-success-subtle'
-                        if (isOverdue) badgeBg = 'bg-danger-subtle text-danger border-danger-subtle'
+                        let badgeClasses = 'bg-primary-subtle text-primary border-primary-subtle'
+                        if (isReceived) badgeClasses = 'bg-success-subtle text-success border-success-subtle'
+                        if (isOverdue) badgeClasses = 'bg-danger-subtle text-danger border-danger-subtle'
 
                         return (
                           <div
                             key={sch.id}
-                            className={`calendar-event-pill border rounded-2 px-1.5 py-1 fs-xs text-truncate cursor-pointer shadow-xs d-flex align-items-center justify-content-between ${badgeBg}`}
-                            style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-                            onClick={() => setSelectedSchedule(sch)}
-                            title={`${sch.product_name} • ${sch.quantity} ${sch.unit || 'pcs'} (${sch.supplier_name || 'Supplier'}) - Status: ${status}`}
+                            draggable="true"
+                            onDragStart={(e) => handleDragStart(e, sch)}
+                            className={`calendar-event-pill border rounded-2 px-1.5 py-0.5 fs-xs text-truncate d-flex align-items-center justify-content-between ${badgeClasses}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedSchedule(sch)
+                            }}
+                            title={`${sch.product_name} • ${sch.quantity} ${sch.unit || 'pcs'} (${sch.supplier_name || 'Supplier'}) - Drag to reschedule`}
                           >
-                            <span className="fw-semibold text-truncate">
+                            <span className="fw-semibold text-truncate me-1" style={{ fontSize: '11px' }}>
                               {sch.product_name}
                             </span>
-                            <span className="badge bg-white text-dark ms-1 flex-shrink-0" style={{ fontSize: '9px' }}>
+                            <span className="badge bg-white text-dark shadow-2xs flex-shrink-0" style={{ fontSize: '9.5px', padding: '1px 4px' }}>
                               {sch.quantity}
                             </span>
                           </div>
                         )
                       })}
+
+                      {/* +X More Clustering Pill */}
+                      {hiddenCount > 0 && (
+                        <div
+                          className="calendar-more-pill rounded-2 py-0.5 px-1.5 fs-10 fw-bold text-center cursor-pointer mt-auto"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDayDrawerDate(cell.dateStr)
+                          }}
+                          title={`Click to view all ${daySchedules.length} restocks on this day`}
+                        >
+                          +{hiddenCount} more ({daySchedules.slice(3).reduce((sum, s) => sum + Number(s.quantity || 0), 0)} units)
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -730,7 +1128,144 @@ export default function PurchaseScheduleCalendar() {
           </div>
         )}
 
-        {/* View Mode: Agenda / List View */}
+        {/* ── VIEW 2: WEEK VIEW (Wide, High-Detail 7-Column Planner) ── */}
+        {viewMode === 'week' && (
+          <div className="week-grid-container p-0">
+            {/* 7 Columns */}
+            <div
+              className="d-grid"
+              style={{
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                minHeight: '620px',
+                backgroundColor: '#E5E7EB',
+                gap: '1px',
+              }}
+            >
+              {weekDays.map((colDay, cIdx) => {
+                const daySchedules = schedulesByDate[colDay.dateStr] || []
+                const isOver = dragOverDate === colDay.dateStr
+                const colTotalCost = daySchedules.reduce((sum, s) => sum + Number(s.estimated_cost || 0), 0)
+                const colTotalUnits = daySchedules.reduce((sum, s) => sum + Number(s.quantity || 0), 0)
+
+                return (
+                  <div
+                    key={cIdx}
+                    className={`bg-white d-flex flex-column ${
+                      colDay.isToday ? 'bg-success bg-opacity-5' : ''
+                    } ${isOver ? 'drag-over' : ''}`}
+                    onDragOver={(e) => handleDragOver(e, colDay.dateStr)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, colDay.dateStr)}
+                    style={{ minHeight: '600px' }}
+                  >
+                    {/* Column Header */}
+                    <div className={`p-2.5 border-bottom text-center ${colDay.isToday ? 'bg-success text-white' : 'bg-light text-dark'}`}>
+                      <div className="fs-xs fw-bold text-uppercase opacity-75">{colDay.dayName}</div>
+                      <div className="fs-5 fw-bolder font-display">{colDay.dayNum} {colDay.monthName}</div>
+                      <div className="d-flex justify-content-between align-items-center mt-1 pt-1 border-top border-white border-opacity-25 fs-11">
+                        <span>{daySchedules.length} Items</span>
+                        <strong className="font-monospace">{colTotalUnits} Units</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn btn-xs w-100 mt-1.5 d-flex align-items-center justify-content-center gap-1 ${
+                          colDay.isToday ? 'btn-light text-success fw-bold' : 'btn-outline-primary bg-white'
+                        }`}
+                        onClick={() => handleOpenScheduleForDate(colDay.dateStr)}
+                      >
+                        <i className="ri-add-line"></i> Schedule
+                      </button>
+                    </div>
+
+                    {/* Column Items */}
+                    <div className="p-2 d-flex flex-column gap-2 flex-grow-1 overflow-y-auto" style={{ maxHeight: '600px' }}>
+                      {daySchedules.length === 0 ? (
+                        <div className="text-center text-muted fs-xs py-4 opacity-50 fst-italic">
+                          No restocks planned
+                        </div>
+                      ) : (
+                        daySchedules.map((sch) => {
+                          const status = sch.computed_status || sch.status
+                          const isReceived = status === 'received'
+                          const isOverdue = status === 'overdue'
+
+                          return (
+                            <div
+                              key={sch.id}
+                              draggable="true"
+                              onDragStart={(e) => handleDragStart(e, sch)}
+                              className="card border rounded-3 shadow-2xs p-2.5 bg-white position-relative hover-shadow cursor-pointer"
+                              onClick={() => setSelectedSchedule(sch)}
+                            >
+                              <div className="d-flex align-items-start justify-content-between gap-1 mb-1">
+                                <span className="fw-bold text-dark fs-xs text-truncate" title={sch.product_name}>
+                                  {sch.product_name}
+                                </span>
+                                <span
+                                  className={`badge ${
+                                    isReceived
+                                      ? 'bg-success-subtle text-success'
+                                      : isOverdue
+                                      ? 'bg-danger-subtle text-danger'
+                                      : 'bg-primary-subtle text-primary'
+                                  }`}
+                                  style={{ fontSize: '9px' }}
+                                >
+                                  {isReceived ? 'Received' : isOverdue ? 'Overdue' : 'Scheduled'}
+                                </span>
+                              </div>
+
+                              <div className="d-flex align-items-center justify-content-between fs-xs text-muted mb-1.5">
+                                <span>{sch.quantity} {sch.unit || 'pcs'}</span>
+                                <strong className="text-dark font-monospace">
+                                  {sch.estimated_cost ? formatNaira(sch.estimated_cost) : '—'}
+                                </strong>
+                              </div>
+
+                              {sch.supplier_name && (
+                                <div className="fs-10 text-muted text-truncate mb-2">
+                                  <i className="ri-store-2-line me-1"></i>{sch.supplier_name}
+                                </div>
+                              )}
+
+                              <div className="d-flex gap-1 mt-auto">
+                                {!isReceived && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-outline-success flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleOpenReceive(sch)
+                                    }}
+                                  >
+                                    <i className="ri-checkbox-circle-line"></i> Receive
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-light border text-muted px-2 py-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedSchedule(sch)
+                                  }}
+                                  title="View Details"
+                                >
+                                  <i className="ri-eye-line"></i>
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── VIEW 3: AGENDA / LIST VIEW ── */}
         {viewMode === 'agenda' && (
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0 fs-sm text-nowrap">
@@ -748,55 +1283,38 @@ export default function PurchaseScheduleCalendar() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-5 text-muted">
-                      <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-                      Loading schedules…
+                    <td colSpan="7" className="text-center py-4 text-muted">
+                      <div className="spinner-border spinner-border-sm me-2"></div>
+                      Loading scheduled purchases…
                     </td>
                   </tr>
-                ) : schedules.length === 0 ? (
+                ) : filteredSchedules.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center py-5 text-muted">
-                      <i className="ri-calendar-event-line fs-1 d-block mb-1"></i>
-                      No purchases scheduled for {monthName}.
+                      <i className="ri-calendar-event-line fs-2 d-block mb-2 opacity-50"></i>
+                      No purchases scheduled for this filter.
                     </td>
                   </tr>
                 ) : (
-                  schedules.map((sch) => {
+                  filteredSchedules.map((sch) => {
                     const status = sch.computed_status || sch.status
-                    const isOverdue = status === 'overdue'
                     const isReceived = status === 'received'
+                    const isOverdue = status === 'overdue'
 
                     return (
                       <tr key={sch.id}>
                         <td>
-                          <div className="fw-bold text-dark">
-                            {sch.expected_date_str || sch.expected_date}
-                          </div>
-                          {isOverdue && (
-                            <small className="text-danger fw-semibold d-block fs-xs">
-                              <i className="ri-error-warning-line me-0.5"></i> Overdue
-                            </small>
-                          )}
+                          <span className="fw-bold font-monospace text-dark">
+                            {sch.expected_date_str || (sch.expected_date ? sch.expected_date.split('T')[0] : '—')}
+                          </span>
                         </td>
                         <td>
                           <div className="d-flex align-items-center gap-2">
-                            {sch.product_image ? (
-                              <img
-                                src={sch.product_image}
-                                alt=""
-                                className="rounded-2 object-fit-cover border"
-                                style={{ width: '32px', height: '32px' }}
-                              />
-                            ) : (
-                              <div
-                                className="rounded-2 bg-light border d-flex align-items-center justify-content-center text-muted"
-                                style={{ width: '32px', height: '32px' }}
-                              >
-                                <i className="ri-archive-line"></i>
-                              </div>
-                            )}
+                            <div className="avatar size-8 bg-light rounded-2 d-flex align-items-center justify-content-center text-primary fw-bold">
+                              <i className="ri-shopping-basket-line"></i>
+                            </div>
                             <div>
-                              <span className="fw-bold text-dark">{sch.product_name}</span>
+                              <strong className="text-dark d-block">{sch.product_name}</strong>
                               {sch.product_sku && (
                                 <small className="text-muted font-monospace d-block fs-xs">{sch.product_sku}</small>
                               )}
@@ -873,6 +1391,167 @@ export default function PurchaseScheduleCalendar() {
           </div>
         )}
       </div>
+
+      {/* ── SLIDE-OVER DAY INSPECTOR DRAWER ────────────────────────── */}
+      {dayDrawerDate && (
+        <>
+          <div className="day-drawer-backdrop" onClick={() => setDayDrawerDate(null)}></div>
+          <div className="day-drawer-panel">
+            {/* Drawer Header */}
+            <div className="p-3.5 border-bottom bg-light d-flex align-items-center justify-content-between">
+              <div>
+                <span className="badge bg-primary text-white text-uppercase fs-10 tracking-wider mb-1">
+                  Day Schedule Inspector
+                </span>
+                <h5 className="mb-0 fw-bold font-display text-dark">
+                  {new Date(dayDrawerDate).toLocaleDateString('default', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </h5>
+              </div>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setDayDrawerDate(null)}
+              ></button>
+            </div>
+
+            {/* Drawer Stats Summary */}
+            <div className="p-3 bg-white border-bottom">
+              <div className="row g-2 text-center">
+                <div className="col-4">
+                  <div className="p-2 rounded-3 bg-light border">
+                    <small className="text-muted fs-xs d-block">Scheduled</small>
+                    <strong className="fs-5 text-dark font-display">{drawerItems.length}</strong>
+                  </div>
+                </div>
+                <div className="col-4">
+                  <div className="p-2 rounded-3 bg-light border">
+                    <small className="text-muted fs-xs d-block">Total Units</small>
+                    <strong className="fs-5 text-primary font-display">{drawerTotalUnits.toLocaleString()}</strong>
+                  </div>
+                </div>
+                <div className="col-4">
+                  <div className="p-2 rounded-3 bg-light border">
+                    <small className="text-muted fs-xs d-block">Est. Outlay</small>
+                    <strong className="fs-6 text-success font-monospace">₦{Math.round(drawerTotalCost).toLocaleString()}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="d-flex gap-2 mt-2.5">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                  onClick={() => {
+                    handleOpenScheduleForDate(dayDrawerDate)
+                  }}
+                >
+                  <i className="ri-add-line"></i> Add Item for this Date
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Items List */}
+            <div className="p-3 overflow-y-auto flex-grow-1 d-flex flex-column gap-2 bg-light-subtle">
+              {drawerItems.length === 0 ? (
+                <div className="text-center py-5 text-muted">
+                  <i className="ri-inbox-line fs-1 d-block mb-2 opacity-50"></i>
+                  No purchases scheduled on this date.
+                </div>
+              ) : (
+                drawerItems.map((item) => {
+                  const status = item.computed_status || item.status
+                  const isReceived = status === 'received'
+                  const isOverdue = status === 'overdue'
+
+                  return (
+                    <div key={item.id} className="card border rounded-3 p-3 bg-white shadow-2xs">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-0.5">{item.product_name}</h6>
+                          {item.product_sku && (
+                            <span className="text-muted font-monospace fs-xs">SKU: {item.product_sku}</span>
+                          )}
+                        </div>
+                        <span
+                          className={`badge ${
+                            isReceived
+                              ? 'bg-success text-white'
+                              : isOverdue
+                              ? 'bg-danger text-white'
+                              : 'bg-warning-subtle text-warning-emphasis'
+                          }`}
+                        >
+                          {isReceived ? 'Received & Stocked' : isOverdue ? 'Overdue' : 'Scheduled'}
+                        </span>
+                      </div>
+
+                      <div className="row g-2 fs-xs text-muted mb-2 py-1.5 px-2 bg-light rounded-2">
+                        <div className="col-6">
+                          Quantity: <strong className="text-dark">{item.quantity} {item.unit || 'pcs'}</strong>
+                        </div>
+                        <div className="col-6 text-end">
+                          Est. Cost: <strong className="text-dark font-monospace">{item.estimated_cost ? formatNaira(item.estimated_cost) : '—'}</strong>
+                        </div>
+                        <div className="col-12">
+                          Supplier: <strong className="text-dark">{item.supplier_name || 'Direct Farm'}</strong>
+                        </div>
+                      </div>
+
+                      {item.notes && (
+                        <div className="fs-xs text-muted mb-2 fst-italic">
+                          "{item.notes}"
+                        </div>
+                      )}
+
+                      <div className="d-flex justify-content-between align-items-center pt-2 border-top gap-2">
+                        {!isReceived ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-success d-inline-flex align-items-center gap-1"
+                            onClick={() => {
+                              handleOpenReceive(item)
+                            }}
+                          >
+                            <i className="ri-checkbox-circle-line"></i> Receive into Stock
+                          </button>
+                        ) : (
+                          <span className="text-success fs-xs fw-semibold">
+                            <i className="ri-checkbox-circle-fill me-1"></i> Stocked In ({item.received_date_str || item.received_date})
+                          </span>
+                        )}
+
+                        <div className="btn-group btn-group-sm">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() => setSelectedSchedule(item)}
+                            title="Edit / View Details"
+                          >
+                            <i className="ri-edit-line"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger"
+                            onClick={() => handleDeleteSchedule(item.id)}
+                            title="Delete"
+                          >
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── MODAL: Schedule Next Purchase ─────────────────────────── */}
       {scheduleModalOpen && (
@@ -1351,24 +2030,23 @@ export default function PurchaseScheduleCalendar() {
 
                       <div className="table-responsive" style={{ maxHeight: '420px' }}>
                         <table className="table table-hover align-middle mb-0 fs-sm">
-                          <thead className="table-light text-muted fs-xs text-uppercase sticky-top">
+                          <thead className="table-light fs-xs text-uppercase text-muted sticky-top">
                             <tr>
-                              <th style={{ width: 40 }}></th>
+                              <th style={{ width: '40px' }}></th>
                               <th>Product</th>
-                              <th>Stock Status</th>
-                              <th style={{ width: 150 }}>Arrival Date</th>
-                              <th style={{ width: 110 }}>Restock Qty</th>
-                              <th style={{ width: 130 }}>Est. Outlay</th>
-                              <th>Supplier</th>
+                              <th>Current Stock</th>
+                              <th>Safety Min</th>
+                              <th style={{ width: '130px' }}>Target Date</th>
+                              <th style={{ width: '110px' }}>Restock Qty</th>
+                              <th style={{ width: '160px' }}>Supplier</th>
+                              <th className="text-end pe-3">Est. Cost</th>
                             </tr>
                           </thead>
                           <tbody>
                             {autoPlanItems.map((item) => {
                               const isChecked = selectedPlanKeys.includes(item.keyId)
-                              const isCritical = item.current_stock <= 0
-
                               return (
-                                <tr key={item.keyId} className={isChecked ? '' : 'opacity-60 bg-light-subtle'}>
+                                <tr key={item.keyId} className={isChecked ? 'table-primary-subtle' : ''}>
                                   <td>
                                     <input
                                       type="checkbox"
@@ -1378,37 +2056,16 @@ export default function PurchaseScheduleCalendar() {
                                     />
                                   </td>
                                   <td>
-                                    <div className="d-flex align-items-center gap-2">
-                                      {item.image_url ? (
-                                        <img
-                                          src={item.image_url}
-                                          alt={item.product_name}
-                                          style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6 }}
-                                          onError={(e) => (e.target.style.display = 'none')}
-                                        />
-                                      ) : (
-                                        <div className="rounded bg-light text-muted d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
-                                          <i className="ri-box-3-line"></i>
-                                        </div>
-                                      )}
-                                      <div>
-                                        <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: 220 }}>
-                                          {item.product_name}
-                                        </div>
-                                        <small className="text-muted">SKU: {item.sku}</small>
-                                      </div>
-                                    </div>
+                                    <div className="fw-semibold text-dark">{item.product_name}</div>
+                                    <small className="text-muted font-monospace fs-xs">{item.sku}</small>
                                   </td>
                                   <td>
-                                    <span
-                                      className={`badge ${
-                                        isCritical
-                                          ? 'bg-danger-subtle text-danger border border-danger-subtle'
-                                          : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
-                                      }`}
-                                    >
-                                      {isCritical ? '0 Stock Outage' : `${item.current_stock} left (Min: ${item.reorder_threshold})`}
+                                    <span className="badge bg-danger-subtle text-danger fw-bold">
+                                      {item.current_stock} {item.unit || 'pcs'}
                                     </span>
+                                  </td>
+                                  <td>
+                                    <span className="text-muted fs-xs">{item.min_stock_threshold || 10}</span>
                                   </td>
                                   <td>
                                     <input
@@ -1420,32 +2077,27 @@ export default function PurchaseScheduleCalendar() {
                                     />
                                   </td>
                                   <td>
-                                    <div className="input-group input-group-sm">
-                                      <input
-                                        type="number"
-                                        className="form-control text-center"
-                                        min="1"
-                                        value={item.quantity}
-                                        onChange={(e) => handleUpdatePlanItem(item.keyId, 'quantity', e.target.value)}
-                                        disabled={!isChecked}
-                                      />
-                                      <span className="input-group-text fs-xs">{item.unit || 'pcs'}</span>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div className="fw-semibold text-dark">
-                                      ₦{(item.estimated_cost || 0).toLocaleString()}
-                                    </div>
-                                    <small className="text-muted">@ ₦{Math.round(item.unit_cost || 0)}/unit</small>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      className="form-control form-control-sm"
+                                      value={item.quantity}
+                                      onChange={(e) => handleUpdatePlanItem(item.keyId, 'quantity', e.target.value)}
+                                      disabled={!isChecked}
+                                    />
                                   </td>
                                   <td>
                                     <input
                                       type="text"
                                       className="form-control form-control-sm"
-                                      value={item.supplier_name}
+                                      value={item.supplier_name || ''}
+                                      placeholder="Supplier"
                                       onChange={(e) => handleUpdatePlanItem(item.keyId, 'supplier_name', e.target.value)}
                                       disabled={!isChecked}
                                     />
+                                  </td>
+                                  <td className="text-end pe-3 font-monospace fw-semibold text-dark">
+                                    {formatNaira(item.estimated_cost)}
                                   </td>
                                 </tr>
                               )
@@ -1459,33 +2111,37 @@ export default function PurchaseScheduleCalendar() {
               </div>
 
               {/* Footer */}
-              <div className="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-between">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setAutoPlanModalOpen(false)}
-                  disabled={autoPlanSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 shadow-sm"
-                  onClick={handleExecuteAutoPlan}
-                  disabled={autoPlanSubmitting || selectedPlanKeys.length === 0}
-                >
-                  {autoPlanSubmitting ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-1"></span>
-                      Scheduling Restocks…
-                    </>
-                  ) : (
-                    <>
-                      <i className="ri-calendar-check-fill"></i>
-                      <span>Place Selected ({selectedPlanKeys.length}) on Calendar</span>
-                    </>
-                  )}
-                </button>
+              <div className="modal-footer bg-white border-top px-4 py-3 justify-content-between">
+                <span className="text-muted fs-xs">
+                  {selectedPlanKeys.length} of {autoPlanItems.length} recommendations selected
+                </span>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setAutoPlanModalOpen(false)}
+                    disabled={autoPlanSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary d-inline-flex align-items-center gap-1.5"
+                    onClick={handleExecuteAutoPlan}
+                    disabled={autoPlanSubmitting || selectedPlanKeys.length === 0}
+                  >
+                    {autoPlanSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1"></span>
+                        Scheduling…
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-calendar-check-line"></i> Confirm &amp; Place on Calendar ({selectedPlanKeys.length})
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
