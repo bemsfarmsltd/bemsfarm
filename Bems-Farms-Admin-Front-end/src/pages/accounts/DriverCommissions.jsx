@@ -19,19 +19,21 @@ const STATUS_CFG = {
 
 // Maps a real driver_commissions row (joined with drivers) to this page's UI shape.
 function mapCommission(c) {
+  const pFrom = c.period_from || c.week_start || c.created_at;
+  const pTo   = c.period_to   || c.week_end   || c.created_at;
   return {
     id: c.id,
     driverId: c.driver_id,
     driver: c.driver_name || 'Unknown Driver',
     phone: c.driver_phone || '',
     vehiclePlate: c.vehicle_plate || '',
-    periodFrom: c.period_from,
-    periodTo: c.period_to,
-    deliveries: Number(c.deliveries || 0),
-    baseAmount: Number(c.base_amount || 0),
+    periodFrom: pFrom,
+    periodTo: pTo,
+    deliveries: Number(c.deliveries || c.trips || 0),
+    baseAmount: Number(c.base_amount || c.total_earned || 0),
     bonus: Number(c.bonus || 0),
     deductions: Number(c.deductions || 0),
-    netPayout: Number(c.net_payout || 0),
+    netPayout: Number(c.net_payout || c.total_earned || c.unpaid_balance || 0),
     status: c.status || 'pending',
     paymentRef: c.payment_ref || '',
     paidAt: c.paid_at,
@@ -201,10 +203,11 @@ export default function DriverCommissions() {
           },
           {
             label: 'Deliveries (loaded)',
-            val: totalDeliveries,
+            val: `${Number(totalDeliveries || 0).toLocaleString()} trips`,
             glow: 'bg-card-glow-blue',
             iconBg: 'rgba(59, 130, 246, 0.12)',
             iconColor: '#2563eb',
+            valColor: 'text-primary',
             icon: 'ri-e-bike-2-line',
             subLeft: 'Fulfilled routes',
             subRight: 'Commissionable',
@@ -418,7 +421,11 @@ export default function DriverCommissions() {
                       <span style={{ fontSize:12 }}>{c.driver}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-muted" style={{ fontSize:12 }}>{fmtD(c.periodFrom)} – {fmtD(c.periodTo)}</td>
+                  <td className="px-3 py-2 text-dark font-medium" style={{ fontSize:12 }}>
+                    {c.periodFrom && c.periodTo ? (
+                      fmtD(c.periodFrom) === fmtD(c.periodTo) ? fmtD(c.periodFrom) : `${fmtD(c.periodFrom)} – ${fmtD(c.periodTo)}`
+                    ) : fmtD(c.periodFrom || c.periodTo)}
+                  </td>
                   <td className="px-3 py-2">{c.deliveries}</td>
                   <td className="px-3 py-2 fw-semibold">{fmt(c.netPayout)}</td>
                   <td className="px-3 py-2">
@@ -579,16 +586,24 @@ export default function DriverCommissions() {
                     ))}
                   </div>
 
-                  <div className="fw-medium mb-2" style={{ fontSize:13 }}>Records</div>
+                  <div className="fw-medium mb-2 text-dark" style={{ fontSize:13 }}>Commission Batch History</div>
                   {d.records.map((r,i) => (
-                    <div key={r.id} className={`d-flex align-items-center justify-content-between py-2 ${i<d.records.length-1?'border-bottom':''}`}>
+                    <div key={r.id} className={`d-flex align-items-center justify-content-between py-2.5 ${i<d.records.length-1?'border-bottom':''}`}>
                       <div>
-                        <div style={{ fontSize:13, fontWeight:500 }}>{fmtD(r.periodFrom)} – {fmtD(r.periodTo)}</div>
-                        <div className="text-muted" style={{ fontSize:11 }}>{r.deliveries} deliveries{r.paymentRef ? ` · ${r.paymentRef}` : ''}</div>
+                        <div style={{ fontSize:13, fontWeight:600, color: '#0F172A' }}>
+                          {r.periodFrom && r.periodTo ? (
+                            fmtD(r.periodFrom) === fmtD(r.periodTo) ? fmtD(r.periodFrom) : `${fmtD(r.periodFrom)} – ${fmtD(r.periodTo)}`
+                          ) : fmtD(r.periodFrom || r.periodTo)}
+                        </div>
+                        <div className="text-muted" style={{ fontSize:11, marginTop: 2 }}>
+                          <span className="badge bg-light text-dark border me-1">{r.deliveries} deliveries</span>
+                          {r.baseAmount ? <span>Total: {fmt(r.baseAmount)}</span> : null}
+                          {r.paymentRef ? ` · Ref: ${r.paymentRef}` : ''}
+                        </div>
                       </div>
                       <div className="text-end">
-                        <div className="fw-bold" style={{ fontSize:13, color: r.status === 'paid' ? '#16a34a' : '#374151' }}>{fmt(r.netPayout)}</div>
-                        <span className={`badge border ${STATUS_CFG[r.status]?.cls}`} style={{ fontSize:10 }}>{STATUS_CFG[r.status]?.label}</span>
+                        <div className="fw-bold" style={{ fontSize:14, color: r.status === 'paid' ? '#16a34a' : '#0F172A' }}>{fmt(r.netPayout)}</div>
+                        <span className={`badge border ${STATUS_CFG[r.status]?.cls}`} style={{ fontSize:10, textTransform: 'capitalize' }}>{STATUS_CFG[r.status]?.label}</span>
                       </div>
                     </div>
                   ))}

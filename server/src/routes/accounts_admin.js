@@ -791,6 +791,8 @@ router.get("/commissions", requireRole("superadmin", "manager", "accountant"), a
     const rows = await pool.query(`
       SELECT
         dc.*,
+        COALESCE(dc.period_from, dc.week_start, dc.created_at) AS period_from,
+        COALESCE(dc.period_to, dc.week_end, dc.created_at) AS period_to,
         d.name AS driver_name, d.phone AS driver_phone,
         d.vehicle_plate, d.vehicle_type
       FROM driver_commissions dc
