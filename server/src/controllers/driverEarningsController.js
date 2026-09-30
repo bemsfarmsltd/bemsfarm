@@ -2,6 +2,8 @@ const pool = require("../db/pool");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const QRCode = require("qrcode");
+const { renderDriverStatementHtml, generateSecurityCode } = require("../utils/driverStatementTemplate");
 
 // ── GET /api/driver/earnings ─────────────────────────────────────────
 // Get current wallet balance, commission breakdown, and payout history
@@ -767,7 +769,8 @@ const resolveBankAccount = async (req, res, next) => {
 };
 
 // ── POST & GET /api/driver/wallet/statement ──────────────────────────
-// Generate or trigger an itemized account statement for driver
+// ── POST & GET /api/driver/wallet/statement ──────────────────────────
+// Generate, download, or trigger an itemized account statement for driver
 const requestAccountStatement = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
@@ -776,9 +779,29 @@ const requestAccountStatement = async (req, res, next) => {
     const startDate = body.start_date || query.start_date || body.startDate || query.startDate || null;
     const endDate = body.end_date || query.end_date || body.endDate || query.endDate || null;
     const email = body.email !== undefined ? body.email : query.email;
+    const format = (query.format || body.format || "").toLowerCase();
+    const isHtmlRequested = 
+      format === "html" || 
+      format === "pdf" || 
+      format === "download" || 
+      req.path.endsWith("/download") || 
+      req.path.endsWith("/html") ||
+      (req.headers.accept && req.headers.accept.includes("text/html") && !req.headers.accept.includes("application/json"));
 
     const driverRes = await pool.query(
-      "SELECT id, name, phone, email, total_earnings, wallet_account_number, bank_name, account_number, account_name FROM drivers WHERE id = $1",
+      `
+      SELECT 
+        d.id, d.name, d.phone, d.email, d.vehicle_type, d.vehicle_plate,
+        d.license_number, d.address, d.status, d.created_at AS joined_at,
+        d.wallet_account_number, d.wallet_bank_name, d.wallet_account_name,
+        d.total_earnings, d.bank_name, d.account_number, d.account_name,
+        d.wallet_is_frozen, d.wallet_frozen_reason,
+        (SELECT COUNT(*) FROM deliveries WHERE driver_id = d.id AND status = 'delivered') AS total_delivered,
+        (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = d.id AND status IN ('paid', 'approved')) AS total_paid,
+        (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = d.id AND status = 'pending') AS pending_payouts
+      FROM drivers d
+      WHERE d.id = $1
+      `,
       [driverId]
     );
     if (!driverRes.rows.length) return res.status(404).json({ message: "Driver not found" });
@@ -788,75 +811,220 @@ const requestAccountStatement = async (req, res, next) => {
     const params = [driverId];
     if (startDate) {
       params.push(startDate);
-      dateWhere += ` AND created_at >= $${params.length}`;
+      dateWhere += ` AND l.created_at >= $${params.length}`;
     }
     if (endDate) {
       params.push(endDate);
-      dateWhere += ` AND created_at <= $${params.length}`;
+      dateWhere += ` AND l.created_at <= $${params.length}`;
     }
 
-    // Commissions / Income
-    const commsRes = await pool.query(
-      `SELECT id, week_start, week_end, trips, deliveries, commission_per_delivery, total_earned AS amount, status, created_at AS date, 'income' AS type, 'delivery_earning' AS category, CONCAT('COM-', id) AS reference
-       FROM driver_commissions
-       WHERE driver_id = $1 ${dateWhere}
-       ORDER BY created_at DESC`,
+    // 1. Fetch individual ledger movements (delivery drops, commissions, bonuses, penalties)
+    const ledgerRes = await pool.query(
+      `
+      SELECT 
+        l.id,
+        l.created_at AS date,
+        l.type,
+        l.category,
+        l.amount,
+        l.balance_before,
+        l.balance_after,
+        l.reference,
+        l.description,
+        d.order_id,
+        d.delivery_address,
+        d.delivery_fee
+      FROM driver_wallet_ledger l
+      LEFT JOIN deliveries d ON l.reference = d.delivery_ref
+      WHERE l.driver_id = $1 ${dateWhere}
+      ORDER BY l.created_at ASC
+      `,
       params
     );
 
-    // Payouts / Debits
+    // 2. Fetch withdrawal / bank payout disbursements
     let payoutDateWhere = "";
     const payoutParams = [driverId];
     if (startDate) {
       payoutParams.push(startDate);
-      payoutDateWhere += ` AND requested_at >= $${payoutParams.length}`;
+      payoutDateWhere += ` AND p.requested_at >= $${payoutParams.length}`;
     }
     if (endDate) {
       payoutParams.push(endDate);
-      payoutDateWhere += ` AND requested_at <= $${payoutParams.length}`;
+      payoutDateWhere += ` AND p.requested_at <= $${payoutParams.length}`;
     }
 
     const payoutsRes = await pool.query(
-      `SELECT id, payout_ref AS reference, amount, bank_name, account_number, account_name, status, requested_at AS date, processed_at, notes, 'payout' AS type, 'withdrawal' AS category
-       FROM driver_payouts
-       WHERE driver_id = $1 ${payoutDateWhere}
-       ORDER BY requested_at DESC`,
+      `
+      SELECT 
+        p.id,
+        p.requested_at AS date,
+        'debit' AS type,
+        'withdrawal' AS category,
+        p.amount,
+        p.payout_ref AS reference,
+        CONCAT('Bank Payout to ', COALESCE(p.bank_name, 'Bank'), ' (', p.account_number, ')') AS description,
+        p.status,
+        p.rejection_reason,
+        p.notes,
+        p.processed_at,
+        p.gateway_reference,
+        p.disbursement_method,
+        NULL AS order_id,
+        NULL AS delivery_address,
+        NULL AS delivery_fee
+      FROM driver_payouts p
+      WHERE p.driver_id = $1 ${payoutDateWhere}
+      ORDER BY p.requested_at ASC
+      `,
       payoutParams
     );
 
-    const income = commsRes.rows.map((c) => ({
-      ...c,
-      amount: parseFloat(c.amount) || 0,
-      description: `Delivery Earning (${c.deliveries || 1} drop${(c.deliveries || 1) === 1 ? "" : "s"})`,
-    }));
+    // Fallback if ledger has 0 records
+    let baseEvents = [...ledgerRes.rows];
+    if (baseEvents.length === 0) {
+      let commDateWhere = "";
+      const commParams = [driverId];
+      if (startDate) {
+        commParams.push(startDate);
+        commDateWhere += ` AND c.created_at >= $${commParams.length}`;
+      }
+      if (endDate) {
+        commParams.push(endDate);
+        commDateWhere += ` AND c.created_at <= $${commParams.length}`;
+      }
+      const commissionsRes = await pool.query(
+        `
+        SELECT 
+          c.id,
+          c.created_at AS date,
+          'credit' AS type,
+          'delivery_commission' AS category,
+          c.total_earned AS amount,
+          c.commission_per_delivery,
+          c.deliveries,
+          c.status,
+          CONCAT('COM-', c.id) AS reference,
+          CONCAT('Delivery Commission Drop (', COALESCE(c.deliveries, 1), ' drop', CASE WHEN COALESCE(c.deliveries, 1) = 1 THEN '' ELSE 's' END, ')') AS description,
+          NULL AS order_id,
+          NULL AS delivery_address,
+          NULL AS delivery_fee
+        FROM driver_commissions c
+        WHERE c.driver_id = $1 ${commDateWhere}
+        ORDER BY c.created_at ASC
+        `,
+        commParams
+      );
+      baseEvents = commissionsRes.rows;
+    }
 
-    const payouts = payoutsRes.rows.map((p) => ({
-      ...p,
-      amount: parseFloat(p.amount) || 0,
-      description: `Withdrawal to ${p.bank_name || "Bank"} (${p.account_number || ""})`,
-    }));
+    const allEvents = [...baseEvents, ...payoutsRes.rows].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
 
-    const allTransactions = [...income, ...payouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+    let runningBalance = 0;
+    let totalCredits = 0;
+    let totalDebits = 0;
 
-    const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
-    const totalPayouts = payouts.filter((p) => p.status === "paid" || p.status === "approved").reduce((sum, p) => sum + p.amount, 0);
-    const pendingPayouts = payouts.filter((p) => p.status === "pending").reduce((sum, p) => sum + p.amount, 0);
-    const netBalance = Math.max(0, (parseFloat(driver.total_earnings) || 0) - totalPayouts - pendingPayouts);
+    const statementWithBalances = allEvents.map((ev, index) => {
+      const amt = parseFloat(ev.amount) || 0;
+      const isCredit = ev.type === 'credit';
+      if (isCredit) {
+        runningBalance += amt;
+        totalCredits += amt;
+      } else {
+        runningBalance -= amt;
+        totalDebits += amt;
+      }
+
+      return {
+        ...ev,
+        amount: amt,
+        running_balance: runningBalance,
+        seq_no: index + 1,
+      };
+    });
+
+    const pendingPayouts = parseFloat(driver.pending_payouts) || 0;
+    const closingBalance = Math.max(0, runningBalance - pendingPayouts);
+
+    const periodStart = statementWithBalances.length > 0 
+      ? statementWithBalances[0].date 
+      : driver.joined_at || new Date();
+    const periodEnd = statementWithBalances.length > 0 
+      ? statementWithBalances[statementWithBalances.length - 1].date 
+      : new Date();
+
+    let bankSettings = null;
+    try {
+      const bsRes = await pool.query("SELECT * FROM bank_settings ORDER BY id ASC LIMIT 1");
+      if (bsRes.rows.length > 0) {
+        bankSettings = bsRes.rows[0];
+      }
+    } catch (_) {}
+
+    const company = {
+      name: bankSettings?.invoice_company_name || 'Bems Farms Limited',
+      address: bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
+      rc_number: bankSettings?.invoice_rc_number || 'RC 1849204',
+      tin: bankSettings?.invoice_tin || 'TIN 24819402-0001',
+      email: bankSettings?.invoice_email || 'corporate@bemsfarms.com',
+      phone: bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
+      website: 'www.bemsfarms.com',
+    };
 
     const summary = {
       driver_name: driver.name,
       driver_id: driver.id,
       wallet_id: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, "0")}`,
-      period_start: startDate || (allTransactions.length ? allTransactions[allTransactions.length - 1].date : null),
-      period_end: endDate || new Date().toISOString(),
-      total_income: totalIncome,
-      total_payouts: totalPayouts,
+      period_start: periodStart,
+      period_end: periodEnd,
+      opening_balance: 0,
+      total_credits: totalCredits,
+      total_income: totalCredits,
+      total_debits: totalDebits,
+      total_payouts: totalDebits,
       pending_payouts: pendingPayouts,
-      available_balance: netBalance,
-      transaction_count: allTransactions.length,
+      closing_balance: closingBalance,
+      available_balance: closingBalance,
+      total_trips: parseInt(driver.total_delivered || 0, 10),
+      transaction_count: statementWithBalances.length,
     };
 
-    // If email delivery requested
+    const statementRef = `SOA-${driver.wallet_account_number || `DRV-${driver.id}`}-${new Date().getFullYear()}`;
+    const securityCode = generateSecurityCode(statementRef, closingBalance);
+
+    let qrDataUrl = "";
+    try {
+      const verifyUrl = `https://bemsfarms.com/verify?type=driver_statement&ref=${encodeURIComponent(statementRef)}&code=${encodeURIComponent(securityCode)}`;
+      qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        width: 240,
+        margin: 1,
+        color: { dark: '#0f3622', light: '#ffffff' },
+      });
+    } catch (qrErr) {
+      console.warn("QR code generation warning:", qrErr.message);
+    }
+
+    // ── Direct HTML / Download Document Mode ───────────────────────────
+    if (isHtmlRequested) {
+      const htmlContent = renderDriverStatementHtml({
+        driver: {
+          ...driver,
+          wallet_account_number: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, '0')}`,
+        },
+        summary,
+        company,
+        statement: statementWithBalances,
+        qrDataUrl,
+        autoPrint: query.print === "true" || query.download === "true",
+      });
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(htmlContent);
+    }
+
+    // Email delivery if requested
     let emailSent = false;
     const recipientEmail = typeof email === "string" && email.includes("@") ? email.trim() : driver.email;
     if (recipientEmail && (email === true || email === "true" || typeof email === "string")) {
@@ -867,7 +1035,7 @@ const requestAccountStatement = async (req, res, next) => {
             email: recipientEmail,
             name: driver.name,
             summary,
-            transactions: allTransactions,
+            transactions: statementWithBalances,
           });
           emailSent = true;
         }
@@ -875,6 +1043,10 @@ const requestAccountStatement = async (req, res, next) => {
         console.warn("Statement email notice:", mailErr.message);
       }
     }
+
+    const currentToken = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : (req.query?.token || "");
 
     res.json({
       success: true,
@@ -884,10 +1056,19 @@ const requestAccountStatement = async (req, res, next) => {
         : "Account statement generated successfully",
       email_sent: emailSent,
       recipient_email: emailSent ? recipientEmail : null,
+      statement_download_url: `/api/driver/wallet/statement/download${currentToken ? `?token=${currentToken}` : ''}`,
+      statement_view_url: `/api/driver/wallet/statement?format=html${currentToken ? `&token=${currentToken}` : ''}`,
+      web_portal_url: `/driver/statement`,
+      driver: {
+        ...driver,
+        total_delivered: parseInt(driver.total_delivered || 0, 10),
+        total_earnings: parseFloat(driver.total_earnings || 0),
+        wallet_account_number: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, '0')}`,
+      },
       summary,
-      transactions: allTransactions,
-      income,
-      payouts,
+      company,
+      statement: statementWithBalances,
+      transactions: statementWithBalances,
     });
   } catch (err) {
     console.error("requestAccountStatement error:", err.message);

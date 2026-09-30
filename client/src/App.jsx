@@ -30,6 +30,7 @@ const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage")
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const CommercePolicyPage = lazy(() => import("./pages/CommercePolicyPage"));
 const DriverOnboardingPage = lazy(() => import("./pages/driver/DriverOnboardingPage"));
+const DriverStatementPage = lazy(() => import("./pages/driver/DriverStatementPage"));
 const VerifyDocumentPage = lazy(() => import("./pages/VerifyDocumentPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
@@ -53,6 +54,7 @@ const ROUTE_META = {
   "/verify-email": ["Verify Your Email | BemsFarms", "Enter your 6-digit verification code to activate your BemsFarms account."],
   "/onboarding": ["Setup Your Profile | BemsFarms", "Personalize your household size, budget target, and nutrition preferences on BemsFarms."],
   "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
+  "/driver/statement": ["Driver Statement of Account | BemsFarms", "Official financial statement of account and earnings ledger for verified BemsFarms dispatch drivers."],
   "/chef-chat": ["Chef Bems — Culinary AI Assistant | BemsFarms", "Get personalized Nigerian recipe ideas, ingredient alternatives and smart shopping lists with Chef Bems."],
 };
 
@@ -102,6 +104,7 @@ function App() {
         <Route path="/shipping" element={<CommercePolicyPage />} />
         <Route path="/returns-policy" element={<CommercePolicyPage />} />
         <Route path="/driver/onboarding" element={<DriverOnboardingPage />} />
+        <Route path="/driver/statement" element={<DriverStatementPage />} />
 
         <Route
           path="/returns"
