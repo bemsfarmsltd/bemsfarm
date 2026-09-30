@@ -1926,7 +1926,15 @@ export default function DriversManagement() {
                     </button>
                   </div>
 
-                  <div className="d-flex gap-2 pt-2">
+                  <div className="d-flex flex-wrap gap-2 pt-2">
+                    <Link
+                      to="/accounts/wallets"
+                      className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1"
+                      style={{ background: '#0F766E', borderColor: '#0F766E' }}
+                    >
+                      <i className="ri-file-list-3-line" />
+                      View Statement of Account
+                    </Link>
                     <button
                       className="btn btn-outline-primary btn-sm fw-semibold"
                       onClick={() => {

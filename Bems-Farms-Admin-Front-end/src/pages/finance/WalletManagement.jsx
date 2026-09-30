@@ -1974,8 +1974,11 @@ export default function WalletManagement() {
                   <div className="text-center py-5 text-muted">No transaction records found for this driver.</div>
                 )}
               </div>
-              <div className="modal-footer border-top border-secondary border-opacity-10">
-                <button type="button" className="btn btn-secondary" onClick={() => setStatementDriver(null)}>
+              <div className="modal-footer border-top border-secondary border-opacity-10 d-flex justify-content-between">
+                <button type="button" className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1.5 fw-semibold" onClick={() => window.print()}>
+                  <i className="ri-printer-line"></i> Print / Export Statement
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setStatementDriver(null)}>
                   Close
                 </button>
               </div>
