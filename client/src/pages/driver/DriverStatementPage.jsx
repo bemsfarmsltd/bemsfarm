@@ -270,6 +270,7 @@ export default function DriverStatementPage() {
   const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
 
   const handlePrint = useCallback(() => {
+    window.scrollTo(0, 0);
     window.print();
   }, []);
 
@@ -784,12 +785,15 @@ export default function DriverStatementPage() {
           .bems-stmt-kpi-card { padding: 5px 10px !important; border-radius: 6px !important; }
           .bems-stmt-kpi-card .kpi-label { font-size: 8px !important; margin-bottom: 2px !important; }
           .bems-stmt-kpi-card .kpi-val { font-size: 12.5px !important; }
+          .bems-doc-table thead { display: table-header-group !important; }
+          .bems-doc-table tbody { display: table-row-group !important; }
           .bems-doc-table { margin-top: 2px !important; }
           .bems-doc-table th { padding: 5px 8px !important; font-size: 8px !important; }
           .bems-doc-table td { padding: 5px 8px !important; font-size: 10px !important; }
-          .bems-doc-table tr { page-break-inside: avoid !important; }
+          .bems-doc-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
           .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
             page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           .bems-doc-vt { gap: 14px !important; grid-template-columns: 1fr 220px !important; }
           .bems-doc-verify { padding: 6px 10px !important; }

@@ -645,125 +645,151 @@ export default function DriverCommissions() {
       })()}
 
       {/* Official Driver Statement Document Modal */}
-      {statementDriver && (
-        <div style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', position: 'fixed', inset: 0, zIndex: 1060, overflowY: 'auto', padding: '24px 12px' }}>
-          <style>{`
-            @media print {
-              body * {
-                visibility: hidden !important;
-              }
-              .bems-doc-print-target,
-              .bems-doc-print-target * {
-                visibility: visible !important;
-              }
-              .bems-doc-print-target {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                background: #ffffff !important;
-                display: block !important;
-              }
-              .bems-doc-root {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                display: block !important;
-              }
-              .bems-doc-page {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                min-height: auto !important;
-                display: block !important;
-              }
-              .no-print, .no-print * {
-                display: none !important;
-              }
-              @page {
-                size: A4 portrait;
-                margin: 0;
-              }
-            }
-          `}</style>
+      {statementDriver && (() => {
+        const handlePrintStatement = () => {
+          const overlay = document.querySelector('.bems-doc-modal-overlay')
+          if (overlay) overlay.scrollTop = 0
+          window.scrollTo(0, 0)
+          window.print()
+        }
 
-          {/* Floating Control Bar */}
-          <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
-                <i className="ri-file-text-line me-1" />
-                OFFICIAL DRIVER STATEMENT OF ACCOUNT
-              </span>
-              <span className="text-white-50 small d-none d-sm-inline">
-                | {statementDriver.name}
-              </span>
-            </div>
+        return (
+          <div className="bems-doc-modal-overlay" style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', position: 'fixed', inset: 0, zIndex: 1060, overflowY: 'auto', padding: '24px 12px' }}>
+            <style>{`
+              @media print {
+                body * {
+                  visibility: hidden !important;
+                }
+                .bems-doc-print-target,
+                .bems-doc-print-target * {
+                  visibility: visible !important;
+                }
+                .bems-doc-modal-overlay {
+                  position: static !important;
+                  inset: auto !important;
+                  overflow: visible !important;
+                  height: auto !important;
+                  max-height: none !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  background: transparent !important;
+                  backdrop-filter: none !important;
+                  display: block !important;
+                }
+                .bems-doc-print-target {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  background: #ffffff !important;
+                  display: block !important;
+                  overflow: visible !important;
+                }
+                .bems-doc-root {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  display: block !important;
+                  overflow: visible !important;
+                }
+                .bems-doc-page {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  min-height: auto !important;
+                  display: block !important;
+                  overflow: visible !important;
+                  page-break-after: auto !important;
+                  break-after: auto !important;
+                }
+                .no-print, .no-print * {
+                  display: none !important;
+                }
+                @page {
+                  size: A4 portrait;
+                  margin: 0;
+                }
+              }
+            `}</style>
 
-            <div className="d-flex align-items-center gap-2">
-              <button
-                className="btn btn-sm btn-primary fw-medium px-3 shadow-sm d-flex align-items-center gap-1"
-                onClick={() => window.print()}
-                title="Print or Save Official A4 PDF Document"
-              >
-                <i className="ri-printer-line" />
-                <span>Print / Save PDF (A4)</span>
-              </button>
-
-              <button
-                className="btn btn-sm btn-outline-light"
-                onClick={() => { setStatementDriver(null); setStatementData(null); }}
-                title="Close Statement Preview"
-              >
-                <i className="ri-close-line fs-16" />
-              </button>
-            </div>
-          </div>
-
-          {loadingStatement ? (
-            <div className="text-center py-5 text-white">
-              <i className="ri-loader-4-line ri-spin fs-1 mb-2 d-block text-success"></i>
-              <p className="fw-semibold">Compiling Audited Ledger & Generating Official Statement...</p>
-              <span className="text-white-50 small">Connecting to Bems Farms Logistics Ledger</span>
-            </div>
-          ) : (
-            <>
-              <div className="bems-doc-print-target d-flex justify-content-center">
-                <BemsDriverStatementDocument
-                  driver={statementData?.driver || statementDriver}
-                  summary={statementData?.summary || {}}
-                  company={statementData?.company || {}}
-                  statement={statementData?.statement || []}
-                />
+            {/* Floating Control Bar */}
+            <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
+                  <i className="ri-file-text-line me-1" />
+                  OFFICIAL DRIVER STATEMENT OF ACCOUNT
+                </span>
+                <span className="text-white-50 small d-none d-sm-inline">
+                  | {statementDriver.name}
+                </span>
               </div>
 
-              <div className="no-print d-flex align-items-center justify-content-center gap-2 mx-auto mt-3 py-2 flex-wrap" style={{ maxWidth: 840 }}>
+              <div className="d-flex align-items-center gap-2">
                 <button
-                  className="btn btn-primary shadow fw-semibold px-4 d-flex align-items-center gap-1.5"
-                  onClick={() => window.print()}
+                  className="btn btn-sm btn-primary fw-medium px-3 shadow-sm d-flex align-items-center gap-1"
+                  onClick={handlePrintStatement}
+                  title="Print or Save Official A4 PDF Document"
                 >
                   <i className="ri-printer-line" />
-                  Print / Save A4 PDF
+                  <span>Print / Save PDF (A4)</span>
                 </button>
+
                 <button
-                  className="btn btn-secondary shadow fw-semibold px-3"
+                  className="btn btn-sm btn-outline-light"
                   onClick={() => { setStatementDriver(null); setStatementData(null); }}
+                  title="Close Statement Preview"
                 >
-                  Close Preview
+                  <i className="ri-close-line fs-16" />
                 </button>
               </div>
-            </>
-          )}
-        </div>
-      )}
+            </div>
+
+            {loadingStatement ? (
+              <div className="text-center py-5 text-white">
+                <i className="ri-loader-4-line ri-spin fs-1 mb-2 d-block text-success"></i>
+                <p className="fw-semibold">Compiling Audited Ledger & Generating Official Statement...</p>
+                <span className="text-white-50 small">Connecting to Bems Farms Logistics Ledger</span>
+              </div>
+            ) : (
+              <>
+                <div className="bems-doc-print-target d-flex justify-content-center">
+                  <BemsDriverStatementDocument
+                    driver={statementData?.driver || statementDriver}
+                    summary={statementData?.summary || {}}
+                    company={statementData?.company || {}}
+                    statement={statementData?.statement || []}
+                  />
+                </div>
+
+                <div className="no-print d-flex align-items-center justify-content-center gap-2 mx-auto mt-3 py-2 flex-wrap" style={{ maxWidth: 840 }}>
+                  <button
+                    className="btn btn-primary shadow fw-semibold px-4 d-flex align-items-center gap-1.5"
+                    onClick={handlePrintStatement}
+                  >
+                    <i className="ri-printer-line" />
+                    Print / Save A4 PDF
+                  </button>
+                  <button
+                    className="btn btn-secondary shadow fw-semibold px-3"
+                    onClick={() => { setStatementDriver(null); setStatementData(null); }}
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

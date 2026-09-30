@@ -706,6 +706,9 @@
     padding: 0 !important;
     background: #ffffff !important;
   }
+  .bems-doc-page::before {
+    display: none !important;
+  }
   .bems-doc-page {
     margin: 0 !important;
     box-shadow: none !important;
@@ -713,14 +716,18 @@
     width: 100% !important;
     max-width: 100% !important;
     min-height: auto !important;
-    page-break-after: auto;
+    display: block !important;
+    overflow: visible !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
   .bems-doc-body {
-    padding: 0 3mm 0 5mm !important;
-    gap: 8px !important;
+    display: block !important;
+    overflow: visible !important;
+    padding: 8mm 12mm !important;
   }
   .bems-doc-head {
-    margin-bottom: 0 !important;
+    margin-bottom: 8px !important;
   }
   .bems-doc-logo img {
     height: 38px !important;
@@ -786,6 +793,12 @@
   .bems-doc-table {
     margin-top: 2px !important;
   }
+  .bems-doc-table thead {
+    display: table-header-group !important;
+  }
+  .bems-doc-table tbody {
+    display: table-row-group !important;
+  }
   .bems-doc-table th {
     padding: 5px 8px !important;
     font-size: 8px !important;
@@ -796,9 +809,11 @@
   }
   .bems-doc-table tr {
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
   .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
   .bems-doc-vt {
     gap: 14px !important;
