@@ -707,43 +707,64 @@ export default function DriverStatementPage() {
           display: flex;
           align-items: flex-end;
           justify-content: flex-end;
-          gap: 14px;
+          gap: 0;
           position: relative;
         }
         .bems-doc-sig {
-          flex: 1;
-          min-width: 150px;
+          width: 220px;
+          max-width: 220px;
+          flex-shrink: 0;
+          position: relative;
+          text-align: left;
         }
         .bems-doc-sig-img {
-          height: 38px;
-          max-width: 130px;
+          height: 48px;
+          max-width: 160px;
           object-fit: contain;
           display: block;
-          margin-bottom: 2px;
+          margin: 0 0 -6px 6px;
+          position: relative;
+          z-index: 2;
+          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.05));
         }
         .bems-doc-sig-placeholder {
-          height: 20px;
+          height: 38px;
         }
         .bems-doc-sig .ln {
-          height: 22px;
-          border-bottom: 1px solid var(--bems-ink);
+          height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border-bottom: 1.5px solid var(--bems-ink) !important;
+          width: 100% !important;
+          position: relative;
+          z-index: 1;
         }
         .bems-doc-sig b {
           display: block;
-          margin-top: 4px;
+          margin-top: 6px;
           font-size: 11px;
+          font-weight: 700;
           color: var(--bems-ink);
+          line-height: 1.35;
         }
         .bems-doc-sig span {
+          display: block;
           font-size: 9.5px;
           color: var(--bems-muted);
+          line-height: 1.35;
         }
         .bems-doc-stamp-wrapper {
           flex-shrink: 0;
-          margin-bottom: -6px;
+          margin-left: -22px;
+          margin-bottom: -4px;
+          z-index: 3;
+          position: relative;
+          pointer-events: none;
         }
         .bems-official-stamp {
           transition: transform 0.2s ease;
+          mix-blend-mode: multiply;
+          opacity: 0.94;
         }
 
         .bems-doc-thanks {
@@ -934,10 +955,12 @@ export default function DriverStatementPage() {
           .bems-doc-tot .grand { padding: 8px 12px !important; font-size: 15px !important; }
           .bems-doc-sign { gap: 24px !important; padding-bottom: 10px !important; }
           .bems-doc-keep { font-size: 9.5px !important; padding: 8px 12px !important; line-height: 1.45 !important; }
-          .bems-doc-sign-right { display: flex !important; align-items: flex-end !important; gap: 12px !important; }
-          .bems-doc-sig-img { height: 34px !important; max-width: 120px !important; }
-          .bems-doc-sig .ln { height: 22px !important; }
-          .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+          .bems-doc-sign-right { display: flex !important; align-items: flex-end !important; justify-content: flex-end !important; gap: 0 !important; }
+          .bems-doc-sig { width: 210px !important; max-width: 210px !important; flex-shrink: 0 !important; }
+          .bems-doc-sig-img { height: 42px !important; max-width: 150px !important; margin: 0 0 -6px 6px !important; }
+          .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; }
+          .bems-doc-stamp-wrapper { margin-left: -20px !important; margin-bottom: -4px !important; }
+          .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.94 !important; }
         }
       `}</style>
 

@@ -77,11 +77,11 @@ function generateSecurityCode(ref, amount) {
 
 function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED', rcNumber = 'RC 1849204') {
   return `
-    <div style="display:inline-block;width:82px;height:82px;transform:rotate(-12deg);user-select:none;flex-shrink:0;">
+    <div class="bems-official-stamp" style="display:inline-block;width:82px;height:82px;transform:rotate(-12deg);user-select:none;flex-shrink:0;mix-blend-mode:multiply;opacity:0.94;">
       <svg viewBox="0 0 140 140" width="82" height="82" style="display:block;overflow:visible">
         <defs>
           <path id="srv-stamp-top" d="M 18 70 A 52 52 0 0 1 122 70" fill="none" />
-          <path id="srv-stamp-btm" d="M 122 70 A 52 52 0 0 1 18 70" fill="none" />
+          <path id="srv-stamp-btm" d="M 12 70 A 58 58 0 0 0 128 70" fill="none" />
         </defs>
         <circle cx="70" cy="70" r="66" fill="none" stroke="#0c4a2a" stroke-width="3.2" />
         <circle cx="70" cy="70" r="61.5" fill="none" stroke="#0c4a2a" stroke-width="1" stroke-dasharray="3 1.5" />
@@ -90,7 +90,7 @@ function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED', rcNumber = 'RC 
         <text fill="#0c4a2a" font-size="9.2" font-weight="800" font-family="'Cinzel', Georgia, serif" letter-spacing="2.2">
           <textPath href="#srv-stamp-top" startOffset="50%" text-anchor="middle">★ ${companyName} ★</textPath>
         </text>
-        <text fill="#0c4a2a" font-size="7.8" font-weight="700" font-family="'Cinzel', Georgia, serif" letter-spacing="1.4">
+        <text fill="#0c4a2a" font-size="7.2" font-weight="700" font-family="'Cinzel', Georgia, serif" letter-spacing="1.1">
           <textPath href="#srv-stamp-btm" startOffset="50%" text-anchor="middle">★ ${rcNumber} · ABIA STATE ★</textPath>
         </text>
         <polygon points="70,44 71.8,49.5 77.5,49.5 73,53 74.8,58.5 70,55 65.2,58.5 67,53 62.5,49.5 68.2,49.5" fill="#b8860b" />
@@ -661,33 +661,63 @@ function renderDriverStatementHtml({
       display: flex;
       align-items: flex-end;
       justify-content: flex-end;
-      gap: 14px;
+      gap: 0;
       position: relative;
     }
     .bems-doc-sig {
-      flex: 1;
-      min-width: 150px;
+      width: 220px;
+      max-width: 220px;
+      flex-shrink: 0;
+      position: relative;
+      text-align: left;
     }
     .bems-doc-sig-img {
-      height: 38px;
-      max-width: 130px;
+      height: 48px;
+      max-width: 160px;
       object-fit: contain;
       display: block;
-      margin-bottom: 2px;
+      margin: 0 0 -6px 6px;
+      position: relative;
+      z-index: 2;
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.05));
+    }
+    .bems-doc-sig-placeholder {
+      height: 38px;
     }
     .bems-doc-sig .ln {
-      height: 22px;
-      border-bottom: 1px solid var(--bems-ink);
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-bottom: 1.5px solid var(--bems-ink) !important;
+      width: 100% !important;
+      position: relative;
+      z-index: 1;
     }
     .bems-doc-sig b {
       display: block;
-      margin-top: 4px;
+      margin-top: 6px;
       font-size: 11px;
+      font-weight: 700;
       color: var(--bems-ink);
+      line-height: 1.35;
     }
     .bems-doc-sig span {
+      display: block;
       font-size: 9.5px;
       color: var(--bems-muted);
+      line-height: 1.35;
+    }
+    .bems-doc-stamp-wrapper {
+      flex-shrink: 0;
+      margin-left: -22px;
+      margin-bottom: -4px;
+      z-index: 3;
+      position: relative;
+      pointer-events: none;
+    }
+    .bems-official-stamp {
+      mix-blend-mode: multiply;
+      opacity: 0.94;
     }
 
     /* Thanks & Foot */
@@ -781,7 +811,12 @@ function renderDriverStatementHtml({
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
       .bems-doc-sign { gap: 16px !important; padding-bottom: 4px !important; }
       .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
-      .bems-doc-sig .ln { height: 20px !important; }
+      .bems-doc-sign-right { display: flex !important; align-items: flex-end !important; justify-content: flex-end !important; gap: 0 !important; }
+      .bems-doc-sig { width: 210px !important; max-width: 210px !important; flex-shrink: 0 !important; }
+      .bems-doc-sig-img { height: 42px !important; max-width: 150px !important; margin: 0 0 -6px 6px !important; }
+      .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; }
+      .bems-doc-stamp-wrapper { margin-left: -20px !important; margin-bottom: -4px !important; }
+      .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.94 !important; }
       .bems-doc-thanks { padding: 6px 10mm !important; }
       .bems-doc-thanks h3 { font-size: 12.5px !important; }
       .bems-doc-thanks span { font-size: 9px !important; }
@@ -1001,7 +1036,7 @@ function renderDriverStatementHtml({
             <b>For ${companyName}</b>
             <span>Financial Controller &amp; Head of Logistics</span>
           </div>
-          <div class="bems-doc-stamp-wrapper" style="flex-shrink:0;margin-bottom:-6px;">
+          <div class="bems-doc-stamp-wrapper">
             ${getOfficialStampSvg(companyName, rcNumber)}
           </div>
         </div>

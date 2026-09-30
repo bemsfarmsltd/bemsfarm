@@ -47,9 +47,10 @@ export default function BemsOfficialStamp({
             d="M 18 70 A 52 52 0 0 1 122 70"
             fill="none"
           />
+          {/* Bottom text arc: Sweeps under bottom half from left to right so text is upright */}
           <path
             id={btmArcId}
-            d="M 122 70 A 52 52 0 0 1 18 70"
+            d="M 12 70 A 58 58 0 0 0 128 70"
             fill="none"
           />
         </defs>
@@ -113,13 +114,13 @@ export default function BemsOfficialStamp({
           </textPath>
         </text>
 
-        {/* Circular Bottom Text */}
+        {/* Circular Bottom Text (Upright) */}
         <text
           fill={color}
-          fontSize="7.8"
+          fontSize="7.2"
           fontWeight="700"
           fontFamily="'Cinzel', 'Trajan Pro', 'Georgia', serif"
-          letterSpacing="1.4"
+          letterSpacing="1.1"
         >
           <textPath
             href={`#${btmArcId}`}
