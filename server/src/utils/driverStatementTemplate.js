@@ -59,6 +59,8 @@ function formatDate(val, withTime = false) {
   } catch {
     return String(val);
   }
+}
+
 function cleanStatementDescription(desc) {
   if (!desc) return '';
   return String(desc)
