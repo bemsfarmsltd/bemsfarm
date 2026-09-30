@@ -270,84 +270,8 @@ export default function DriverStatementPage() {
   const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
 
   const handlePrint = useCallback(() => {
-    const dName = (driverName || "Driver").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const dRef = walletAccountNo || "DRV";
-    const title = `Bems_Farms_Driver_Statement_${dName}_${dRef}`;
-
-    const el = document.getElementById("statement-document") || document.querySelector(".bems-doc-page");
-    if (!el) {
-      window.print();
-      return;
-    }
-
-    let iframe = document.getElementById("bems-print-frame");
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "bems-print-frame";
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      document.body.appendChild(iframe);
-    }
-
-    const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
-      .map((s) => s.outerHTML)
-      .join("\n");
-
-    const docHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  ${styles}
-  <style>
-    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      background: #ffffff !important;
-      width: 100% !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    .bems-doc-root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-    .bems-doc-page { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
-    .bems-doc-body { padding: 0 3mm 0 5mm !important; gap: 8px !important; }
-    .no-print { display: none !important; }
-  </style>
-</head>
-<body>
-  <div class="bems-doc-root">
-    ${el.outerHTML}
-  </div>
-</body>
-</html>`;
-
-    const iframeDoc = iframe.contentWindow || iframe.contentDocument;
-    const targetDoc = iframeDoc.document || iframeDoc;
-    targetDoc.open();
-    targetDoc.write(docHtml);
-    targetDoc.close();
-
-    setTimeout(() => {
-      try {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } else {
-          window.print();
-        }
-      } catch (_) {
-        window.print();
-      }
-    }, 450);
-  }, [driverName, walletAccountNo]);
+    window.print();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-900 py-6 px-3 sm:px-6 text-slate-800">
@@ -802,10 +726,17 @@ export default function DriverStatementPage() {
 
         @page {
           size: A4 portrait;
-          margin: 8mm 8mm 8mm 8mm;
+          margin: 0;
         }
 
         @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .bems-doc-page,
+          .bems-doc-page * {
+            visibility: visible !important;
+          }
           html, body {
             background: #ffffff !important;
             margin: 0 !important;
@@ -816,6 +747,9 @@ export default function DriverStatementPage() {
           }
           .no-print, .no-print * { display: none !important; }
           .bems-doc-page {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
@@ -823,11 +757,13 @@ export default function DriverStatementPage() {
             box-shadow: none !important;
             border: none !important;
             min-height: auto !important;
+            background: #ffffff !important;
+            display: block !important;
             page-break-after: auto;
           }
           .bems-doc-body {
-            padding: 0 3mm 0 5mm !important;
-            gap: 8px !important;
+            padding: 8mm 12mm !important;
+            gap: 12px !important;
           }
           .bems-doc-head { margin-bottom: 0 !important; }
           .bems-doc-logo img { height: 38px !important; }
