@@ -269,6 +269,86 @@ export default function DriverStatementPage() {
   const companyEmail = company.email || "corporate@bemsfarms.com";
   const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
 
+  const handlePrint = useCallback(() => {
+    const dName = (driverName || "Driver").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const dRef = walletAccountNo || "DRV";
+    const title = `Bems_Farms_Driver_Statement_${dName}_${dRef}`;
+
+    const el = document.getElementById("statement-document") || document.querySelector(".bems-doc-page");
+    if (!el) {
+      window.print();
+      return;
+    }
+
+    let iframe = document.getElementById("bems-print-frame");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "bems-print-frame";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+    }
+
+    const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
+      .map((s) => s.outerHTML)
+      .join("\n");
+
+    const docHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${styles}
+  <style>
+    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      width: 100% !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .bems-doc-root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+    .bems-doc-page { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; min-height: auto !important; }
+    .bems-doc-body { padding: 0 3mm 0 5mm !important; gap: 8px !important; }
+    .no-print { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="bems-doc-root">
+    ${el.outerHTML}
+  </div>
+</body>
+</html>`;
+
+    const iframeDoc = iframe.contentWindow || iframe.contentDocument;
+    const targetDoc = iframeDoc.document || iframeDoc;
+    targetDoc.open();
+    targetDoc.write(docHtml);
+    targetDoc.close();
+
+    setTimeout(() => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } else {
+          window.print();
+        }
+      } catch (_) {
+        window.print();
+      }
+    }, 450);
+  }, [driverName, walletAccountNo]);
+
   return (
     <div className="min-h-screen bg-slate-900 py-6 px-3 sm:px-6 text-slate-800">
       <style>{`
@@ -722,25 +802,70 @@ export default function DriverStatementPage() {
 
         @page {
           size: A4 portrait;
-          margin: 10mm 0 10mm 0;
+          margin: 8mm 8mm 8mm 8mm;
         }
 
         @media print {
-          body {
+          html, body {
             background: #ffffff !important;
+            margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          .no-print { display: none !important; }
+          .no-print, .no-print * { display: none !important; }
           .bems-doc-page {
             width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
+            border: none !important;
             min-height: auto !important;
+            page-break-after: auto;
           }
-          .bems-doc-table tr { page-break-inside: avoid; }
+          .bems-doc-body {
+            padding: 0 3mm 0 5mm !important;
+            gap: 8px !important;
+          }
+          .bems-doc-head { margin-bottom: 0 !important; }
+          .bems-doc-logo img { height: 38px !important; }
+          .bems-doc-meta-right h1 { font-size: 22px !important; }
+          .bems-doc-hero { border-radius: 8px !important; }
+          .bems-doc-hero-top { padding: 8px 14px 6px !important; }
+          .bems-doc-amt { font-size: 28px !important; margin: 2px 0 !important; }
+          .bems-doc-stamp { width: 66px !important; height: 66px !important; }
+          .bems-doc-stamp b { font-size: 13px !important; }
+          .bems-doc-stamp span { font-size: 6.5px !important; }
+          .bems-doc-hero-meta > div { padding: 5px 12px 6px !important; }
+          .bems-doc-hero-meta p { font-size: 11px !important; }
+          .bems-doc-parties { border-radius: 8px !important; }
+          .bems-doc-party { padding: 6px 12px !important; }
+          .bems-doc-party .nm { font-size: 13px !important; margin: 2px 0 !important; }
+          .bems-doc-party p { font-size: 10px !important; line-height: 1.4 !important; }
+          .bems-stmt-kpi-grid { gap: 8px !important; margin-bottom: 0 !important; }
+          .bems-stmt-kpi-card { padding: 5px 10px !important; border-radius: 6px !important; }
+          .bems-stmt-kpi-card .kpi-label { font-size: 8px !important; margin-bottom: 2px !important; }
+          .bems-stmt-kpi-card .kpi-val { font-size: 12.5px !important; }
+          .bems-doc-table { margin-top: 2px !important; }
+          .bems-doc-table th { padding: 5px 8px !important; font-size: 8px !important; }
+          .bems-doc-table td { padding: 5px 8px !important; font-size: 10px !important; }
+          .bems-doc-table tr { page-break-inside: avoid !important; }
           .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
+          .bems-doc-vt { gap: 14px !important; grid-template-columns: 1fr 220px !important; }
+          .bems-doc-verify { padding: 6px 10px !important; }
+          .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
+          .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
+          .bems-doc-sign { gap: 16px !important; padding-bottom: 4px !important; }
+          .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
+          .bems-doc-sig .ln { height: 20px !important; }
+          .bems-doc-thanks { padding: 6px 10mm !important; }
+          .bems-doc-thanks h3 { font-size: 12.5px !important; }
+          .bems-doc-thanks span { font-size: 9px !important; }
+          .bems-doc-foot { padding: 4px 10mm 5px !important; font-size: 8.5px !important; }
         }
       `}</style>
 
@@ -836,7 +961,7 @@ export default function DriverStatementPage() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-1.5 transition"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>

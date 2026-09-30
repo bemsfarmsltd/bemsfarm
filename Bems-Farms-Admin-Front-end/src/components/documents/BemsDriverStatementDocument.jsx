@@ -45,6 +45,106 @@ function generateSecurityCode(ref, amount) {
 }
 
 /**
+ * Print the Driver Statement document via an isolated, clean print iframe
+ * to eliminate SPA UI artifacts, browser URL/date headers, and container constraints.
+ */
+export function printDriverStatementDocument(elementId = 'bems-driver-statement-page', title = 'Bems_Farms_Driver_Statement') {
+  const el = document.getElementById(elementId)
+  if (!el) {
+    window.print()
+    return
+  }
+
+  let iframe = document.getElementById('bems-print-frame')
+  if (!iframe) {
+    iframe = document.createElement('iframe')
+    iframe.id = 'bems-print-frame'
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    document.body.appendChild(iframe)
+  }
+
+  // Gather stylesheet rules
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map(s => s.outerHTML)
+    .join('\n')
+
+  const docHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${styles}
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 8mm 8mm 8mm 8mm;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      width: 100% !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .bems-doc-root {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .bems-doc-page {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      min-height: auto !important;
+    }
+    .bems-doc-body {
+      padding: 0 3mm 0 5mm !important;
+      gap: 8px !important;
+    }
+    .no-print { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="bems-doc-root">
+    ${el.outerHTML}
+  </div>
+</body>
+</html>`
+
+  const iframeDoc = iframe.contentWindow || iframe.contentDocument
+  const targetDoc = iframeDoc.document || iframeDoc
+  targetDoc.open()
+  targetDoc.write(docHtml)
+  targetDoc.close()
+
+  setTimeout(() => {
+    try {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.focus()
+        iframe.contentWindow.print()
+      } else {
+        window.print()
+      }
+    } catch (_) {
+      window.print()
+    }
+  }, 450)
+}
+
+/**
  * BemsDriverStatementDocument
  * Executive, audited Statement of Account for Bems Farms Logistics Drivers.
  * Matches the official Bems Farms invoice visual language with A4 print readiness.
