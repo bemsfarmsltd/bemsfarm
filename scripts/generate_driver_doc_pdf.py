@@ -284,12 +284,65 @@ def build_pdf(filename):
     story.append(Paragraph("• <b>Dynamic Re-Zoning:</b> Drivers can view zones and update their operating territory in their profile settings as service coverage expands.", bullet_style))
     story.append(Spacer(1, 10))
 
-    # ── 4. Complete API Reference ──
-    story.append(Paragraph("4. Complete API Reference", h1_style))
+    # ── 4. Credentials, Restricted Login & Email Notification Workflow ──
+    story.append(Paragraph("4. Credentials, Restricted Login & Email Notification Workflow", h1_style))
+    story.append(Paragraph(
+        "To ensure maximum transparency while safeguarding the logistics network, Bems Farms implements a secure <b>Restricted Login & Notification</b> flow:",
+        body_style
+    ))
+
+    login_flow_data = [
+        [Paragraph("Step", table_header), Paragraph("Stage & Action", table_header), Paragraph("System Behavior & Security Controls", table_header)],
+        [
+            Paragraph("<b>Step 1</b>", table_cell_bold),
+            Paragraph("<b>Password Set at Registration</b><br/><code>POST /api/driver/auth/register</code>", table_cell),
+            Paragraph("During registration, the system <b>mandates a secure password</b> (min 6 characters) along with the driver's email and phone number. The password is immediately hashed via <code>bcryptjs</code> (10 salt rounds) and stored in <code>driver_auth</code>.", table_cell)
+        ],
+        [
+            Paragraph("<b>Step 2</b>", table_cell_bold),
+            Paragraph("<b>Immediate Login Access</b><br/><code>POST /api/driver/auth/login</code>", table_cell),
+            Paragraph("The driver <b>does not need to wait for approval to log into the mobile app</b>. They log in immediately using the <b>Email Address and Password</b> set during registration. They receive a 30-day JWT authentication token.", table_cell)
+        ],
+        [
+            Paragraph("<b>Step 3</b>", table_cell_bold),
+            Paragraph("<b>Restricted Pending State</b><br/>(Awaiting Compliance Review)", table_cell),
+            Paragraph("While in <code>pending_verification</code> status, the driver has restricted dashboard access: they can view their profile, monitor live checklist completion (<code>GET /api/driver/auth/status</code>), change their delivery zone, and upload missing KYC documents.<br/><br/><b>Crucial Restriction:</b> The driver <b>CANNOT go online or accept orders</b>. Any attempt to toggle online returns <code>403 Forbidden: Your driver account is currently awaiting admin verification</code>.", table_cell)
+        ],
+        [
+            Paragraph("<b>Step 4</b>", table_cell_bold),
+            Paragraph("<b>Compliance Approval</b><br/><code>PATCH /api/admin/deliveries/drivers/:id/approve</code>", table_cell),
+            Paragraph("Once the compliance team audits the driver's license, NIN, and vehicle particulars, the admin approves the account in the portal.", table_cell)
+        ],
+        [
+            Paragraph("<b>Step 5</b>", table_cell_bold),
+            Paragraph("<b>Automated Email Notification</b><br/>(Instant Dispatch via Resend/SMTP)", table_cell),
+            Paragraph("Upon approval, the system <b>automatically dispatches an official Approval Email Notification</b> directly to the driver's registered email address (via <code>sendDriverApprovedEmail</code>).<br/><br/>Simultaneously, an in-app push notification is delivered, and real-time WebSockets unlock the <b>Go Online</b> switch.", table_cell)
+        ],
+        [
+            Paragraph("<b>Step 6</b>", table_cell_bold),
+            Paragraph("<b>Go Online & Start Earning</b><br/><code>PATCH /api/driver/availability</code>", table_cell),
+            Paragraph("The driver opens the app, flips their toggle to <b>Online</b>, and the auto-assign engine immediately begins pairing them with customer orders in their registered zone.", table_cell)
+        ]
+    ]
+
+    t_login_flow = Table(login_flow_data, colWidths=[1.0*inch, 2.7*inch, 3.5*inch])
+    t_login_flow.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), c_primary),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(t_login_flow)
+    story.append(Spacer(1, 10))
+
+    # ── 5. Complete API Reference ──
+    story.append(Paragraph("5. Complete API Reference", h1_style))
 
     apis = [
         {
-            "num": "4.1",
+            "num": "5.1",
             "name": "Fetch Available Delivery Zones",
             "method": "GET",
             "endpoint": "/api/driver/zones  (or /api/driver/onboarding/zones)",
@@ -324,12 +377,12 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "4.2",
+            "num": "5.2",
             "name": "Driver Self-Service Registration",
             "method": "POST",
             "endpoint": "/api/driver/auth/register",
             "auth": "Public / None",
-            "desc": "Creates a driver account in pending_verification status, provisions an internal wallet, and returns an initial JWT.",
+            "desc": "Mandates secure password, creates driver account in pending_verification status, provisions internal wallet, and returns initial JWT.",
             "payload": """{
   "name": "Chidi Nwachukwu",
   "phone": "08031234567",
@@ -359,6 +412,7 @@ def build_pdf(filename):
     "id": 14,
     "name": "Chidi Nwachukwu",
     "phone": "08031234567",
+    "email": "chidi.driver@example.com",
     "primary_zone_id": "ZONE001",
     "vehicle_type": "motorcycle",
     "vehicle_plate": "ABA-456-XY",
@@ -375,12 +429,12 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "4.3",
+            "num": "5.3",
             "name": "Check Live Verification & Checklist Status",
             "method": "GET",
             "endpoint": "/api/driver/auth/status",
             "auth": "Bearer <JWT>",
-            "desc": "Returns live verification progress, missing document alerts, and admin compliance notes.",
+            "desc": "Returns live verification progress, missing document alerts, and admin compliance review notes.",
             "response": """{
   "driver_id": 14,
   "name": "Chidi Nwachukwu",
@@ -400,7 +454,7 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "4.4",
+            "num": "5.4",
             "name": "Upload KYC Document / Driver Avatar",
             "method": "POST",
             "endpoint": "/api/driver/upload/document  (Avatar: /api/driver/upload/avatar)",
@@ -414,7 +468,7 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "4.5",
+            "num": "5.5",
             "name": "Configure Cashout Security PIN",
             "method": "POST",
             "endpoint": "/api/driver/pin/setup",
@@ -424,7 +478,7 @@ def build_pdf(filename):
             "response": """{ "success": true, "has_pin": true, "message": "Security PIN configured successfully." }"""
         },
         {
-            "num": "4.6",
+            "num": "5.6",
             "name": "Duty Toggle (Go Online / Offline)",
             "method": "PATCH",
             "endpoint": "/api/driver/availability",
@@ -495,8 +549,8 @@ def build_pdf(filename):
 
         story.append(KeepTogether([t_box, Spacer(1, 8)]))
 
-    # ── 5. Admin Dispatch Endpoints ──
-    story.append(Paragraph("5. Admin Dispatch & Compliance Endpoints", h1_style))
+    # ── 6. Admin Dispatch Endpoints ──
+    story.append(Paragraph("6. Admin Dispatch & Compliance Endpoints", h1_style))
     admin_table_data = [
         [Paragraph("Action", table_header), Paragraph("Method & Path", table_header), Paragraph("Role Required", table_header), Paragraph("Operational Impact", table_header)],
         [
@@ -543,8 +597,8 @@ def build_pdf(filename):
     story.append(t_admin)
     story.append(Spacer(1, 12))
 
-    # ── 6. Security & Fraud Protection ──
-    story.append(Paragraph("6. Security, Escrow & Fraud Safeguards", h1_style))
+    # ── 7. Security & Fraud Protection ──
+    story.append(Paragraph("7. Security, Escrow & Fraud Safeguards", h1_style))
     story.append(Paragraph("<b>1. Availability Gatekeeping:</b> Unapproved or pending drivers are cryptographically blocked by middleware from flipping their toggle to <code>is_available: true</code>. Any attempt returns <code>403 Forbidden</code>.", body_style))
     story.append(Paragraph("<b>2. Double Escrow Settlement:</b> Every driver receives an internal Bems Farms Wallet identifier (e.g. <code>DRV-0014</code>). Order delivery commissions accumulate safely in this ledger. Drivers can only cash out to their verified commercial NUBAN account after entering their hashed 4-digit PIN.", body_style))
     story.append(Paragraph("<b>3. Geofencing & Telemetry Heartbeat:</b> Online drivers stream real-time GPS pings via <code>POST /api/driver/location</code>. If a driver wanders far outside their registered zone, the dispatch engine warns dispatchers and adjusts proximity weighting.", body_style))
