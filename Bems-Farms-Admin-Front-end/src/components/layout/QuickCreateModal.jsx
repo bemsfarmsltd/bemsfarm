@@ -10,14 +10,14 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Inward PO',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-download-cloud-2-line',
     iconBg: '#DCFCE7',
     iconColor: '#15803D',
     path: '/inventory/stock-in',
     isPopular: true,
     keywords: ['restock', 'stock in', 'inward', 'purchase order', 'supplier', 'batches', 'farm harvest', 'inventory in', 'produce intake'],
-    description: 'Record incoming supplier shipments, farm produce deliveries, unit cost, batch lot numbers and storehouse receipt.',
+    description: 'Record incoming supplier shipments, farm produce deliveries, unit purchase cost, batch lot numbers and storehouse receipt.',
   },
   {
     id: 'stock-out',
@@ -25,7 +25,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Dispatch',
-    badgeCls: 'bg-warning-subtle text-warning border border-warning-subtle',
+    badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
     icon: 'ri-upload-cloud-2-line',
     iconBg: '#FEF3C7',
     iconColor: '#B45309',
@@ -39,7 +39,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Audit',
-    badgeCls: 'bg-indigo-subtle text-indigo border border-indigo-subtle',
+    badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     icon: 'ri-scales-3-line',
     iconBg: '#EEF2FF',
     iconColor: '#4F46E5',
@@ -53,7 +53,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Logistics',
-    badgeCls: 'bg-info-subtle text-info border border-info-subtle',
+    badgeCls: 'bg-sky-50 text-sky-700 border-sky-200',
     icon: 'ri-arrow-left-right-line',
     iconBg: '#E0F2FE',
     iconColor: '#0284C7',
@@ -67,7 +67,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Processing',
-    badgeCls: 'bg-purple-subtle text-purple border border-purple-subtle',
+    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200',
     icon: 'ri-layout-grid-line',
     iconBg: '#F3E8FF',
     iconColor: '#7E22CE',
@@ -81,7 +81,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Planning',
-    badgeCls: 'bg-cyan-subtle text-cyan border border-cyan-subtle',
+    badgeCls: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     icon: 'ri-calendar-event-line',
     iconBg: '#ECFEFF',
     iconColor: '#0891B2',
@@ -95,7 +95,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Facility',
-    badgeCls: 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+    badgeCls: 'bg-slate-50 text-slate-700 border-slate-200',
     icon: 'ri-building-line',
     iconBg: '#F1F5F9',
     iconColor: '#475569',
@@ -109,7 +109,7 @@ export const CREATE_ACTIONS = [
     category: 'Inventory & Restock',
     categoryKey: 'inventory',
     badge: 'Freshness',
-    badgeCls: 'bg-emerald-subtle text-emerald border border-emerald-subtle',
+    badgeCls: 'bg-teal-50 text-teal-700 border-teal-200',
     icon: 'ri-qr-code-line',
     iconBg: '#ECFDF5',
     iconColor: '#059669',
@@ -125,7 +125,7 @@ export const CREATE_ACTIONS = [
     category: 'Products & Catalog',
     categoryKey: 'products',
     badge: 'Catalog',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-shopping-basket-2-line',
     iconBg: '#DCFCE7',
     iconColor: '#16A34A',
@@ -140,7 +140,7 @@ export const CREATE_ACTIONS = [
     category: 'Products & Catalog',
     categoryKey: 'products',
     badge: 'Spreadsheet',
-    badgeCls: 'bg-teal-subtle text-teal border border-teal-subtle',
+    badgeCls: 'bg-teal-50 text-teal-700 border-teal-200',
     icon: 'ri-file-excel-2-line',
     iconBg: '#CCFBF1',
     iconColor: '#0F766E',
@@ -154,7 +154,7 @@ export const CREATE_ACTIONS = [
     category: 'Products & Catalog',
     categoryKey: 'products',
     badge: 'Hierarchy',
-    badgeCls: 'bg-warning-subtle text-warning border border-warning-subtle',
+    badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
     icon: 'ri-folder-add-line',
     iconBg: '#FEF3C7',
     iconColor: '#D97706',
@@ -168,7 +168,7 @@ export const CREATE_ACTIONS = [
     category: 'Products & Catalog',
     categoryKey: 'products',
     badge: 'Metrics',
-    badgeCls: 'bg-purple-subtle text-purple border border-purple-subtle',
+    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200',
     icon: 'ri-ruler-line',
     iconBg: '#F3E8FF',
     iconColor: '#7C3AED',
@@ -182,7 +182,7 @@ export const CREATE_ACTIONS = [
     category: 'Products & Catalog',
     categoryKey: 'products',
     badge: 'Thermal Labels',
-    badgeCls: 'bg-dark-subtle text-dark border border-dark-subtle',
+    badgeCls: 'bg-slate-50 text-slate-700 border-slate-200',
     icon: 'ri-barcode-box-line',
     iconBg: '#F1F5F9',
     iconColor: '#1E293B',
@@ -198,7 +198,7 @@ export const CREATE_ACTIONS = [
     category: 'Sales & Billing',
     categoryKey: 'sales',
     badge: 'Live Counter',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-computer-line',
     iconBg: '#DCFCE7',
     iconColor: '#15803D',
@@ -213,7 +213,7 @@ export const CREATE_ACTIONS = [
     category: 'Sales & Billing',
     categoryKey: 'sales',
     badge: 'B2B & Retail',
-    badgeCls: 'bg-primary-subtle text-primary border border-primary-subtle',
+    badgeCls: 'bg-blue-50 text-blue-700 border-blue-200',
     icon: 'ri-file-list-3-line',
     iconBg: '#DBEAFE',
     iconColor: '#1D4ED8',
@@ -228,7 +228,7 @@ export const CREATE_ACTIONS = [
     category: 'Sales & Billing',
     categoryKey: 'sales',
     badge: 'Returns',
-    badgeCls: 'bg-danger-subtle text-danger border border-danger-subtle',
+    badgeCls: 'bg-rose-50 text-rose-700 border-rose-200',
     icon: 'ri-refund-2-line',
     iconBg: '#FEE2E2',
     iconColor: '#DC2626',
@@ -238,11 +238,11 @@ export const CREATE_ACTIONS = [
   },
   {
     id: 'new-direct-order',
-    title: 'Manual Phone Order / View Pipeline',
+    title: 'Manual Phone Order / Orders Pipeline',
     category: 'Sales & Billing',
     categoryKey: 'sales',
     badge: 'Orders Hub',
-    badgeCls: 'bg-sky-subtle text-sky border border-sky-subtle',
+    badgeCls: 'bg-sky-50 text-sky-700 border-sky-200',
     icon: 'ri-shopping-bag-3-line',
     iconBg: '#E0F2FE',
     iconColor: '#0369A1',
@@ -258,7 +258,7 @@ export const CREATE_ACTIONS = [
     category: 'Team & Onboarding',
     categoryKey: 'team',
     badge: 'Self-Serve',
-    badgeCls: 'bg-primary-subtle text-primary border border-primary-subtle',
+    badgeCls: 'bg-blue-50 text-blue-700 border-blue-200',
     icon: 'ri-mail-send-line',
     iconBg: '#DBEAFE',
     iconColor: '#2563EB',
@@ -273,7 +273,7 @@ export const CREATE_ACTIONS = [
     category: 'Team & Onboarding',
     categoryKey: 'team',
     badge: 'Admin Desk',
-    badgeCls: 'bg-indigo-subtle text-indigo border border-indigo-subtle',
+    badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     icon: 'ri-user-add-line',
     iconBg: '#EEF2FF',
     iconColor: '#4F46E5',
@@ -287,7 +287,7 @@ export const CREATE_ACTIONS = [
     category: 'Team & Onboarding',
     categoryKey: 'team',
     badge: 'Security',
-    badgeCls: 'bg-purple-subtle text-purple border border-purple-subtle',
+    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200',
     icon: 'ri-shield-user-line',
     iconBg: '#F3E8FF',
     iconColor: '#7C3AED',
@@ -300,10 +300,10 @@ export const CREATE_ACTIONS = [
   {
     id: 'add-driver',
     title: 'Register Delivery Driver / Rider',
-    category: 'Deliveries & Logistics',
+    category: 'Deliveries & Fleet',
     categoryKey: 'deliveries',
     badge: 'Fleet',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-e-bike-2-line',
     iconBg: '#DCFCE7',
     iconColor: '#16A34A',
@@ -314,10 +314,10 @@ export const CREATE_ACTIONS = [
   {
     id: 'add-zone',
     title: 'New Delivery Zone & Shipping Tariff',
-    category: 'Deliveries & Logistics',
+    category: 'Deliveries & Fleet',
     categoryKey: 'deliveries',
     badge: 'Coverage',
-    badgeCls: 'bg-rose-subtle text-rose border border-rose-subtle',
+    badgeCls: 'bg-rose-50 text-rose-700 border-rose-200',
     icon: 'ri-map-pin-add-line',
     iconBg: '#FFE4E6',
     iconColor: '#E11D48',
@@ -327,11 +327,11 @@ export const CREATE_ACTIONS = [
   },
   {
     id: 'active-dispatch',
-    title: 'Live Dispatch & Order Assignment',
-    category: 'Deliveries & Logistics',
+    title: 'Live Fleet Dispatch & Assignment',
+    category: 'Deliveries & Fleet',
     categoryKey: 'deliveries',
     badge: 'Live Map',
-    badgeCls: 'bg-info-subtle text-info border border-info-subtle',
+    badgeCls: 'bg-sky-50 text-sky-700 border-sky-200',
     icon: 'ri-route-line',
     iconBg: '#E0F2FE',
     iconColor: '#0284C7',
@@ -347,7 +347,7 @@ export const CREATE_ACTIONS = [
     category: 'Finance & Accounts',
     categoryKey: 'finance',
     badge: 'Revenue',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-money-dollar-circle-line',
     iconBg: '#DCFCE7',
     iconColor: '#15803D',
@@ -361,7 +361,7 @@ export const CREATE_ACTIONS = [
     category: 'Finance & Accounts',
     categoryKey: 'finance',
     badge: 'Treasury',
-    badgeCls: 'bg-cyan-subtle text-cyan border border-cyan-subtle',
+    badgeCls: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     icon: 'ri-swap-box-line',
     iconBg: '#ECFEFF',
     iconColor: '#0891B2',
@@ -375,7 +375,7 @@ export const CREATE_ACTIONS = [
     category: 'Finance & Accounts',
     categoryKey: 'finance',
     badge: 'Settlement',
-    badgeCls: 'bg-warning-subtle text-warning border border-warning-subtle',
+    badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
     icon: 'ri-bank-line',
     iconBg: '#FEF3C7',
     iconColor: '#D97706',
@@ -389,7 +389,7 @@ export const CREATE_ACTIONS = [
     category: 'Finance & Accounts',
     categoryKey: 'finance',
     badge: 'Ledger',
-    badgeCls: 'bg-purple-subtle text-purple border border-purple-subtle',
+    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200',
     icon: 'ri-wallet-3-line',
     iconBg: '#F3E8FF',
     iconColor: '#7C3AED',
@@ -403,7 +403,7 @@ export const CREATE_ACTIONS = [
     category: 'Finance & Accounts',
     categoryKey: 'finance',
     badge: 'Disbursement',
-    badgeCls: 'bg-emerald-subtle text-emerald border border-emerald-subtle',
+    badgeCls: 'bg-teal-50 text-teal-700 border-teal-200',
     icon: 'ri-hand-coin-line',
     iconBg: '#ECFDF5',
     iconColor: '#059669',
@@ -419,7 +419,7 @@ export const CREATE_ACTIONS = [
     category: 'Customers & CRM',
     categoryKey: 'customers',
     badge: 'CRM Profile',
-    badgeCls: 'bg-pink-subtle text-pink border border-pink-subtle',
+    badgeCls: 'bg-pink-50 text-pink-700 border-pink-200',
     icon: 'ri-user-smile-line',
     iconBg: '#FCE7F3',
     iconColor: '#DB2777',
@@ -434,7 +434,7 @@ export const CREATE_ACTIONS = [
     category: 'Customers & CRM',
     categoryKey: 'customers',
     badge: 'Outreach',
-    badgeCls: 'bg-blue-subtle text-blue border border-blue-subtle',
+    badgeCls: 'bg-blue-50 text-blue-700 border-blue-200',
     icon: 'ri-broadcast-line',
     iconBg: '#DBEAFE',
     iconColor: '#1D4ED8',
@@ -448,7 +448,7 @@ export const CREATE_ACTIONS = [
     category: 'Customers & CRM',
     categoryKey: 'customers',
     badge: 'Live Chat',
-    badgeCls: 'bg-indigo-subtle text-indigo border border-indigo-subtle',
+    badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     icon: 'ri-message-3-line',
     iconBg: '#EEF2FF',
     iconColor: '#4F46E5',
@@ -462,7 +462,7 @@ export const CREATE_ACTIONS = [
     category: 'Customers & CRM',
     categoryKey: 'customers',
     badge: 'Rewards',
-    badgeCls: 'bg-warning-subtle text-warning border border-warning-subtle',
+    badgeCls: 'bg-amber-50 text-amber-700 border-amber-200',
     icon: 'ri-medal-line',
     iconBg: '#FEF3C7',
     iconColor: '#D97706',
@@ -478,7 +478,7 @@ export const CREATE_ACTIONS = [
     category: 'Chef Bems AI',
     categoryKey: 'chef-bems',
     badge: 'Culinary AI',
-    badgeCls: 'bg-orange-subtle text-orange border border-orange-subtle',
+    badgeCls: 'bg-orange-50 text-orange-700 border-orange-200',
     icon: 'ri-restaurant-line',
     iconBg: '#FFEDD5',
     iconColor: '#EA580C',
@@ -492,7 +492,7 @@ export const CREATE_ACTIONS = [
     category: 'Chef Bems AI',
     categoryKey: 'chef-bems',
     badge: 'Smart Sub',
-    badgeCls: 'bg-teal-subtle text-teal border border-teal-subtle',
+    badgeCls: 'bg-teal-50 text-teal-700 border-teal-200',
     icon: 'ri-repeat-line',
     iconBg: '#CCFBF1',
     iconColor: '#0F766E',
@@ -506,7 +506,7 @@ export const CREATE_ACTIONS = [
     category: 'Chef Bems AI',
     categoryKey: 'chef-bems',
     badge: 'Diet Health',
-    badgeCls: 'bg-rose-subtle text-rose border border-rose-subtle',
+    badgeCls: 'bg-rose-50 text-rose-700 border-rose-200',
     icon: 'ri-heart-pulse-line',
     iconBg: '#FFE4E6',
     iconColor: '#E11D48',
@@ -520,7 +520,7 @@ export const CREATE_ACTIONS = [
     category: 'Chef Bems AI',
     categoryKey: 'chef-bems',
     badge: 'Safety Filter',
-    badgeCls: 'bg-danger-subtle text-danger border border-danger-subtle',
+    badgeCls: 'bg-red-50 text-red-700 border-red-200',
     icon: 'ri-shield-cross-line',
     iconBg: '#FEE2E2',
     iconColor: '#DC2626',
@@ -536,7 +536,7 @@ export const CREATE_ACTIONS = [
     category: 'Marketing & Settings',
     categoryKey: 'settings',
     badge: 'Promotion',
-    badgeCls: 'bg-success-subtle text-success border border-success-subtle',
+    badgeCls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'ri-coupon-3-line',
     iconBg: '#DCFCE7',
     iconColor: '#16A34A',
@@ -550,7 +550,7 @@ export const CREATE_ACTIONS = [
     category: 'Marketing & Settings',
     categoryKey: 'settings',
     badge: 'Compliance',
-    badgeCls: 'bg-slate-subtle text-slate border border-slate-subtle',
+    badgeCls: 'bg-slate-50 text-slate-700 border-slate-200',
     icon: 'ri-percent-line',
     iconBg: '#F1F5F9',
     iconColor: '#475569',
@@ -564,7 +564,7 @@ export const CREATE_ACTIONS = [
     category: 'Marketing & Settings',
     categoryKey: 'settings',
     badge: 'Branding',
-    badgeCls: 'bg-primary-subtle text-primary border border-primary-subtle',
+    badgeCls: 'bg-blue-50 text-blue-700 border-blue-200',
     icon: 'ri-file-settings-line',
     iconBg: '#DBEAFE',
     iconColor: '#1D4ED8',
@@ -575,16 +575,16 @@ export const CREATE_ACTIONS = [
 ]
 
 export const CATEGORIES = [
-  { key: 'all', label: 'All Actions' },
-  { key: 'inventory', label: 'Inventory & Restock' },
-  { key: 'products', label: 'Products & Catalog' },
-  { key: 'sales', label: 'Sales & Billing' },
-  { key: 'team', label: 'Team & Onboarding' },
-  { key: 'deliveries', label: 'Deliveries & Fleet' },
-  { key: 'finance', label: 'Finance & Accounts' },
-  { key: 'customers', label: 'Customers & CRM' },
-  { key: 'chef-bems', label: 'Chef Bems AI' },
-  { key: 'settings', label: 'Marketing & Settings' },
+  { key: 'all', label: 'All Operations', icon: 'ri-apps-2-line' },
+  { key: 'inventory', label: 'Inventory & Restock', icon: 'ri-archive-line' },
+  { key: 'products', label: 'Products & Catalog', icon: 'ri-shopping-basket-line' },
+  { key: 'sales', label: 'Sales & Billing', icon: 'ri-file-list-3-line' },
+  { key: 'team', label: 'Team & Onboarding', icon: 'ri-team-line' },
+  { key: 'deliveries', label: 'Deliveries & Fleet', icon: 'ri-truck-line' },
+  { key: 'finance', label: 'Finance & Accounts', icon: 'ri-bank-card-line' },
+  { key: 'customers', label: 'Customers & CRM', icon: 'ri-user-heart-line' },
+  { key: 'chef-bems', label: 'Chef Bems AI', icon: 'ri-restaurant-line' },
+  { key: 'settings', label: 'Settings & Rules', icon: 'ri-settings-4-line' },
 ]
 
 export default function QuickCreateModal({ isOpen, onClose }) {
@@ -661,9 +661,11 @@ export default function QuickCreateModal({ isOpen, onClose }) {
 
   if (!isOpen) return null
 
+  const currentCategoryObj = CATEGORIES.find((c) => c.key === activeCategory) || CATEGORIES[0]
+
   return createPortal(
     <div
-      className="position-fixed inset-0 d-flex align-items-center justify-content-center p-2 p-sm-3 p-md-4"
+      className="position-fixed inset-0 d-flex align-items-center justify-content-center p-3 p-md-4"
       style={{
         position: 'fixed',
         top: 0,
@@ -674,354 +676,527 @@ export default function QuickCreateModal({ isOpen, onClose }) {
         height: '100vh',
         zIndex: 999999,
         backgroundColor: 'rgba(7, 31, 20, 0.65)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        animation: 'fadeIn 0.15s ease-out',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        animation: 'quickModalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       onClick={onClose}
     >
       <div
         className="card border-0 shadow-2xl w-100 d-flex flex-column"
         style={{
-          maxWidth: 980,
-          maxHeight: '90vh',
+          maxWidth: 1080,
+          height: 'min(730px, 92vh)',
           borderRadius: '1.25rem',
           backgroundColor: '#FFFFFF',
           overflow: 'hidden',
-          boxShadow: '0 25px 60px -15px rgba(7, 31, 20, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 35px 90px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.15)',
+          animation: 'quickModalScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Top Header ── */}
+        {/* ── Top Executive Command Bar ── */}
         <div
-          className="p-3 p-sm-4 text-white d-flex align-items-center justify-content-between position-relative"
+          className="px-4 py-3 d-flex align-items-center justify-content-between gap-3 border-bottom position-relative"
           style={{
-            background: 'linear-gradient(135deg, #071F14 0%, #143C2D 50%, #1B5E3F 100%)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            backgroundColor: '#FFFFFF',
+            borderBottomColor: '#E2E8F0',
           }}
         >
-          <div className="d-flex align-items-center gap-3">
+          {/* Logo / Hub Title */}
+          <div className="d-flex align-items-center gap-2.5 flex-shrink-0">
             <div
-              className="d-flex align-items-center justify-content-center rounded-3 text-white flex-shrink-0"
+              className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
               style={{
-                width: 44,
-                height: 44,
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                width: 36,
+                height: 36,
+                background: 'linear-gradient(135deg, #143C2D 0%, #071F14 100%)',
+                color: '#F59E0B',
+                boxShadow: '0 2px 8px rgba(20, 60, 45, 0.25)',
               }}
             >
-              <i className="ri-add-circle-fill fs-20 text-warning"></i>
+              <i className="ri-flashlight-fill fs-18"></i>
             </div>
             <div>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h5 className="mb-0 fw-bold font-display text-white tracking-tight" style={{ fontSize: '1.15rem' }}>
-                  Bems Farms Quick Creation Hub
-                </h5>
+              <div className="d-flex align-items-center gap-2">
+                <span className="fw-bold font-display text-dark" style={{ fontSize: '1.05rem', letterSpacing: '-0.02em' }}>
+                  Creation Center
+                </span>
                 <span
-                  className="badge px-2 py-0.5"
+                  className="badge px-2 py-0.5 rounded-pill"
                   style={{
-                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                    color: '#FDE68A',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    backgroundColor: '#ECFDF5',
+                    color: '#059669',
+                    border: '1px solid #A7F3D0',
                     fontSize: 10,
                     fontWeight: 700,
                   }}
                 >
-                  {CREATE_ACTIONS.length} Action Shortcuts
+                  {CREATE_ACTIONS.length} Actions
                 </span>
               </div>
-              <p className="mb-0 text-white-50" style={{ fontSize: '0.8rem' }}>
-                Add products, restock shipments, create invoices, invite staff, register drivers & manage farm operations.
-              </p>
+              <span className="text-muted d-none d-sm-inline" style={{ fontSize: '0.73rem' }}>
+                Instant shortcuts across all store operations
+              </span>
             </div>
           </div>
 
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="d-none d-md-inline-block px-2 py-1 rounded text-white-50"
-              style={{ fontSize: 11, background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.15)' }}
-            >
-              ESC to exit
-            </span>
-            <button
-              type="button"
-              className="btn btn-sm btn-link text-white-50 text-decoration-none p-1 rounded-circle"
-              onClick={onClose}
-              style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <i className="ri-close-line fs-20 text-white"></i>
-            </button>
-          </div>
-        </div>
-
-        {/* ── Search Bar & Filter Strip ── */}
-        <div className="p-3 bg-light border-bottom">
-          <div className="position-relative mb-2">
+          {/* Large Command Search Input */}
+          <div className="flex-grow-1 position-relative" style={{ maxWidth: 560 }}>
             <i
               className="ri-search-line position-absolute"
-              style={{ left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#64748B' }}
+              style={{ left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#94A3B8' }}
             ></i>
             <input
               ref={searchInputRef}
               type="text"
-              className="form-control form-control-lg border-0 shadow-sm ps-5 pe-5"
+              className="form-control ps-5 pe-5 shadow-none border"
               style={{
-                borderRadius: '0.75rem',
-                fontSize: '0.92rem',
-                backgroundColor: '#FFFFFF',
+                height: 42,
+                borderRadius: '9999px',
+                fontSize: '0.88rem',
+                backgroundColor: '#F8FAFC',
+                borderColor: '#E2E8F0',
+                transition: 'all 0.15s ease',
               }}
-              placeholder="Search what you want to add... (e.g., restock, invoice, product, driver, staff, coupon, debulk, meal)"
+              placeholder="Search by action, keyword, or document type..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            {search && (
+            {search ? (
               <button
                 type="button"
-                className="btn btn-sm position-absolute text-muted"
-                style={{ right: 10, top: '50%', transform: 'translateY(-50%)', padding: '2px 8px' }}
+                className="btn btn-sm btn-link position-absolute text-muted text-decoration-none p-0"
+                style={{ right: 12, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22 }}
                 onClick={() => setSearch('')}
+                title="Clear Search"
               >
                 <i className="ri-close-circle-fill fs-16"></i>
               </button>
+            ) : (
+              <span
+                className="position-absolute text-muted d-none d-md-inline"
+                style={{
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  background: '#FFFFFF',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                ESC
+              </span>
             )}
           </div>
 
-          {/* Category Chips Scrollable */}
-          <div
-            className="d-flex align-items-center gap-1.5 overflow-x-auto pb-1 pt-1"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}
+          {/* Close Action */}
+          <button
+            type="button"
+            className="btn btn-sm btn-light border-0 rounded-circle text-muted flex-shrink-0"
+            onClick={onClose}
+            style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title="Close (Esc)"
           >
-            {CATEGORIES.map((cat) => {
-              const active = activeCategory === cat.key
-              const count = categoryCounts[cat.key]
-              return (
-                <button
-                  key={cat.key}
-                  type="button"
-                  className={`btn btn-sm text-nowrap rounded-pill px-3 py-1 ${
-                    active ? 'btn-primary-bf shadow-sm text-white' : 'btn-white text-secondary border'
-                  }`}
-                  style={{
-                    fontSize: '0.76rem',
-                    fontWeight: active ? 700 : 500,
-                  }}
-                  onClick={() => setActiveCategory(cat.key)}
-                >
-                  {cat.label}
-                  <span
-                    className={`ms-1.5 px-1.5 py-0.2 rounded-pill ${
-                      active ? 'bg-white text-dark' : 'bg-light text-muted'
-                    }`}
-                    style={{ fontSize: 10 }}
-                  >
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+            <i className="ri-close-line fs-20"></i>
+          </button>
         </div>
 
-        {/* ── Scrollable Actions Body ── */}
-        <div className="flex-grow-1 overflow-y-auto p-3 p-sm-4" style={{ backgroundColor: '#FAF8F5' }}>
-          {/* Quick Access Popular Row (when no search and 'all') */}
-          {!search.trim() && activeCategory === 'all' && (
-            <div className="mb-4">
-              <div className="d-flex align-items-center justify-content-between mb-2 pb-1">
-                <span className="fw-bold fs-xs text-uppercase text-muted" style={{ letterSpacing: '0.04em' }}>
-                  <i className="ri-flashlight-line text-warning me-1"></i>
-                  Frequently Used Quick Actions
-                </span>
-                <span className="badge bg-warning-subtle text-warning fs-xxs">Instant Access</span>
+        {/* ── Main Two-Pane Split Studio ── */}
+        <div className="flex-grow-1 d-flex overflow-hidden" style={{ minHeight: 0 }}>
+          {/* ── Left Category Rail (240px) ── */}
+          <div
+            className="d-none d-md-flex flex-column border-end flex-shrink-0 py-3 px-2 overflow-y-auto"
+            style={{
+              width: 245,
+              backgroundColor: '#FBFBFA',
+              borderColor: '#EFECE6',
+            }}
+          >
+            <div className="px-3 mb-2">
+              <span className="text-uppercase text-muted fw-bold" style={{ fontSize: 10, letterSpacing: '0.06em' }}>
+                Department Filter
+              </span>
+            </div>
+
+            <div className="d-flex flex-column gap-1">
+              {CATEGORIES.map((cat) => {
+                const isActive = activeCategory === cat.key
+                const count = categoryCounts[cat.key]
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    className={`btn text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0 transition-all ${
+                      isActive ? 'active-cat-btn' : 'inactive-cat-btn'
+                    }`}
+                    style={{
+                      fontSize: '0.82rem',
+                      fontWeight: isActive ? 700 : 550,
+                      position: 'relative',
+                    }}
+                    onClick={() => {
+                      setActiveCategory(cat.key)
+                    }}
+                  >
+                    <div className="d-flex align-items-center gap-2.5 min-w-0">
+                      <i className={`${cat.icon} fs-16 ${isActive ? 'text-warning' : 'text-muted'}`}></i>
+                      <span className="text-truncate">{cat.label}</span>
+                    </div>
+
+                    <span
+                      className={`badge rounded-pill ${
+                        isActive ? 'bg-white text-dark' : 'bg-light text-secondary border'
+                      }`}
+                      style={{ fontSize: 10, padding: '2px 7px' }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Bottom Tip Card */}
+            <div className="mt-auto px-2 pt-3">
+              <div
+                className="p-2.5 rounded-3 border text-start"
+                style={{
+                  backgroundColor: '#F0FDF4',
+                  borderColor: '#DCFCE7',
+                }}
+              >
+                <div className="d-flex align-items-center gap-1.5 text-success fw-bold mb-1" style={{ fontSize: 11 }}>
+                  <i className="ri-keyboard-line"></i>
+                  <span>Pro Shortcut</span>
+                </div>
+                <p className="text-muted mb-0" style={{ fontSize: 11, lineHeight: 1.35 }}>
+                  Press <kbd style={{ padding: '1px 5px', fontSize: 10, background: '#fff', border: '1px solid #CBD5E1' }}>Alt</kbd> + <kbd style={{ padding: '1px 5px', fontSize: 10, background: '#fff', border: '1px solid #CBD5E1' }}>N</kbd> from any dashboard to launch this hub.
+                </p>
               </div>
-              <div className="row g-2">
-                {popularActions.map((pop) => (
-                  <div key={`pop-${pop.id}`} className="col-6 col-md-4 col-lg-2">
-                    <button
-                      type="button"
-                      className="btn w-100 p-2.5 rounded-3 border text-start bg-white shadow-xs d-flex flex-column align-items-start gap-2 h-100 transition-all hover-card"
+            </div>
+          </div>
+
+          {/* ── Right Content Canvas (Scrollable) ── */}
+          <div
+            className="flex-grow-1 overflow-y-auto p-3 p-md-4"
+            style={{
+              backgroundColor: '#FAF8F5',
+            }}
+          >
+            {/* Mobile Category Horizontal Pills (visible only < 768px) */}
+            <div className="d-flex d-md-none overflow-x-auto gap-1.5 pb-2 mb-3" style={{ scrollbarWidth: 'none' }}>
+              {CATEGORIES.map((cat) => {
+                const isActive = activeCategory === cat.key
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    className={`btn btn-sm text-nowrap rounded-pill px-3 py-1 ${
+                      isActive ? 'btn-primary-bf text-white' : 'btn-white text-dark border'
+                    }`}
+                    style={{ fontSize: '0.76rem' }}
+                    onClick={() => setActiveCategory(cat.key)}
+                  >
+                    {cat.label} ({categoryCounts[cat.key]})
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Hero Quick Access Top Row (when on 'all' and no search) */}
+            {!search.trim() && activeCategory === 'all' && (
+              <div className="mb-4">
+                <div className="d-flex align-items-center justify-content-between mb-2.5">
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="fw-bold text-dark font-display" style={{ fontSize: '0.9rem' }}>
+                      ⭐ High-Frequency Operations
+                    </span>
+                    <span className="badge bg-warning-subtle text-warning fs-xxs">Instant 1-Click</span>
+                  </div>
+                </div>
+
+                <div className="row g-2.5">
+                  {popularActions.map((pop) => (
+                    <div key={`hero-${pop.id}`} className="col-12 col-sm-6 col-lg-4">
+                      <div
+                        className="hero-action-card p-3 rounded-3 bg-white border d-flex align-items-center justify-content-between gap-2 shadow-xs cursor-pointer"
+                        style={{
+                          borderColor: '#E2DDD5',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleSelect(pop.path)}
+                      >
+                        <div className="d-flex align-items-center gap-2.5 min-w-0">
+                          <div
+                            className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{
+                              width: 38,
+                              height: 38,
+                              backgroundColor: pop.iconBg,
+                              color: pop.iconColor,
+                            }}
+                          >
+                            <i className={`${pop.icon} fs-18`}></i>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>
+                              {pop.title.replace(/\s*\(.*?\)\s*/g, '')}
+                            </div>
+                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                              {pop.category}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 hero-arrow"
+                          style={{
+                            width: 26,
+                            height: 26,
+                            backgroundColor: '#F1F5F9',
+                            color: '#64748B',
+                          }}
+                        >
+                          <i className="ri-arrow-right-line fs-14"></i>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Current Section Title */}
+            <div className="d-flex align-items-center justify-content-between mb-3 pb-1 border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <span className="fw-bold text-dark font-display" style={{ fontSize: '0.98rem' }}>
+                  {search.trim() ? (
+                    <>
+                      Search Results for "<strong>{search}</strong>"
+                    </>
+                  ) : (
+                    <>
+                      <i className={`${currentCategoryObj.icon} text-primary me-1.5`}></i>
+                      {currentCategoryObj.label}
+                    </>
+                  )}
+                </span>
+                <span className="badge bg-secondary-subtle text-secondary" style={{ fontSize: 11 }}>
+                  {filteredActions.length} available
+                </span>
+              </div>
+
+              {search && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-link text-muted text-decoration-none p-0"
+                  style={{ fontSize: '0.78rem' }}
+                  onClick={() => setSearch('')}
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+
+            {/* Empty Search State */}
+            {filteredActions.length === 0 ? (
+              <div className="text-center py-5">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                  style={{ width: 64, height: 64, backgroundColor: '#F1F5F9', color: '#94A3B8' }}
+                >
+                  <i className="ri-search-2-line fs-28"></i>
+                </div>
+                <h6 className="fw-bold text-dark mb-1">No matching action found</h6>
+                <p className="text-muted mb-3" style={{ fontSize: '0.84rem' }}>
+                  Nothing matched "<strong>{search}</strong>" in {currentCategoryObj.label}.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  onClick={() => {
+                    setSearch('')
+                    setActiveCategory('all')
+                  }}
+                >
+                  View All Operations
+                </button>
+              </div>
+            ) : (
+              /* Action Cards Grid */
+              <div className="row g-2.5">
+                {filteredActions.map((action) => (
+                  <div key={action.id} className="col-12 col-lg-6">
+                    <div
+                      className="creation-action-card p-3 rounded-3 bg-white border d-flex align-items-start gap-3 h-100 shadow-xs cursor-pointer position-relative"
                       style={{
                         borderColor: '#E2DDD5',
+                        cursor: 'pointer',
                       }}
-                      onClick={() => handleSelect(pop.path)}
+                      onClick={() => handleSelect(action.path)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSelect(action.path)
+                      }}
                     >
                       <div
-                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width: 34, height: 34, backgroundColor: pop.iconBg, color: pop.iconColor }}
+                        className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
+                        style={{
+                          width: 44,
+                          height: 44,
+                          backgroundColor: action.iconBg,
+                          color: action.iconColor,
+                        }}
                       >
-                        <i className={`${pop.icon} fs-16`}></i>
+                        <i className={`${action.icon} fs-22`}></i>
                       </div>
-                      <div className="w-100">
-                        <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.78rem' }}>
-                          {pop.title.split('(')[0].trim()}
+
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="d-flex align-items-center justify-content-between gap-1 mb-1">
+                          <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                            <span className="fw-bold text-dark font-display" style={{ fontSize: '0.88rem' }}>
+                              {action.title}
+                            </span>
+                          </div>
+                          <span
+                            className="badge flex-shrink-0 border"
+                            style={{
+                              fontSize: 9,
+                              padding: '2px 6px',
+                              backgroundColor: action.iconBg,
+                              color: action.iconColor,
+                              borderColor: 'rgba(0,0,0,0.08)',
+                            }}
+                          >
+                            {action.badge || action.category.split('&')[0].trim()}
+                          </span>
                         </div>
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>
-                          {pop.category.split('&')[0].trim()}
-                        </div>
+
+                        <p
+                          className="text-muted mb-0"
+                          style={{
+                            fontSize: '0.76rem',
+                            lineHeight: 1.4,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {action.description}
+                        </p>
                       </div>
-                    </button>
+
+                      <div className="action-hover-btn flex-shrink-0 align-self-center">
+                        <i className="ri-arrow-right-up-line fs-18"></i>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Section Heading */}
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <span className="fw-bold fs-xs text-uppercase text-muted" style={{ letterSpacing: '0.04em' }}>
-              {activeCategory === 'all'
-                ? search.trim()
-                  ? `Search Results (${filteredActions.length})`
-                  : 'All Addable Operations'
-                : `${CATEGORIES.find((c) => c.key === activeCategory)?.label} (${filteredActions.length})`}
-            </span>
-            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-              Click any tile to open creation form
-            </span>
+            )}
           </div>
-
-          {/* Action Cards Grid */}
-          {filteredActions.length === 0 ? (
-            <div className="text-center py-5">
-              <div
-                className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                style={{ width: 64, height: 64, backgroundColor: '#F1F5F9', color: '#94A3B8' }}
-              >
-                <i className="ri-search-2-line fs-28"></i>
-              </div>
-              <h6 className="fw-bold text-dark mb-1">No creation action found</h6>
-              <p className="text-muted mb-3" style={{ fontSize: '0.85rem' }}>
-                We could not find anything matching "<strong>{search}</strong>".
-              </p>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill px-3"
-                onClick={() => {
-                  setSearch('')
-                  setActiveCategory('all')
-                }}
-              >
-                Reset Search Filters
-              </button>
-            </div>
-          ) : (
-            <div className="row g-2.5">
-              {filteredActions.map((action) => (
-                <div key={action.id} className="col-12 col-md-6">
-                  <div
-                    className="p-3 rounded-3 bg-white border d-flex align-items-start gap-3 h-100 shadow-xs cursor-pointer transition-all action-tile"
-                    style={{
-                      borderColor: '#E2DDD5',
-                      cursor: 'pointer',
-                      position: 'relative',
-                    }}
-                    onClick={() => handleSelect(action.path)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSelect(action.path)
-                    }}
-                  >
-                    <div
-                      className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
-                      style={{
-                        width: 44,
-                        height: 44,
-                        backgroundColor: action.iconBg,
-                        color: action.iconColor,
-                      }}
-                    >
-                      <i className={`${action.icon} fs-20`}></i>
-                    </div>
-
-                    <div className="flex-grow-1 min-w-0">
-                      <div className="d-flex align-items-center justify-content-between gap-1 mb-1">
-                        <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                          <span className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>
-                            {action.title}
-                          </span>
-                          {action.badge && (
-                            <span className={`badge ${action.badgeCls}`} style={{ fontSize: 9, padding: '2px 6px' }}>
-                              {action.badge}
-                            </span>
-                          )}
-                        </div>
-                        <i className="ri-arrow-right-up-line text-muted action-arrow fs-16 flex-shrink-0"></i>
-                      </div>
-
-                      <p
-                        className="text-muted mb-0"
-                        style={{
-                          fontSize: '0.76rem',
-                          lineHeight: 1.35,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {action.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ── Footer ── */}
         <div
-          className="p-2.5 px-4 bg-white border-top d-flex align-items-center justify-content-between flex-wrap gap-2"
-          style={{ fontSize: '0.78rem', color: '#64748B' }}
+          className="px-4 py-2.5 bg-white border-top d-flex align-items-center justify-content-between flex-wrap gap-2"
+          style={{ fontSize: '0.78rem', color: '#64748B', borderColor: '#E2E8F0' }}
         >
           <div className="d-flex align-items-center gap-2">
-            <span className="badge bg-success-subtle text-success">
-              <i className="ri-checkbox-circle-fill me-1"></i>
-              Bems Farms Portal Ready
+            <span className="d-inline-flex align-items-center gap-1 text-success fw-semibold">
+              <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
+              Bems Farms Portal Hub
             </span>
-            <span className="d-none d-sm-inline">
-              Tip: Press <kbd style={{ padding: '1px 5px', fontSize: 10 }}>Alt</kbd> + <kbd style={{ padding: '1px 5px', fontSize: 10 }}>N</kbd> anytime to open this modal
+            <span className="text-muted d-none d-sm-inline">•</span>
+            <span className="text-muted d-none d-sm-inline">
+              Select any card to navigate directly into creation mode
             </span>
           </div>
 
           <div className="d-flex align-items-center gap-2">
-            <button type="button" className="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill" onClick={onClose}>
-              Close
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary px-3 py-1 rounded-pill"
+              onClick={onClose}
+              style={{ fontSize: '0.76rem' }}
+            >
+              Close Hub (Esc)
             </button>
           </div>
         </div>
       </div>
 
       <style>{`
-        .action-tile {
+        .active-cat-btn {
+          background: linear-gradient(135deg, #143C2D 0%, #071F14 100%) !important;
+          color: #FFFFFF !important;
+          box-shadow: 0 4px 12px rgba(20, 60, 45, 0.22);
+        }
+        .active-cat-btn::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 6px;
+          bottom: 6px;
+          width: 3.5px;
+          background-color: #F59E0B;
+          border-radius: 0 4px 4px 0;
+        }
+        .inactive-cat-btn {
+          background: transparent;
+          color: #475569;
+        }
+        .inactive-cat-btn:hover {
+          background: #EDEAE5 !important;
+          color: #0F172A !important;
+        }
+        .hero-action-card {
           transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .action-tile:hover {
+        .hero-action-card:hover {
           transform: translateY(-2px);
           border-color: #143C2D !important;
           box-shadow: 0 8px 20px -6px rgba(20, 60, 45, 0.18) !important;
           background-color: #FAFCFA !important;
         }
-        .action-tile:hover .action-arrow {
+        .hero-action-card:hover .hero-arrow {
+          background-color: #143C2D !important;
+          color: #FFFFFF !important;
+          transform: translateX(2px);
+        }
+        .hero-arrow {
+          transition: all 0.15s ease;
+        }
+        .creation-action-card {
+          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .creation-action-card:hover {
+          transform: translateY(-2px);
+          border-color: #143C2D !important;
+          box-shadow: 0 8px 22px -6px rgba(20, 60, 45, 0.18) !important;
+          background-color: #FAFCFA !important;
+        }
+        .creation-action-card:hover .action-hover-btn {
           color: #143C2D !important;
           transform: translate(2px, -2px);
         }
-        .hover-card {
-          transition: all 0.18s ease;
+        .action-hover-btn {
+          color: #94A3B8;
+          transition: all 0.15s ease;
         }
-        .hover-card:hover {
-          border-color: #143C2D !important;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px -4px rgba(20, 60, 45, 0.15) !important;
-        }
-        @keyframes fadeIn {
+        @keyframes quickModalFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        @keyframes quickModalScaleIn {
+          from { opacity: 0; transform: scale(0.97) translateY(6px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
     </div>,
