@@ -188,8 +188,13 @@ export default function Topbar({ onToggleSidebar }) {
         <button
           className="btn topbar-action-pill btn-primary-bf"
           type="button"
-          onClick={() => setShowQuickCreate(true)}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setShowQuickCreate(true)
+          }}
           title="Quick Add Anything to Bems Farms (Alt+N)"
+          style={{ position: 'relative', zIndex: 10, cursor: 'pointer' }}
         >
           <i className="ri-add-line"></i>
           <span className="d-none d-sm-inline">Add New</span>

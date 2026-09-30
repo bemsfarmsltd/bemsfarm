@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 
 export const CREATE_ACTIONS = [
@@ -660,15 +661,18 @@ export default function QuickCreateModal({ isOpen, onClose }) {
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div
       className="position-fixed inset-0 d-flex align-items-center justify-content-center p-2 p-sm-3 p-md-4"
       style={{
+        position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 1060,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 999999,
         backgroundColor: 'rgba(7, 31, 20, 0.65)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -1020,6 +1024,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
           to { opacity: 1; }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   )
 }

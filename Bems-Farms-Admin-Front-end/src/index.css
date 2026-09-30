@@ -85,7 +85,17 @@ h1, h2, h3, h4, h5, h6, .font-display {
   overflow: visible !important;
   z-index: 1005 !important;
   padding: 0 !important;
+  pointer-events: none !important;
   transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#main-sidebar .sidebar-icon-rail,
+#main-sidebar .sidebar-sub-panel,
+#main-sidebar .rail-btn,
+#main-sidebar .dual-sub-link,
+#main-sidebar a,
+#main-sidebar button {
+  pointer-events: auto !important;
 }
 
 body.rail-is-hovered #main-sidebar {
@@ -147,7 +157,7 @@ body.sidebar-condensed #main-sidebar {
   display: flex !important;
   align-items: center !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
-  z-index: 1003 !important;
+  z-index: 1006 !important;
   transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
