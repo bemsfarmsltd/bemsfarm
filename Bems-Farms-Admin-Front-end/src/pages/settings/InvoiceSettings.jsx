@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
+import BemsOfficialStamp from '../../components/documents/BemsOfficialStamp'
 
 const BLANK = {
   invoice_prefix: 'INV-',
@@ -19,12 +20,14 @@ const BLANK = {
   invoice_email: 'corporate@bemsfarms.com',
   invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
   invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
+  company_signature_url: '',
 }
 
 export default function InvoiceSettings() {
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const sigInputRef = useRef(null)
 
   useEffect(() => {
     api.get('/admin/settings/invoices')
@@ -34,6 +37,19 @@ export default function InvoiceSettings() {
   }, [])
 
   const fld = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Convert uploaded file to base64 and store in form
+  function handleSignatureFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 1.5 * 1024 * 1024) {
+      toast.error('Signature image must be under 1.5 MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => fld('company_signature_url', ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   async function handleSave(e) {
     if (e) e.preventDefault()
@@ -277,8 +293,132 @@ export default function InvoiceSettings() {
           </div>
         </div>
 
-        {/* Right Info Card */}
+        {/* Right Info & Assets Column */}
         <div className="col-lg-5">
+          {/* 1. Official Authorized Signature Upload */}
+          <div className="card shadow-sm border mb-4">
+            <div className="card-header bg-light-subtle py-3 d-flex justify-content-between align-items-center">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-quill-pen-line text-success fs-5"></i>
+                Authorized Company Signature
+              </h6>
+              {form.company_signature_url && (
+                <span className="badge bg-success-subtle text-success border border-success-subtle">
+                  Active System-Wide
+                </span>
+              )}
+            </div>
+            <div className="card-body p-4">
+              <p className="text-muted small mb-3">
+                Upload the authorized executive signature (e.g. Managing Director, Financial Controller, or Head of Accounts). This signature is automatically affixed to all official invoices, receipts, waybills, and driver statements.
+              </p>
+
+              <input
+                type="file"
+                ref={sigInputRef}
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                style={{ display: 'none' }}
+                onChange={handleSignatureFile}
+              />
+
+              {form.company_signature_url ? (
+                <div className="border rounded-3 p-3 bg-light text-center">
+                  <div
+                    className="p-3 bg-white rounded-2 border d-flex align-items-center justify-content-center mx-auto mb-3"
+                    style={{
+                      minHeight: 110,
+                      maxWidth: 280,
+                      backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)',
+                      backgroundSize: '12px 12px'
+                    }}
+                  >
+                    <img
+                      src={form.company_signature_url}
+                      alt="Authorized Signature"
+                      style={{ maxHeight: 85, maxWidth: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                  <div className="d-flex justify-content-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                      onClick={() => sigInputRef.current?.click()}
+                    >
+                      <i className="ri-upload-2-line"></i> Replace Signature
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1.5"
+                      onClick={() => fld('company_signature_url', '')}
+                    >
+                      <i className="ri-delete-bin-line"></i> Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="border border-2 border-dashed rounded-3 p-4 text-center cursor-pointer bg-light hover-bg-white transition-all"
+                  style={{ cursor: 'pointer', borderColor: '#94a3b8' }}
+                  onClick={() => sigInputRef.current?.click()}
+                >
+                  <div className="text-muted mb-2">
+                    <i className="ri-signature-line fs-1 text-secondary opacity-75"></i>
+                  </div>
+                  <div className="fw-semibold text-dark mb-1">Click to Upload Signature Image</div>
+                  <div className="text-muted small">PNG with transparent background recommended (max 1.5MB)</div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-success mt-3 px-3 d-inline-flex align-items-center gap-1.5"
+                  >
+                    <i className="ri-upload-cloud-line"></i> Select Image File
+                  </button>
+                </div>
+              )}
+
+              <div className="alert alert-info py-2 px-3 mt-3 mb-0 d-flex align-items-center gap-2 small">
+                <i className="ri-information-line fs-5 text-info flex-shrink-0"></i>
+                <span>Remember to click <strong>Save Changes</strong> at the top to save the updated signature across all documents.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Permanent Official Company Stamp Preview */}
+          <div className="card shadow-sm border mb-4">
+            <div className="card-header bg-light-subtle py-3 d-flex justify-content-between align-items-center">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-shield-check-line text-success fs-5"></i>
+                Official Company Seal / Stamp
+              </h6>
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+                Permanent Built-in
+              </span>
+            </div>
+            <div className="card-body p-4 text-center">
+              <p className="text-muted small mb-3 text-start">
+                This executive corporate stamp is permanently rendered by code on every official document, featuring verified registration numbers and corporate seals.
+              </p>
+              <div
+                className="p-4 bg-light rounded-3 border d-flex flex-column align-items-center justify-content-center mx-auto"
+                style={{ maxWidth: 300 }}
+              >
+                <BemsOfficialStamp
+                  size={120}
+                  companyName={form.invoice_company_name || 'BEMS FARMS LIMITED'}
+                  rcNumber={form.invoice_rc_number || 'RC 1849204'}
+                />
+                <div className="mt-3">
+                  <span className="badge bg-success text-white px-2.5 py-1 font-monospace" style={{ fontSize: 11 }}>
+                    {form.invoice_rc_number || 'RC 1849204'}
+                  </span>
+                  <div className="text-muted small mt-1 font-monospace" style={{ fontSize: 11 }}>
+                    Federal Republic of Nigeria
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Live Remittance Preview */}
           <div className="card shadow-sm border mb-4">
             <div className="card-header bg-light-subtle py-3">
               <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import QRCode from 'qrcode'
+import api from '../../lib/api'
 import './bems-document.css'
+import BemsOfficialStamp from './BemsOfficialStamp'
 
 /**
  * Converts a numeric amount to formal Nigerian Naira words
@@ -82,8 +84,24 @@ export default function BemsOfficialDocument({
   documentType = 'invoice', // 'invoice' | 'tax_invoice' | 'proforma' | 'receipt'
   data = {},
   bankSettings = null,
+  signatureUrl = null,
   showPrintStyles = true
 }) {
+  const [fetchedSettings, setFetchedSettings] = useState(null)
+
+  useEffect(() => {
+    if (!bankSettings) {
+      api.get('/admin/settings/invoices')
+        .then(res => {
+          if (res.data?.settings) setFetchedSettings(res.data.settings)
+        })
+        .catch(() => {})
+    }
+  }, [bankSettings])
+
+  const effectiveSettings = bankSettings || fetchedSettings || {}
+  const effectiveSignature = signatureUrl || effectiveSettings.company_signature_url || data.signature_url || data.signature || ''
+
   const isReceipt = documentType === 'receipt'
   const isProforma = documentType === 'proforma'
 
@@ -146,17 +164,17 @@ export default function BemsOfficialDocument({
   const securityCode = generateSecurityCode(docNumber, total)
 
   // Dynamic Bank and Company Info
-  const accountName = bankSettings?.invoice_account_name || bankSettings?.account_name || 'Bems Farms Limited'
-  const bankName = bankSettings?.invoice_bank_name || bankSettings?.bank_name || 'Moniepoint MFB / Zenith Bank'
-  const accountNumber = bankSettings?.invoice_account_number || bankSettings?.account_number || '1023849502'
-  const secondaryBank = bankSettings?.invoice_secondary_bank || bankSettings?.secondary_bank || ''
-  const secondaryAccount = bankSettings?.invoice_secondary_account_number || bankSettings?.secondary_account || ''
-  const companyName = bankSettings?.invoice_company_name || bankSettings?.company_name || 'Bems Farms Limited'
-  const companyAddress = bankSettings?.invoice_company_address || bankSettings?.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
-  const rcNumber = bankSettings?.invoice_rc_number || bankSettings?.rc_number || 'RC 1849204'
-  const tinNumber = bankSettings?.invoice_tin || bankSettings?.tin || 'TIN 24819402-0001'
-  const companyEmail = bankSettings?.invoice_email || bankSettings?.email || 'corporate@bemsfarms.com'
-  const companyPhone = bankSettings?.invoice_phone || bankSettings?.phone || '+234 800 236 7326 / +234 814 000 0000'
+  const accountName = effectiveSettings.invoice_account_name || effectiveSettings.account_name || 'Bems Farms Limited'
+  const bankName = effectiveSettings.invoice_bank_name || effectiveSettings.bank_name || 'Moniepoint MFB / Zenith Bank'
+  const accountNumber = effectiveSettings.invoice_account_number || effectiveSettings.account_number || '1023849502'
+  const secondaryBank = effectiveSettings.invoice_secondary_bank || effectiveSettings.secondary_bank || ''
+  const secondaryAccount = effectiveSettings.invoice_secondary_account_number || effectiveSettings.secondary_account || ''
+  const companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Limited'
+  const companyAddress = effectiveSettings.invoice_company_address || effectiveSettings.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
+  const rcNumber = effectiveSettings.invoice_rc_number || effectiveSettings.rc_number || 'RC 1849204'
+  const tinNumber = effectiveSettings.invoice_tin || effectiveSettings.tin || 'TIN 24819402-0001'
+  const companyEmail = effectiveSettings.invoice_email || effectiveSettings.email || 'corporate@bemsfarms.com'
+  const companyPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || '+234 800 236 7326 / +234 814 000 0000'
 
   // Dynamic Scannable QR Code generation
   const verifyUrl = useMemo(() => {
@@ -509,10 +527,24 @@ export default function BemsOfficialDocument({
               </div>
             )}
 
-            <div className="bems-doc-sig">
-              <div className="ln" />
-              <b>For {companyName}</b>
-              <span>Authorised signature · Accounts</span>
+            <div className="bems-doc-sign-right">
+              <div className="bems-doc-sig">
+                {effectiveSignature ? (
+                  <img src={effectiveSignature} alt="Authorised Signature" className="bems-doc-sig-img" />
+                ) : (
+                  <div className="bems-doc-sig-placeholder" />
+                )}
+                <div className="ln" />
+                <b>For {companyName}</b>
+                <span>Authorised signature · Accounts</span>
+              </div>
+              <div className="bems-doc-stamp-wrapper">
+                <BemsOfficialStamp
+                  size={84}
+                  companyName={companyName}
+                  rcNumber={rcNumber}
+                />
+              </div>
             </div>
           </section>
 

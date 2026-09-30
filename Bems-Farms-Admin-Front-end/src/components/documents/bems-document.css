@@ -531,8 +531,8 @@
 .bems-doc-sign {
   margin-top: auto;
   display: grid;
-  grid-template-columns: 1fr 230px;
-  gap: 40px;
+  grid-template-columns: 1fr minmax(260px, auto);
+  gap: 32px;
   align-items: end;
   padding-bottom: 16px;
 }
@@ -561,8 +561,33 @@
   color: var(--bems-g9);
 }
 
+.bems-doc-sign-right {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 16px;
+  position: relative;
+}
+
+.bems-doc-sig {
+  flex: 1;
+  min-width: 150px;
+}
+
+.bems-doc-sig-img {
+  height: 40px;
+  max-width: 140px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.bems-doc-sig-placeholder {
+  height: 20px;
+}
+
 .bems-doc-sig .ln {
-  height: 34px;
+  height: 24px;
   border-bottom: 1px solid var(--bems-ink);
 }
 
@@ -576,6 +601,15 @@
 .bems-doc-sig span {
   font-size: 10px;
   color: var(--bems-muted);
+}
+
+.bems-doc-stamp-wrapper {
+  flex-shrink: 0;
+  margin-bottom: -6px;
+}
+
+.bems-official-stamp {
+  transition: transform 0.2s ease;
 }
 
 /* Footer Group (Anchored to Absolute Bottom of A4 Document via CSS Grid) */
@@ -1024,6 +1058,19 @@
     width: 100% !important;
     padding: 6px 14mm !important;
     font-size: 9px !important;
+  }
+  .bems-doc-sign-right {
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 12px !important;
+  }
+  .bems-doc-sig-img {
+    height: 34px !important;
+    max-width: 120px !important;
+  }
+  .bems-official-stamp {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 }
 

@@ -1333,6 +1333,14 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
       : new Date());
 
     // Query active company banking & contact settings for official document rendering
+    let invoiceSettings = {};
+    try {
+      const sRes = await pool.query("SELECT key, value FROM settings WHERE group_name = 'invoices'");
+      for (const row of sRes.rows) {
+        invoiceSettings[row.key] = row.value;
+      }
+    } catch (_) {}
+
     let bankSettings = null;
     try {
       const bsRes = await pool.query("SELECT * FROM bank_settings ORDER BY id ASC LIMIT 1");
@@ -1364,13 +1372,14 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         period_end: periodEnd,
       },
       company: {
-        name: bankSettings?.invoice_company_name || 'Bems Farms Limited',
-        address: bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
-        rc_number: bankSettings?.invoice_rc_number || 'RC 1849204',
-        tin: bankSettings?.invoice_tin || 'TIN 24819402-0001',
-        email: bankSettings?.invoice_email || 'corporate@bemsfarms.com',
-        phone: bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
+        name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Limited',
+        address: invoiceSettings.invoice_company_address || bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
+        rc_number: invoiceSettings.invoice_rc_number || bankSettings?.invoice_rc_number || 'RC 1849204',
+        tin: invoiceSettings.invoice_tin || bankSettings?.invoice_tin || 'TIN 24819402-0001',
+        email: invoiceSettings.invoice_email || bankSettings?.invoice_email || 'corporate@bemsfarms.com',
+        phone: invoiceSettings.invoice_phone || bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
         website: 'www.bemsfarms.com',
+        signature_url: invoiceSettings.company_signature_url || bankSettings?.company_signature_url || '',
       },
       statement: statementWithBalances,
     });

@@ -75,6 +75,36 @@ function generateSecurityCode(ref, amount) {
   return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`;
 }
 
+function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED', rcNumber = 'RC 1849204') {
+  return `
+    <div style="display:inline-block;width:82px;height:82px;transform:rotate(-12deg);user-select:none;flex-shrink:0;">
+      <svg viewBox="0 0 140 140" width="82" height="82" style="display:block;overflow:visible">
+        <defs>
+          <path id="srv-stamp-top" d="M 18 70 A 52 52 0 0 1 122 70" fill="none" />
+          <path id="srv-stamp-btm" d="M 122 70 A 52 52 0 0 1 18 70" fill="none" />
+        </defs>
+        <circle cx="70" cy="70" r="66" fill="none" stroke="#0c4a2a" stroke-width="3.2" />
+        <circle cx="70" cy="70" r="61.5" fill="none" stroke="#0c4a2a" stroke-width="1" stroke-dasharray="3 1.5" />
+        <circle cx="70" cy="70" r="41" fill="none" stroke="#0c4a2a" stroke-width="1.8" />
+        <circle cx="70" cy="70" r="38" fill="none" stroke="#b8860b" stroke-width="0.8" stroke-dasharray="1.5 2" />
+        <text fill="#0c4a2a" font-size="9.2" font-weight="800" font-family="'Cinzel', Georgia, serif" letter-spacing="2.2">
+          <textPath href="#srv-stamp-top" startOffset="50%" text-anchor="middle">★ ${companyName} ★</textPath>
+        </text>
+        <text fill="#0c4a2a" font-size="7.8" font-weight="700" font-family="'Cinzel', Georgia, serif" letter-spacing="1.4">
+          <textPath href="#srv-stamp-btm" startOffset="50%" text-anchor="middle">★ ${rcNumber} · ABIA STATE ★</textPath>
+        </text>
+        <polygon points="70,44 71.8,49.5 77.5,49.5 73,53 74.8,58.5 70,55 65.2,58.5 67,53 62.5,49.5 68.2,49.5" fill="#b8860b" />
+        <text x="70" y="69" text-anchor="middle" fill="#0c4a2a" font-size="11.5" font-weight="900" font-family="'Cinzel', Georgia, serif" letter-spacing="2.5">OFFICIAL</text>
+        <line x1="47" y1="74" x2="65" y2="74" stroke="#0c4a2a" stroke-width="0.8" />
+        <polygon points="70,72.5 72,74 70,75.5 68,74" fill="#b8860b" />
+        <line x1="75" y1="74" x2="93" y2="74" stroke="#0c4a2a" stroke-width="0.8" />
+        <text x="70" y="85" text-anchor="middle" fill="#0c4a2a" font-size="9.5" font-weight="800" font-family="'Cinzel', Georgia, serif" letter-spacing="3">SEAL</text>
+        <text x="70" y="95" text-anchor="middle" fill="#0c4a2a" font-size="5.8" font-weight="700" font-family="system-ui, sans-serif" letter-spacing="2">VERIFIED &amp; AUDITED</text>
+      </svg>
+    </div>
+  `;
+}
+
 function renderDriverStatementHtml({
   driver = {},
   summary = {},
@@ -83,6 +113,7 @@ function renderDriverStatementHtml({
   qrDataUrl = '',
   autoPrint = false,
 }) {
+  const signatureUrl = company.signature_url || company.company_signature_url || '';
   const driverName = driver.name || 'Bems Farms Driver';
   const driverPhone = driver.phone || '—';
   const driverEmail = driver.email || '—';
@@ -612,7 +643,7 @@ function renderDriverStatementHtml({
     .bems-doc-sign {
       margin-top: auto;
       display: grid;
-      grid-template-columns: 1fr 220px;
+      grid-template-columns: 1fr minmax(260px, auto);
       gap: 32px;
       align-items: end;
       padding-bottom: 12px;
@@ -626,8 +657,26 @@ function renderDriverStatementHtml({
       color: var(--bems-ink2);
       line-height: 1.5;
     }
+    .bems-doc-sign-right {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 14px;
+      position: relative;
+    }
+    .bems-doc-sig {
+      flex: 1;
+      min-width: 150px;
+    }
+    .bems-doc-sig-img {
+      height: 38px;
+      max-width: 130px;
+      object-fit: contain;
+      display: block;
+      margin-bottom: 2px;
+    }
     .bems-doc-sig .ln {
-      height: 30px;
+      height: 22px;
       border-bottom: 1px solid var(--bems-ink);
     }
     .bems-doc-sig b {
@@ -945,10 +994,16 @@ function renderDriverStatementHtml({
           <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
         </div>
 
-        <div class="bems-doc-sig">
-          <div class="ln"></div>
-          <b>For ${companyName}</b>
-          <span>Financial Controller & Head of Logistics</span>
+        <div class="bems-doc-sign-right">
+          <div class="bems-doc-sig">
+            ${signatureUrl ? `<img src="${signatureUrl}" alt="Authorised Signature" class="bems-doc-sig-img" />` : ''}
+            <div class="ln"></div>
+            <b>For ${companyName}</b>
+            <span>Financial Controller &amp; Head of Logistics</span>
+          </div>
+          <div class="bems-doc-stamp-wrapper" style="flex-shrink:0;margin-bottom:-6px;">
+            ${getOfficialStampSvg(companyName, rcNumber)}
+          </div>
         </div>
       </section>
 

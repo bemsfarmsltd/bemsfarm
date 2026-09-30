@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import QRCode from 'qrcode'
+import api from '../../lib/api'
 import './bems-document.css'
 import { numberToWords } from './BemsOfficialDocument'
+import BemsOfficialStamp from './BemsOfficialStamp'
 
 /**
  * Format date to "24 Sep 2026" or "24 Sep 2026, 01:00 PM"
@@ -57,6 +59,7 @@ export default function BemsDriverStatementDocument({
   company = {},
   statement = [],
   period = {},
+  signatureUrl = null,
   showFilterToolbar = true,
   onDateRangeChange,
 }) {
@@ -203,6 +206,22 @@ export default function BemsDriverStatementDocument({
   const tinNumber = company.tin || 'TIN 24819402-0001'
   const companyEmail = company.email || 'corporate@bemsfarms.com'
   const companyPhone = company.phone || '+234 800 236 7326 / +234 814 000 0000'
+
+  // Signature resolution with fallback to settings
+  const [fetchedSig, setFetchedSig] = useState('')
+  useEffect(() => {
+    if (!signatureUrl && !company.signature_url && !company.company_signature_url) {
+      api.get('/admin/settings/invoices')
+        .then(res => {
+          if (res.data?.settings?.company_signature_url) {
+            setFetchedSig(res.data.settings.company_signature_url)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [signatureUrl, company.signature_url, company.company_signature_url])
+
+  const effectiveSignature = signatureUrl || company.signature_url || company.company_signature_url || fetchedSig || ''
 
   // ── Multi-Page Chunking Logic ──
   // Rule: Statement has exactly 1 Header (Page 1) and 1 Footer (Last Page).
@@ -553,10 +572,24 @@ export default function BemsDriverStatementDocument({
                   <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
                 </div>
 
-                <div className="bems-doc-sig">
-                  <div className="ln" />
-                  <b>For {companyName}</b>
-                  <span>Financial Controller & Head of Logistics</span>
+                <div className="bems-doc-sign-right">
+                  <div className="bems-doc-sig">
+                    {effectiveSignature ? (
+                      <img src={effectiveSignature} alt="Authorised Signature" className="bems-doc-sig-img" />
+                    ) : (
+                      <div className="bems-doc-sig-placeholder" />
+                    )}
+                    <div className="ln" />
+                    <b>For {companyName}</b>
+                    <span>Financial Controller &amp; Head of Logistics</span>
+                  </div>
+                  <div className="bems-doc-stamp-wrapper">
+                    <BemsOfficialStamp
+                      size={82}
+                      companyName={companyName}
+                      rcNumber={rcNumber}
+                    />
+                  </div>
                 </div>
               </section>
             </>
@@ -714,10 +747,24 @@ export default function BemsDriverStatementDocument({
                 <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
               </div>
 
-              <div className="bems-doc-sig">
-                <div className="ln" />
-                <b>For {companyName}</b>
-                <span>Financial Controller & Head of Logistics</span>
+              <div className="bems-doc-sign-right">
+                <div className="bems-doc-sig">
+                  {effectiveSignature ? (
+                    <img src={effectiveSignature} alt="Authorised Signature" className="bems-doc-sig-img" />
+                  ) : (
+                    <div className="bems-doc-sig-placeholder" />
+                  )}
+                  <div className="ln" />
+                  <b>For {companyName}</b>
+                  <span>Financial Controller &amp; Head of Logistics</span>
+                </div>
+                <div className="bems-doc-stamp-wrapper">
+                  <BemsOfficialStamp
+                    size={82}
+                    companyName={companyName}
+                    rcNumber={rcNumber}
+                  />
+                </div>
               </div>
             </section>
 

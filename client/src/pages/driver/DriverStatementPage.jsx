@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import QRCode from "qrcode";
 import api from "../../services/api";
+import BemsOfficialStamp from "../../components/documents/BemsOfficialStamp";
 
 function numberToWords(num) {
   if (!num || isNaN(num)) return "Zero naira only";
@@ -226,6 +227,7 @@ export default function DriverStatementPage() {
   const driver = statementData?.driver || {};
   const summary = statementData?.summary || {};
   const company = statementData?.company || {};
+  const signatureUrl = company.signature_url || company.company_signature_url || '';
   const statement = statementData?.statement || [];
 
   const driverName = driver.name || "Bems Farms Driver";
@@ -687,7 +689,7 @@ export default function DriverStatementPage() {
         .bems-doc-sign {
           margin-top: auto;
           display: grid;
-          grid-template-columns: 1fr 220px;
+          grid-template-columns: 1fr minmax(260px, auto);
           gap: 32px;
           align-items: end;
           padding-bottom: 12px;
@@ -701,8 +703,29 @@ export default function DriverStatementPage() {
           color: var(--bems-ink2);
           line-height: 1.5;
         }
+        .bems-doc-sign-right {
+          display: flex;
+          align-items: flex-end;
+          justify-content: flex-end;
+          gap: 14px;
+          position: relative;
+        }
+        .bems-doc-sig {
+          flex: 1;
+          min-width: 150px;
+        }
+        .bems-doc-sig-img {
+          height: 38px;
+          max-width: 130px;
+          object-fit: contain;
+          display: block;
+          margin-bottom: 2px;
+        }
+        .bems-doc-sig-placeholder {
+          height: 20px;
+        }
         .bems-doc-sig .ln {
-          height: 30px;
+          height: 22px;
           border-bottom: 1px solid var(--bems-ink);
         }
         .bems-doc-sig b {
@@ -714,6 +737,13 @@ export default function DriverStatementPage() {
         .bems-doc-sig span {
           font-size: 9.5px;
           color: var(--bems-muted);
+        }
+        .bems-doc-stamp-wrapper {
+          flex-shrink: 0;
+          margin-bottom: -6px;
+        }
+        .bems-official-stamp {
+          transition: transform 0.2s ease;
         }
 
         .bems-doc-thanks {
@@ -904,7 +934,10 @@ export default function DriverStatementPage() {
           .bems-doc-tot .grand { padding: 8px 12px !important; font-size: 15px !important; }
           .bems-doc-sign { gap: 24px !important; padding-bottom: 10px !important; }
           .bems-doc-keep { font-size: 9.5px !important; padding: 8px 12px !important; line-height: 1.45 !important; }
-          .bems-doc-sig .ln { height: 26px !important; }
+          .bems-doc-sign-right { display: flex !important; align-items: flex-end !important; gap: 12px !important; }
+          .bems-doc-sig-img { height: 34px !important; max-width: 120px !important; }
+          .bems-doc-sig .ln { height: 22px !important; }
+          .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -1358,10 +1391,24 @@ export default function DriverStatementPage() {
                           <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
                         </div>
 
-                        <div className="bems-doc-sig">
-                          <div className="ln"></div>
-                          <b>For {companyName}</b>
-                          <span>Financial Controller & Head of Logistics</span>
+                        <div className="bems-doc-sign-right">
+                          <div className="bems-doc-sig">
+                            {signatureUrl ? (
+                              <img src={signatureUrl} alt="Authorised Signature" className="bems-doc-sig-img" />
+                            ) : (
+                              <div className="bems-doc-sig-placeholder" />
+                            )}
+                            <div className="ln"></div>
+                            <b>For {companyName}</b>
+                            <span>Financial Controller &amp; Head of Logistics</span>
+                          </div>
+                          <div className="bems-doc-stamp-wrapper">
+                            <BemsOfficialStamp
+                              size={82}
+                              companyName={companyName}
+                              rcNumber={company.rc_number || "RC 1849204"}
+                            />
+                          </div>
                         </div>
                       </section>
                     </>
@@ -1516,10 +1563,24 @@ export default function DriverStatementPage() {
                         <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
                       </div>
 
-                      <div className="bems-doc-sig">
-                        <div className="ln"></div>
-                        <b>For {companyName}</b>
-                        <span>Financial Controller & Head of Logistics</span>
+                      <div className="bems-doc-sign-right">
+                        <div className="bems-doc-sig">
+                          {signatureUrl ? (
+                            <img src={signatureUrl} alt="Authorised Signature" className="bems-doc-sig-img" />
+                          ) : (
+                            <div className="bems-doc-sig-placeholder" />
+                          )}
+                          <div className="ln"></div>
+                          <b>For {companyName}</b>
+                          <span>Financial Controller &amp; Head of Logistics</span>
+                        </div>
+                        <div className="bems-doc-stamp-wrapper">
+                          <BemsOfficialStamp
+                            size={82}
+                            companyName={companyName}
+                            rcNumber={company.rc_number || "RC 1849204"}
+                          />
+                        </div>
                       </div>
                     </section>
 

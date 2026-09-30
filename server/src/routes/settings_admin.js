@@ -341,6 +341,7 @@ const DEFAULT_INVOICE_SETTINGS = {
   bank_name: 'Moniepoint MFB / Zenith Bank',
   account_name: 'Bems Farms Limited',
   account_number: '1023849502',
+  company_signature_url: '',
 };
 
 router.get("/invoices", requireRole(...STAFF_ROLES), async (req, res, next) => {
