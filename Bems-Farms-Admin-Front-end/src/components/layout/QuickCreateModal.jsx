@@ -663,9 +663,97 @@ export default function QuickCreateModal({ isOpen, onClose }) {
 
   const currentCategoryObj = CATEGORIES.find((c) => c.key === activeCategory) || CATEGORIES[0]
 
+  // Render an individual action row (spacious, non-cramped, full width)
+  const renderActionRow = (action) => (
+    <div
+      key={action.id}
+      className="quick-action-row p-3 rounded-3 bg-white border d-flex align-items-center justify-content-between gap-3 shadow-xs mb-2.5"
+      style={{
+        borderColor: '#EAE6DF',
+        cursor: 'pointer',
+      }}
+      onClick={() => handleSelect(action.path)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') handleSelect(action.path)
+      }}
+    >
+      {/* Left Icon + Text Information */}
+      <div className="d-flex align-items-center gap-3 min-w-0 flex-grow-1">
+        <div
+          className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          style={{
+            width: 44,
+            height: 44,
+            backgroundColor: action.iconBg,
+            color: action.iconColor,
+          }}
+        >
+          <i className={`${action.icon} fs-22`}></i>
+        </div>
+
+        <div className="min-w-0 flex-grow-1">
+          <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <span className="fw-bold text-dark font-display action-title" style={{ fontSize: '0.94rem', letterSpacing: '-0.01em' }}>
+              {action.title}
+            </span>
+            <span
+              className="badge px-2 py-0.5 rounded-pill flex-shrink-0"
+              style={{
+                backgroundColor: action.iconBg,
+                color: action.iconColor,
+                border: '1px solid rgba(0,0,0,0.06)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+              }}
+            >
+              {action.badge || action.category.split('&')[0].trim()}
+            </span>
+          </div>
+
+          <p
+            className="text-muted mb-0 action-desc"
+            style={{
+              fontSize: '0.80rem',
+              lineHeight: 1.45,
+              color: '#64748B',
+              margin: 0,
+            }}
+          >
+            {action.description}
+          </p>
+        </div>
+      </div>
+
+      {/* Right Launch Action */}
+      <div className="d-flex align-items-center gap-2.5 flex-shrink-0 ps-2">
+        <span
+          className="d-none d-xl-inline-block px-2 py-1 rounded bg-light text-muted border"
+          style={{ fontSize: '0.72rem', fontWeight: 550 }}
+        >
+          {action.category}
+        </span>
+        <div
+          className="action-pill-btn d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+          style={{
+            width: 34,
+            height: 34,
+            backgroundColor: '#F8FAFC',
+            color: '#64748B',
+            border: '1px solid #E2E8F0',
+          }}
+        >
+          <i className="ri-arrow-right-line fs-16"></i>
+        </div>
+      </div>
+    </div>
+  )
+
   return createPortal(
     <div
-      className="position-fixed inset-0 d-flex align-items-center justify-content-center p-3 p-md-4"
+      className="position-fixed inset-0 d-flex align-items-center justify-content-center p-2 p-sm-3 p-md-4"
       style={{
         position: 'fixed',
         top: 0,
@@ -675,7 +763,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
         width: '100vw',
         height: '100vh',
         zIndex: 999999,
-        backgroundColor: 'rgba(7, 31, 20, 0.65)',
+        backgroundColor: 'rgba(7, 31, 20, 0.68)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         animation: 'quickModalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -685,8 +773,8 @@ export default function QuickCreateModal({ isOpen, onClose }) {
       <div
         className="card border-0 shadow-2xl w-100 d-flex flex-column"
         style={{
-          maxWidth: 1080,
-          height: 'min(730px, 92vh)',
+          maxWidth: 1120,
+          height: 'min(760px, 92vh)',
           borderRadius: '1.25rem',
           backgroundColor: '#FFFFFF',
           overflow: 'hidden',
@@ -697,7 +785,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
       >
         {/* ── Top Executive Command Bar ── */}
         <div
-          className="px-4 py-3 d-flex align-items-center justify-content-between gap-3 border-bottom position-relative"
+          className="px-3 px-md-4 py-3 d-flex align-items-center justify-content-between gap-3 border-bottom position-relative"
           style={{
             backgroundColor: '#FFFFFF',
             borderBottomColor: '#E2E8F0',
@@ -708,8 +796,8 @@ export default function QuickCreateModal({ isOpen, onClose }) {
             <div
               className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
               style={{
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 background: 'linear-gradient(135deg, #143C2D 0%, #071F14 100%)',
                 color: '#F59E0B',
                 boxShadow: '0 2px 8px rgba(20, 60, 45, 0.25)',
@@ -742,7 +830,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
           </div>
 
           {/* Large Command Search Input */}
-          <div className="flex-grow-1 position-relative" style={{ maxWidth: 560 }}>
+          <div className="flex-grow-1 position-relative" style={{ maxWidth: 540 }}>
             <i
               className="ri-search-line position-absolute"
               style={{ left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 16, color: '#94A3B8' }}
@@ -785,7 +873,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
                   background: '#FFFFFF',
                   padding: '2px 6px',
                   borderRadius: 4,
-                  border: '1px solid #E2E8F0',
+                  border: '1px solid #CBD5E1',
                 }}
               >
                 ESC
@@ -860,7 +948,7 @@ export default function QuickCreateModal({ isOpen, onClose }) {
               })}
             </div>
 
-            {/* Bottom Tip Card */}
+            {/* Bottom Tip Card with high contrast shortcut badge */}
             <div className="mt-auto px-2 pt-3">
               <div
                 className="p-2.5 rounded-3 border text-start"
@@ -871,11 +959,40 @@ export default function QuickCreateModal({ isOpen, onClose }) {
               >
                 <div className="d-flex align-items-center gap-1.5 text-success fw-bold mb-1" style={{ fontSize: 11 }}>
                   <i className="ri-keyboard-line"></i>
-                  <span>Pro Shortcut</span>
+                  <span>Global Shortcut</span>
                 </div>
-                <p className="text-muted mb-0" style={{ fontSize: 11, lineHeight: 1.35 }}>
-                  Press <kbd style={{ padding: '1px 5px', fontSize: 10, background: '#fff', border: '1px solid #CBD5E1' }}>Alt</kbd> + <kbd style={{ padding: '1px 5px', fontSize: 10, background: '#fff', border: '1px solid #CBD5E1' }}>N</kbd> from any dashboard to launch this hub.
-                </p>
+                <div className="d-flex align-items-center gap-1.5 mt-1">
+                  <span
+                    className="d-inline-flex align-items-center justify-content-center fw-bold shadow-xs"
+                    style={{
+                      padding: '2px 7px',
+                      fontSize: 11,
+                      background: '#FFFFFF',
+                      color: '#0F172A',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: 4,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    Alt
+                  </span>
+                  <span className="text-muted fw-bold" style={{ fontSize: 11 }}>+</span>
+                  <span
+                    className="d-inline-flex align-items-center justify-content-center fw-bold shadow-xs"
+                    style={{
+                      padding: '2px 7px',
+                      fontSize: 11,
+                      background: '#FFFFFF',
+                      color: '#0F172A',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: 4,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    N
+                  </span>
+                  <span className="text-muted ms-1" style={{ fontSize: 10.5 }}>opens hub</span>
+                </div>
               </div>
             </div>
           </div>
@@ -907,61 +1024,52 @@ export default function QuickCreateModal({ isOpen, onClose }) {
               })}
             </div>
 
-            {/* Hero Quick Access Top Row (when on 'all' and no search) */}
+            {/* Quick Launch Chips Bar (only on 'all' view and when not actively searching) */}
             {!search.trim() && activeCategory === 'all' && (
               <div className="mb-4">
-                <div className="d-flex align-items-center justify-content-between mb-2.5">
+                <div className="d-flex align-items-center justify-content-between mb-2">
                   <div className="d-flex align-items-center gap-1.5">
-                    <span className="fw-bold text-dark font-display" style={{ fontSize: '0.9rem' }}>
-                      ⭐ High-Frequency Operations
+                    <span className="text-uppercase text-muted fw-bold" style={{ fontSize: 11, letterSpacing: '0.05em' }}>
+                      ⚡ High-Frequency Starters
                     </span>
-                    <span className="badge bg-warning-subtle text-warning fs-xxs">Instant 1-Click</span>
+                    <span className="badge bg-warning-subtle text-warning" style={{ fontSize: 10 }}>1-Click</span>
                   </div>
                 </div>
 
-                <div className="row g-2.5">
-                  {popularActions.map((pop) => (
-                    <div key={`hero-${pop.id}`} className="col-12 col-sm-6 col-lg-4">
+                <div className="row g-2">
+                  {popularActions.slice(0, 6).map((pop) => (
+                    <div key={`hero-${pop.id}`} className="col-6 col-sm-4 col-lg-2">
                       <div
-                        className="hero-action-card p-3 rounded-3 bg-white border d-flex align-items-center justify-content-between gap-2 shadow-xs cursor-pointer"
+                        className="quick-chip p-2.5 rounded-3 bg-white border d-flex flex-column justify-content-between h-100 shadow-xs cursor-pointer"
                         style={{
-                          borderColor: '#E2DDD5',
+                          borderColor: '#E8E5DF',
                           cursor: 'pointer',
+                          minHeight: 82,
                         }}
                         onClick={() => handleSelect(pop.path)}
                       >
-                        <div className="d-flex align-items-center gap-2.5 min-w-0">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
                           <div
-                            className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                            className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
                             style={{
-                              width: 38,
-                              height: 38,
+                              width: 28,
+                              height: 28,
                               backgroundColor: pop.iconBg,
                               color: pop.iconColor,
                             }}
                           >
-                            <i className={`${pop.icon} fs-18`}></i>
+                            <i className={`${pop.icon} fs-15`}></i>
                           </div>
-                          <div className="min-w-0">
-                            <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.84rem' }}>
-                              {pop.title.replace(/\s*\(.*?\)\s*/g, '')}
-                            </div>
-                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                              {pop.category}
-                            </div>
-                          </div>
+                          <i className="ri-arrow-right-up-line text-muted fs-14"></i>
                         </div>
 
-                        <div
-                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 hero-arrow"
-                          style={{
-                            width: 26,
-                            height: 26,
-                            backgroundColor: '#F1F5F9',
-                            color: '#64748B',
-                          }}
-                        >
-                          <i className="ri-arrow-right-line fs-14"></i>
+                        <div>
+                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.80rem', letterSpacing: '-0.01em' }}>
+                            {pop.title.replace(/\s*\(.*?\)\s*/g, '')}
+                          </div>
+                          <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>
+                            {pop.badge}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1027,78 +1135,49 @@ export default function QuickCreateModal({ isOpen, onClose }) {
                 </button>
               </div>
             ) : (
-              /* Action Cards Grid */
-              <div className="row g-2.5">
-                {filteredActions.map((action) => (
-                  <div key={action.id} className="col-12 col-lg-6">
-                    <div
-                      className="creation-action-card p-3 rounded-3 bg-white border d-flex align-items-start gap-3 h-100 shadow-xs cursor-pointer position-relative"
-                      style={{
-                        borderColor: '#E2DDD5',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => handleSelect(action.path)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSelect(action.path)
-                      }}
-                    >
-                      <div
-                        className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
-                        style={{
-                          width: 44,
-                          height: 44,
-                          backgroundColor: action.iconBg,
-                          color: action.iconColor,
-                        }}
-                      >
-                        <i className={`${action.icon} fs-22`}></i>
-                      </div>
+              /* Content List: Either categorized departments (when on 'all' without search) OR direct rows */
+              !search.trim() && activeCategory === 'all' ? (
+                // Grouped by Department
+                <div>
+                  {CATEGORIES.filter((c) => c.key !== 'all').map((cat) => {
+                    const groupActions = filteredActions.filter((a) => a.categoryKey === cat.key)
+                    if (groupActions.length === 0) return null
 
-                      <div className="flex-grow-1 min-w-0">
-                        <div className="d-flex align-items-center justify-content-between gap-1 mb-1">
-                          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                            <span className="fw-bold text-dark font-display" style={{ fontSize: '0.88rem' }}>
-                              {action.title}
+                    return (
+                      <div key={`group-${cat.key}`} className="mb-4">
+                        <div className="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                          <div className="d-flex align-items-center gap-2">
+                            <i className={`${cat.icon} fs-16 text-success`}></i>
+                            <span className="fw-bold text-dark" style={{ fontSize: '0.86rem', letterSpacing: '-0.01em' }}>
+                              {cat.label}
+                            </span>
+                            <span className="badge rounded-pill bg-light text-muted border" style={{ fontSize: 10 }}>
+                              {groupActions.length}
                             </span>
                           </div>
-                          <span
-                            className="badge flex-shrink-0 border"
-                            style={{
-                              fontSize: 9,
-                              padding: '2px 6px',
-                              backgroundColor: action.iconBg,
-                              color: action.iconColor,
-                              borderColor: 'rgba(0,0,0,0.08)',
-                            }}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-link text-decoration-none p-0 text-muted"
+                            style={{ fontSize: '0.74rem' }}
+                            onClick={() => setActiveCategory(cat.key)}
                           >
-                            {action.badge || action.category.split('&')[0].trim()}
-                          </span>
+                            Focus {cat.label} →
+                          </button>
                         </div>
 
-                        <p
-                          className="text-muted mb-0"
-                          style={{
-                            fontSize: '0.76rem',
-                            lineHeight: 1.4,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {action.description}
-                        </p>
+                        <div>
+                          {groupActions.map((action) => renderActionRow(action))}
+                        </div>
                       </div>
-
-                      <div className="action-hover-btn flex-shrink-0 align-self-center">
-                        <i className="ri-arrow-right-up-line fs-18"></i>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                // Filtered or Search View
+                <div>
+                  {filteredActions.map((action) => renderActionRow(action))}
+                </div>
+              )
             )}
           </div>
         </div>
@@ -1109,13 +1188,13 @@ export default function QuickCreateModal({ isOpen, onClose }) {
           style={{ fontSize: '0.78rem', color: '#64748B', borderColor: '#E2E8F0' }}
         >
           <div className="d-flex align-items-center gap-2">
-            <span className="d-inline-flex align-items-center gap-1 text-success fw-semibold">
+            <span className="d-inline-flex align-items-center gap-1.5 text-success fw-semibold">
               <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
-              Bems Farms Portal Hub
+              Bems Farms Creation Center
             </span>
             <span className="text-muted d-none d-sm-inline">•</span>
             <span className="text-muted d-none d-sm-inline">
-              Select any card to navigate directly into creation mode
+              Click any item to jump directly into creation mode
             </span>
           </div>
 
@@ -1156,39 +1235,32 @@ export default function QuickCreateModal({ isOpen, onClose }) {
           background: #EDEAE5 !important;
           color: #0F172A !important;
         }
-        .hero-action-card {
-          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        .quick-action-row {
+          transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .hero-action-card:hover {
-          transform: translateY(-2px);
+        .quick-action-row:hover {
+          transform: translateY(-1.5px);
           border-color: #143C2D !important;
-          box-shadow: 0 8px 20px -6px rgba(20, 60, 45, 0.18) !important;
+          box-shadow: 0 6px 18px -4px rgba(20, 60, 45, 0.15) !important;
           background-color: #FAFCFA !important;
         }
-        .hero-action-card:hover .hero-arrow {
+        .quick-action-row:hover .action-pill-btn {
           background-color: #143C2D !important;
           color: #FFFFFF !important;
-          transform: translateX(2px);
+          border-color: #143C2D !important;
+          transform: translateX(3px);
         }
-        .hero-arrow {
+        .action-pill-btn {
           transition: all 0.15s ease;
         }
-        .creation-action-card {
-          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        .quick-chip {
+          transition: all 0.16s ease;
         }
-        .creation-action-card:hover {
+        .quick-chip:hover {
           transform: translateY(-2px);
           border-color: #143C2D !important;
-          box-shadow: 0 8px 22px -6px rgba(20, 60, 45, 0.18) !important;
+          box-shadow: 0 4px 14px rgba(20, 60, 45, 0.12) !important;
           background-color: #FAFCFA !important;
-        }
-        .creation-action-card:hover .action-hover-btn {
-          color: #143C2D !important;
-          transform: translate(2px, -2px);
-        }
-        .action-hover-btn {
-          color: #94A3B8;
-          transition: all 0.15s ease;
         }
         @keyframes quickModalFadeIn {
           from { opacity: 0; }
@@ -1203,3 +1275,4 @@ export default function QuickCreateModal({ isOpen, onClose }) {
     document.body
   )
 }
+
