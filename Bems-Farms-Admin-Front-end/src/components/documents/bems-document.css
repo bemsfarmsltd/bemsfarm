@@ -605,9 +605,86 @@
   justify-content: space-between;
 }
 
+/* ── Driver Statement Specific Enhancements ── */
+.bems-stmt-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.bems-stmt-kpi-card {
+  border: 1px solid var(--bems-line);
+  background: var(--bems-g0);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.bems-stmt-kpi-card.highlight {
+  border-color: var(--bems-g6);
+  background: var(--bems-g1);
+}
+
+.bems-stmt-kpi-card .kpi-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bems-muted);
+  margin-bottom: 4px;
+}
+
+.bems-stmt-kpi-card .kpi-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--bems-ink);
+  line-height: 1.2;
+}
+
+.bems-stmt-kpi-card.highlight .kpi-val {
+  color: var(--bems-g9);
+}
+
+.bems-stmt-badge-cr {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #DCFCE7;
+  color: #166534;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.bems-stmt-badge-dr {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #FEE2E2;
+  color: #991B1B;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.bems-stmt-amt-cr {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.bems-stmt-amt-dr {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 10mm 0 10mm 0;
 }
 
 @media print {
@@ -619,11 +696,20 @@
   }
   .bems-doc-root {
     width: 100% !important;
+    background: #ffffff !important;
   }
   .bems-doc-page {
     margin: 0 !important;
     box-shadow: none !important;
     width: 100% !important;
-    min-height: 100vh !important;
+    min-height: auto !important;
+    page-break-after: auto;
+  }
+  .bems-doc-table tr {
+    page-break-inside: avoid;
+  }
+  .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
+    page-break-inside: avoid;
   }
 }
+

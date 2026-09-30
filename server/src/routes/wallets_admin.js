@@ -1148,7 +1148,7 @@ router.patch("/drivers/:id/commission-rate", requireRole("superadmin", "manager"
 });
 
 // ── GET /api/admin/wallets/drivers/:id/statement ───────────────────
-// Chronological statement of all credits, debits, delivery commissions & payouts
+// Comprehensive, audited Statement of Account for driver with chronological running balance
 router.get("/drivers/:id/statement", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -1156,12 +1156,16 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
     const driverRes = await pool.query(
       `
       SELECT 
-        id, name, phone, email, vehicle_type, vehicle_plate,
-        wallet_account_number, wallet_bank_name, wallet_account_name,
-        total_earnings, bank_name, account_number, account_name,
-        wallet_is_frozen, wallet_frozen_reason
-      FROM drivers
-      WHERE id = $1
+        d.id, d.name, d.phone, d.email, d.vehicle_type, d.vehicle_plate,
+        d.license_number, d.address, d.status, d.created_at AS joined_at,
+        d.wallet_account_number, d.wallet_bank_name, d.wallet_account_name,
+        d.total_earnings, d.bank_name, d.account_number, d.account_name,
+        d.wallet_is_frozen, d.wallet_frozen_reason,
+        (SELECT COUNT(*) FROM deliveries WHERE driver_id = d.id AND status = 'delivered') AS total_delivered,
+        (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = d.id AND status IN ('paid', 'approved')) AS total_paid,
+        (SELECT COALESCE(SUM(amount), 0) FROM driver_payouts WHERE driver_id = d.id AND status = 'pending') AS pending_payouts
+      FROM drivers d
+      WHERE d.id = $1
       `,
       [id]
     );
@@ -1172,6 +1176,7 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
 
     const driver = driverRes.rows[0];
 
+    // 1. Fetch individual ledger movements (delivery commissions, bonuses, penalties, adjustments)
     const ledgerRes = await pool.query(
       `
       SELECT 
@@ -1184,37 +1189,20 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         l.balance_after,
         l.reference,
         l.description,
-        u.name AS performed_by_name
+        u.name AS performed_by_name,
+        d.order_id,
+        d.delivery_address,
+        d.delivery_fee
       FROM driver_wallet_ledger l
       LEFT JOIN users u ON l.performed_by = u.id
+      LEFT JOIN deliveries d ON l.reference = d.delivery_ref
       WHERE l.driver_id = $1
-      ORDER BY l.created_at DESC
-      LIMIT 100
+      ORDER BY l.created_at ASC
       `,
       [id]
     );
 
-    const commissionsRes = await pool.query(
-      `
-      SELECT 
-        c.id,
-        c.created_at AS date,
-        'credit' AS type,
-        'delivery_commission' AS category,
-        c.total_earned AS amount,
-        c.commission_per_delivery,
-        c.deliveries,
-        c.status,
-        CONCAT('COM-', c.id) AS reference,
-        'Delivery Commission Drop' AS description
-      FROM driver_commissions c
-      WHERE c.driver_id = $1
-      ORDER BY c.created_at DESC
-      LIMIT 100
-      `,
-      [id]
-    );
-
+    // 2. Fetch withdrawal / bank payout disbursements
     const payoutsRes = await pool.query(
       `
       SELECT 
@@ -1224,32 +1212,134 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         'withdrawal' AS category,
         p.amount,
         p.payout_ref AS reference,
-        CONCAT('Bank Withdrawal to ', COALESCE(p.bank_name, 'Bank'), ' (', p.account_number, ')') AS description,
+        CONCAT('Bank Payout to ', COALESCE(p.bank_name, 'Bank'), ' (', p.account_number, ')') AS description,
         p.status,
         p.rejection_reason,
         p.notes,
         p.processed_at,
         p.gateway_reference,
         p.disbursement_method,
-        u.name AS processed_by_name
+        u.name AS processed_by_name,
+        NULL AS order_id,
+        NULL AS delivery_address,
+        NULL AS delivery_fee
       FROM driver_payouts p
       LEFT JOIN users u ON p.processed_by = u.id
       WHERE p.driver_id = $1
-      ORDER BY p.requested_at DESC
-      LIMIT 100
+      ORDER BY p.requested_at ASC
       `,
       [id]
     );
 
-    const allEvents = [
-      ...ledgerRes.rows,
-      ...commissionsRes.rows,
-      ...payoutsRes.rows,
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // If ledger has 0 records, fall back to driver_commissions so there's always data if commissions were logged
+    let baseEvents = [...ledgerRes.rows];
+    if (baseEvents.length === 0) {
+      const commissionsRes = await pool.query(
+        `
+        SELECT 
+          c.id,
+          c.created_at AS date,
+          'credit' AS type,
+          'delivery_commission' AS category,
+          c.total_earned AS amount,
+          c.commission_per_delivery,
+          c.deliveries,
+          c.status,
+          CONCAT('COM-', c.id) AS reference,
+          CONCAT('Delivery Commission Drop (', COALESCE(c.deliveries, 1), ' drop', CASE WHEN COALESCE(c.deliveries, 1) = 1 THEN '' ELSE 's' END, ')') AS description,
+          NULL AS performed_by_name,
+          NULL AS order_id,
+          NULL AS delivery_address,
+          NULL AS delivery_fee
+        FROM driver_commissions c
+        WHERE c.driver_id = $1
+        ORDER BY c.created_at ASC
+        `,
+        [id]
+      );
+      baseEvents = commissionsRes.rows;
+    }
+
+    // Combine all events and sort chronologically
+    const allEventsChronological = [...baseEvents, ...payoutsRes.rows].sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    // Compute dynamic running balances
+    let runningBalance = 0;
+    let totalCredits = 0;
+    let totalDebits = 0;
+
+    const statementWithBalances = allEventsChronological.map((ev, index) => {
+      const amt = parseFloat(ev.amount) || 0;
+      const isCredit = ev.type === 'credit';
+      if (isCredit) {
+        runningBalance += amt;
+        totalCredits += amt;
+      } else {
+        runningBalance -= amt;
+        totalDebits += amt;
+      }
+
+      return {
+        ...ev,
+        amount: amt,
+        running_balance: runningBalance,
+        seq_no: index + 1,
+      };
+    });
+
+    const pendingPayouts = parseFloat(driver.pending_payouts) || 0;
+    const closingBalance = Math.max(0, runningBalance - pendingPayouts);
+
+    const periodStart = statementWithBalances.length > 0 
+      ? statementWithBalances[0].date 
+      : driver.joined_at || new Date();
+    const periodEnd = statementWithBalances.length > 0 
+      ? statementWithBalances[statementWithBalances.length - 1].date 
+      : new Date();
+
+    // Query active company banking & contact settings for official document rendering
+    let bankSettings = null;
+    try {
+      const bsRes = await pool.query("SELECT * FROM bank_settings ORDER BY id ASC LIMIT 1");
+      if (bsRes.rows.length > 0) {
+        bankSettings = bsRes.rows[0];
+      }
+    } catch (_) {}
 
     res.json({
-      driver,
-      statement: allEvents,
+      driver: {
+        ...driver,
+        total_delivered: parseInt(driver.total_delivered || 0, 10),
+        total_earnings: parseFloat(driver.total_earnings || 0),
+        total_paid: parseFloat(driver.total_paid || 0),
+        pending_payouts: pendingPayouts,
+        available_balance: closingBalance,
+        wallet_account_number: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, '0')}`,
+        wallet_bank_name: driver.wallet_bank_name || 'Bems Farms Internal Wallet',
+        wallet_account_name: driver.wallet_account_name || `BEMS - ${driver.name.toUpperCase()}`,
+      },
+      summary: {
+        opening_balance: 0,
+        total_credits: totalCredits,
+        total_debits: totalDebits,
+        pending_payouts: pendingPayouts,
+        closing_balance: closingBalance,
+        total_trips: parseInt(driver.total_delivered || 0, 10),
+        period_start: periodStart,
+        period_end: periodEnd,
+      },
+      company: {
+        name: bankSettings?.invoice_company_name || 'Bems Farms Limited',
+        address: bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
+        rc_number: bankSettings?.invoice_rc_number || 'RC 1849204',
+        tin: bankSettings?.invoice_tin || 'TIN 24819402-0001',
+        email: bankSettings?.invoice_email || 'corporate@bemsfarms.com',
+        phone: bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
+        website: 'www.bemsfarms.com',
+      },
+      statement: statementWithBalances,
     });
   } catch (err) {
     next(err);

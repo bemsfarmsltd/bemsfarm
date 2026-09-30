@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
+import BemsDriverStatementDocument from '../../components/documents/BemsDriverStatementDocument'
 
 const STATUS_CFG = {
   active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
@@ -132,6 +133,8 @@ export default function DriversManagement() {
   const [onboardedCredentials, setOnboardedCredentials] = useState(null)
   const [updatingPassword, setUpdatingPassword] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [statementData, setStatementData] = useState(null)
+  const [loadingStatement, setLoadingStatement] = useState(false)
 
   // Driver Payouts & Wallets State
   const [payouts, setPayouts] = useState([])
@@ -241,6 +244,14 @@ export default function DriversManagement() {
       })
       setIsEditing(true)
     }
+
+    if (type === 'statement' && driver) {
+      setLoadingStatement(true)
+      api.get(`/admin/wallets/drivers/${driver.id}/statement`)
+        .then((res) => setStatementData(res.data || null))
+        .catch(() => toast.error('Failed to load driver statement of account'))
+        .finally(() => setLoadingStatement(false))
+    }
   }
 
   const closeModal = () => {
@@ -251,6 +262,8 @@ export default function DriversManagement() {
     setTargetPayout(null)
     setPayoutDisburseNote('')
     setPayoutRejectReason('')
+    setStatementData(null)
+    setLoadingStatement(false)
   }
 
   const setField = (f, v) => setForm((p) => ({ ...p, [f]: v }))
@@ -1927,14 +1940,16 @@ export default function DriversManagement() {
                   </div>
 
                   <div className="d-flex flex-wrap gap-2 pt-2">
-                    <Link
-                      to="/accounts/wallets"
-                      className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1"
+                    <button
+                      type="button"
+                      className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1 shadow-sm"
                       style={{ background: '#0F766E', borderColor: '#0F766E' }}
+                      onClick={() => openModal('statement', selected)}
+                      title="View & Download Official Statement of Account"
                     >
                       <i className="ri-file-list-3-line" />
                       View Statement of Account
-                    </Link>
+                    </button>
                     <button
                       className="btn btn-outline-primary btn-sm fw-semibold"
                       onClick={() => {
@@ -2324,6 +2339,108 @@ export default function DriversManagement() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Official Driver Statement of Account Modal */}
+          {activeModal === 'statement' && selected && (
+            <div style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', position: 'fixed', inset: 0, zIndex: 1060, overflowY: 'auto', padding: '24px 12px' }}>
+              <style>{`
+                @media print {
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  .bems-doc-print-target, .bems-doc-print-target * {
+                    visibility: visible !important;
+                  }
+                  .bems-doc-print-target {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    background: #ffffff !important;
+                  }
+                  .no-print, .no-print * {
+                    display: none !important;
+                  }
+                  @page {
+                    size: A4 portrait;
+                    margin: 0;
+                  }
+                }
+              `}</style>
+
+              {/* Floating Control Bar */}
+              <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
+                <div className="d-flex align-items-center gap-2">
+                  <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
+                    <i className="ri-file-text-line me-1" />
+                    OFFICIAL DRIVER STATEMENT OF ACCOUNT
+                  </span>
+                  <span className="text-white-50 small d-none d-sm-inline">
+                    | {selected.name} ({selected.wallet_account_number || `DRV-${selected.id}`})
+                  </span>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    className="btn btn-sm btn-primary fw-medium px-3 shadow-sm d-flex align-items-center gap-1"
+                    onClick={() => window.print()}
+                    title="Print or Save Official A4 PDF Document"
+                  >
+                    <i className="ri-printer-line" />
+                    <span>Print / Save PDF (A4)</span>
+                  </button>
+
+                  <button
+                    className="btn btn-sm btn-outline-light"
+                    onClick={closeModal}
+                    title="Close Statement Preview"
+                  >
+                    <i className="ri-close-line fs-16" />
+                  </button>
+                </div>
+              </div>
+
+              {loadingStatement ? (
+                <div className="text-center py-5 text-white">
+                  <i className="ri-loader-4-line ri-spin fs-1 mb-2 d-block text-success"></i>
+                  <p className="fw-semibold">Compiling Audited Ledger & Generating Official Statement...</p>
+                  <span className="text-white-50 small">Connecting to Bems Farms Logistics Ledger</span>
+                </div>
+              ) : (
+                <>
+                  <div className="bems-doc-print-target d-flex justify-content-center">
+                    <BemsDriverStatementDocument
+                      driver={statementData?.driver || selected}
+                      summary={statementData?.summary || {}}
+                      company={statementData?.company || {}}
+                      statement={statementData?.statement || []}
+                    />
+                  </div>
+
+                  <div className="no-print d-flex align-items-center justify-content-center gap-2 mx-auto mt-3 py-2 flex-wrap" style={{ maxWidth: 840 }}>
+                    <button
+                      className="btn btn-primary shadow fw-semibold px-4 d-flex align-items-center gap-1.5"
+                      onClick={() => window.print()}
+                    >
+                      <i className="ri-printer-line" />
+                      Print / Save A4 PDF
+                    </button>
+                    <button
+                      className="btn btn-secondary shadow fw-semibold px-3"
+                      onClick={closeModal}
+                    >
+                      Close Preview
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

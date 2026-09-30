@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import BemsDriverStatementDocument from '../../components/documents/BemsDriverStatementDocument'
 
 const fmt  = n => `₦${Number(n || 0).toLocaleString()}`
 const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
@@ -60,6 +61,24 @@ export default function DriverCommissions() {
   const [payConfirm, setPayConfirm] = useState(false)
   const [viewModal, setViewModal] = useState(null) // driverId
   const [busyId, setBusyId]       = useState(null)
+
+  const [statementDriver, setStatementDriver] = useState(null)
+  const [statementData, setStatementData] = useState(null)
+  const [loadingStatement, setLoadingStatement] = useState(false)
+
+  const openStatement = async (c) => {
+    const driverId = c.driverId || c.driver_id
+    if (!driverId) return
+    setStatementDriver({ id: driverId, name: c.driver, phone: c.phone, vehicle_plate: c.vehiclePlate })
+    setLoadingStatement(true)
+    try {
+      const res = await api.get(`/admin/wallets/drivers/${driverId}/statement`)
+      setStatementData(res.data || null)
+    } catch (_) {
+    } finally {
+      setLoadingStatement(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -443,6 +462,14 @@ export default function DriverCommissions() {
                         <button className="btn btn-sm btn-outline-success" style={{ fontSize:11, padding:'2px 8px' }}
                           onClick={() => openPay(c)}>Pay</button>
                       )}
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        style={{ fontSize:11, padding:'2px 8px' }}
+                        onClick={() => openStatement(c)}
+                        title="View Official Statement of Account"
+                      >
+                        <i className="ri-file-list-3-line me-1" />Statement
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -616,6 +643,108 @@ export default function DriverCommissions() {
           </div>
         )
       })()}
+
+      {/* Official Driver Statement Document Modal */}
+      {statementDriver && (
+        <div style={{ background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', position: 'fixed', inset: 0, zIndex: 1060, overflowY: 'auto', padding: '24px 12px' }}>
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              .bems-doc-print-target, .bems-doc-print-target * {
+                visibility: visible !important;
+              }
+              .bems-doc-print-target {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: #ffffff !important;
+              }
+              .no-print, .no-print * {
+                display: none !important;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 0;
+              }
+            }
+          `}</style>
+
+          {/* Floating Control Bar */}
+          <div className="no-print d-flex align-items-center justify-content-between mx-auto mb-3 px-3 py-2 bg-dark text-white rounded-3 shadow" style={{ maxWidth: 840 }}>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge bg-success text-white px-2.5 py-1.5" style={{ fontSize: 12 }}>
+                <i className="ri-file-text-line me-1" />
+                OFFICIAL DRIVER STATEMENT OF ACCOUNT
+              </span>
+              <span className="text-white-50 small d-none d-sm-inline">
+                | {statementDriver.name}
+              </span>
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              <button
+                className="btn btn-sm btn-primary fw-medium px-3 shadow-sm d-flex align-items-center gap-1"
+                onClick={() => window.print()}
+                title="Print or Save Official A4 PDF Document"
+              >
+                <i className="ri-printer-line" />
+                <span>Print / Save PDF (A4)</span>
+              </button>
+
+              <button
+                className="btn btn-sm btn-outline-light"
+                onClick={() => { setStatementDriver(null); setStatementData(null); }}
+                title="Close Statement Preview"
+              >
+                <i className="ri-close-line fs-16" />
+              </button>
+            </div>
+          </div>
+
+          {loadingStatement ? (
+            <div className="text-center py-5 text-white">
+              <i className="ri-loader-4-line ri-spin fs-1 mb-2 d-block text-success"></i>
+              <p className="fw-semibold">Compiling Audited Ledger & Generating Official Statement...</p>
+              <span className="text-white-50 small">Connecting to Bems Farms Logistics Ledger</span>
+            </div>
+          ) : (
+            <>
+              <div className="bems-doc-print-target d-flex justify-content-center">
+                <BemsDriverStatementDocument
+                  driver={statementData?.driver || statementDriver}
+                  summary={statementData?.summary || {}}
+                  company={statementData?.company || {}}
+                  statement={statementData?.statement || []}
+                />
+              </div>
+
+              <div className="no-print d-flex align-items-center justify-content-center gap-2 mx-auto mt-3 py-2 flex-wrap" style={{ maxWidth: 840 }}>
+                <button
+                  className="btn btn-primary shadow fw-semibold px-4 d-flex align-items-center gap-1.5"
+                  onClick={() => window.print()}
+                >
+                  <i className="ri-printer-line" />
+                  Print / Save A4 PDF
+                </button>
+                <button
+                  className="btn btn-secondary shadow fw-semibold px-3"
+                  onClick={() => { setStatementDriver(null); setStatementData(null); }}
+                >
+                  Close Preview
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
