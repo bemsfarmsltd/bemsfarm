@@ -239,17 +239,16 @@ const register = async (req, res, next) => {
       [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${newDriver.name.toUpperCase()}`, newDriver.id]
     );
 
-    const token = generateDriverToken(newDriver);
-
     res.status(201).json({
       status: "success",
-      message: "Driver registered successfully. Your account is currently awaiting verification by the dispatch team.",
-      token,
+      message: "Application submitted successfully! Our compliance team will review your credentials and you will receive an approval notification on your email within the next 2 working days.",
+      review_timeline: "1-2 business days",
       driver: {
         id: newDriver.id,
         name: newDriver.name,
         phone: newDriver.phone,
         email: newDriver.email,
+        primary_zone_id: newDriver.primary_zone_id,
         vehicle_type: newDriver.vehicle_type,
         vehicle_plate: newDriver.vehicle_plate,
         avatar_url: newDriver.avatar_url,
@@ -257,16 +256,14 @@ const register = async (req, res, next) => {
         onboarding_status: newDriver.onboarding_status,
         is_available: false,
         is_on_delivery: false,
-        rating: 5.0,
-        total_deliveries: 0,
-        total_earnings: 0,
       },
       verification: {
         status: "pending",
         onboarding_status: "pending_verification",
         is_verified: false,
+        can_login: false,
         can_accept_orders: false,
-        message: "Your application is currently under review by Bems Farms Dispatch. You can log in and update your profile or documents while awaiting activation.",
+        message: "Your application is under review. You will receive an approval email within 2 working days with instructions to sign in.",
       },
     });
   } catch (err) {
@@ -393,6 +390,30 @@ const login = async (req, res, next) => {
     }
 
     const isVerified = isDriverApproved(driver);
+
+    // Strict Compliance Gatekeeper: Driver CANNOT log in until approved by admin
+    if (!isVerified) {
+      const driverStatus = String(driver.status || "").toLowerCase().trim();
+      const onboardingStatus = String(driver.onboarding_status || "").toLowerCase().trim();
+
+      if (driverStatus === "rejected" || onboardingStatus === "rejected") {
+        return res.status(403).json({
+          code: "ACCOUNT_REJECTED",
+          message: "Your driver application was reviewed and could not be approved. " + (driver.compliance_notes ? `Notes: ${driver.compliance_notes}` : "Please contact Bems Farms dispatch operations for assistance."),
+          status: "rejected",
+          onboarding_status: "rejected",
+        });
+      }
+
+      return res.status(403).json({
+        code: "ACCOUNT_PENDING_APPROVAL",
+        message: "Your driver application is currently under compliance review. You will receive an email notification within the next 2 working days once your account is approved. Once approved, you can sign in using your registered email and password.",
+        status: driver.status,
+        onboarding_status: driver.onboarding_status || "pending_verification",
+        review_timeline: "1-2 business days",
+      });
+    }
+
     const token = generateDriverToken(driver);
 
     res.json({

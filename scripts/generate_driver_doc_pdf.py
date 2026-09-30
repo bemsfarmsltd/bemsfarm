@@ -56,10 +56,10 @@ def build_pdf(filename):
     doc = SimpleDocTemplate(
         filename,
         pagesize=letter,
-        leftMargin=36,
-        rightMargin=36,
-        topMargin=38,
-        bottomMargin=42
+        leftMargin=34,
+        rightMargin=34,
+        topMargin=30,
+        bottomMargin=32
     )
 
     styles = getSampleStyleSheet()
@@ -75,31 +75,31 @@ def build_pdf(filename):
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=20,
-        leading=24,
+        fontSize=19,
+        leading=23,
         textColor=c_primary,
-        spaceAfter=4
+        spaceAfter=3
     )
 
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=10,
-        leading=14,
+        fontSize=9.5,
+        leading=13,
         textColor=c_muted,
-        spaceAfter=12
+        spaceAfter=10
     )
 
     h1_style = ParagraphStyle(
         'SectionH1',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
+        fontSize=12,
+        leading=15,
         textColor=c_primary,
-        spaceBefore=14,
-        spaceAfter=6,
+        spaceBefore=10,
+        spaceAfter=5,
         keepWithNext=True
     )
 
@@ -285,9 +285,9 @@ def build_pdf(filename):
     story.append(Spacer(1, 10))
 
     # ── 4. Credentials, Restricted Login & Email Notification Workflow ──
-    story.append(Paragraph("4. Credentials, Restricted Login & Email Notification Workflow", h1_style))
+    story.append(Paragraph("4. Credentials, Strict Login Gatekeeping & Email Approval Workflow", h1_style))
     story.append(Paragraph(
-        "To ensure maximum transparency while safeguarding the logistics network, Bems Farms implements a secure <b>Restricted Login & Notification</b> flow:",
+        "To safeguard the fleet network and uphold food safety and courier accountability, Bems Farms implements a strict <b>Pre-Approval Login Gatekeeper</b>:",
         body_style
     ))
 
@@ -295,33 +295,33 @@ def build_pdf(filename):
         [Paragraph("Step", table_header), Paragraph("Stage & Action", table_header), Paragraph("System Behavior & Security Controls", table_header)],
         [
             Paragraph("<b>Step 1</b>", table_cell_bold),
-            Paragraph("<b>Password Set at Registration</b><br/><code>POST /api/driver/auth/register</code>", table_cell),
-            Paragraph("During registration, the system <b>mandates a secure password</b> (min 6 characters) along with the driver's email and phone number. The password is immediately hashed via <code>bcryptjs</code> (10 salt rounds) and stored in <code>driver_auth</code>.", table_cell)
+            Paragraph("<b>Registration with Password</b><br/><code>POST /api/driver/auth/register</code>", table_cell),
+            Paragraph("The applicant completes the signup form, providing personal data, delivery zone, vehicle details, and <b>creates a secure password</b> (min 6 chars). The password is encrypted with <code>bcryptjs</code> (10 salt rounds) and saved in <code>driver_auth</code>.", table_cell)
         ],
         [
             Paragraph("<b>Step 2</b>", table_cell_bold),
-            Paragraph("<b>Immediate Login Access</b><br/><code>POST /api/driver/auth/login</code>", table_cell),
-            Paragraph("The driver <b>does not need to wait for approval to log into the mobile app</b>. They log in immediately using the <b>Email Address and Password</b> set during registration. They receive a 30-day JWT authentication token.", table_cell)
+            Paragraph("<b>2-Working-Days Notice</b><br/>(No Token Issued)", table_cell),
+            Paragraph("The app explicitly displays: <i>'Application submitted successfully! Our compliance team will review your application. You will receive an email notification within the next 2 working days once approved.'</i><br/><b>No active session token is issued at registration.</b>", table_cell)
         ],
         [
             Paragraph("<b>Step 3</b>", table_cell_bold),
-            Paragraph("<b>Restricted Pending State</b><br/>(Awaiting Compliance Review)", table_cell),
-            Paragraph("While in <code>pending_verification</code> status, the driver has restricted dashboard access: they can view their profile, monitor live checklist completion (<code>GET /api/driver/auth/status</code>), change their delivery zone, and upload missing KYC documents.<br/><br/><b>Crucial Restriction:</b> The driver <b>CANNOT go online or accept orders</b>. Any attempt to toggle online returns <code>403 Forbidden: Your driver account is currently awaiting admin verification</code>.", table_cell)
+            Paragraph("<b>Strict Login Wall</b><br/><code>POST /api/driver/auth/login</code>", table_cell),
+            Paragraph("<b>Drivers CANNOT log in until approved by admin.</b><br/>If an unapproved applicant attempts to log in with their email and password, the system blocks access with <code>403 Forbidden (ACCOUNT_PENDING_APPROVAL)</code>.", table_cell)
         ],
         [
             Paragraph("<b>Step 4</b>", table_cell_bold),
-            Paragraph("<b>Compliance Approval</b><br/><code>PATCH /api/admin/deliveries/drivers/:id/approve</code>", table_cell),
-            Paragraph("Once the compliance team audits the driver's license, NIN, and vehicle particulars, the admin approves the account in the portal.", table_cell)
+            Paragraph("<b>Compliance Verification</b><br/><code>PATCH /api/admin/deliveries/drivers/:id/approve</code>", table_cell),
+            Paragraph("The dispatch and compliance team audits the driver's license, NIN, and vehicle particulars, then approves the profile in the Bems Farms Admin Console.", table_cell)
         ],
         [
             Paragraph("<b>Step 5</b>", table_cell_bold),
-            Paragraph("<b>Automated Email Notification</b><br/>(Instant Dispatch via Resend/SMTP)", table_cell),
-            Paragraph("Upon approval, the system <b>automatically dispatches an official Approval Email Notification</b> directly to the driver's registered email address (via <code>sendDriverApprovedEmail</code>).<br/><br/>Simultaneously, an in-app push notification is delivered, and real-time WebSockets unlock the <b>Go Online</b> switch.", table_cell)
+            Paragraph("<b>Automated Approval Email</b><br/>(Sent via Resend / SMTP)", table_cell),
+            Paragraph("Upon approval, the system <b>dispatches an official Approval Email</b> to the driver's registered email with a direct call-to-action button: <b>'Sign In to Your Driver Account →'</b>.", table_cell)
         ],
         [
             Paragraph("<b>Step 6</b>", table_cell_bold),
-            Paragraph("<b>Go Online & Start Earning</b><br/><code>PATCH /api/driver/availability</code>", table_cell),
-            Paragraph("The driver opens the app, flips their toggle to <b>Online</b>, and the auto-assign engine immediately begins pairing them with customer orders in their registered zone.", table_cell)
+            Paragraph("<b>Sign In & Go Online</b><br/><code>POST /api/driver/auth/login</code>", table_cell),
+            Paragraph("The driver clicks the email link to open the login page, enters their <b>Email and Password</b> created during registration. Login now succeeds (<code>200 OK</code>), returns their 30-day JWT token, and allows them to toggle <b>Online</b> for deliveries.", table_cell)
         ]
     ]
 
@@ -382,7 +382,7 @@ def build_pdf(filename):
             "method": "POST",
             "endpoint": "/api/driver/auth/register",
             "auth": "Public / None",
-            "desc": "Mandates secure password, creates driver account in pending_verification status, provisions internal wallet, and returns initial JWT.",
+            "desc": "Mandates secure password, creates driver account in pending_verification status, and displays 2-working-days notice. No token is returned.",
             "payload": """{
   "name": "Chidi Nwachukwu",
   "phone": "08031234567",
@@ -406,8 +406,8 @@ def build_pdf(filename):
 }""",
             "response": """{
   "status": "success",
-  "message": "Driver registered successfully. Your account is currently awaiting verification by the dispatch team.",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "Application submitted successfully! Our compliance team will review your credentials and you will receive an approval notification on your email within the next 2 working days.",
+  "review_timeline": "1-2 business days",
   "driver": {
     "id": 14,
     "name": "Chidi Nwachukwu",
@@ -417,19 +417,54 @@ def build_pdf(filename):
     "vehicle_type": "motorcycle",
     "vehicle_plate": "ABA-456-XY",
     "status": "pending",
-    "onboarding_status": "pending_verification",
-    "is_available": false
+    "onboarding_status": "pending_verification"
   },
   "verification": {
     "status": "pending",
     "onboarding_status": "pending_verification",
     "is_verified": false,
-    "can_accept_orders": false
+    "can_login": false,
+    "can_accept_orders": false,
+    "message": "Your application is under review. You will receive an approval email within 2 working days with instructions to sign in."
   }
 }"""
         },
         {
             "num": "5.3",
+            "name": "Driver Login (Blocked until Approved)",
+            "method": "POST",
+            "endpoint": "/api/driver/auth/login",
+            "auth": "Public / None",
+            "desc": "Authenticates driver with registered email/phone and password. Strictly blocked with 403 Forbidden until admin compliance approval.",
+            "payload": """{
+  "emailOrPhone": "chidi.driver@example.com",
+  "password": "StrongPassword123"
+}""",
+            "response": """// IF UNAPPROVED (Pending Review):
+{
+  "code": "ACCOUNT_PENDING_APPROVAL",
+  "message": "Your driver application is currently under compliance review. You will receive an email notification within the next 2 working days once your account is approved. Once approved, you can sign in using your registered email and password.",
+  "status": "pending",
+  "onboarding_status": "pending_verification",
+  "review_timeline": "1-2 business days"
+}
+
+// IF APPROVED BY COMPLIANCE (200 OK):
+{
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "driver": {
+    "id": 14,
+    "name": "Chidi Nwachukwu",
+    "email": "chidi.driver@example.com",
+    "status": "active",
+    "onboarding_status": "verified",
+    "is_available": true
+  }
+}"""
+        },
+        {
+            "num": "5.4",
             "name": "Check Live Verification & Checklist Status",
             "method": "GET",
             "endpoint": "/api/driver/auth/status",
@@ -454,7 +489,7 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "5.4",
+            "num": "5.5",
             "name": "Upload KYC Document / Driver Avatar",
             "method": "POST",
             "endpoint": "/api/driver/upload/document  (Avatar: /api/driver/upload/avatar)",
@@ -468,7 +503,7 @@ def build_pdf(filename):
 }"""
         },
         {
-            "num": "5.5",
+            "num": "5.6",
             "name": "Configure Cashout Security PIN",
             "method": "POST",
             "endpoint": "/api/driver/pin/setup",
@@ -478,7 +513,7 @@ def build_pdf(filename):
             "response": """{ "success": true, "has_pin": true, "message": "Security PIN configured successfully." }"""
         },
         {
-            "num": "5.6",
+            "num": "5.7",
             "name": "Duty Toggle (Go Online / Offline)",
             "method": "PATCH",
             "endpoint": "/api/driver/availability",
