@@ -327,9 +327,8 @@ export default function DriverStatementPage() {
           background: #ffffff;
           position: relative;
           overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-start;
+          display: grid;
+          grid-template-rows: 1fr auto;
           box-shadow: 0 20px 60px rgba(0,0,0,0.4);
           text-align: left;
           box-sizing: border-box;
@@ -349,14 +348,12 @@ export default function DriverStatementPage() {
         }
 
         .bems-doc-body {
-          padding: 14mm 15mm 0 17mm;
+          padding: 14mm 15mm 8mm 17mm;
           display: flex;
           flex-direction: column;
           gap: 16px;
-          flex: 1 1 auto;
           overflow: hidden;
-          /* leave room so the absolutely-positioned footer never overlaps content */
-          padding-bottom: 70px;
+          min-height: 0;
         }
 
         .bems-doc-head {
@@ -739,14 +736,10 @@ export default function DriverStatementPage() {
         .bems-doc-thanks span { font-size: 10px; color: var(--bems-muted); }
 
         .bems-doc-footer-group {
-          position: absolute !important;
-          bottom: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          width: 100% !important;
-          flex-shrink: 0 !important;
+          width: 100%;
+          flex-shrink: 0;
           background: #ffffff;
-          z-index: 5;
+          /* Grid places this row at the bottom automatically */
         }
 
         .bems-doc-thanks {
@@ -834,9 +827,8 @@ export default function DriverStatementPage() {
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-start !important;
+            display: grid !important;
+            grid-template-rows: 1fr auto !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-after: always !important;
@@ -847,22 +839,18 @@ export default function DriverStatementPage() {
             break-after: auto !important;
           }
           .bems-doc-body {
-            flex: 1 1 auto !important;
+            overflow: hidden !important;
+            min-height: 0 !important;
+            padding: 10mm 14mm 8mm 14mm !important;
             display: flex !important;
             flex-direction: column !important;
-            overflow: hidden !important;
-            padding: 10mm 14mm 70px 14mm !important;
+            gap: 14px !important;
           }
           .bems-doc-footer-group {
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
             width: 100% !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
             background: #ffffff !important;
-            z-index: 5 !important;
           }
           .bems-doc-thanks {
             margin-left: 0 !important;
