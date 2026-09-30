@@ -160,6 +160,13 @@ export default function VerifyDocumentPage() {
                 <span>Quick test references:</span>
                 <button
                   type="button"
+                  onClick={() => { setInputRef('SOA-DRV-0004-2026'); setInputCode('618D-CDED-19C1-FDF3'); performVerification('SOA-DRV-0004-2026', '618D-CDED-19C1-FDF3'); }}
+                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
+                >
+                  SOA-DRV-0004-2026 (Driver Statement)
+                </button>
+                <button
+                  type="button"
                   onClick={() => { setInputRef('REC-2026-0007'); setInputCode('1E86-13B0-159F-8533'); performVerification('REC-2026-0007', '1E86-13B0-159F-8533'); }}
                   className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-[#123d27] font-mono font-medium"
                 >
@@ -277,212 +284,369 @@ export default function VerifyDocumentPage() {
 
             {/* Document Body */}
             <div className="p-6 sm:p-8 space-y-8">
-              {/* Parties Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Issued By</h3>
-                  <div className="font-serif font-bold text-lg text-[#123d27]">{result.company?.name || 'Bems Farms Limited'}</div>
-                  <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    {result.company?.address || 'Central Farm Settlement Hub, Umuahia, Abia State'}<br />
-                    <strong>RC:</strong> {result.company?.rc || '1849204'} · <strong>TIN:</strong> {result.company?.tin || '24819402-0001'}<br />
-                    <strong>Email:</strong> {result.company?.email || 'corporate@bemsfarms.com'}<br />
-                    <strong>Phone:</strong> {result.company?.phone || '+234 800 236 7326'}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed / Issued To</h3>
-                  <div className="font-serif font-bold text-lg text-[#123d27]">{result.customer?.name || 'Valued Customer'}</div>
-                  <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    {result.customer?.address || 'Nigeria'}<br />
-                    {result.customer?.phone && <><strong>Phone:</strong> {result.customer.phone}<br /></>}
-                    {result.customer?.email && <><strong>Email:</strong> {result.customer.email}<br /></>}
-                    <strong>Sales Channel:</strong> {result.channel || 'Direct'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Dates & Payment Details */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-[#f9fbf9] p-4 rounded-xl border border-[#e1ece4] text-xs">
-                <div>
-                  <span className="text-gray-500 block mb-0.5">Date Issued</span>
-                  <span className="font-semibold text-gray-900 font-mono">
-                    {new Date(result.issuedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-0.5">Payment Status</span>
-                  <span className={`font-semibold font-mono ${result.isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {result.isPaid ? 'Settled (Paid in Full)' : 'Awaiting Settlement'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-0.5">Payment Method</span>
-                  <span className="font-semibold text-gray-900">{result.payment?.method || 'Bank Transfer'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block mb-0.5">Transaction Ref</span>
-                  <span className="font-mono text-gray-900">{result.payment?.reference || result.reference}</span>
-                </div>
-              </div>
-
-              {/* POS Sales Confirmation Telemetry */}
-              {result.isPos && (
-                <div className="bg-[#f0f7f3] border border-[#b8dbc6] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 bg-[#123d27] text-white rounded-lg text-sm flex-shrink-0">
-                      🏪
-                    </span>
+              {/* ── Driver Statement Certificate View ── */}
+              {result.isStatement ? (
+                <>
+                  {/* Parties: Company & Driver Profile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
                     <div>
-                      <div className="font-bold text-[#123d27] text-sm">Official In-Store POS Sale Confirmation</div>
-                      <div className="text-gray-600 text-[11px]">
-                        Processed and authenticated at Bems Farms Central Retail Hub (Abia State).
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Issued By</h3>
+                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.company?.name || 'Bems Farms Limited'}</div>
+                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        {result.company?.address || 'Central Farm Settlement Hub, Umuahia, Abia State'}<br />
+                        <strong>RC:</strong> {result.company?.rc || '1849204'} · <strong>TIN:</strong> {result.company?.tin || '24819402-0001'}<br />
+                        <strong>Email:</strong> {result.company?.email || 'corporate@bemsfarms.com'}<br />
+                        <strong>Fleet Helpline:</strong> {result.company?.phone || '+234 800 236 7326'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Logistics Partner &amp; Driver Profile</h3>
+                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.driver?.name}</div>
+                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        <strong>Wallet Account:</strong> <span className="font-mono text-emerald-800 font-semibold">{result.driver?.walletAccountNumber}</span><br />
+                        {result.driver?.phone && <><strong>Phone:</strong> {result.driver.phone} · </>}
+                        {result.driver?.email && <><strong>Email:</strong> {result.driver.email}<br /></>}
+                        <strong>Vehicle:</strong> {result.driver?.vehicleType} ({result.driver?.vehiclePlate || 'N/A'})<br />
+                        <strong>License:</strong> {result.driver?.licenseNumber || '—'} · <strong>Base:</strong> Abia &amp; Rivers Region
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5 font-mono text-xs flex-wrap">
-                    {result.cashier && (
-                      <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
-                        Cashier: <strong className="text-gray-900">{result.cashier}</strong>
-                      </span>
-                    )}
-                    {result.posSessionId && (
-                      <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
-                        Session: <strong className="text-gray-900">#{result.posSessionId}</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Customer Delivery Confirmation Telemetry */}
-              {result.customerConfirmed && (
-                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-emerald-600 text-white rounded-lg flex-shrink-0">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                      </svg>
+                  {/* Bank & Settlement Details */}
+                  <div className="bg-[#f0f8f3] border border-[#bcdbc8] rounded-xl p-4 text-xs">
+                    <div className="font-bold text-sm text-[#123d27] mb-2 flex items-center gap-1.5">
+                      <span>🏦</span>
+                      <span>Designated Bank Settlement Account</span>
                     </div>
-                    <div>
-                      <div className="font-bold text-sm text-emerald-900">Delivery Receipt Confirmed by Customer</div>
-                      <div className="text-emerald-700 text-[11px]">
-                        The recipient officially inspected and confirmed safe receipt of the goods.
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
+                      <div>
+                        <span className="text-gray-500 block text-[10px] uppercase">Bank Name</span>
+                        <strong className="text-gray-900 text-xs">{result.driver?.bankName || 'Designated Commercial Bank'}</strong>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[10px] uppercase">Account Name</span>
+                        <strong className="text-gray-900 text-xs">{result.driver?.accountName || result.driver?.name}</strong>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[10px] uppercase">Account Number (NUBAN)</span>
+                        <strong className="text-emerald-800 text-sm">{result.driver?.accountNumber || '—'}</strong>
                       </div>
                     </div>
                   </div>
-                  {result.customerConfirmedAt && (
-                    <div className="font-mono text-xs text-emerald-900 bg-white/90 px-3 py-1 rounded-lg border border-emerald-200">
-                      Confirmed: <strong>{new Date(result.customerConfirmedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Delivery Logistics & Driver Information */}
-              {(result.driver || result.deliveredAt || result.deliveryRef) && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500">🚚</span>
-                    <span>
-                      {result.driver ? <><strong>Courier:</strong> {result.driver}</> : 'Fulfilled by Bems Logistics'}
-                      {result.deliveryCity && <> · <strong>Destination:</strong> {result.deliveryCity}</>}
-                      {result.deliveryRef && <> · <strong>Waybill:</strong> <span className="font-mono">{result.deliveryRef}</span></>}
-                    </span>
+                  {/* 4-KPI Settlement Strip */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Opening Balance</div>
+                      <div className="text-sm font-bold font-mono text-gray-800">
+                        ₦{Number(result.financials?.openingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-emerald-800 mb-1">Total Gross Earnings (+)</div>
+                      <div className="text-sm font-bold font-mono text-emerald-700">
+                        +₦{Number(result.financials?.totalCredits || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-red-50/60 border border-red-200 rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-red-800 mb-1">Total Withdrawals (-)</div>
+                      <div className="text-sm font-bold font-mono text-red-700">
+                        -₦{Number(result.financials?.totalDebits || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-emerald-900 border border-emerald-950 text-white rounded-xl">
+                      <div className="text-[10px] uppercase font-bold text-emerald-300 mb-1">Net Closing Balance</div>
+                      <div className="text-sm font-bold font-mono text-white">
+                        ₦{Number(result.financials?.closingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
                   </div>
-                  {result.deliveredAt && (
-                    <div className="text-[11px] font-mono text-slate-500">
-                      Delivered: {new Date(result.deliveredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Itemized Table */}
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Itemized Produce &amp; Goods</h3>
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#f5f8f6] border-b border-gray-200 text-[#123d27] font-semibold">
-                      <tr>
-                        <th className="py-2.5 px-3">#</th>
-                        <th className="py-2.5 px-3">Item Description</th>
-                        <th className="py-2.5 px-3 text-center">Pack</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-3 text-right">Unit Price (₦)</th>
-                        <th className="py-2.5 px-3 text-right">Total (₦)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {result.items && result.items.length > 0 ? (
-                        result.items.map((it, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50/50">
-                            <td className="py-2.5 px-3 font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</td>
-                            <td className="py-2.5 px-3 font-medium text-gray-900">{it.name}</td>
-                            <td className="py-2.5 px-3 text-center text-gray-500">{it.pack || 'kg'}</td>
-                            <td className="py-2.5 px-3 text-center font-mono font-semibold">{it.qty}</td>
-                            <td className="py-2.5 px-3 text-right font-mono">{Number(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td className="py-2.5 px-3 text-right font-mono font-semibold text-gray-900">{Number(it.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  {/* Itemized Statement Ledger */}
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                      Itemized Logistics Ledger ({result.statement?.length || 0} Transactions)
+                    </h3>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#123d27] text-emerald-100 font-semibold text-[11px] uppercase tracking-wider">
+                          <tr>
+                            <th className="py-2.5 px-3">#</th>
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Activity &amp; Description</th>
+                            <th className="py-2.5 px-3">Reference</th>
+                            <th className="py-2.5 px-3 text-center">Type</th>
+                            <th className="py-2.5 px-3 text-right">Amount (₦)</th>
+                            <th className="py-2.5 px-3 text-right">Balance (₦)</th>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6" className="py-4 text-center text-gray-400">Order items summary available on file.</td>
-                        </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {result.statement && result.statement.length > 0 ? (
+                            result.statement.map((ev, idx) => {
+                              const isCredit = ev.type === 'credit';
+                              const amt = parseFloat(ev.amount) || 0;
+                              const bal = parseFloat(ev.running_balance) || 0;
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50/50">
+                                  <td className="py-2.5 px-3 font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</td>
+                                  <td className="py-2.5 px-3 font-mono text-gray-700 whitespace-nowrap">
+                                    {new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-gray-900 font-medium">
+                                    {ev.description}
+                                    {ev.order_id && (
+                                      <span className="ml-1.5 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-mono text-[10px]">
+                                        #{ev.order_id}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 font-mono text-gray-600 text-[11px]">{ev.reference || '—'}</td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${isCredit ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                      {isCredit ? 'CR' : 'DR'}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono font-semibold ${isCredit ? 'text-emerald-700' : 'text-red-700'}`}>
+                                    {isCredit ? '+' : '-'}₦{amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900">
+                                    ₦{bal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="7" className="py-4 text-center text-gray-400">No recorded ledger movements.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Audit Notice & Sign-off */}
+                  <div className="bg-[#f9fbf9] p-4 rounded-xl border border-gray-200 text-xs text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="max-w-xl">
+                      <strong>Audit &amp; Settlement Notice:</strong> This verified statement reflects all completed delivery drops, verified commissions, and electronic bank payouts recorded in the Bems Farms logistics database. Reconciled against telemetry logs.
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-serif font-bold text-sm text-[#123d27]">Bems Farms Logistics</div>
+                      <div className="text-[11px] text-gray-500">Financial Controller &amp; Fleet Operations</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Parties Section */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Issued By</h3>
+                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.company?.name || 'Bems Farms Limited'}</div>
+                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        {result.company?.address || 'Central Farm Settlement Hub, Umuahia, Abia State'}<br />
+                        <strong>RC:</strong> {result.company?.rc || '1849204'} · <strong>TIN:</strong> {result.company?.tin || '24819402-0001'}<br />
+                        <strong>Email:</strong> {result.company?.email || 'corporate@bemsfarms.com'}<br />
+                        <strong>Phone:</strong> {result.company?.phone || '+234 800 236 7326'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed / Issued To</h3>
+                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.customer?.name || 'Valued Customer'}</div>
+                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        {result.customer?.address || 'Nigeria'}<br />
+                        {result.customer?.phone && <><strong>Phone:</strong> {result.customer.phone}<br /></>}
+                        {result.customer?.email && <><strong>Email:</strong> {result.customer.email}<br /></>}
+                        <strong>Sales Channel:</strong> {result.channel || 'Direct'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dates & Payment Details */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-[#f9fbf9] p-4 rounded-xl border border-[#e1ece4] text-xs">
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Date Issued</span>
+                      <span className="font-semibold text-gray-900 font-mono">
+                        {new Date(result.issuedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Payment Status</span>
+                      <span className={`font-semibold font-mono ${result.isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {result.isPaid ? 'Settled (Paid in Full)' : 'Awaiting Settlement'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Payment Method</span>
+                      <span className="font-semibold text-gray-900">{result.payment?.method || 'Bank Transfer'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block mb-0.5">Transaction Ref</span>
+                      <span className="font-mono text-gray-900">{result.payment?.reference || result.reference}</span>
+                    </div>
+                  </div>
+
+                  {/* POS Sales Confirmation Telemetry */}
+                  {result.isPos && (
+                    <div className="bg-[#f0f7f3] border border-[#b8dbc6] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="p-2 bg-[#123d27] text-white rounded-lg text-sm flex-shrink-0">
+                          🏪
+                        </span>
+                        <div>
+                          <div className="font-bold text-[#123d27] text-sm">Official In-Store POS Sale Confirmation</div>
+                          <div className="text-gray-600 text-[11px]">
+                            Processed and authenticated at Bems Farms Central Retail Hub (Abia State).
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 font-mono text-xs flex-wrap">
+                        {result.cashier && (
+                          <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
+                            Cashier: <strong className="text-gray-900">{result.cashier}</strong>
+                          </span>
+                        )}
+                        {result.posSessionId && (
+                          <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
+                            Session: <strong className="text-gray-900">#{result.posSessionId}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customer Delivery Confirmation Telemetry */}
+                  {result.customerConfirmed && (
+                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-emerald-600 text-white rounded-lg flex-shrink-0">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-emerald-900">Delivery Receipt Confirmed by Customer</div>
+                          <div className="text-emerald-700 text-[11px]">
+                            The recipient officially inspected and confirmed safe receipt of the goods.
+                          </div>
+                        </div>
+                      </div>
+                      {result.customerConfirmedAt && (
+                        <div className="font-mono text-xs text-emerald-900 bg-white/90 px-3 py-1 rounded-lg border border-emerald-200">
+                          Confirmed: <strong>{new Date(result.customerConfirmedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </div>
+                  )}
 
-              {/* Financial Totals */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pt-4 border-t border-gray-100">
-                <div className="text-xs text-gray-500 max-w-sm">
-                  <strong>Terms &amp; Policies:</strong> {result.company?.paymentTerms || 'Goods are released upon confirmation of payment. Certified authentic produce by Bems Farms Limited.'}
-                </div>
+                  {/* Delivery Logistics & Driver Information */}
+                  {(result.driver || result.deliveredAt || result.deliveryRef) && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500">🚚</span>
+                        <span>
+                          {result.driver ? <><strong>Courier:</strong> {result.driver}</> : 'Fulfilled by Bems Logistics'}
+                          {result.deliveryCity && <> · <strong>Destination:</strong> {result.deliveryCity}</>}
+                          {result.deliveryRef && <> · <strong>Waybill:</strong> <span className="font-mono">{result.deliveryRef}</span></>}
+                        </span>
+                      </div>
+                      {result.deliveredAt && (
+                        <div className="text-[11px] font-mono text-slate-500">
+                          Delivered: {new Date(result.deliveredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                <div className="w-full sm:w-72 space-y-1.5 text-xs font-mono">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal:</span>
-                    <span>₦{Number(result.financials?.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  {Number(result.financials?.discount || 0) > 0 && (
-                    <div className="flex justify-between text-emerald-700">
-                      <span>Discount:</span>
-                      <span>−₦{Number(result.financials?.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {/* Itemized Table */}
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Itemized Produce &amp; Goods</h3>
+                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#f5f8f6] border-b border-gray-200 text-[#123d27] font-semibold">
+                          <tr>
+                            <th className="py-2.5 px-3">#</th>
+                            <th className="py-2.5 px-3">Item Description</th>
+                            <th className="py-2.5 px-3 text-center">Pack</th>
+                            <th className="py-2.5 px-3 text-center">Qty</th>
+                            <th className="py-2.5 px-3 text-right">Unit Price (₦)</th>
+                            <th className="py-2.5 px-3 text-right">Total (₦)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {result.items && result.items.length > 0 ? (
+                            result.items.map((it, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50/50">
+                                <td className="py-2.5 px-3 font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</td>
+                                <td className="py-2.5 px-3 font-medium text-gray-900">{it.name}</td>
+                                <td className="py-2.5 px-3 text-center text-gray-500">{it.pack || 'kg'}</td>
+                                <td className="py-2.5 px-3 text-center font-mono font-semibold">{it.qty}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{Number(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="py-2.5 px-3 text-right font-mono font-semibold text-gray-900">{Number(it.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="6" className="py-4 text-center text-gray-400">Order items summary available on file.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  )}
-                  {Number(result.financials?.deliveryFee || 0) > 0 && (
-                    <div className="flex justify-between text-gray-600">
-                      <span>Delivery Fee:</span>
-                      <span>₦{Number(result.financials?.deliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-gray-600">
-                    <span>VAT (Exempt):</span>
-                    <span>₦0.00</span>
                   </div>
-                  <div className="flex justify-between text-sm font-bold text-[#123d27] pt-2 border-t border-gray-200">
-                    <span>Total Amount:</span>
-                    <span>₦{Number(result.financials?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-emerald-800 font-semibold">
-                    <span>Amount Paid:</span>
-                    <span>₦{Number(result.financials?.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  {Number(result.financials?.balanceDue || 0) > 0 ? (
-                    <div className="flex justify-between text-xs text-red-700 font-bold pt-1">
-                      <span>Balance Due:</span>
-                      <span>₦{Number(result.financials?.balanceDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                  {/* Financial Totals */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pt-4 border-t border-gray-100">
+                    <div className="text-xs text-gray-500 max-w-sm">
+                      <strong>Terms &amp; Policies:</strong> {result.company?.paymentTerms || 'Goods are released upon confirmation of payment. Certified authentic produce by Bems Farms Limited.'}
                     </div>
-                  ) : (
-                    <div className="flex justify-between text-xs text-emerald-700 font-bold pt-1">
-                      <span>Balance Due:</span>
-                      <span>₦0.00 (Fully Settled)</span>
+
+                    <div className="w-full sm:w-72 space-y-1.5 text-xs font-mono">
+                      <div className="flex justify-between text-gray-600">
+                        <span>Subtotal:</span>
+                        <span>₦{Number(result.financials?.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {Number(result.financials?.discount || 0) > 0 && (
+                        <div className="flex justify-between text-emerald-700">
+                          <span>Discount:</span>
+                          <span>−₦{Number(result.financials?.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {Number(result.financials?.deliveryFee || 0) > 0 && (
+                        <div className="flex justify-between text-gray-600">
+                          <span>Delivery Fee:</span>
+                          <span>₦{Number(result.financials?.deliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-gray-600">
+                        <span>VAT (Exempt):</span>
+                        <span>₦0.00</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-bold text-[#123d27] pt-2 border-t border-gray-200">
+                        <span>Total Amount:</span>
+                        <span>₦{Number(result.financials?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-emerald-800 font-semibold">
+                        <span>Amount Paid:</span>
+                        <span>₦{Number(result.financials?.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {Number(result.financials?.balanceDue || 0) > 0 ? (
+                        <div className="flex justify-between text-xs text-red-700 font-bold pt-1">
+                          <span>Balance Due:</span>
+                          <span>₦{Number(result.financials?.balanceDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-xs text-emerald-700 font-bold pt-1">
+                          <span>Balance Due:</span>
+                          <span>₦0.00 (Fully Settled)</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                </>
+              )}
 
               {/* Bank Remittance Info if Awaiting Payment */}
               {!result.isPaid && (

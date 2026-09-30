@@ -387,6 +387,176 @@ router.get("/document", async (req, res, next) => {
       });
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // 3. Search in Driver Statements (`drivers` & `driver_wallet_ledger`)
+    // ────────────────────────────────────────────────────────────────────────
+    let driverMatch = null;
+    let driverMatchClosingBal = null;
+    let driverMatchTotalPaid = 0;
+    let driverMatchPendingPayouts = 0;
+
+    // Check if ref indicates a driver statement (e.g. SOA-DRV-0004-2026, DRV-0004, or type=driver_statement)
+    const isDriverStatementHint =
+      cleanRef.startsWith("SOA-") ||
+      cleanRef.startsWith("DRV-") ||
+      req.query.type === "driver_statement";
+
+    if (isDriverStatementHint) {
+      const drvNumMatch = cleanRef.match(/DRV-(\d+)/i) || cleanRef.match(/\b(\d+)\b/);
+      const drvIdCandidate = drvNumMatch ? parseInt(drvNumMatch[1] || drvNumMatch[0], 10) : null;
+      const drvWalletCandidate = cleanRef.match(/DRV-\d+/i)?.[0]?.toUpperCase() || cleanRef;
+
+      const drvQuery = await pool.query(
+        `SELECT * FROM drivers 
+         WHERE wallet_account_number = $1
+            OR wallet_account_number = $2
+            OR ($3::integer IS NOT NULL AND id = $3)
+         ORDER BY id DESC LIMIT 1`,
+        [cleanRef, drvWalletCandidate, drvIdCandidate]
+      );
+      if (drvQuery.rows.length) {
+        driverMatch = drvQuery.rows[0];
+      }
+    }
+
+    // If still not found, check if code or ref matches a driver's statement security code
+    if (!driverMatch && (cleanCode || cleanRef.includes("-") || cleanRef.length >= 8)) {
+      const codeToTest = (cleanCode || cleanRef).replace(/[^A-Z0-9]/g, "");
+      if (codeToTest.length >= 8) {
+        const allDrivers = await pool.query(
+          "SELECT * FROM drivers ORDER BY id DESC LIMIT 50"
+        );
+        for (const drv of allDrivers.rows) {
+          const wAcct = drv.wallet_account_number || `DRV-${String(drv.id).padStart(4, "0")}`;
+          const sRef = `SOA-${wAcct}-${new Date().getFullYear()}`;
+
+          const pSum = await pool.query(
+            `SELECT 
+               COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+               COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+             FROM driver_payouts
+             WHERE driver_id = $1`,
+            [drv.id]
+          );
+          const tPaid = parseFloat(pSum.rows[0].total_paid) || 0;
+          const pPayouts = parseFloat(pSum.rows[0].pending_payouts) || 0;
+          const tEarnings = parseFloat(drv.total_earnings) || 0;
+          const cBal = Math.max(0, tEarnings - tPaid - pPayouts);
+
+          const c1 = generateSecurityCode(sRef, cBal).replace(/[^A-Z0-9]/g, "");
+          const c2 = generateSecurityCode(sRef, tEarnings).replace(/[^A-Z0-9]/g, "");
+          const c3 = generateSecurityCode(sRef, parseFloat(drv.wallet_balance || 0)).replace(/[^A-Z0-9]/g, "");
+
+          if (c1 === codeToTest || c2 === codeToTest || c3 === codeToTest) {
+            driverMatch = drv;
+            driverMatchClosingBal = cBal;
+            driverMatchTotalPaid = tPaid;
+            driverMatchPendingPayouts = pPayouts;
+            break;
+          }
+        }
+      }
+    }
+
+    if (driverMatch) {
+      const drv = driverMatch;
+      const wAcct = drv.wallet_account_number || `DRV-${String(drv.id).padStart(4, "0")}`;
+      const statementRef = `SOA-${wAcct}-${new Date().getFullYear()}`;
+
+      if (driverMatchClosingBal === null) {
+        const pSum = await pool.query(
+          `SELECT 
+             COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+             COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+           FROM driver_payouts
+           WHERE driver_id = $1`,
+          [drv.id]
+        );
+        driverMatchTotalPaid = parseFloat(pSum.rows[0].total_paid) || 0;
+        driverMatchPendingPayouts = parseFloat(pSum.rows[0].pending_payouts) || 0;
+        const tEarnings = parseFloat(drv.total_earnings) || 0;
+        driverMatchClosingBal = Math.max(0, tEarnings - driverMatchTotalPaid - driverMatchPendingPayouts);
+      }
+
+      const totalEarnings = parseFloat(drv.total_earnings) || 0;
+      const closingBalance = driverMatchClosingBal;
+      const totalPaid = driverMatchTotalPaid;
+      const pendingPayouts = driverMatchPendingPayouts;
+      const computedSecurityCode = generateSecurityCode(statementRef, closingBalance);
+      const isCodeMatch = cleanCode
+        ? computedSecurityCode.replace(/[^A-Z0-9]/g, "") === cleanCode
+        : true;
+
+      // Fetch ledger events
+      const ledgerRes = await pool.query(
+        `SELECT id, created_at AS date, description, reference, type, amount, balance_after AS running_balance 
+         FROM driver_wallet_ledger 
+         WHERE driver_id = $1 
+         ORDER BY created_at ASC`,
+        [drv.id]
+      );
+      const payoutRes = await pool.query(
+        `SELECT id, created_at AS date, 'Bank Withdrawal Settlement' AS description, payout_ref AS reference, 'debit' AS type, amount, status 
+         FROM driver_payouts 
+         WHERE driver_id = $1 AND status IN ('paid', 'approved') 
+         ORDER BY created_at ASC`,
+        [drv.id]
+      );
+
+      const events = [...ledgerRes.rows, ...payoutRes.rows].sort((a, b) => new Date(a.date) - new Date(b.date));
+      let running = 0;
+      const statementEvents = events.map(ev => {
+        const amt = parseFloat(ev.amount) || 0;
+        if (ev.type === "credit") running += amt;
+        else running -= amt;
+        return {
+          ...ev,
+          running_balance: running,
+        };
+      });
+
+      return res.json({
+        valid: true,
+        documentType: "Driver Statement of Account & Logistics Settlement",
+        isStatement: true,
+        isReceipt: false,
+        isPaid: true,
+        reference: statementRef,
+        securityCode: computedSecurityCode,
+        securityCodeMatched: isCodeMatch,
+        channel: "Logistics & Fleet Operations",
+        status: drv.wallet_is_frozen ? "Frozen / Under Review" : "Active · Audited & Reconciled",
+        statusCode: drv.wallet_is_frozen ? "frozen" : "active",
+        issuedDate: new Date().toISOString(),
+        driver: {
+          id: drv.id,
+          name: drv.name,
+          phone: drv.phone || "—",
+          email: drv.email || "—",
+          vehicleType: drv.vehicle_type ? (drv.vehicle_type.charAt(0).toUpperCase() + drv.vehicle_type.slice(1)) : "Motorcycle",
+          vehiclePlate: drv.vehicle_plate || "—",
+          licenseNumber: drv.license_number || "—",
+          walletAccountNumber: wAcct,
+          bankName: drv.bank_name || "Designated Commercial Bank",
+          accountNumber: drv.account_number || "—",
+          accountName: drv.account_name || drv.name,
+        },
+        financials: {
+          openingBalance: 0,
+          totalCredits: totalEarnings,
+          totalDebits: totalPaid,
+          pendingPayouts,
+          closingBalance,
+          totalTrips: parseInt(drv.total_deliveries || 0, 10),
+          transactionCount: statementEvents.length,
+        },
+        statement: statementEvents,
+        company,
+        verifiedAt: new Date().toISOString(),
+        authenticityNotice: "Official genuine Bems Farms Driver Logistics Settlement verified against fleet ledger database.",
+      });
+    }
+
     // If no record found
     return res.status(404).json({
       valid: false,
