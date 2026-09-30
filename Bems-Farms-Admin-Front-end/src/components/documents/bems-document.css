@@ -47,15 +47,23 @@
 
 .bems-doc-page {
   width: 210mm;
+  height: 297mm;
   min-height: 297mm;
-  margin: 0 auto;
+  max-height: 297mm;
+  margin: 0 auto 32px auto;
   background: #ffffff;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   box-shadow: 0 20px 60px rgba(15, 54, 34, .18);
   text-align: left;
+  box-sizing: border-box;
+}
+
+.bems-doc-page:last-child {
+  margin-bottom: 0;
 }
 
 .bems-doc-page::before {
@@ -572,8 +580,10 @@
 
 /* Footer Group (Anchored to Bottom of A4 Document) */
 .bems-doc-footer-group {
-  margin-top: auto;
-  width: 100%;
+  margin-top: auto !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
+  background: #ffffff;
 }
 
 /* Thanks banner & Footer */
@@ -609,6 +619,7 @@
   font-size: 9.5px;
   display: flex;
   justify-content: space-between;
+  margin-bottom: 0 !important;
 }
 
 /* ── Driver Statement Specific Enhancements ── */
@@ -786,7 +797,9 @@
   align-items: center;
   border-top: 1px dashed var(--bems-line);
   background: #fafcfb;
-  margin-top: auto;
+  margin-top: auto !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
 }
 
 .bems-stmt-page-head {

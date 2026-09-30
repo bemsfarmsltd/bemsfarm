@@ -320,15 +320,23 @@ export default function DriverStatementPage() {
 
         .bems-doc-page {
           width: 210mm;
+          height: 297mm;
           min-height: 297mm;
-          margin: 0 auto;
+          max-height: 297mm;
+          margin: 0 auto 32px auto;
           background: #ffffff;
           position: relative;
           overflow: hidden;
           display: flex;
           flex-direction: column;
+          justify-content: space-between;
           box-shadow: 0 20px 60px rgba(0,0,0,0.4);
           text-align: left;
+          box-sizing: border-box;
+        }
+
+        .bems-doc-page:last-child {
+          margin-bottom: 0;
         }
 
         .bems-doc-page::before {
@@ -728,8 +736,10 @@ export default function DriverStatementPage() {
         .bems-doc-thanks span { font-size: 10px; color: var(--bems-muted); }
 
         .bems-doc-footer-group {
-          margin-top: auto;
-          width: 100%;
+          margin-top: auto !important;
+          width: 100% !important;
+          flex-shrink: 0 !important;
+          background: #ffffff;
         }
 
         .bems-doc-thanks {
@@ -750,10 +760,13 @@ export default function DriverStatementPage() {
           font-size: 9px;
           display: flex;
           justify-content: space-between;
+          margin-bottom: 0 !important;
         }
 
         .bems-stmt-page-indicator {
-          margin-top: auto;
+          margin-top: auto !important;
+          width: 100% !important;
+          flex-shrink: 0 !important;
           padding: 8px 15mm;
           background: #f8faf9;
           border-top: 1px dashed var(--bems-line);
