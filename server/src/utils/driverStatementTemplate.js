@@ -667,28 +667,29 @@ function renderDriverStatementHtml({
       line-height: 1.5;
     }
     .bems-doc-sign-right {
-      display: flex;
-      align-items: flex-end;
-      justify-content: flex-end;
-      gap: 0;
       position: relative;
+      width: 210px;
+      max-width: 210px;
+      text-align: left;
     }
     .bems-doc-sig {
-      width: 220px;
-      max-width: 220px;
-      flex-shrink: 0;
+      width: 100%;
       position: relative;
+      z-index: 1;
       text-align: left;
     }
     .bems-doc-sig-img {
       height: 48px;
-      max-width: 160px;
+      max-width: 130px;
       object-fit: contain;
       display: block;
-      margin: 0 0 -6px 6px;
+      margin: 0 0 -6px 8px;
+      mix-blend-mode: multiply !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
       position: relative;
       z-index: 2;
-      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.05));
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.04));
     }
     .bems-doc-sig-placeholder {
       height: 38px;
@@ -717,16 +718,21 @@ function renderDriverStatementHtml({
       line-height: 1.35;
     }
     .bems-doc-stamp-wrapper {
-      flex-shrink: 0;
-      margin-left: -22px;
-      margin-bottom: -4px;
+      position: absolute;
+      right: 12px;
+      top: -20px;
       z-index: 3;
-      position: relative;
       pointer-events: none;
+      mix-blend-mode: multiply !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     .bems-official-stamp {
-      mix-blend-mode: multiply;
-      opacity: 0.94;
+      transition: transform 0.2s ease;
+      mix-blend-mode: multiply !important;
+      opacity: 0.92;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     /* Thanks & Foot */
@@ -818,14 +824,14 @@ function renderDriverStatementHtml({
       .bems-doc-verify { padding: 6px 10px !important; }
       .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
-      .bems-doc-sign { gap: 16px !important; padding-bottom: 4px !important; }
+      .bems-doc-sign { gap: 16px !important; padding-bottom: 6px !important; grid-template-columns: 1fr 210px !important; }
       .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
-      .bems-doc-sign-right { display: flex !important; align-items: flex-end !important; justify-content: flex-end !important; gap: 0 !important; }
-      .bems-doc-sig { width: 210px !important; max-width: 210px !important; flex-shrink: 0 !important; }
-      .bems-doc-sig-img { height: 42px !important; max-width: 150px !important; margin: 0 0 -6px 6px !important; }
-      .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; }
-      .bems-doc-stamp-wrapper { margin-left: -20px !important; margin-bottom: -4px !important; }
-      .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.94 !important; }
+      .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: left !important; }
+      .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; }
+      .bems-doc-sig-img { height: 44px !important; max-width: 120px !important; margin: 0 0 -6px 8px !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; position: relative !important; z-index: 2 !important; }
+      .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; padding: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; position: relative !important; z-index: 1 !important; }
+      .bems-doc-stamp-wrapper { position: absolute !important; right: 8px !important; top: -18px !important; margin: 0 !important; z-index: 3 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.92 !important; }
       .bems-doc-thanks { padding: 6px 10mm !important; }
       .bems-doc-thanks h3 { font-size: 12.5px !important; }
       .bems-doc-thanks span { font-size: 9px !important; }
