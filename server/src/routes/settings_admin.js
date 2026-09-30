@@ -349,10 +349,10 @@ router.get("/invoices", requireRole(...STAFF_ROLES), async (req, res, next) => {
   try {
     const raw = await getGroup("invoices");
     const merged = { ...DEFAULT_INVOICE_SETTINGS, ...raw };
-    // Synchronize aliases
-    if (merged.invoice_bank_name && !raw.bank_name) merged.bank_name = merged.invoice_bank_name;
-    if (merged.invoice_account_name && !raw.account_name) merged.account_name = merged.invoice_account_name;
-    if (merged.invoice_account_number && !raw.account_number) merged.account_number = merged.invoice_account_number;
+    // Synchronize aliases so both invoice_* and alias keys always reflect current settings
+    if (merged.invoice_bank_name) merged.bank_name = merged.invoice_bank_name;
+    if (merged.invoice_account_name) merged.account_name = merged.invoice_account_name;
+    if (merged.invoice_account_number) merged.account_number = merged.invoice_account_number;
     res.json({ settings: merged });
   } catch (err) {
     next(err);
@@ -361,18 +361,34 @@ router.get("/invoices", requireRole(...STAFF_ROLES), async (req, res, next) => {
 
 router.post("/invoices", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    // If incoming body has bank_name / account_name / account_number, sync to invoice_* keys
     const payload = { ...req.body };
-    if (payload.bank_name) payload.invoice_bank_name = payload.bank_name;
-    if (payload.account_name) payload.invoice_account_name = payload.account_name;
-    if (payload.account_number) payload.invoice_account_number = payload.account_number;
-    if (payload.invoice_bank_name) payload.bank_name = payload.invoice_bank_name;
-    if (payload.invoice_account_name) payload.account_name = payload.invoice_account_name;
-    if (payload.invoice_account_number) payload.account_number = payload.invoice_account_number;
+
+    // Synchronize canonical invoice_* keys and their aliases without clobbering user edits
+    if (payload.invoice_bank_name !== undefined) {
+      payload.bank_name = payload.invoice_bank_name;
+    } else if (payload.bank_name !== undefined) {
+      payload.invoice_bank_name = payload.bank_name;
+    }
+
+    if (payload.invoice_account_name !== undefined) {
+      payload.account_name = payload.invoice_account_name;
+    } else if (payload.account_name !== undefined) {
+      payload.invoice_account_name = payload.account_name;
+    }
+
+    if (payload.invoice_account_number !== undefined) {
+      payload.account_number = payload.invoice_account_number;
+    } else if (payload.account_number !== undefined) {
+      payload.invoice_account_number = payload.account_number;
+    }
 
     await saveGroup("invoices", payload, req.user.id);
     const updated = await getGroup("invoices");
-    res.json({ settings: { ...DEFAULT_INVOICE_SETTINGS, ...updated } });
+    const merged = { ...DEFAULT_INVOICE_SETTINGS, ...updated };
+    if (merged.invoice_bank_name) merged.bank_name = merged.invoice_bank_name;
+    if (merged.invoice_account_name) merged.account_name = merged.invoice_account_name;
+    if (merged.invoice_account_number) merged.account_number = merged.invoice_account_number;
+    res.json({ settings: merged });
   } catch (err) {
     next(err);
   }

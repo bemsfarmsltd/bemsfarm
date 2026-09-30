@@ -175,6 +175,8 @@ export default function BemsOfficialDocument({
   const tinNumber = effectiveSettings.invoice_tin || effectiveSettings.tin || 'TIN 24819402-0001'
   const companyEmail = effectiveSettings.invoice_email || effectiveSettings.email || 'corporate@bemsfarms.com'
   const companyPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || '+234 800 236 7326 / +234 814 000 0000'
+  const paymentTerms = effectiveSettings.invoice_payment_terms || effectiveSettings.payment_terms || `Payment is due by ${dueDate}. Goods are released on confirmation of payment. Prices are in Nigerian naira.`
+  const footerNote = effectiveSettings.invoice_footer || effectiveSettings.footer || 'Premium farm produce from Abia State to your table.'
 
   // Dynamic Scannable QR Code generation
   const verifyUrl = useMemo(() => {
@@ -523,7 +525,7 @@ export default function BemsOfficialDocument({
               </div>
             ) : (
               <div className="bems-doc-keep terms">
-                <b>Payment terms.</b> Payment is due by {dueDate}. Goods are released on confirmation of payment. Prices are in Nigerian naira. Please contact us before the due date if you have any questions about this invoice.
+                <b>Payment terms.</b> {paymentTerms}
               </div>
             )}
 
@@ -553,7 +555,7 @@ export default function BemsOfficialDocument({
         {/* ── THANKS BANNER ── */}
         <div className="bems-doc-thanks">
           <h3>{isReceipt ? `Thank you for choosing ${companyName}.` : 'Thank you for your order.'}</h3>
-          <span>Premium farm produce from Abia State to your table.</span>
+          <span>{footerNote}</span>
         </div>
 
         {/* ── FOOTER ── */}

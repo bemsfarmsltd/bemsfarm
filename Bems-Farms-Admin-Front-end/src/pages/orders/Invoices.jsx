@@ -139,8 +139,16 @@ export default function Invoices() {
     if (e) e.preventDefault()
     setSavingBank(true)
     try {
-      const res = await api.post('/admin/settings/invoices', bankForm)
-      const updated = res.data?.settings || bankForm
+      const payload = {
+        ...bankForm,
+        bank_name: bankForm.invoice_bank_name,
+        account_name: bankForm.invoice_account_name,
+        account_number: bankForm.invoice_account_number,
+        secondary_bank: bankForm.invoice_secondary_bank,
+        secondary_account: bankForm.invoice_secondary_account_number,
+      }
+      const res = await api.post('/admin/settings/invoices', payload)
+      const updated = res.data?.settings || payload
       setBankSettings(updated)
       setBankForm(f => ({ ...f, ...updated }))
       toast.success('Bems Farms account and invoice details updated successfully!')
@@ -1319,7 +1327,10 @@ export default function Invoices() {
                         className="form-control form-control-sm"
                         placeholder="e.g. Bems Farms Limited"
                         value={bankForm.invoice_account_name || ''}
-                        onChange={e => setBankForm(f => ({ ...f, invoice_account_name: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value
+                          setBankForm(f => ({ ...f, invoice_account_name: val, account_name: val }))
+                        }}
                         required
                       />
                     </div>
@@ -1330,7 +1341,10 @@ export default function Invoices() {
                         className="form-control form-control-sm"
                         placeholder="e.g. Moniepoint MFB / Zenith Bank"
                         value={bankForm.invoice_bank_name || ''}
-                        onChange={e => setBankForm(f => ({ ...f, invoice_bank_name: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value
+                          setBankForm(f => ({ ...f, invoice_bank_name: val, bank_name: val }))
+                        }}
                         required
                       />
                     </div>
@@ -1341,7 +1355,10 @@ export default function Invoices() {
                         className="form-control form-control-sm font-monospace fw-bold"
                         placeholder="e.g. 1023849502"
                         value={bankForm.invoice_account_number || ''}
-                        onChange={e => setBankForm(f => ({ ...f, invoice_account_number: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value
+                          setBankForm(f => ({ ...f, invoice_account_number: val, account_number: val }))
+                        }}
                         required
                       />
                     </div>
@@ -1352,7 +1369,10 @@ export default function Invoices() {
                         className="form-control form-control-sm"
                         placeholder="e.g. Zenith Bank"
                         value={bankForm.invoice_secondary_bank || ''}
-                        onChange={e => setBankForm(f => ({ ...f, invoice_secondary_bank: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value
+                          setBankForm(f => ({ ...f, invoice_secondary_bank: val, secondary_bank: val }))
+                        }}
                       />
                     </div>
                     <div className="col-md-6">
@@ -1362,7 +1382,10 @@ export default function Invoices() {
                         className="form-control form-control-sm font-monospace"
                         placeholder="e.g. 1223456789"
                         value={bankForm.invoice_secondary_account_number || ''}
-                        onChange={e => setBankForm(f => ({ ...f, invoice_secondary_account_number: e.target.value }))}
+                        onChange={e => {
+                          const val = e.target.value
+                          setBankForm(f => ({ ...f, invoice_secondary_account_number: val, secondary_account: val }))
+                        }}
                       />
                     </div>
                   </div>

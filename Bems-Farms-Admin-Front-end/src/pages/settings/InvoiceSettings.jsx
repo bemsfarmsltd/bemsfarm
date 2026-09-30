@@ -36,7 +36,16 @@ export default function InvoiceSettings() {
       .finally(() => setLoading(false))
   }, [])
 
-  const fld = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const fld = (k, v) => setForm(f => {
+    const next = { ...f, [k]: v }
+    if (k === 'invoice_account_name') next.account_name = v
+    if (k === 'invoice_bank_name') next.bank_name = v
+    if (k === 'invoice_account_number') next.account_number = v
+    if (k === 'invoice_secondary_bank') next.secondary_bank = v
+    if (k === 'invoice_secondary_account_number') next.secondary_account = v
+    if (k === 'invoice_company_name') next.company_name = v
+    return next
+  })
 
   // Convert uploaded file to base64 and store in form
   function handleSignatureFile(e) {
@@ -55,7 +64,15 @@ export default function InvoiceSettings() {
     if (e) e.preventDefault()
     setSaving(true)
     try {
-      const res = await api.post('/admin/settings/invoices', form)
+      const payload = {
+        ...form,
+        bank_name: form.invoice_bank_name,
+        account_name: form.invoice_account_name,
+        account_number: form.invoice_account_number,
+        secondary_bank: form.invoice_secondary_bank,
+        secondary_account: form.invoice_secondary_account_number,
+      }
+      const res = await api.post('/admin/settings/invoices', payload)
       setForm(f => ({ ...f, ...res.data.settings }))
       toast.success('Bems Farms invoice templates and bank details saved successfully!')
     } catch (err) {
