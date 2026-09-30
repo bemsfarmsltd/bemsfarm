@@ -2394,11 +2394,11 @@ export default function DriversManagement() {
                       display: block !important;
                       overflow: visible !important;
                     }
-                    /* CRITICAL: Preserve the CSS Grid layout from bems-document.css.
-                       DO NOT set display:block or min-height:auto here — that destroys
-                       the grid-template-rows: 1fr auto that locks the footer to the bottom. */
+                    /* CRITICAL: display:block + overflow:visible ensures absolute footer
+                       can reach the true bottom of the 297mm page in Chrome print engine. */
                     .bems-doc-page {
                       position: relative !important;
+                      display: block !important;
                       width: 210mm !important;
                       height: 297mm !important;
                       min-height: 297mm !important;
@@ -2408,10 +2408,8 @@ export default function DriversManagement() {
                       box-shadow: none !important;
                       border: none !important;
                       background: #ffffff !important;
-                      display: grid !important;
-                      grid-template-rows: 1fr auto !important;
                       box-sizing: border-box !important;
-                      overflow: hidden !important;
+                      overflow: visible !important;
                       page-break-after: always !important;
                       break-after: page !important;
                     }
@@ -2420,14 +2418,16 @@ export default function DriversManagement() {
                       break-after: auto !important;
                     }
                     .bems-doc-body {
+                      display: block !important;
+                      padding: 10mm 14mm 80px 14mm !important;
                       overflow: hidden !important;
-                      min-height: 0 !important;
-                      padding: 10mm 14mm 8mm 14mm !important;
-                      display: flex !important;
-                      flex-direction: column !important;
-                      gap: 14px !important;
+                      box-sizing: border-box !important;
                     }
                     .bems-doc-footer-group {
+                      position: absolute !important;
+                      bottom: 0 !important;
+                      left: 0 !important;
+                      right: 0 !important;
                       width: 100% !important;
                       break-inside: avoid !important;
                       page-break-inside: avoid !important;

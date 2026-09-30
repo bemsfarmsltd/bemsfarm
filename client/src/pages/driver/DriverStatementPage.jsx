@@ -818,6 +818,7 @@ export default function DriverStatementPage() {
           }
           .bems-doc-page {
             position: relative !important;
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             min-height: 297mm !important;
@@ -827,10 +828,9 @@ export default function DriverStatementPage() {
             box-shadow: none !important;
             border: none !important;
             background: #ffffff !important;
-            display: grid !important;
-            grid-template-rows: 1fr auto !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            /* overflow MUST be visible so absolute footer reaches page bottom */
+            overflow: visible !important;
             page-break-after: always !important;
             break-after: page !important;
           }
@@ -839,14 +839,16 @@ export default function DriverStatementPage() {
             break-after: auto !important;
           }
           .bems-doc-body {
+            display: block !important;
+            padding: 10mm 14mm 80px 14mm !important;
             overflow: hidden !important;
-            min-height: 0 !important;
-            padding: 10mm 14mm 8mm 14mm !important;
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 14px !important;
+            box-sizing: border-box !important;
           }
           .bems-doc-footer-group {
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
             width: 100% !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
