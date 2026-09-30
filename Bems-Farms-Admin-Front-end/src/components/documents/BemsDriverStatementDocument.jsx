@@ -41,12 +41,15 @@ function generateSecurityCode(ref, amount) {
   }
   const h1 = Math.abs(hash1).toString(16).padStart(8, '0').slice(0, 8).toUpperCase()
   const h2 = Math.abs(hash2).toString(16).padStart(8, '0').slice(0, 8).toUpperCase()
+  return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`
 }
 
 /**
  * BemsDriverStatementDocument
  * Executive, audited Statement of Account for Bems Farms Logistics Drivers.
- * Matches the official Bems Farms invoice visual language with A4 print readiness.
+ * Supports OPay / Moniepoint style duration filtering and strict multi-page rules:
+ * - Exactly 1 Header (Page 1 only)
+ * - Exactly 1 Footer (Last Page only, docked at bottom)
  */
 export default function BemsDriverStatementDocument({
   driver = {},
@@ -54,6 +57,8 @@ export default function BemsDriverStatementDocument({
   company = {},
   statement = [],
   period = {},
+  showFilterToolbar = true,
+  onDateRangeChange,
 }) {
   const driverName = driver.name || 'Bems Farms Driver'
   const driverPhone = driver.phone || '—'
@@ -68,17 +73,89 @@ export default function BemsDriverStatementDocument({
   const accountNumber = driver.account_number || '—'
   const accountName = driver.account_name || driverName
 
-  // Summary Metrics
-  const openingBalance = Number(summary.opening_balance || 0)
-  const totalCredits = Number(summary.total_credits || driver.total_earnings || 0)
-  const totalDebits = Number(summary.total_debits || driver.total_paid || 0)
+  // ── OPay / Moniepoint Style Duration Filter State ──
+  const [filterPreset, setFilterPreset] = useState('all')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
+
+  // Compute active date boundaries
+  const activeDateRange = useMemo(() => {
+    const now = new Date()
+    if (filterPreset === '7d') {
+      const s = new Date(Date.now() - 7 * 86400000)
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) }
+    }
+    if (filterPreset === '30d') {
+      const s = new Date(Date.now() - 30 * 86400000)
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) }
+    }
+    if (filterPreset === '90d') {
+      const s = new Date(Date.now() - 90 * 86400000)
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) }
+    }
+    if (filterPreset === 'this_month') {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1)
+      return { start: s.toISOString().slice(0, 10), end: now.toISOString().slice(0, 10) }
+    }
+    if (filterPreset === 'prev_month') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const e = new Date(now.getFullYear(), now.getMonth(), 0)
+      return { start: s.toISOString().slice(0, 10), end: e.toISOString().slice(0, 10) }
+    }
+    if (filterPreset === 'custom') {
+      return { start: customStart || null, end: customEnd || null }
+    }
+    return { start: null, end: null }
+  }, [filterPreset, customStart, customEnd])
+
+  // Filter transactions within range
+  const filteredStatement = useMemo(() => {
+    if (!activeDateRange.start && !activeDateRange.end) return statement
+    const sTime = activeDateRange.start ? new Date(activeDateRange.start).getTime() : 0
+    const eTime = activeDateRange.end ? new Date(new Date(activeDateRange.end).setHours(23, 59, 59, 999)).getTime() : Infinity
+    return statement.filter(item => {
+      const t = new Date(item.date).getTime()
+      return t >= sTime && t <= eTime
+    })
+  }, [statement, activeDateRange])
+
+  // Compute opening balance prior to activeDateRange.start
+  const computedOpeningBalance = useMemo(() => {
+    if (!activeDateRange.start) return Number(summary.opening_balance || 0)
+    const sTime = new Date(activeDateRange.start).getTime()
+    let priorNet = 0
+    for (const item of statement) {
+      if (new Date(item.date).getTime() < sTime) {
+        const amt = parseFloat(item.amount) || 0
+        if (item.type === 'credit') priorNet += amt
+        else priorNet -= amt
+      }
+    }
+    return Math.max(0, priorNet + Number(summary.opening_balance || 0))
+  }, [statement, activeDateRange, summary.opening_balance])
+
+  // Compute summary figures
+  const totalCredits = useMemo(() => {
+    return filteredStatement.reduce((acc, item) => acc + (item.type === 'credit' ? (parseFloat(item.amount) || 0) : 0), 0)
+  }, [filteredStatement])
+
+  const totalDebits = useMemo(() => {
+    return filteredStatement.reduce((acc, item) => acc + (item.type === 'debit' ? (parseFloat(item.amount) || 0) : 0), 0)
+  }, [filteredStatement])
+
   const pendingPayouts = Number(summary.pending_payouts || 0)
-  const closingBalance = Number(summary.closing_balance ?? (totalCredits - totalDebits - pendingPayouts))
-  const totalTrips = Number(summary.total_trips || driver.total_delivered || driver.total_deliveries || statement.filter(s => s.category === 'delivery_commission' || s.category === 'delivery_drop').length || 0)
+  const closingBalance = Math.max(0, computedOpeningBalance + totalCredits - totalDebits - pendingPayouts)
+
+  const totalTrips = useMemo(() => {
+    if (!activeDateRange.start && !activeDateRange.end) {
+      return Number(summary.total_trips || driver.total_delivered || filteredStatement.filter(s => s.category === 'delivery_commission' || s.category === 'delivery_drop').length || 0)
+    }
+    return filteredStatement.filter(s => s.category === 'delivery_commission' || s.category === 'delivery_drop').length
+  }, [filteredStatement, activeDateRange, summary.total_trips, driver.total_delivered])
 
   // Statement Period
-  const periodStart = summary.period_start || period.start_date || (statement.length > 0 ? statement[0].date : driver.joined_at || new Date())
-  const periodEnd = summary.period_end || period.end_date || (statement.length > 0 ? statement[statement.length - 1].date : new Date())
+  const periodStart = activeDateRange.start || summary.period_start || period.start_date || (filteredStatement.length > 0 ? filteredStatement[0].date : driver.joined_at || new Date())
+  const periodEnd = activeDateRange.end || summary.period_end || period.end_date || (filteredStatement.length > 0 ? filteredStatement[filteredStatement.length - 1].date : new Date())
   const issuedDate = formatDate(new Date())
 
   // Statement Reference Code
@@ -127,12 +204,88 @@ export default function BemsDriverStatementDocument({
   const companyEmail = company.email || 'corporate@bemsfarms.com'
   const companyPhone = company.phone || '+234 800 236 7326 / +234 814 000 0000'
 
+  // ── Multi-Page Chunking Logic ──
+  // Rule: Statement has exactly 1 Header (Page 1) and 1 Footer (Last Page).
+  // Single page fits up to 5 rows along with all cards, totals, and signatures.
+  const isMultiPage = filteredStatement.length > 5
+  const page1Rows = isMultiPage ? filteredStatement.slice(0, 6) : filteredStatement
+  const remainingRows = isMultiPage ? filteredStatement.slice(6) : []
+  const totalPages = isMultiPage ? (remainingRows.length > 14 ? 3 : 2) : 1
+
   return (
     <div className="bems-doc-root">
-      <div className="bems-doc-page" id="bems-driver-statement-page">
+
+      {/* ── OPay & Moniepoint Style Duration Filter Bar (Screen Only) ── */}
+      {showFilterToolbar && (
+        <div className="bems-stmt-filter-container no-print">
+          <div className="bems-stmt-filter-header">
+            <span className="bems-stmt-filter-title">
+              <i className="ri-calendar-event-line" style={{ color: '#154a2f' }} />
+              Statement Duration Filter
+            </span>
+            <span style={{ fontSize: 11, color: '#64748b' }}>
+              Showing {filteredStatement.length} {filteredStatement.length === 1 ? 'transaction' : 'transactions'}
+            </span>
+          </div>
+
+          <div className="bems-stmt-filter-pills">
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: '7d', label: 'Last 7 Days' },
+              { id: '30d', label: 'Last 30 Days' },
+              { id: '90d', label: 'Last 90 Days' },
+              { id: 'this_month', label: 'This Month' },
+              { id: 'prev_month', label: 'Previous Month' },
+              { id: 'custom', label: 'Custom Range' },
+            ].map(preset => (
+              <button
+                key={preset.id}
+                type="button"
+                className={`bems-stmt-pill-btn ${filterPreset === preset.id ? 'active' : ''}`}
+                onClick={() => setFilterPreset(preset.id)}
+              >
+                {filterPreset === preset.id && <i className="ri-check-line" style={{ fontSize: 12 }} />}
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {filterPreset === 'custom' && (
+            <div className="bems-stmt-custom-inputs">
+              <label style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>From:</label>
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+              />
+              <label style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>To:</label>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+              />
+              {(customStart || customEnd) && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6 }}
+                  onClick={() => { setCustomStart(''); setCustomEnd('') }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          PAGE 1 (Always Has the Only Official Header)
+          ══════════════════════════════════════════════════════════════════════ */}
+      <div className="bems-doc-page">
         <div className="bems-doc-body">
 
-          {/* ── HEADER ── */}
+          {/* ── OFFICIAL HEADER (PAGE 1 ONLY) ── */}
           <header className="bems-doc-head">
             <div>
               <div className="bems-doc-logo">
@@ -164,9 +317,8 @@ export default function BemsDriverStatementDocument({
             </div>
           </header>
 
-          {/* ── HERO BANNER WITH GUILLOCHE & STAMP ── */}
+          {/* ── HERO BANNER WITH GUILLOCHE & STAMP (PAGE 1 ONLY) ── */}
           <section className="bems-doc-hero">
-            {/* Guilloche SVG Security Wave Pattern */}
             <svg
               className="bems-doc-guil"
               viewBox="0 0 720 190"
@@ -189,7 +341,6 @@ export default function BemsDriverStatementDocument({
                 <div className="bems-doc-words">{balanceInWords}</div>
               </div>
 
-              {/* Circular Official Security Stamp */}
               <div className="bems-doc-stamp">
                 <div>
                   <span>BEMS FARMS</span>
@@ -199,11 +350,10 @@ export default function BemsDriverStatementDocument({
               </div>
             </div>
 
-            {/* Bottom 5-Column Metric Grid */}
             <div className="bems-doc-hero-meta">
               <div>
                 <div className="cap">Opening Balance</div>
-                <p>₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p>₦{computedOpeningBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <div className="cap">Total Earned (Gross)</div>
@@ -226,7 +376,7 @@ export default function BemsDriverStatementDocument({
             </div>
           </section>
 
-          {/* ── DRIVER PROFILE & SETTLEMENT ACCOUNT DETAILS ── */}
+          {/* ── DRIVER PROFILE & SETTLEMENT ACCOUNT DETAILS (PAGE 1 ONLY) ── */}
           <section className="bems-doc-parties">
             <div className="bems-doc-party">
               <div className="cap">Driver & Fleet Profile</div>
@@ -251,11 +401,11 @@ export default function BemsDriverStatementDocument({
             </div>
           </section>
 
-          {/* 4-KPI Strip */}
+          {/* ── 4-KPI STRIP (PAGE 1 ONLY) ── */}
           <div className="bems-stmt-kpi-grid">
             <div className="bems-stmt-kpi-card">
               <div className="kpi-label">Opening Balance</div>
-              <div className="kpi-val">₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+              <div className="kpi-val">₦{computedOpeningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
             </div>
             <div className="bems-stmt-kpi-card">
               <div className="kpi-label">Total Credits (+)</div>
@@ -277,7 +427,7 @@ export default function BemsDriverStatementDocument({
             </div>
           </div>
 
-          {/* ── ITEMIZED STATEMENT LEDGER TABLE ── */}
+          {/* ── ITEMIZED STATEMENT LEDGER TABLE (PAGE 1 ROWS) ── */}
           <table className="bems-doc-table">
             <thead>
               <tr>
@@ -291,8 +441,8 @@ export default function BemsDriverStatementDocument({
               </tr>
             </thead>
             <tbody>
-              {statement && statement.length > 0 ? (
-                statement.map((ev, idx) => {
+              {page1Rows && page1Rows.length > 0 ? (
+                page1Rows.map((ev, idx) => {
                   const isCredit = ev.type === 'credit'
                   const amt = parseFloat(ev.amount) || 0
                   const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null
@@ -343,91 +493,253 @@ export default function BemsDriverStatementDocument({
             </tbody>
           </table>
 
-          {/* ── SETTLEMENT VERIFICATION & TOTALS ── */}
-          <section className="bems-doc-vt">
-            {/* Genuine Verification Box with Live Scannable QR Code */}
-            <div className="bems-doc-verify">
-              <div className="qr" style={{ padding: 4, background: '#ffffff', border: '1px solid #c9d6ce', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt="Verify Driver Statement QR Code"
-                    style={{ width: 72, height: 72, display: 'block', imageRendering: 'pixelated' }}
-                  />
-                ) : (
-                  <div style={{ width: 72, height: 72, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#0f3622', fontWeight: 'bold', fontSize: 11 }}>
-                    QR
+          {/* If statement fits on 1 page: Totals & Sign-off on Page 1 */}
+          {!isMultiPage && (
+            <>
+              {/* Verification & Totals */}
+              <section className="bems-doc-vt">
+                <div className="bems-doc-verify">
+                  <div className="qr" style={{ padding: 4, background: '#ffffff', border: '1px solid #c9d6ce', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {qrDataUrl ? (
+                      <img
+                        src={qrDataUrl}
+                        alt="Verify Driver Statement QR Code"
+                        style={{ width: 72, height: 72, display: 'block', imageRendering: 'pixelated' }}
+                      />
+                    ) : (
+                      <div style={{ width: 72, height: 72, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#0f3622', fontWeight: 'bold', fontSize: 11 }}>
+                        QR
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div>
-                <h4>Verified Logistics Settlement</h4>
-                <p>Scan with any camera or visit bemsfarms.com/verify to authenticate this official account statement.</p>
-                <div className="cap" style={{ marginBottom: 2 }}>Security Verification Code</div>
-                <div className="code">{securityCode}</div>
-              </div>
-            </div>
+                  <div>
+                    <h4>Verified Logistics Settlement</h4>
+                    <p>Scan with any smartphone camera or visit bemsfarms.com/verify to authenticate this official statement.</p>
+                    <div className="cap" style={{ marginBottom: 2 }}>Security Verification Code</div>
+                    <div className="code">{securityCode}</div>
+                  </div>
+                </div>
 
-            {/* Reconciliation Totals Table */}
-            <dl className="bems-doc-tot">
-              <dt>Gross Delivery Earnings</dt>
-              <dd className="mono">₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                <dl className="bems-doc-tot">
+                  <dt>Gross Delivery Earnings</dt>
+                  <dd className="mono">₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
 
-              <dt>Disbursed to Bank</dt>
-              <dd className="mono">₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                  <dt>Disbursed to Bank</dt>
+                  <dd className="mono">₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
 
-              {pendingPayouts > 0 && (
-                <>
-                  <dt>In-Flight Payouts</dt>
-                  <dd className="mono" style={{ color: '#d97706' }}>
-                    ₦{pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {pendingPayouts > 0 && (
+                    <>
+                      <dt>In-Flight Payouts</dt>
+                      <dd className="mono" style={{ color: '#d97706' }}>
+                        ₦{pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </dd>
+                    </>
+                  )}
+
+                  <dt className="grand">Closing Balance</dt>
+                  <dd className="grand">
+                    <span className="naira" style={{ fontSize: 15 }}>₦</span>
+                    {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </dd>
-                </>
-              )}
 
-              <dt className="grand">Closing Balance</dt>
-              <dd className="grand">
-                <span className="naira" style={{ fontSize: 15 }}>₦</span>
-                {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </dd>
+                  <dt>Settlement Account</dt>
+                  <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
+                </dl>
+              </section>
 
-              <dt>Settlement Account</dt>
-              <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
-            </dl>
-          </section>
+              {/* Sign-off & Notice */}
+              <section className="bems-doc-sign">
+                <div className="bems-doc-keep terms">
+                  <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+                </div>
 
-          {/* ── SIGN-OFF & CERTIFICATION ── */}
-          <section className="bems-doc-sign">
-            <div className="bems-doc-keep terms">
-              <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
-            </div>
-
-            <div className="bems-doc-sig">
-              <div className="ln" />
-              <b>For {companyName}</b>
-              <span>Financial Controller & Head of Logistics</span>
-            </div>
-          </section>
+                <div className="bems-doc-sig">
+                  <div className="ln" />
+                  <b>For {companyName}</b>
+                  <span>Financial Controller & Head of Logistics</span>
+                </div>
+              </section>
+            </>
+          )}
 
         </div>
 
-        {/* ── STICKY BOTTOM-ANCHORED FOOTER GROUP ── */}
-        <div className="bems-doc-footer-group">
-          {/* Motto Banner */}
-          <div className="bems-doc-thanks">
-            <h3>Thank you for powering Bems Farms logistics.</h3>
-            <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+        {/* ── Page 1 Bottom: Either Only Footer (if 1 Page) OR Continuation Indicator (NO FOOTER if 2 Pages) ── */}
+        {!isMultiPage ? (
+          <div className="bems-doc-footer-group">
+            <div className="bems-doc-thanks">
+              <h3>Thank you for powering Bems Farms logistics.</h3>
+              <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+            </div>
+            <div className="bems-doc-foot">
+              <span>{companyPhone}</span>
+              <span>www.bemsfarms.com</span>
+              <span>{rcNumber} · {tinNumber}</span>
+            </div>
           </div>
-
-          {/* Official Footer */}
-          <div className="bems-doc-foot">
-            <span>{companyPhone}</span>
-            <span>www.bemsfarms.com</span>
-            <span>{rcNumber} · {tinNumber}</span>
+        ) : (
+          <div className="bems-stmt-page-indicator">
+            <span>Statement {statementRef} · Driver: {driverName}</span>
+            <span style={{ fontWeight: 600, color: '#0f3622' }}>Page 1 of {totalPages} · Continues on Page 2 ──►</span>
           </div>
-        </div>
+        )}
 
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          PAGE 2 (NO HEADER — Table Continuation, Totals, Signature, & ONLY FOOTER)
+          ══════════════════════════════════════════════════════════════════════ */}
+      {isMultiPage && (
+        <div className="bems-doc-page">
+          <div className="bems-doc-body">
+
+            {/* Discreet Continuation Bar (NO HEADER ON PAGE 2) */}
+            <div className="bems-stmt-page-head">
+              <span>Official Statement of Account (Continued) — {statementRef}</span>
+              <span>Page 2 of {totalPages}</span>
+            </div>
+
+            {/* Table Continuation */}
+            <table className="bems-doc-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '5%' }}>#</th>
+                  <th style={{ width: '13%' }}>Date</th>
+                  <th>Activity & Transaction Details</th>
+                  <th style={{ width: '16%' }}>Reference</th>
+                  <th className="c" style={{ width: '10%' }}>Type</th>
+                  <th className="r" style={{ width: '14%' }}>Amount (₦)</th>
+                  <th className="r" style={{ width: '15%' }}>Balance (₦)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {remainingRows.map((ev, idx) => {
+                  const isCredit = ev.type === 'credit'
+                  const amt = parseFloat(ev.amount) || 0
+                  const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null
+
+                  return (
+                    <tr key={ev.id || idx}>
+                      <td className="mono">{String(idx + 7).padStart(2, '0')}</td>
+                      <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
+                      <td className="it">
+                        <b>{ev.description || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
+                        {ev.order_id && (
+                          <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 6 }}>
+                            Order #{ev.order_id}
+                          </span>
+                        )}
+                        {ev.delivery_address && (
+                          <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 3 }}>
+                            {ev.delivery_address}
+                          </div>
+                        )}
+                      </td>
+                      <td className="mono" style={{ fontSize: 10, color: '#0f3622', fontWeight: 600 }}>
+                        {ev.reference || '—'}
+                      </td>
+                      <td className="c">
+                        <span className={isCredit ? 'bems-stmt-badge-cr' : 'bems-stmt-badge-dr'}>
+                          {isCredit ? 'CR' : 'DR'}
+                        </span>
+                      </td>
+                      <td className={`r mono ${isCredit ? 'bems-stmt-amt-cr' : 'bems-stmt-amt-dr'}`}>
+                        {isCredit ? '+' : '-'}₦{amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="r mono" style={{ fontWeight: 600, color: '#0f3622' }}>
+                        {runningBal !== null
+                          ? `₦${runningBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            {/* Verification Box & Reconciliation Totals */}
+            <section className="bems-doc-vt">
+              <div className="bems-doc-verify">
+                <div className="qr" style={{ padding: 4, background: '#ffffff', border: '1px solid #c9d6ce', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="Verify Driver Statement QR Code"
+                      style={{ width: 72, height: 72, display: 'block', imageRendering: 'pixelated' }}
+                    />
+                  ) : (
+                    <div style={{ width: 72, height: 72, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#0f3622', fontWeight: 'bold', fontSize: 11 }}>
+                      QR
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4>Verified Logistics Settlement</h4>
+                  <p>Scan with any smartphone camera or visit bemsfarms.com/verify to authenticate this official statement.</p>
+                  <div className="cap" style={{ marginBottom: 2 }}>Security Verification Code</div>
+                  <div className="code">{securityCode}</div>
+                </div>
+              </div>
+
+              <dl className="bems-doc-tot">
+                <dt>Gross Delivery Earnings</dt>
+                <dd className="mono">₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+
+                <dt>Disbursed to Bank</dt>
+                <dd className="mono">₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+
+                {pendingPayouts > 0 && (
+                  <>
+                    <dt>In-Flight Payouts</dt>
+                    <dd className="mono" style={{ color: '#d97706' }}>
+                      ₦{pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </dd>
+                  </>
+                )}
+
+                <dt className="grand">Closing Balance</dt>
+                <dd className="grand">
+                  <span className="naira" style={{ fontSize: 15 }}>₦</span>
+                  {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </dd>
+
+                <dt>Settlement Account</dt>
+                <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
+              </dl>
+            </section>
+
+            {/* Sign-off Block & Audit Notice */}
+            <section className="bems-doc-sign">
+              <div className="bems-doc-keep terms">
+                <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+              </div>
+
+              <div className="bems-doc-sig">
+                <div className="ln" />
+                <b>For {companyName}</b>
+                <span>Financial Controller & Head of Logistics</span>
+              </div>
+            </section>
+
+          </div>
+
+          {/* ── THE ONLY OFFICIAL FOOTER GROUP ON THE STATEMENT (DOCKED AT BOTTOM OF PAGE 2) ── */}
+          <div className="bems-doc-footer-group">
+            <div className="bems-doc-thanks">
+              <h3>Thank you for powering Bems Farms logistics.</h3>
+              <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+            </div>
+
+            <div className="bems-doc-foot">
+              <span>{companyPhone}</span>
+              <span>www.bemsfarms.com</span>
+              <span>{rcNumber} · {tinNumber}</span>
+            </div>
+          </div>
+
+        </div>
+      )}
+
     </div>
   )
 }

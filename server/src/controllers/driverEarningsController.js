@@ -922,7 +922,29 @@ const requestAccountStatement = async (req, res, next) => {
       (a, b) => new Date(a.date) - new Date(b.date)
     );
 
-    let runningBalance = 0;
+    // Calculate opening balance before startDate
+    let openingBalance = 0;
+    if (startDate) {
+      try {
+        const priorLedgerRes = await pool.query(
+          `SELECT COALESCE(SUM(CASE WHEN type = 'credit' THEN amount ELSE -amount END), 0) AS prior_bal
+           FROM driver_wallet_ledger
+           WHERE driver_id = $1 AND created_at < $2`,
+          [driverId, startDate]
+        );
+        const priorPayoutsRes = await pool.query(
+          `SELECT COALESCE(SUM(amount), 0) AS prior_payouts
+           FROM driver_payouts
+           WHERE driver_id = $1 AND requested_at < $2 AND status IN ('paid', 'approved', 'processed')`,
+          [driverId, startDate]
+        );
+        const priorNet = parseFloat(priorLedgerRes.rows[0]?.prior_bal || 0);
+        const priorPayout = parseFloat(priorPayoutsRes.rows[0]?.prior_payouts || 0);
+        openingBalance = Math.max(0, priorNet - priorPayout);
+      } catch (_) {}
+    }
+
+    let runningBalance = openingBalance;
     let totalCredits = 0;
     let totalDebits = 0;
 
@@ -948,12 +970,12 @@ const requestAccountStatement = async (req, res, next) => {
     const pendingPayouts = parseFloat(driver.pending_payouts) || 0;
     const closingBalance = Math.max(0, runningBalance - pendingPayouts);
 
-    const periodStart = statementWithBalances.length > 0 
+    const periodStart = startDate || (statementWithBalances.length > 0 
       ? statementWithBalances[0].date 
-      : driver.joined_at || new Date();
-    const periodEnd = statementWithBalances.length > 0 
+      : driver.joined_at || new Date());
+    const periodEnd = endDate || (statementWithBalances.length > 0 
       ? statementWithBalances[statementWithBalances.length - 1].date 
-      : new Date();
+      : new Date());
 
     let bankSettings = null;
     try {
@@ -979,7 +1001,7 @@ const requestAccountStatement = async (req, res, next) => {
       wallet_id: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, "0")}`,
       period_start: periodStart,
       period_end: periodEnd,
-      opening_balance: 0,
+      opening_balance: openingBalance,
       total_credits: totalCredits,
       total_income: totalCredits,
       total_debits: totalDebits,

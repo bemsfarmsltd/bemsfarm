@@ -1265,17 +1265,50 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
       (a, b) => new Date(a.date) - new Date(b.date)
     );
 
-    // Compute dynamic running balances
-    let runningBalance = 0;
+    // Support duration filtering (OPay / Moniepoint style date ranges)
+    const { startDate, endDate, start_date, end_date } = req.query;
+    const filterStartStr = startDate || start_date || null;
+    const filterEndStr = endDate || end_date || null;
+    const filterStart = filterStartStr ? new Date(filterStartStr) : null;
+    const filterEnd = filterEndStr ? new Date(new Date(filterEndStr).setHours(23, 59, 59, 999)) : null;
+
+    // Calculate opening balance before filterStart
+    let openingBalance = 0;
+    const periodEvents = [];
+
+    for (const ev of allEventsChronological) {
+      const evDate = new Date(ev.date);
+      const amt = parseFloat(ev.amount) || 0;
+      const isCredit = ev.type === 'credit';
+
+      if (filterStart && evDate < filterStart) {
+        // Prior to period -> contributes to opening balance
+        if (isCredit) {
+          openingBalance += amt;
+        } else {
+          openingBalance -= amt;
+        }
+      } else if (!filterEnd || evDate <= filterEnd) {
+        // Within period
+        periodEvents.push(ev);
+      }
+    }
+
+    // Compute dynamic running balances within the period
+    let runningBalance = openingBalance;
     let totalCredits = 0;
     let totalDebits = 0;
+    let periodDrops = 0;
 
-    const statementWithBalances = allEventsChronological.map((ev, index) => {
+    const statementWithBalances = periodEvents.map((ev, index) => {
       const amt = parseFloat(ev.amount) || 0;
       const isCredit = ev.type === 'credit';
       if (isCredit) {
         runningBalance += amt;
         totalCredits += amt;
+        if (ev.category === 'delivery_commission' || ev.category === 'delivery_drop') {
+          periodDrops += (parseInt(ev.deliveries, 10) || 1);
+        }
       } else {
         runningBalance -= amt;
         totalDebits += amt;
@@ -1292,12 +1325,12 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
     const pendingPayouts = parseFloat(driver.pending_payouts) || 0;
     const closingBalance = Math.max(0, runningBalance - pendingPayouts);
 
-    const periodStart = statementWithBalances.length > 0 
+    const periodStart = filterStartStr || (statementWithBalances.length > 0 
       ? statementWithBalances[0].date 
-      : driver.joined_at || new Date();
-    const periodEnd = statementWithBalances.length > 0 
+      : driver.joined_at || new Date());
+    const periodEnd = filterEndStr || (statementWithBalances.length > 0 
       ? statementWithBalances[statementWithBalances.length - 1].date 
-      : new Date();
+      : new Date());
 
     // Query active company banking & contact settings for official document rendering
     let bankSettings = null;
@@ -1321,12 +1354,12 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         wallet_account_name: driver.wallet_account_name || `BEMS - ${driver.name.toUpperCase()}`,
       },
       summary: {
-        opening_balance: 0,
+        opening_balance: openingBalance,
         total_credits: totalCredits,
         total_debits: totalDebits,
         pending_payouts: pendingPayouts,
         closing_balance: closingBalance,
-        total_trips: parseInt(driver.total_delivered || 0, 10),
+        total_trips: periodDrops || parseInt(driver.total_delivered || 0, 10),
         period_start: periodStart,
         period_end: periodEnd,
       },
