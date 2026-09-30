@@ -29,7 +29,8 @@ const DEFAULTS = {
   store_address: 'Abia State, Nigeria', store_logo_url: '/bemsfarms_logo.png', store_tax_id: '', store_registration_number: '', pos_receipt_tagline: 'Fresh food. Trusted quality.',
   pos_receipt_website: 'bemsfarms.com', pos_receipt_header: 'SALES RECEIPT', pos_receipt_footer: 'Thank you for shopping with us',
   pos_receipt_return_note: 'Keep receipt for returns', pos_receipt_paper_size: '80', pos_receipt_show_logo: 'true',
-  pos_receipt_show_phone: 'true', pos_receipt_show_email: 'false', pos_receipt_show_sku: 'true', pos_receipt_show_barcode: 'true',
+  pos_receipt_show_phone: 'true', pos_receipt_show_email: 'false', pos_receipt_show_sku: 'true', pos_receipt_show_barcode: 'false',
+  pos_receipt_code_type: 'qr',
   receipt_pos_title: 'POS SALES RECEIPT', receipt_pos_footer: 'Thank you for shopping with us',
   receipt_online_title: 'ONLINE ORDER RECEIPT', receipt_online_footer: 'Thank you for your order',
   receipt_refund_title: 'REFUND / RETURN RECEIPT', receipt_refund_footer: 'Your return has been recorded',
@@ -206,6 +207,9 @@ export default function ThermalReceipt({
   const settings = { ...DEFAULTS, ...(savedSettings || {}), ...(settingsOverride || {}) }
   const enabled = (key) => settings[key] === 'true' || settings[key] === true
 
+  // Single Code Policy: Only 1 scannable code is ever printed on the receipt/invoice (QR code OR Barcode, never both)
+  const codeType = settings.pos_receipt_code_type || (settings.pos_receipt_show_barcode === 'true' && settings.pos_receipt_code_type === undefined ? 'barcode' : 'qr')
+
   const isInvoice = receiptType === 'invoice'
   const isCustomerReceipt = receiptType === 'online'
 
@@ -327,9 +331,9 @@ export default function ThermalReceipt({
     <footer className="thermal-receipt__footer">
       <strong>{receiptFooter}</strong>
 
-      {/* Scannable Verification QR Code */}
-      {qrDataUrl && (
-        <div className="thermal-receipt__qr-wrap" style={{ margin: '5px auto 4px', textAlign: 'center' }}>
+      {/* ── Single Code Footer (QR Code OR Barcode - Never Both) ── */}
+      {codeType === 'qr' && qrDataUrl && (
+        <div className="thermal-receipt__qr-wrap" style={{ margin: '6px auto 4px', textAlign: 'center' }}>
           <img
             src={qrDataUrl}
             alt="Scan to verify receipt"
@@ -350,10 +354,12 @@ export default function ThermalReceipt({
         </div>
       )}
 
-      {/* Code128 Barcode */}
-      {enabled('pos_receipt_show_barcode') && (
-        receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />
+      {codeType === 'barcode' && (
+        <div className="thermal-receipt__barcode-wrap" style={{ margin: '6px auto 3px', textAlign: 'center' }}>
+          {receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />}
+        </div>
       )}
+
       <small>{receiptNumber || 'BEMS FARMS'} · {returnNote}</small>
     </footer>
   </article>

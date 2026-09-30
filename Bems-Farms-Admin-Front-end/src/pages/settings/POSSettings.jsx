@@ -29,11 +29,12 @@ const BLANK = {
   pos_receipt_footer: 'Thank you for shopping with us',
   pos_receipt_return_note: 'Keep this receipt for returns',
   pos_receipt_paper_size: '80',
+  pos_receipt_code_type: 'qr',
   pos_receipt_show_logo: 'true',
   pos_receipt_show_phone: 'true',
   pos_receipt_show_email: 'false',
   pos_receipt_show_sku: 'true',
-  pos_receipt_show_barcode: 'true',
+  pos_receipt_show_barcode: 'false',
   pos_print_receipt: 'true',
   pos_low_stock_threshold: '',
   receipt_pos_title: 'POS SALES RECEIPT',
@@ -210,7 +211,6 @@ export default function POSSettings() {
     { key: 'pos_receipt_show_phone', title: 'Support Phone', desc: 'Display helpline contact numbers', icon: 'ri-phone-line' },
     { key: 'pos_receipt_show_email', title: 'Support Email', desc: 'Display official customer support email', icon: 'ri-mail-line' },
     { key: 'pos_receipt_show_sku', title: 'Item SKU Codes', desc: 'Print inventory SKU under product titles', icon: 'ri-price-tag-3-line' },
-    { key: 'pos_receipt_show_barcode', title: 'Barcode Footer', desc: 'Render scannable Code-128 receipt barcode', icon: 'ri-barcode-line' },
     { key: 'pos_print_receipt', title: 'Auto-Print on Tender', desc: 'Trigger printer automatically on sale completion', icon: 'ri-printer-line' },
   ]
 
@@ -567,6 +567,98 @@ export default function POSSettings() {
                   </div>
                 </div>
 
+                {/* Single Scannable Code Selector (One Code Policy) */}
+                <div className="mb-4">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <label className="form-label small fw-semibold text-dark mb-0">Receipt Scannable Code (Choose 1 Only)</label>
+                    <span className="badge bg-emerald-50 text-success border border-success-subtle px-2 py-0.5" style={{ fontSize: 11 }}>
+                      Single Code Policy
+                    </span>
+                  </div>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <div
+                        onClick={() => {
+                          fld('pos_receipt_code_type', 'qr')
+                          fld('pos_receipt_show_barcode', 'false')
+                        }}
+                        className={`p-3 rounded-3 border h-100 transition-all ${
+                          (form.pos_receipt_code_type || 'qr') === 'qr'
+                            ? 'border-success bg-success-subtle shadow-sm'
+                            : 'bg-white hover-bg-light'
+                        }`}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="d-flex align-items-center justify-content-between mb-1">
+                          <span className="fw-bold text-dark d-flex align-items-center gap-1.5 small">
+                            <i className="ri-qr-code-line text-success fs-5"></i> QR Code
+                          </span>
+                          {(form.pos_receipt_code_type || 'qr') === 'qr' && (
+                            <span className="badge bg-success text-white">Active</span>
+                          )}
+                        </div>
+                        <p className="small text-muted mb-0" style={{ fontSize: 11 }}>
+                          Customer verification QR code. Scannable with any smartphone camera to check order authenticity online.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div
+                        onClick={() => {
+                          fld('pos_receipt_code_type', 'barcode')
+                          fld('pos_receipt_show_barcode', 'true')
+                        }}
+                        className={`p-3 rounded-3 border h-100 transition-all ${
+                          form.pos_receipt_code_type === 'barcode'
+                            ? 'border-success bg-success-subtle shadow-sm'
+                            : 'bg-white hover-bg-light'
+                        }`}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="d-flex align-items-center justify-content-between mb-1">
+                          <span className="fw-bold text-dark d-flex align-items-center gap-1.5 small">
+                            <i className="ri-barcode-line text-success fs-5"></i> 1D Barcode
+                          </span>
+                          {form.pos_receipt_code_type === 'barcode' && (
+                            <span className="badge bg-success text-white">Active</span>
+                          )}
+                        </div>
+                        <p className="small text-muted mb-0" style={{ fontSize: 11 }}>
+                          Code-128 linear barcode. Scannable with handheld retail laser barcode guns for fast returns lookup.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div
+                        onClick={() => {
+                          fld('pos_receipt_code_type', 'none')
+                          fld('pos_receipt_show_barcode', 'false')
+                        }}
+                        className={`p-3 rounded-3 border h-100 transition-all ${
+                          form.pos_receipt_code_type === 'none'
+                            ? 'border-success bg-success-subtle shadow-sm'
+                            : 'bg-white hover-bg-light'
+                        }`}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="d-flex align-items-center justify-content-between mb-1">
+                          <span className="fw-bold text-dark d-flex align-items-center gap-1.5 small">
+                            <i className="ri-prohibited-line text-secondary fs-5"></i> No Code
+                          </span>
+                          {form.pos_receipt_code_type === 'none' && (
+                            <span className="badge bg-secondary text-white">Active</span>
+                          )}
+                        </div>
+                        <p className="small text-muted mb-0" style={{ fontSize: 11 }}>
+                          Clean text-only receipt footer. Saves vertical paper length on compact 58mm thermal rolls.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Modern Toggle Tiles Grid */}
                 <label className="form-label small fw-semibold text-dark mb-2">Display Elements On Receipt</label>
                 <div className="row g-2">
@@ -678,7 +770,7 @@ export default function POSSettings() {
                         onChange={(e) => fld(`receipt_${receiptType}_footer`, e.target.value)}
                       />
                       <small className="text-muted" style={{ fontSize: 11 }}>
-                        Printed above the QR code and barcode at the base of the receipt.
+                        Printed above the scannable code at the base of the receipt.
                       </small>
                     </div>
                   </div>
