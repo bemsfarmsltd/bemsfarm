@@ -95,6 +95,13 @@ export default function DeliveryZones() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      openModal('add')
+    }
+  }, [])
+
   const openModal = (type, zone = null) => {
     setSelected(zone)
     setActiveModal(type)

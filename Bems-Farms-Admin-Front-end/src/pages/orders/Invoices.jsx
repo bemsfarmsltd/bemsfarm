@@ -127,6 +127,14 @@ export default function Invoices() {
     fetchBankSettings()
   }, [fetchBankSettings])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'new' || params.get('create') === '1' || params.get('new') === '1') {
+      setForm(BLANK_FORM)
+      setActiveModal('create')
+    }
+  }, [])
+
   const handleSaveBankSettings = async (e) => {
     if (e) e.preventDefault()
     setSavingBank(true)

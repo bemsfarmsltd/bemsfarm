@@ -47,6 +47,14 @@ export default function AllergyRules() {
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setForm(EMPTY_ALLERGY)
+      setAddModal(true)
+    }
+  }, [])
+
   const openEdit = (rule) => {
     setForm({
       allergy_name: rule.allergy_name,

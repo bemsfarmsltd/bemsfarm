@@ -41,6 +41,14 @@ export default function DietaryRules() {
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setForm(EMPTY_RULE)
+      setAddModal(true)
+    }
+  }, [])
+
   const openEdit = rule => {
     setForm({ condition: rule.condition, rule_text: rule.rule_text || '', tags: rule.tags || '', priority: rule.priority ?? 5 })
     setEditModal(rule.id)

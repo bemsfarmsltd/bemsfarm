@@ -37,6 +37,13 @@ export default function CouponSettings() {
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
   function openAdd() { setEditing(null); setForm(BLANK); setModalOpen(true) }
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      openAdd()
+    }
+  }, [])
   function openEdit(c) {
     setEditing(c)
     setForm({

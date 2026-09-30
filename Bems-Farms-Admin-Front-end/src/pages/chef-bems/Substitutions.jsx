@@ -47,6 +47,14 @@ export default function Substitutions() {
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setForm(EMPTY_SUB)
+      setAddModal(true)
+    }
+  }, [])
+
   const openEdit = (sub) => {
     setForm({
       original_item: sub.original_item,

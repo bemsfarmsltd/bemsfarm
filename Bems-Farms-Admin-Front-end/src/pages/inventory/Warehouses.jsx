@@ -54,6 +54,15 @@ export default function Warehouses() {
     load()
   }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setEditItem(null)
+      setForm({ name: '', code: '', location: '', manager: '', capacity: 0, status: 'active' })
+      setActiveModal('add')
+    }
+  }, [])
+
   const totals = useMemo(() => {
     return {
       total: warehouses.length,

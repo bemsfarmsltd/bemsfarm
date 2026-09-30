@@ -202,6 +202,13 @@ export default function DriversManagement() {
     }
   }, [tabMode, loadPayouts])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      openModal('add')
+    }
+  }, [])
+
   const openModal = (type, driver = null) => {
     setSelected(driver)
     setActiveModal(type)

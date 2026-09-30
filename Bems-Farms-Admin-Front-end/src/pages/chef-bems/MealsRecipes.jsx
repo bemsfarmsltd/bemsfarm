@@ -63,6 +63,14 @@ export default function MealsRecipes() {
 
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setForm(EMPTY_MEAL)
+      setAddModal(true)
+    }
+  }, [])
+
   const openEdit = (meal) => {
     setForm({
       meal_name: meal.meal_name,

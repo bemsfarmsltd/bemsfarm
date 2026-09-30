@@ -64,6 +64,7 @@ import DeliveryMap        from './pages/deliveries/DeliveryMap'
 
 // Customers
 import CustomersList  from './pages/customers/CustomersList'
+import AddCustomer    from './pages/customers/AddCustomer'
 import CustomerDetail from './pages/customers/CustomerDetail'
 import LoyaltyPoints  from './pages/customers/LoyaltyPoints'
 import ActivityLog    from './pages/customers/ActivityLog'
@@ -208,7 +209,7 @@ function App() {
               {/* ── Customers ── */}
               <Route element={<ProtectedRoute allowedRoles={CUSTOMER_ROLES} />}>
                 <Route path="/customers"          element={<CustomersList />} />
-                <Route path="/customers/add"      element={<Navigate to="/customers" replace />} />
+                <Route path="/customers/add"      element={<AddCustomer />} />
                 <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
                 <Route path="/customers/wallet"   element={<WalletBalance />} />
                 <Route path="/customers/activity" element={<ActivityLog />} />

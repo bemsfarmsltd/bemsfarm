@@ -68,6 +68,14 @@ export default function BankAccounts() {
   }, [])
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      setForm(BLANK)
+      setModal('add')
+    }
+  }, [])
+
   const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK); setRecentTxns([]) }
 
   const openView = async acc => {

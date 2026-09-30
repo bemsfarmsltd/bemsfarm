@@ -5,6 +5,7 @@ import { ROLE_META } from '../../lib/roles'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useRealtime, useRealtimeEvent } from '../../context/RealtimeContext'
+import QuickCreateModal from './QuickCreateModal'
 
 const EMPTY_RESULTS = { products: [], orders: [], customers: [], staff: [] }
 
@@ -41,6 +42,7 @@ export default function Topbar({ onToggleSidebar }) {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
   const searchInputRef = useRef(null)
   const searchBoxRef = useRef(null)
   const debounceRef = useRef(null)
@@ -108,6 +110,18 @@ export default function Topbar({ onToggleSidebar }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // Alt+N / Option+N opens Quick Create Modal
+  useEffect(() => {
+    const onKeyShortcut = (e) => {
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        setShowQuickCreate((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKeyShortcut)
+    return () => window.removeEventListener('keydown', onKeyShortcut)
+  }, [])
+
   // Close results dropdown when clicking outside
   useEffect(() => {
     const onClickOutside = (e) => {
@@ -170,58 +184,16 @@ export default function Topbar({ onToggleSidebar }) {
     <header className="main-topbar" id="main-topbar">
       {/* ── Left Zone: Add New Action + POS ── */}
       <div className="d-flex align-items-center gap-2">
-        {/* Add New Quick Actions Dropdown */}
-        <div className="dropdown">
-          <button
-            className="btn topbar-action-pill btn-primary-bf"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <i className="ri-add-line"></i>
-            <span className="d-none d-sm-inline">Add New</span>
-          </button>
-          <div className="dropdown-menu shadow-lg border-0 p-3" style={{ borderRadius: '1rem', width: 340 }}>
-            <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-              <span className="fw-bold fs-xs text-uppercase text-muted">Quick Creation</span>
-              <span className="badge bg-success-subtle text-success fs-xxs">Shortcuts</span>
-            </div>
-            <div className="row g-2">
-              <div className="col-6">
-                <Link to="/orders" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-shopping-cart-2-line"></i>
-                  </div>
-                  <span className="fw-semibold fs-xs">New Order</span>
-                </Link>
-              </div>
-              <div className="col-6">
-                <Link to="/products/add" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-price-tag-3-line"></i>
-                  </div>
-                  <span className="fw-semibold fs-xs">Add Product</span>
-                </Link>
-              </div>
-              <div className="col-6">
-                <Link to="/inventory/stock-in" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-archive-stack-line"></i>
-                  </div>
-                  <span className="fw-semibold fs-xs">Restock</span>
-                </Link>
-              </div>
-              <div className="col-6">
-                <Link to="/onboarding?tab=onboarding" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-user-add-line"></i>
-                  </div>
-                  <span className="fw-semibold fs-xs">Invite Staff</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Add New Creation Center Button */}
+        <button
+          className="btn topbar-action-pill btn-primary-bf"
+          type="button"
+          onClick={() => setShowQuickCreate(true)}
+          title="Quick Add Anything to Bems Farms (Alt+N)"
+        >
+          <i className="ri-add-line"></i>
+          <span className="d-none d-sm-inline">Add New</span>
+        </button>
 
         {/* Standalone Point of Sale Button on Topbar */}
         <Link
@@ -546,6 +518,12 @@ export default function Topbar({ onToggleSidebar }) {
           </div>
         </div>
       </div>
+
+      {/* Comprehensive Quick Creation Hub Modal */}
+      <QuickCreateModal
+        isOpen={showQuickCreate}
+        onClose={() => setShowQuickCreate(false)}
+      />
     </header>
   )
 }

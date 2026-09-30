@@ -61,6 +61,13 @@ export default function Categories() {
     setActiveModal('form')
   }
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('action') === 'new') {
+      openAdd()
+    }
+  }, [])
+
   function openEdit(c) {
     setEditItem(c)
     setForm({
