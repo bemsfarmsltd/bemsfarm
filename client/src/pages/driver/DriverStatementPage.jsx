@@ -74,35 +74,6 @@ function generateSecurityCode(ref, amount) {
   return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`;
 }
 
-function cleanActivityDescription(desc, isCredit) {
-  if (!desc) return isCredit ? "Delivery Drop Commission" : "Bank Payout Settlement";
-  const lower = desc.toLowerCase();
-  if (lower.includes("zone delivery drop") || lower.includes("delivery drop")) {
-    return "Standard Zone Delivery Drop";
-  }
-  if (lower.includes("bank payout") || lower.includes("withdrawal")) {
-    return "Electronic Bank Withdrawal";
-  }
-  if (lower.includes("commission")) {
-    return "Delivery Commission Batch";
-  }
-  return desc;
-}
-
-function cleanAddress(addr) {
-  if (!addr) return "";
-  const parts = addr.split(",").map((s) => s.trim()).filter(Boolean);
-  const seen = new Set();
-  const unique = [];
-  for (const p of parts) {
-    const l = p.toLowerCase();
-    if (!seen.has(l) && l !== "nigeria") {
-      seen.add(l);
-      unique.push(p);
-    }
-  }
-  return unique.slice(0, 3).join(", ");
-}
 
 export default function DriverStatementPage() {
   const [searchParams] = useSearchParams();
@@ -813,11 +784,16 @@ export default function DriverStatementPage() {
           .bems-doc-body {
             flex: 1 0 auto !important;
             display: block !important;
-            padding: 8mm 12mm 4mm 12mm !important;
+            padding: 10mm 14mm 24mm 14mm !important;
           }
           .bems-doc-footer-group {
-            margin-top: auto !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
             width: 100% !important;
+            z-index: 9999 !important;
+            background: #ffffff !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
@@ -826,51 +802,52 @@ export default function DriverStatementPage() {
             width: 100% !important;
             padding: 8px 14mm !important;
           }
+          .bems-doc-thanks h3 { font-size: 13.5px !important; }
+          .bems-doc-thanks span { font-size: 10px !important; }
           .bems-doc-foot {
             margin-left: 0 !important;
             width: 100% !important;
-            padding: 5px 14mm 6px !important;
+            padding: 6px 14mm !important;
+            font-size: 9px !important;
           }
-          .bems-doc-head { margin-bottom: 8px !important; }
-          .bems-doc-logo img { height: 38px !important; }
-          .bems-doc-meta-right h1 { font-size: 22px !important; }
-          .bems-doc-hero { border-radius: 8px !important; }
-          .bems-doc-hero-top { padding: 8px 14px 6px !important; }
-          .bems-doc-amt { font-size: 28px !important; margin: 2px 0 !important; }
-          .bems-doc-stamp { width: 66px !important; height: 66px !important; }
-          .bems-doc-stamp b { font-size: 13px !important; }
-          .bems-doc-stamp span { font-size: 6.5px !important; }
-          .bems-doc-hero-meta > div { padding: 5px 12px 6px !important; }
-          .bems-doc-hero-meta p { font-size: 11px !important; }
-          .bems-doc-parties { border-radius: 8px !important; }
-          .bems-doc-party { padding: 6px 12px !important; }
-          .bems-doc-party .nm { font-size: 13px !important; margin: 2px 0 !important; }
-          .bems-doc-party p { font-size: 10px !important; line-height: 1.4 !important; }
-          .bems-stmt-kpi-grid { gap: 8px !important; margin-bottom: 0 !important; }
-          .bems-stmt-kpi-card { padding: 5px 10px !important; border-radius: 6px !important; }
-          .bems-stmt-kpi-card .kpi-label { font-size: 8px !important; margin-bottom: 2px !important; }
-          .bems-stmt-kpi-card .kpi-val { font-size: 12.5px !important; }
+          .bems-doc-head { margin-bottom: 12px !important; }
+          .bems-doc-logo img { height: 44px !important; }
+          .bems-doc-meta-right h1 { font-size: 24px !important; }
+          .bems-doc-hero { border-radius: 10px !important; margin-bottom: 12px !important; }
+          .bems-doc-hero-top { padding: 12px 18px !important; }
+          .bems-doc-amt { font-size: 32px !important; margin: 4px 0 !important; }
+          .bems-doc-stamp { width: 72px !important; height: 72px !important; }
+          .bems-doc-stamp b { font-size: 14px !important; }
+          .bems-doc-stamp span { font-size: 7px !important; }
+          .bems-doc-hero-meta > div { padding: 8px 14px !important; }
+          .bems-doc-hero-meta p { font-size: 12px !important; }
+          .bems-doc-parties { border-radius: 10px !important; margin-bottom: 12px !important; }
+          .bems-doc-party { padding: 10px 16px !important; }
+          .bems-doc-party .nm { font-size: 14px !important; margin: 3px 0 !important; }
+          .bems-doc-party p { font-size: 11px !important; line-height: 1.5 !important; }
+          .bems-stmt-kpi-grid { gap: 10px !important; margin-bottom: 12px !important; }
+          .bems-stmt-kpi-card { padding: 8px 12px !important; border-radius: 8px !important; }
+          .bems-stmt-kpi-card .kpi-label { font-size: 8.5px !important; margin-bottom: 3px !important; }
+          .bems-stmt-kpi-card .kpi-val { font-size: 14px !important; }
           .bems-doc-table thead { display: table-header-group !important; }
           .bems-doc-table tbody { display: table-row-group !important; }
-          .bems-doc-table { margin-top: 2px !important; }
-          .bems-doc-table th { padding: 5px 8px !important; font-size: 8px !important; }
-          .bems-doc-table td { padding: 5px 8px !important; font-size: 10px !important; }
+          .bems-doc-table { margin-top: 6px !important; margin-bottom: 14px !important; }
+          .bems-doc-table th { padding: 8px 10px !important; font-size: 8.5px !important; }
+          .bems-doc-table td { padding: 9px 10px !important; font-size: 10.5px !important; vertical-align: top !important; }
           .bems-doc-table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
           .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-          .bems-doc-vt { gap: 14px !important; grid-template-columns: 1fr 220px !important; }
-          .bems-doc-verify { padding: 6px 10px !important; }
-          .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
-          .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
-          .bems-doc-sign { gap: 16px !important; padding-bottom: 4px !important; }
-          .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
-          .bems-doc-sig .ln { height: 20px !important; }
-          .bems-doc-thanks { padding: 6px 10mm !important; }
-          .bems-doc-thanks h3 { font-size: 12.5px !important; }
-          .bems-doc-thanks span { font-size: 9px !important; }
-          .bems-doc-foot { padding: 4px 10mm 5px !important; font-size: 8.5px !important; }
+          .bems-doc-vt { gap: 20px !important; grid-template-columns: 1fr 240px !important; margin-bottom: 14px !important; }
+          .bems-doc-verify { padding: 10px 14px !important; border-radius: 10px !important; }
+          .bems-doc-verify h4 { font-size: 13px !important; }
+          .bems-doc-verify p { font-size: 10px !important; }
+          .bems-doc-tot dt, .bems-doc-tot dd { font-size: 11px !important; }
+          .bems-doc-tot .grand { padding: 8px 12px !important; font-size: 15px !important; }
+          .bems-doc-sign { gap: 24px !important; padding-bottom: 10px !important; }
+          .bems-doc-keep { font-size: 9.5px !important; padding: 8px 12px !important; line-height: 1.45 !important; }
+          .bems-doc-sig .ln { height: 26px !important; }
         }
       `}</style>
 
@@ -1105,7 +1082,13 @@ export default function DriverStatementPage() {
                     </div>
                     <div>
                       <div className="cap">Completed Drops</div>
-                      <p>{totalTrips} {totalTrips === 1 ? "Trip" : "Trips"}</p>
+                      <p>{totalTrips} {totalTrips === 1 ? "Delivery" : "Deliveries"}</p>
+                    </div>
+                    <div>
+                      <div className="cap">Wallet Status</div>
+                      <p style={{ color: driver.wallet_is_frozen ? "#fca5a5" : "#9fe0b3" }}>
+                        {driver.wallet_is_frozen ? "Frozen / Suspended" : "Active · Good Standing"}
+                      </p>
                     </div>
                   </div>
                 </section>
@@ -1135,6 +1118,32 @@ export default function DriverStatementPage() {
                   </div>
                 </section>
 
+                {/* 4-KPI Strip */}
+                <div className="bems-stmt-kpi-grid">
+                  <div className="bems-stmt-kpi-card">
+                    <div className="kpi-label">Opening Balance</div>
+                    <div className="kpi-val">₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                  </div>
+                  <div className="bems-stmt-kpi-card">
+                    <div className="kpi-label">Total Credits (+)</div>
+                    <div className="kpi-val" style={{ color: "#166534" }}>
+                      +₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="bems-stmt-kpi-card">
+                    <div className="kpi-label">Total Withdrawals (-)</div>
+                    <div className="kpi-val text-danger" style={{ color: "#991B1B" }}>
+                      -₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="bems-stmt-kpi-card highlight">
+                    <div className="kpi-label">Net Closing Balance</div>
+                    <div className="kpi-val" style={{ color: "#0f3622" }}>
+                      ₦{closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Itemized Table */}
                 <table className="bems-doc-table">
                   <thead>
@@ -1143,7 +1152,7 @@ export default function DriverStatementPage() {
                       <th style={{ width: "13%" }}>Date</th>
                       <th>Activity & Transaction Details</th>
                       <th style={{ width: "16%" }}>Reference</th>
-                      <th className="c" style={{ width: "8%" }}>Type</th>
+                      <th className="c" style={{ width: "10%" }}>Type</th>
                       <th className="r" style={{ width: "14%" }}>Amount (₦)</th>
                       <th className="r" style={{ width: "15%" }}>Balance (₦)</th>
                     </tr>
@@ -1154,31 +1163,25 @@ export default function DriverStatementPage() {
                         const isCredit = ev.type === "credit";
                         const amt = parseFloat(ev.amount) || 0;
                         const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null;
-                        const address = cleanAddress(ev.delivery_address);
 
                         return (
                           <tr key={ev.id || idx}>
-                            <td className="mono c">{String(idx + 1).padStart(2, "0")}</td>
-                            <td className="mono" style={{ fontSize: 10 }}>{formatDate(ev.date)}</td>
+                            <td className="mono">{String(idx + 1).padStart(2, "0")}</td>
+                            <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                             <td className="it">
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                <span style={{ fontWeight: 600, fontSize: 11, color: "#0f172a" }}>
-                                  {cleanActivityDescription(ev.description, isCredit)}
+                              <b>{ev.description || (isCredit ? "Delivery Drop Commission" : "Bank Withdrawal")}</b>
+                              {ev.order_id && (
+                                <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1", marginLeft: 6 }}>
+                                  Order #{ev.order_id}
                                 </span>
-                                {ev.order_id && (
-                                  <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1", fontSize: 9 }}>
-                                    Order #{ev.order_id}
-                                  </span>
-                                )}
-                              </div>
-                              {address && (
-                                <div style={{ fontSize: 9, color: "#64748b", marginTop: 1.5, display: "flex", alignItems: "center", gap: 3 }}>
-                                  <i className="ri-map-pin-line" style={{ fontSize: 9.5, color: "#94a3b8" }} />
-                                  <span>{address}</span>
+                              )}
+                              {ev.delivery_address && (
+                                <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 3 }}>
+                                  {ev.delivery_address}
                                 </div>
                               )}
                             </td>
-                            <td className="mono" style={{ fontSize: 9.5, color: "#0f3622", fontWeight: 600 }}>
+                            <td className="mono" style={{ fontSize: 10, color: "#0f3622", fontWeight: 600 }}>
                               {ev.reference || "—"}
                             </td>
                             <td className="c">
@@ -1199,7 +1202,7 @@ export default function DriverStatementPage() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="7" className="c" style={{ padding: "24px 12px", color: "#64748b" }}>
+                        <td colSpan="7" className="c" style={{ padding: "30px 12px", color: "#64748b" }}>
                           No recorded transactions during this statement period.
                         </td>
                       </tr>
