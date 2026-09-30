@@ -467,7 +467,7 @@ export default function WalletManagement() {
                     Monnify Merchant Reserve
                   </span>
                   <div className="h4 font-weight-bold text-white mb-0 mt-1">
-                    ₦{(gateway.merchant_available_balance ?? summaryData.metrics?.merchant_available_balance ?? 5000000000).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₦{(gateway.merchant_available_balance ?? summaryData.metrics?.merchant_available_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
                 <div className="p-2 rounded-3" style={{ background: 'rgba(255,255,255,0.1)' }}>
@@ -475,8 +475,10 @@ export default function WalletManagement() {
                 </div>
               </div>
               <div className="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25" style={{ fontSize: 11 }}>
-                <span className="text-white-50">Master DVA: <b>{gateway.merchant_account_number || '8559127267'}</b></span>
-                <span className="badge" style={{ background: '#10B981', color: '#FFFFFF' }}>Live Sandbox</span>
+                <span className="text-white-50">Master DVA: <b>{gateway.merchant_account_number || 'Not Configured'}</b></span>
+                <span className="badge" style={{ background: (gateway.environment?.includes('Production') || gateway.environment?.includes('Live')) ? '#10B981' : '#F59E0B', color: '#FFFFFF' }}>
+                  {gateway.environment?.includes('Production') || gateway.environment?.includes('Live') ? 'Live Production' : (gateway.environment || 'Sandbox Mode')}
+                </span>
               </div>
             </div>
           </div>
@@ -1319,20 +1321,20 @@ export default function WalletManagement() {
                 <div className="col-12 col-md-4">
                   <div className="p-3 rounded-3 bg-light border border-secondary border-opacity-10">
                     <div className="text-muted small font-weight-bold">API KEY</div>
-                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.api_key || 'MK_TEST_••••••••S6'}</div>
+                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.api_key || 'Not Configured'}</div>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 rounded-3 bg-light border border-secondary border-opacity-10">
                     <div className="text-muted small font-weight-bold">CONTRACT CODE</div>
-                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.contract_code || '4711340709'}</div>
+                    <div className="font-monospace text-dark mt-1 font-weight-bold">{gateway.contract_code || 'Not Configured'}</div>
                   </div>
                 </div>
                 <div className="col-12 col-md-4">
                   <div className="p-3 rounded-3 bg-light border border-secondary border-opacity-10">
                     <div className="text-muted small font-weight-bold">MASTER MERCHANT ACCOUNT</div>
                     <div className="font-monospace text-dark mt-1 font-weight-bold">
-                      {gateway.merchant_account_number || '8559127267'} ({gateway.merchant_bank || 'Wema Bank'})
+                      {gateway.merchant_account_number || 'Not Configured'} ({gateway.merchant_bank || 'Monnify'})
                     </div>
                   </div>
                 </div>

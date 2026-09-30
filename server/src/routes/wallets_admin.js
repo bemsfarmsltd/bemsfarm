@@ -227,15 +227,17 @@ router.get("/summary", async (req, res, next) => {
     const totalPendingCount = list.reduce((sum, d) => sum + parseInt(d.pending_payout_count || 0), 0);
     const totalVirtualAccounts = list.filter((d) => !!d.wallet_account_number).length;
 
-    let monnifyReserve = 5000000000.00;
-    try {
-      const { getMonnifyWalletBalance } = require("../utils/monnify");
-      const liveBal = await getMonnifyWalletBalance(process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || "8559127267");
-      if (liveBal?.availableBalance !== undefined) {
-        monnifyReserve = parseFloat(liveBal.availableBalance);
+    let monnifyReserve = 0.00;
+    if (process.env.MONNIFY_WALLET_ACCOUNT_NUMBER) {
+      try {
+        const { getMonnifyWalletBalance } = require("../utils/monnify");
+        const liveBal = await getMonnifyWalletBalance();
+        if (liveBal?.availableBalance !== undefined && liveBal?.availableBalance !== null) {
+          monnifyReserve = parseFloat(liveBal.availableBalance) || 0.00;
+        }
+      } catch (e) {
+        console.warn("Monnify wallet balance notice:", e.message);
       }
-    } catch (e) {
-      console.warn("Monnify wallet balance notice:", e.message);
     }
 
     res.json({
@@ -679,30 +681,33 @@ router.get("/gateway/overview", async (req, res, next) => {
     const estGatewayFee = gross * 0.015; // standard Monnify 1.5% fee
     const netReceived = gross - estGatewayFee;
 
-    let liveBalance = { availableBalance: 5000000000.00, ledgerBalance: 5000000000.00 };
-    try {
-      const monnifyBal = await getMonnifyWalletBalance(process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || "8559127267");
-      if (monnifyBal?.availableBalance !== undefined) {
-        liveBalance = monnifyBal;
+    let liveBalance = { availableBalance: 0.00, ledgerBalance: 0.00 };
+    if (process.env.MONNIFY_WALLET_ACCOUNT_NUMBER) {
+      try {
+        const monnifyBal = await getMonnifyWalletBalance();
+        if (monnifyBal?.availableBalance !== undefined && monnifyBal?.availableBalance !== null) {
+          liveBalance = monnifyBal;
+        }
+      } catch (e) {
+        console.warn("Could not query live Monnify wallet balance:", e.message);
       }
-    } catch (e) {
-      console.warn("Could not query live Monnify wallet balance, using fallback:", e.message);
     }
+
+    const isLive = process.env.MONNIFY_ENV === "live";
 
     res.json({
       gateway: {
         provider: "Monnify Payment Gateway",
-        environment: process.env.MONNIFY_ENV === "live" ? "Production / Live Mode" : "Sandbox / Test Mode",
-        merchant_account_number: process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || "8559127267",
+        environment: isLive ? "Production / Live Mode" : "Sandbox / Test Mode",
+        merchant_account_number: process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || null,
         merchant_bank: "Wema Bank / Monnify",
-        contract_code: process.env.MONNIFY_CONTRACT_CODE || "4711340709",
-        api_key: (process.env.MONNIFY_API_KEY || "MK_TEST_CG14E4X8S6").replace(/(.{7}).+(.{4})/, "$1••••••••$2"),
+        contract_code: process.env.MONNIFY_CONTRACT_CODE || null,
+        api_key: process.env.MONNIFY_API_KEY ? process.env.MONNIFY_API_KEY.replace(/(.{7}).+(.{4})/, "$1••••••••$2") : null,
         webhook_status: "Active (200 OK)",
-        webhook_endpoint: "https://bemsfarms.com/api/payments/monnify/webhook",
+        webhook_endpoint: "https://api.bemsfarms.com/api/webhooks/monnify",
         settlement_schedule: "T+1 Daily Auto-Settlement",
-        merchant_wallet_balance: parseFloat(liveBalance.ledgerBalance) || 5000000000.00,
-        merchant_available_balance: parseFloat(liveBalance.availableBalance) || 5000000000.00,
-        merchant_escrow_reserve: 250000.00,
+        merchant_wallet_balance: Number.isFinite(parseFloat(liveBalance.ledgerBalance)) ? parseFloat(liveBalance.ledgerBalance) : 0.00,
+        merchant_available_balance: Number.isFinite(parseFloat(liveBalance.availableBalance)) ? parseFloat(liveBalance.availableBalance) : 0.00,
       },
       metrics: {
         total_transactions: parseInt(stats.total_transactions) || 0,
@@ -898,27 +903,6 @@ router.post("/validate-bank", async (req, res, next) => {
         }
       } catch (apiErr) {
         lastApiError = apiErr.message || "Account validation failed";
-      }
-    }
-
-    // Fallback in sandbox or development mode if live network / sandbox mock is used
-    if (!resolvedName && (process.env.MONNIFY_ENV !== "live" || process.env.NODE_ENV === "development")) {
-      try {
-        const drvRes = await pool.query(
-          "SELECT name, account_name, account_number, phone FROM drivers WHERE account_number = $1 OR phone LIKE $2 LIMIT 1",
-          [cleanAcc, `%${cleanAcc.slice(-10)}%`]
-        );
-        if (drvRes.rows.length > 0 && drvRes.rows[0].account_name) {
-          resolvedName = drvRes.rows[0].account_name;
-        } else if (drvRes.rows.length > 0 && drvRes.rows[0].name) {
-          resolvedName = drvRes.rows[0].name.toUpperCase();
-        } else {
-          // Generate a clean deterministic verified name for sandbox testing
-          const cleanBankDisplay = (bank_name || "BANK").toUpperCase().replace(/\s*\(\d+\)/, "");
-          resolvedName = `${cleanBankDisplay} HOLDER - ${cleanAcc}`;
-        }
-      } catch (e) {
-        resolvedName = `VERIFIED ACCOUNT - ${cleanAcc}`;
       }
     }
 

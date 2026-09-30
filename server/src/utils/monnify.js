@@ -21,9 +21,8 @@ async function getMonnifyToken() {
     return cachedToken;
   }
 
-  const isProd = process.env.NODE_ENV === "production";
-  const apiKey = process.env.MONNIFY_API_KEY || (isProd ? null : "MK_TEST_CG14E4X8S6");
-  const secretKey = process.env.MONNIFY_SECRET_KEY || (isProd ? null : "HGK0PJ30V49T5QA1JHX5M09CE74VGC22");
+  const apiKey = process.env.MONNIFY_API_KEY;
+  const secretKey = process.env.MONNIFY_SECRET_KEY;
   if (!apiKey || !secretKey) {
     throw new Error("Monnify credentials are not configured (MONNIFY_API_KEY / MONNIFY_SECRET_KEY)");
   }
@@ -57,7 +56,10 @@ async function createMonnifyReservedAccount({
   bvn,
   nin,
 }) {
-  const contractCode = process.env.MONNIFY_CONTRACT_CODE || "4711340709";
+  const contractCode = process.env.MONNIFY_CONTRACT_CODE;
+  if (!contractCode) {
+    throw new Error("Monnify contract code is not configured (MONNIFY_CONTRACT_CODE)");
+  }
   const token = await getMonnifyToken();
 
   const payload = {
@@ -88,10 +90,12 @@ async function createMonnifyReservedAccount({
 
 /**
  * 3. Fetch Master Merchant Wallet Balance API
- * GET /api/v2/disbursements/wallet-balance?accountNumber=8559127267
  */
 async function getMonnifyWalletBalance(accountNumber) {
-  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8559127267";
+  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT;
+  if (!acct) {
+    throw new Error("Monnify wallet account number is not configured");
+  }
   const token = await getMonnifyToken();
 
   const { data } = await axios.get(
@@ -120,13 +124,22 @@ async function initiateMonnifyDisbursement({
   sourceAccountNumber,
 }) {
   const token = await getMonnifyToken();
-  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8559127267";
+  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT;
+  if (!sourceAcct) {
+    throw new Error("Source wallet account number is not configured");
+  }
+  if (!destinationBankCode) {
+    throw new Error("Destination bank code is required for disbursement");
+  }
+  if (!destinationAccountNumber) {
+    throw new Error("Destination account number is required for disbursement");
+  }
 
   const payload = {
     amount: parseFloat(amount),
     reference: reference || `MNFY_PAY_${Date.now()}`,
     narration: narration || "Bems Farms Driver Earnings Payout",
-    destinationBankCode: destinationBankCode || "058",
+    destinationBankCode: destinationBankCode,
     destinationAccountNumber: destinationAccountNumber,
     currency: "NGN",
     sourceAccountNumber: sourceAcct,
@@ -151,10 +164,16 @@ async function initiateMonnifyDisbursement({
  * GET /api/v2/disbursements/account/validate
  */
 async function validateMonnifyBankAccount(accountNumber, bankCode) {
+  if (!accountNumber) {
+    throw new Error("Account number is required for bank account validation");
+  }
+  if (!bankCode) {
+    throw new Error("Bank code is required for bank account validation");
+  }
   const token = await getMonnifyToken();
 
   const { data } = await axios.get(
-    `${MONNIFY_BASE_URL}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode || "058")}`,
+    `${MONNIFY_BASE_URL}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 

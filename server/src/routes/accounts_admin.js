@@ -630,7 +630,7 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
           o.total::numeric AS amount,
           CASE WHEN o.payment_status = 'paid' THEN 'completed' ELSE 'pending' END AS status,
           CASE WHEN o.source LIKE '%POS%' THEN 'POS Cash Drawer' ELSE 'Monnify Settlement Vault' END AS bank_name,
-          CASE WHEN o.source LIKE '%POS%' THEN 'Register #1' ELSE 'DVA Master (8559127267)' END AS bank_account,
+          CASE WHEN o.source LIKE '%POS%' THEN 'POS Register #1' ELSE 'Monnify Master DVA' END AS bank_account,
           o.created_at
         FROM orders o
         WHERE (o.payment_status = 'paid' OR o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
@@ -701,7 +701,7 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
           o.total::numeric AS amount,
           CASE WHEN o.payment_status = 'paid' THEN 'completed' ELSE 'pending' END AS status,
           CASE WHEN o.source LIKE '%POS%' THEN 'POS Cash Drawer' ELSE 'Monnify Settlement Vault' END AS bank_name,
-          CASE WHEN o.source LIKE '%POS%' THEN 'Register #1' ELSE 'DVA Master (8559127267)' END AS bank_account,
+          CASE WHEN o.source LIKE '%POS%' THEN 'POS Register #1' ELSE 'Monnify Master DVA' END AS bank_account,
           o.created_at
         FROM orders o
         WHERE (o.payment_status = 'paid' OR o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
