@@ -217,7 +217,7 @@ const register = async (req, res, next) => {
       INSERT INTO driver_notifications (
         driver_id, title, body, type, reference_type, created_at
       )
-      VALUES ($1, 'Welcome to Bems Farms Delivery Team', $2, 'announcement', 'onboarding', NOW())
+      VALUES ($1, 'Welcome to Bems Farms Delivery Team', $2, 'system', 'onboarding', NOW())
       `,
       [
         newDriver.id,
