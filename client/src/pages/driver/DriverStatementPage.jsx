@@ -74,6 +74,36 @@ function generateSecurityCode(ref, amount) {
   return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`;
 }
 
+function cleanActivityDescription(desc, isCredit) {
+  if (!desc) return isCredit ? "Delivery Drop Commission" : "Bank Payout Settlement";
+  const lower = desc.toLowerCase();
+  if (lower.includes("zone delivery drop") || lower.includes("delivery drop")) {
+    return "Standard Zone Delivery Drop";
+  }
+  if (lower.includes("bank payout") || lower.includes("withdrawal")) {
+    return "Electronic Bank Withdrawal";
+  }
+  if (lower.includes("commission")) {
+    return "Delivery Commission Batch";
+  }
+  return desc;
+}
+
+function cleanAddress(addr) {
+  if (!addr) return "";
+  const parts = addr.split(",").map((s) => s.trim()).filter(Boolean);
+  const seen = new Set();
+  const unique = [];
+  for (const p of parts) {
+    const l = p.toLowerCase();
+    if (!seen.has(l) && l !== "nigeria") {
+      seen.add(l);
+      unique.push(p);
+    }
+  }
+  return unique.slice(0, 3).join(", ");
+}
+
 export default function DriverStatementPage() {
   const [searchParams] = useSearchParams();
   const queryToken = searchParams.get("token");
@@ -715,6 +745,21 @@ export default function DriverStatementPage() {
         }
         .bems-doc-thanks span { font-size: 10px; color: var(--bems-muted); }
 
+        .bems-doc-footer-group {
+          margin-top: auto;
+          width: 100%;
+        }
+
+        .bems-doc-thanks {
+          margin-left: 6px;
+          padding: 12px 15mm 12px 11mm;
+          background: var(--bems-g0);
+          border-top: 1px solid var(--bems-line);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
         .bems-doc-foot {
           margin-left: 6px;
           padding: 6px 15mm 7px 11mm;
@@ -757,16 +802,36 @@ export default function DriverStatementPage() {
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            min-height: auto !important;
+            min-height: 297mm !important;
             background: #ffffff !important;
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
             page-break-after: auto;
           }
           .bems-doc-body {
-            padding: 8mm 12mm !important;
-            gap: 12px !important;
+            flex: 1 0 auto !important;
+            display: block !important;
+            padding: 8mm 12mm 4mm 12mm !important;
           }
-          .bems-doc-head { margin-bottom: 0 !important; }
+          .bems-doc-footer-group {
+            margin-top: auto !important;
+            width: 100% !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .bems-doc-thanks {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding: 8px 14mm !important;
+          }
+          .bems-doc-foot {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding: 5px 14mm 6px !important;
+          }
+          .bems-doc-head { margin-bottom: 8px !important; }
           .bems-doc-logo img { height: 38px !important; }
           .bems-doc-meta-right h1 { font-size: 22px !important; }
           .bems-doc-hero { border-radius: 8px !important; }
@@ -1027,22 +1092,20 @@ export default function DriverStatementPage() {
 
                   <div className="bems-doc-hero-meta">
                     <div>
+                      <div className="cap">Opening Balance</div>
+                      <p>₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div>
                       <div className="cap">Total Earned (Gross)</div>
-                      <p>₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p>+₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
                       <div className="cap">Total Disbursed</div>
-                      <p>₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p>-₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div>
                       <div className="cap">Completed Drops</div>
-                      <p>{totalTrips} {totalTrips === 1 ? "Delivery" : "Deliveries"}</p>
-                    </div>
-                    <div>
-                      <div className="cap">Wallet Status</div>
-                      <p style={{ color: driver.wallet_is_frozen ? "#fca5a5" : "#9fe0b3" }}>
-                        {driver.wallet_is_frozen ? "Frozen / Suspended" : "Active · Good Standing"}
-                      </p>
+                      <p>{totalTrips} {totalTrips === 1 ? "Trip" : "Trips"}</p>
                     </div>
                   </div>
                 </section>
@@ -1072,32 +1135,6 @@ export default function DriverStatementPage() {
                   </div>
                 </section>
 
-                {/* 4-KPI Strip */}
-                <div className="bems-stmt-kpi-grid">
-                  <div className="bems-stmt-kpi-card">
-                    <div className="kpi-label">Opening Balance</div>
-                    <div className="kpi-val">₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                  </div>
-                  <div className="bems-stmt-kpi-card">
-                    <div className="kpi-label">Total Credits (+)</div>
-                    <div className="kpi-val" style={{ color: "#166534" }}>
-                      +₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                  <div className="bems-stmt-kpi-card">
-                    <div className="kpi-label">Total Withdrawals (-)</div>
-                    <div className="kpi-val" style={{ color: "#991B1B" }}>
-                      -₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                  <div className="bems-stmt-kpi-card highlight">
-                    <div className="kpi-label">Net Closing Balance</div>
-                    <div className="kpi-val" style={{ color: "#0f3622" }}>
-                      ₦{closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                </div>
-
                 {/* Itemized Table */}
                 <table className="bems-doc-table">
                   <thead>
@@ -1106,7 +1143,7 @@ export default function DriverStatementPage() {
                       <th style={{ width: "13%" }}>Date</th>
                       <th>Activity & Transaction Details</th>
                       <th style={{ width: "16%" }}>Reference</th>
-                      <th className="c" style={{ width: "10%" }}>Type</th>
+                      <th className="c" style={{ width: "8%" }}>Type</th>
                       <th className="r" style={{ width: "14%" }}>Amount (₦)</th>
                       <th className="r" style={{ width: "15%" }}>Balance (₦)</th>
                     </tr>
@@ -1117,25 +1154,31 @@ export default function DriverStatementPage() {
                         const isCredit = ev.type === "credit";
                         const amt = parseFloat(ev.amount) || 0;
                         const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null;
+                        const address = cleanAddress(ev.delivery_address);
 
                         return (
                           <tr key={ev.id || idx}>
-                            <td className="mono">{String(idx + 1).padStart(2, "0")}</td>
-                            <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
+                            <td className="mono c">{String(idx + 1).padStart(2, "0")}</td>
+                            <td className="mono" style={{ fontSize: 10 }}>{formatDate(ev.date)}</td>
                             <td className="it">
-                              <b>{ev.description || (isCredit ? "Delivery Drop Commission" : "Bank Withdrawal")}</b>
-                              {ev.order_id && (
-                                <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1" }}>
-                                  Order #{ev.order_id}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{ fontWeight: 600, fontSize: 11, color: "#0f172a" }}>
+                                  {cleanActivityDescription(ev.description, isCredit)}
                                 </span>
-                              )}
-                              {ev.delivery_address && (
-                                <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 2 }}>
-                                  {ev.delivery_address}
+                                {ev.order_id && (
+                                  <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1", fontSize: 9 }}>
+                                    Order #{ev.order_id}
+                                  </span>
+                                )}
+                              </div>
+                              {address && (
+                                <div style={{ fontSize: 9, color: "#64748b", marginTop: 1.5, display: "flex", alignItems: "center", gap: 3 }}>
+                                  <i className="ri-map-pin-line" style={{ fontSize: 9.5, color: "#94a3b8" }} />
+                                  <span>{address}</span>
                                 </div>
                               )}
                             </td>
-                            <td className="mono" style={{ fontSize: 10, color: "#0f3622", fontWeight: 600 }}>
+                            <td className="mono" style={{ fontSize: 9.5, color: "#0f3622", fontWeight: 600 }}>
                               {ev.reference || "—"}
                             </td>
                             <td className="c">
@@ -1156,7 +1199,7 @@ export default function DriverStatementPage() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="7" className="c" style={{ padding: "30px 12px", color: "#64748b" }}>
+                        <td colSpan="7" className="c" style={{ padding: "24px 12px", color: "#64748b" }}>
                           No recorded transactions during this statement period.
                         </td>
                       </tr>
@@ -1228,17 +1271,20 @@ export default function DriverStatementPage() {
 
               </div>
 
-              {/* Thanks Banner */}
-              <div className="bems-doc-thanks">
-                <h3>Thank you for powering Bems Farms logistics.</h3>
-                <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
-              </div>
+              {/* Sticky Bottom-Anchored Footer Group */}
+              <div className="bems-doc-footer-group">
+                {/* Thanks Banner */}
+                <div className="bems-doc-thanks">
+                  <h3>Thank you for powering Bems Farms logistics.</h3>
+                  <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+                </div>
 
-              {/* Footer */}
-              <div className="bems-doc-foot">
-                <span>{companyPhone}</span>
-                <span>www.bemsfarms.com</span>
-                <span>{rcNumber} · {tinNumber}</span>
+                {/* Footer */}
+                <div className="bems-doc-foot">
+                  <span>{companyPhone}</span>
+                  <span>www.bemsfarms.com</span>
+                  <span>{rcNumber} · {tinNumber}</span>
+                </div>
               </div>
             </div>
           )}

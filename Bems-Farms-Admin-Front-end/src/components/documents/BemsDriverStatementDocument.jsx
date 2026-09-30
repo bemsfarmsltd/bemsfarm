@@ -41,7 +41,42 @@ function generateSecurityCode(ref, amount) {
   }
   const h1 = Math.abs(hash1).toString(16).padStart(8, '0').slice(0, 8).toUpperCase()
   const h2 = Math.abs(hash2).toString(16).padStart(8, '0').slice(0, 8).toUpperCase()
-  return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`
+}
+
+/**
+ * Clean up verbose backend debug strings into concise executive statement activity titles
+ */
+function cleanActivityDescription(desc, isCredit) {
+  if (!desc) return isCredit ? 'Delivery Drop Commission' : 'Bank Payout Settlement'
+  const lower = desc.toLowerCase()
+  if (lower.includes('zone delivery drop') || lower.includes('delivery drop')) {
+    return 'Standard Zone Delivery Drop'
+  }
+  if (lower.includes('bank payout') || lower.includes('withdrawal')) {
+    return 'Electronic Bank Withdrawal'
+  }
+  if (lower.includes('commission')) {
+    return 'Delivery Commission Batch'
+  }
+  return desc
+}
+
+/**
+ * Clean up repetitive or multiline address strings into concise location labels
+ */
+function cleanAddress(addr) {
+  if (!addr) return ''
+  const parts = addr.split(',').map(s => s.trim()).filter(Boolean)
+  const seen = new Set()
+  const unique = []
+  for (const p of parts) {
+    const l = p.toLowerCase()
+    if (!seen.has(l) && l !== 'nigeria') {
+      seen.add(l)
+      unique.push(p)
+    }
+  }
+  return unique.slice(0, 3).join(', ')
 }
 
 /**
@@ -203,22 +238,20 @@ export default function BemsDriverStatementDocument({
             {/* Bottom 4-Column Metric Grid */}
             <div className="bems-doc-hero-meta">
               <div>
+                <div className="cap">Opening Balance</div>
+                <p>₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+              <div>
                 <div className="cap">Total Earned (Gross)</div>
-                <p>₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p>+₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <div className="cap">Total Disbursed</div>
-                <p>₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p>-₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div>
                 <div className="cap">Completed Drops</div>
-                <p>{totalTrips} {totalTrips === 1 ? 'Delivery' : 'Deliveries'}</p>
-              </div>
-              <div>
-                <div className="cap">Wallet Status</div>
-                <p style={{ color: driver.wallet_is_frozen ? '#fca5a5' : '#9fe0b3' }}>
-                  {driver.wallet_is_frozen ? 'Frozen / Suspended' : 'Active · Good Standing'}
-                </p>
+                <p>{totalTrips} {totalTrips === 1 ? 'Trip' : 'Trips'}</p>
               </div>
             </div>
           </section>
@@ -248,32 +281,6 @@ export default function BemsDriverStatementDocument({
             </div>
           </section>
 
-          {/* ── 4-CARD EXECUTIVE SUMMARY METRICS ── */}
-          <div className="bems-stmt-kpi-grid">
-            <div className="bems-stmt-kpi-card">
-              <div className="kpi-label">Opening Balance</div>
-              <div className="kpi-val">₦{openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-            </div>
-            <div className="bems-stmt-kpi-card">
-              <div className="kpi-label">Total Credits (+)</div>
-              <div className="kpi-val text-success" style={{ color: '#166534' }}>
-                +₦{totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="bems-stmt-kpi-card">
-              <div className="kpi-label">Total Withdrawals (-)</div>
-              <div className="kpi-val text-danger" style={{ color: '#991B1B' }}>
-                -₦{totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="bems-stmt-kpi-card highlight">
-              <div className="kpi-label">Net Closing Balance</div>
-              <div className="kpi-val" style={{ color: '#0f3622' }}>
-                ₦{closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-          </div>
-
           {/* ── ITEMIZED STATEMENT LEDGER TABLE ── */}
           <table className="bems-doc-table">
             <thead>
@@ -282,7 +289,7 @@ export default function BemsDriverStatementDocument({
                 <th style={{ width: '13%' }}>Date</th>
                 <th>Activity & Transaction Details</th>
                 <th style={{ width: '16%' }}>Reference</th>
-                <th className="c" style={{ width: '10%' }}>Type</th>
+                <th className="c" style={{ width: '8%' }}>Type</th>
                 <th className="r" style={{ width: '14%' }}>Amount (₦)</th>
                 <th className="r" style={{ width: '15%' }}>Balance (₦)</th>
               </tr>
@@ -293,25 +300,31 @@ export default function BemsDriverStatementDocument({
                   const isCredit = ev.type === 'credit'
                   const amt = parseFloat(ev.amount) || 0
                   const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null
+                  const address = cleanAddress(ev.delivery_address)
 
                   return (
                     <tr key={ev.id || idx}>
-                      <td className="mono">{String(idx + 1).padStart(2, '0')}</td>
-                      <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
+                      <td className="mono c">{String(idx + 1).padStart(2, '0')}</td>
+                      <td className="mono" style={{ fontSize: 10 }}>{formatDate(ev.date)}</td>
                       <td className="it">
-                        <b>{ev.description || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
-                        {ev.order_id && (
-                          <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                            Order #{ev.order_id}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, fontSize: 11, color: '#0f172a' }}>
+                            {cleanActivityDescription(ev.description, isCredit)}
                           </span>
-                        )}
-                        {ev.delivery_address && (
-                          <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                            {ev.delivery_address}
+                          {ev.order_id && (
+                            <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: 9 }}>
+                              Order #{ev.order_id}
+                            </span>
+                          )}
+                        </div>
+                        {address && (
+                          <div style={{ fontSize: 9, color: '#64748b', marginTop: 1.5, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <i className="ri-map-pin-line" style={{ fontSize: 9.5, color: '#94a3b8' }} />
+                            <span>{address}</span>
                           </div>
                         )}
                       </td>
-                      <td className="mono" style={{ fontSize: 10, color: '#0f3622', fontWeight: 600 }}>
+                      <td className="mono" style={{ fontSize: 9.5, color: '#0f3622', fontWeight: 600 }}>
                         {ev.reference || '—'}
                       </td>
                       <td className="c">
@@ -332,7 +345,7 @@ export default function BemsDriverStatementDocument({
                 })
               ) : (
                 <tr>
-                  <td colSpan="7" className="c" style={{ padding: '30px 12px', color: '#64748b' }}>
+                  <td colSpan="7" className="c" style={{ padding: '24px 12px', color: '#64748b' }}>
                     No recorded transactions during this statement period.
                   </td>
                 </tr>
@@ -349,10 +362,10 @@ export default function BemsDriverStatementDocument({
                   <img
                     src={qrDataUrl}
                     alt="Verify Driver Statement QR Code"
-                    style={{ width: 76, height: 76, display: 'block', imageRendering: 'pixelated' }}
+                    style={{ width: 72, height: 72, display: 'block', imageRendering: 'pixelated' }}
                   />
                 ) : (
-                  <div style={{ width: 76, height: 76, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#0f3622', fontWeight: 'bold', fontSize: 11 }}>
+                  <div style={{ width: 72, height: 72, display: 'grid', placeItems: 'center', background: '#eef7f2', color: '#0f3622', fontWeight: 'bold', fontSize: 11 }}>
                     QR
                   </div>
                 )}
@@ -408,17 +421,20 @@ export default function BemsDriverStatementDocument({
 
         </div>
 
-        {/* ── MOTTO BANNER ── */}
-        <div className="bems-doc-thanks">
-          <h3>Thank you for powering Bems Farms logistics.</h3>
-          <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
-        </div>
+        {/* ── STICKY BOTTOM-ANCHORED FOOTER GROUP ── */}
+        <div className="bems-doc-footer-group">
+          {/* Motto Banner */}
+          <div className="bems-doc-thanks">
+            <h3>Thank you for powering Bems Farms logistics.</h3>
+            <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+          </div>
 
-        {/* ── FOOTER ── */}
-        <div className="bems-doc-foot">
-          <span>{companyPhone}</span>
-          <span>www.bemsfarms.com</span>
-          <span>{rcNumber} · {tinNumber}</span>
+          {/* Official Footer */}
+          <div className="bems-doc-foot">
+            <span>{companyPhone}</span>
+            <span>www.bemsfarms.com</span>
+            <span>{rcNumber} · {tinNumber}</span>
+          </div>
         </div>
 
       </div>
