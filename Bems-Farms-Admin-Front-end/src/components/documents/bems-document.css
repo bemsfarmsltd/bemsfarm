@@ -565,14 +565,14 @@
   position: relative;
   width: 210px;
   max-width: 210px;
-  text-align: left;
+  text-align: center;
 }
 
 .bems-doc-sig {
   width: 100%;
   position: relative;
   z-index: 1;
-  text-align: left;
+  text-align: center;
 }
 
 .bems-doc-sig-img {
@@ -580,12 +580,12 @@
   max-width: 130px;
   object-fit: contain;
   display: block;
-  margin: 0 0 -6px 8px;
+  margin: 0 auto -6px auto;
   mix-blend-mode: multiply !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
   position: relative;
-  z-index: 2;
+  z-index: 3;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.04));
 }
 
@@ -610,6 +610,7 @@
   font-weight: 700;
   color: var(--bems-ink);
   line-height: 1.35;
+  text-align: center;
 }
 
 .bems-doc-sig span {
@@ -617,13 +618,15 @@
   font-size: 9.5px;
   color: var(--bems-muted);
   line-height: 1.35;
+  text-align: center;
 }
 
 .bems-doc-stamp-wrapper {
   position: absolute;
-  right: 12px;
-  top: -20px;
-  z-index: 3;
+  left: 50%;
+  top: 40px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
   pointer-events: none;
   mix-blend-mode: multiply !important;
   -webkit-print-color-adjust: exact !important;
@@ -1071,23 +1074,24 @@
     width: 210px !important;
     max-width: 210px !important;
     display: block !important;
-    text-align: left !important;
+    text-align: center !important;
   }
   .bems-doc-sig {
     width: 100% !important;
     max-width: 210px !important;
     position: relative !important;
     z-index: 1 !important;
+    text-align: center !important;
   }
   .bems-doc-sig-img {
     height: 44px !important;
     max-width: 120px !important;
-    margin: 0 0 -6px 8px !important;
+    margin: 0 auto -6px auto !important;
     mix-blend-mode: multiply !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     position: relative !important;
-    z-index: 2 !important;
+    z-index: 3 !important;
   }
   .bems-doc-sig .ln {
     height: 0 !important;
@@ -1098,12 +1102,20 @@
     position: relative !important;
     z-index: 1 !important;
   }
+  .bems-doc-sig b {
+    text-align: center !important;
+  }
+  .bems-doc-sig span {
+    text-align: center !important;
+  }
   .bems-doc-stamp-wrapper {
     position: absolute !important;
-    right: 8px !important;
-    top: -18px !important;
+    left: 50% !important;
+    top: 38px !important;
+    transform: translate(-50%, -50%) !important;
+    right: auto !important;
     margin: 0 !important;
-    z-index: 3 !important;
+    z-index: 2 !important;
     pointer-events: none !important;
     mix-blend-mode: multiply !important;
     -webkit-print-color-adjust: exact !important;

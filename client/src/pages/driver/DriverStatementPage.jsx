@@ -716,25 +716,25 @@ export default function DriverStatementPage() {
           position: relative;
           width: 210px;
           max-width: 210px;
-          text-align: left;
+          text-align: center;
         }
         .bems-doc-sig {
           width: 100%;
           position: relative;
           z-index: 1;
-          text-align: left;
+          text-align: center;
         }
         .bems-doc-sig-img {
           height: 48px;
           max-width: 130px;
           object-fit: contain;
           display: block;
-          margin: 0 0 -6px 8px;
+          margin: 0 auto -6px auto;
           mix-blend-mode: multiply !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           position: relative;
-          z-index: 2;
+          z-index: 3;
           filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.04));
         }
         .bems-doc-sig-placeholder {
@@ -756,18 +756,21 @@ export default function DriverStatementPage() {
           font-weight: 700;
           color: var(--bems-ink);
           line-height: 1.35;
+          text-align: center;
         }
         .bems-doc-sig span {
           display: block;
           font-size: 9.5px;
           color: var(--bems-muted);
           line-height: 1.35;
+          text-align: center;
         }
         .bems-doc-stamp-wrapper {
           position: absolute;
-          right: 12px;
-          top: -20px;
-          z-index: 3;
+          left: 50%;
+          top: 40px;
+          transform: translate(-50%, -50%);
+          z-index: 2;
           pointer-events: none;
           mix-blend-mode: multiply !important;
           -webkit-print-color-adjust: exact !important;
@@ -969,11 +972,13 @@ export default function DriverStatementPage() {
           .bems-doc-tot .grand { padding: 8px 12px !important; font-size: 15px !important; }
           .bems-doc-sign { gap: 16px !important; padding-bottom: 6px !important; grid-template-columns: 1fr 210px !important; }
           .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
-          .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: left !important; }
-          .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; }
-          .bems-doc-sig-img { height: 44px !important; max-width: 120px !important; margin: 0 0 -6px 8px !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; position: relative !important; z-index: 2 !important; }
+          .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: center !important; }
+          .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; text-align: center !important; }
+          .bems-doc-sig-img { height: 44px !important; max-width: 120px !important; margin: 0 auto -6px auto !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; position: relative !important; z-index: 3 !important; }
           .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; padding: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; position: relative !important; z-index: 1 !important; }
-          .bems-doc-stamp-wrapper { position: absolute !important; right: 8px !important; top: -18px !important; margin: 0 !important; z-index: 3 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .bems-doc-sig b { text-align: center !important; }
+          .bems-doc-sig span { text-align: center !important; }
+          .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 38px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.92 !important; }
         }
       `}</style>
