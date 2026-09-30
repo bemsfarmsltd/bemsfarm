@@ -2376,9 +2376,6 @@ export default function DriversManagement() {
                       display: block !important;
                     }
                     .bems-doc-print-target {
-                      position: absolute !important;
-                      left: 0 !important;
-                      top: 0 !important;
                       width: 100% !important;
                       max-width: 100% !important;
                       margin: 0 !important;
@@ -2397,18 +2394,54 @@ export default function DriversManagement() {
                       display: block !important;
                       overflow: visible !important;
                     }
+                    /* CRITICAL: Preserve the CSS Grid layout from bems-document.css.
+                       DO NOT set display:block or min-height:auto here — that destroys
+                       the grid-template-rows: 1fr auto that locks the footer to the bottom. */
                     .bems-doc-page {
-                      width: 100% !important;
-                      max-width: 100% !important;
-                      margin: 0 !important;
+                      position: relative !important;
+                      width: 210mm !important;
+                      height: 297mm !important;
+                      min-height: 297mm !important;
+                      max-height: 297mm !important;
+                      margin: 0 auto !important;
                       padding: 0 !important;
                       box-shadow: none !important;
                       border: none !important;
-                      min-height: auto !important;
-                      display: block !important;
-                      overflow: visible !important;
+                      background: #ffffff !important;
+                      display: grid !important;
+                      grid-template-rows: 1fr auto !important;
+                      box-sizing: border-box !important;
+                      overflow: hidden !important;
+                      page-break-after: always !important;
+                      break-after: page !important;
+                    }
+                    .bems-doc-page:last-child {
                       page-break-after: auto !important;
                       break-after: auto !important;
+                    }
+                    .bems-doc-body {
+                      overflow: hidden !important;
+                      min-height: 0 !important;
+                      padding: 10mm 14mm 8mm 14mm !important;
+                      display: flex !important;
+                      flex-direction: column !important;
+                      gap: 14px !important;
+                    }
+                    .bems-doc-footer-group {
+                      width: 100% !important;
+                      break-inside: avoid !important;
+                      page-break-inside: avoid !important;
+                      background: #ffffff !important;
+                    }
+                    .bems-doc-thanks {
+                      margin-left: 0 !important;
+                      width: 100% !important;
+                      padding: 8px 14mm !important;
+                    }
+                    .bems-doc-foot {
+                      margin-left: 0 !important;
+                      width: 100% !important;
+                      padding: 6px 14mm !important;
                     }
                     .no-print, .no-print * {
                       display: none !important;
