@@ -86,6 +86,8 @@ exports.submitOnboarding = async (req, res, next) => {
       guarantor_address,
       vehicle_type,
       vehicle_plate,
+      primary_zone_id,
+      zone_id,
       license_number,
       bank_name,
       account_number,
@@ -139,10 +141,11 @@ exports.submitOnboarding = async (req, res, next) => {
         account_number = $15,
         account_name = $16,
         documents = $17::jsonb,
+        primary_zone_id = COALESCE($18, primary_zone_id),
         onboarding_status = 'documents_submitted',
         notes = 'Compliance documents submitted by driver on ' || TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
         updated_at = NOW()
-      WHERE id = $18
+      WHERE id = $19
       RETURNING *
       `,
       [
@@ -163,6 +166,7 @@ exports.submitOnboarding = async (req, res, next) => {
         account_number || null,
         account_name || null,
         JSON.stringify(documents),
+        primary_zone_id || zone_id || null,
         driver.id,
       ]
     );

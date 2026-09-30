@@ -52,6 +52,36 @@ router.get("/auth/verification", driverProtect, driverAuthController.getVerifica
 router.get("/onboarding/verify", driverOnboardingController.verifyToken);
 router.post("/onboarding/submit", driverOnboardingController.submitOnboarding);
 
+// ── 0b. Available Delivery Zones for Driver Registration & Shift Coverage ──
+router.get("/zones", async (req, res, next) => {
+  try {
+    const pool = require("../db/pool");
+    const result = await pool.query(
+      `SELECT zone_id, zone_name, delivery_fee, estimated_delivery_time, coverage_areas, areas_covered, center_lat, center_lng, radius_km, color_hex 
+       FROM delivery_zones 
+       WHERE status = 'active' 
+       ORDER BY zone_name ASC`
+    );
+    res.json({ success: true, zones: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+router.get("/onboarding/zones", async (req, res, next) => {
+  try {
+    const pool = require("../db/pool");
+    const result = await pool.query(
+      `SELECT zone_id, zone_name, delivery_fee, estimated_delivery_time, coverage_areas, areas_covered, center_lat, center_lng, radius_km, color_hex 
+       FROM delivery_zones 
+       WHERE status = 'active' 
+       ORDER BY zone_name ASC`
+    );
+    res.json({ success: true, zones: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── 1. Driver Authentication & Availability ─────────────────────────
 router.post("/auth/login", driverAuthController.login);
 router.post("/auth/forgot-password", driverAuthController.forgotPassword);

@@ -65,6 +65,7 @@ const register = async (req, res, next) => {
       avatar_url = "",
       documents = {},
       primary_zone_id = null,
+      zone_id = null,
     } = req.body;
 
     const cleanName = (name || "").trim();
@@ -169,7 +170,7 @@ const register = async (req, res, next) => {
         cleanEmail || null,
         vehicle_type || "motorcycle",
         vehicle_plate ? vehicle_plate.trim().toUpperCase() : null,
-        primary_zone_id || null,
+        primary_zone_id || zone_id || null,
         license_number ? license_number.trim() : null,
         nin_number ? nin_number.trim() : null,
         address ? address.trim() : null,
@@ -546,10 +547,18 @@ const updateProfile = async (req, res, next) => {
       guarantor_phone,
       guarantor_address,
       documents,
+      primary_zone_id,
+      zone_id,
     } = req.body;
 
     const updates = [];
     const params = [];
+
+    if (primary_zone_id !== undefined || zone_id !== undefined) {
+      const zId = primary_zone_id !== undefined ? primary_zone_id : zone_id;
+      params.push(zId || null);
+      updates.push(`primary_zone_id = $${params.length}`);
+    }
 
     if (phone !== undefined) {
       params.push(phone.trim());
