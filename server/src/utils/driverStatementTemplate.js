@@ -59,6 +59,13 @@ function formatDate(val, withTime = false) {
   } catch {
     return String(val);
   }
+function cleanStatementDescription(desc) {
+  if (!desc) return '';
+  return String(desc)
+    .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
+    .replace(/\s*\(Customer Fee.*?\)/gi, '')
+    .replace(/\s*\(Customer Delivery Fee.*?\)/gi, '')
+    .trim();
 }
 
 function generateSecurityCode(ref, amount) {
@@ -164,7 +171,7 @@ function renderDriverStatementHtml({
         <td class="mono">${String(idx + 1).padStart(2, '0')}</td>
         <td class="mono" style="font-size:10.5px;">${formatDate(ev.date)}</td>
         <td class="it">
-          <b>${ev.description || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
+          <b>${cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
           ${tagHtml}
           ${addrHtml}
         </td>

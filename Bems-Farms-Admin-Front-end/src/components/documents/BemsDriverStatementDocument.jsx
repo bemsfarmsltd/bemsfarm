@@ -29,6 +29,15 @@ function formatDate(val, withTime = false) {
   }
 }
 
+function cleanStatementDescription(desc) {
+  if (!desc) return ''
+  return String(desc)
+    .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
+    .replace(/\s*\(Customer Fee.*?\)/gi, '')
+    .replace(/\s*\(Customer Delivery Fee.*?\)/gi, '')
+    .trim()
+}
+
 /**
  * Generate a deterministic security code from reference and balance
  */
@@ -471,7 +480,7 @@ export default function BemsDriverStatementDocument({
                       <td className="mono">{String(idx + 1).padStart(2, '0')}</td>
                       <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                       <td className="it">
-                        <b>{ev.description || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
+                        <b>{cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
                         {ev.order_id && (
                           <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 6 }}>
                             Order #{ev.order_id}
@@ -656,7 +665,7 @@ export default function BemsDriverStatementDocument({
                       <td className="mono">{String(idx + 7).padStart(2, '0')}</td>
                       <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                       <td className="it">
-                        <b>{ev.description || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
+                        <b>{cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
                         {ev.order_id && (
                           <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 6 }}>
                             Order #{ev.order_id}

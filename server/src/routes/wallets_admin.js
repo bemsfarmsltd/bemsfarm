@@ -1314,8 +1314,15 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         totalDebits += amt;
       }
 
+      const cleanDesc = String(ev.description || '')
+        .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
+        .replace(/\s*\(Customer Fee.*?\)/gi, '')
+        .trim();
+
       return {
         ...ev,
+        description: cleanDesc,
+        delivery_fee: undefined,
         amount: amt,
         running_balance: runningBalance,
         seq_no: index + 1,

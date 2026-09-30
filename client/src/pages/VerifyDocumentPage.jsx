@@ -394,7 +394,7 @@ export default function VerifyDocumentPage() {
                                     {new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                   </td>
                                   <td className="py-2.5 px-3 text-gray-900 font-medium">
-                                    {ev.description}
+                                    {String(ev.description || '').replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '').trim()}
                                     {ev.order_id && (
                                       <span className="ml-1.5 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-mono text-[10px]">
                                         #{ev.order_id}

@@ -30,8 +30,6 @@ function formatDelivery(row) {
     product_name: String(it.product_name || 'Farm Produce Item'),
     quantity: parseInt(it.quantity, 10) || 1,
     unit: String(it.unit || 'item'),
-    unit_price: it.unit_price !== null && it.unit_price !== undefined ? parseFloat(it.unit_price) : 0.0,
-    total_price: it.total_price !== null && it.total_price !== undefined ? parseFloat(it.total_price) : 0.0,
     image_url: String(it.image_url || ''),
   })) : [];
 
@@ -160,9 +158,7 @@ function formatDelivery(row) {
     eta_minutes: etaMinutes,
     estimated_duration_mins: etaMinutes,
     attempts: row.attempts !== null && row.attempts !== undefined ? parseInt(row.attempts, 10) : 0,
-    order_total: row.order_total !== null && row.order_total !== undefined ? parseFloat(row.order_total) : 0.0,
-    subtotal: row.subtotal !== null && row.subtotal !== undefined ? parseFloat(row.subtotal) : 0.0,
-    delivery_fee: zoneDeliveryFee,
+    // Privacy: Drivers do not see customer food order amounts or fees
     customer_lat: customerLat,
     customer_lng: customerLng,
     delivery_lat: customerLat,
@@ -1147,7 +1143,7 @@ const updateDeliveryStatus = async (req, res, next) => {
             driverId,
             commission,
             delRef,
-            `Zone Delivery Drop: ${zoneName} (Customer Fee: ₦${customerDeliveryFee.toLocaleString()} → Driver Earning: ₦${commission.toLocaleString()})`,
+            `Zone Delivery Drop: ${zoneName}`,
             null,
           ]
         );
