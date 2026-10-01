@@ -522,11 +522,9 @@ export default function Barcode() {
               padding: 0 !important;
               background: #fff;
               color: #000;
-              width: ${w};
-              height: ${h};
+              width: 100%;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
-              overflow: hidden;
             }
             .label-page {
               width: ${w};
@@ -540,12 +538,14 @@ export default function Barcode() {
               overflow: hidden;
               page-break-inside: avoid;
               break-inside: avoid;
+              page-break-after: always;
+              break-after: page;
               background: #fff;
               box-sizing: border-box;
             }
-            .label-page:not(:last-child) {
-              page-break-after: always;
-              break-after: page;
+            .label-page:last-child {
+              page-break-after: auto;
+              break-after: auto;
             }
             .label-top-section {
               display: flex;
