@@ -164,12 +164,12 @@ export default function BemsOfficialDocument({
   const securityCode = generateSecurityCode(docNumber, total)
 
   // Dynamic Bank and Company Info
-  const accountName = effectiveSettings.invoice_account_name || effectiveSettings.account_name || 'Bems Farms Limited'
+  const accountName = effectiveSettings.invoice_account_name || effectiveSettings.account_name || 'Bems Farms Global Ltd'
   const bankName = effectiveSettings.invoice_bank_name || effectiveSettings.bank_name || 'Moniepoint MFB / Zenith Bank'
   const accountNumber = effectiveSettings.invoice_account_number || effectiveSettings.account_number || '1023849502'
   const secondaryBank = effectiveSettings.invoice_secondary_bank || effectiveSettings.secondary_bank || ''
   const secondaryAccount = effectiveSettings.invoice_secondary_account_number || effectiveSettings.secondary_account || ''
-  const companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Limited'
+  const companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Global Ltd'
   const companyAddress = effectiveSettings.invoice_company_address || effectiveSettings.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
   const companyEmail = effectiveSettings.invoice_email || effectiveSettings.email || 'corporate@bemsfarms.com'
   const companyPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || '+234 800 236 7326 / +234 814 000 0000'

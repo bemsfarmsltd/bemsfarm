@@ -30,14 +30,14 @@ async function getCompanySettings() {
   const s = {};
   result.rows.forEach(r => { s[r.key] = r.value; });
   return {
-    name:          s.invoice_company_name || s.store_name || "Bems Farms Limited",
+    name:          s.invoice_company_name || s.store_name || "Bems Farms Global Ltd",
     address:       s.invoice_company_address || s.store_address || "Central Farm Settlement Hub, Umuahia, Abia State",
     rc:            "",
     tin:           "",
     phone:         s.invoice_phone || s.store_phone || "+234 800 236 7326 / +234 814 000 0000",
     email:         s.invoice_email || s.store_email || "corporate@bemsfarms.com",
     bankName:      s.invoice_bank_name || s.bank_name || "Moniepoint MFB / Zenith Bank",
-    accountName:   s.invoice_account_name || s.account_name || "Bems Farms Limited",
+    accountName:   s.invoice_account_name || s.account_name || "Bems Farms Global Ltd",
     accountNumber: s.invoice_account_number || s.account_number || "1023849502",
     secondaryBank: s.invoice_secondary_bank || "Zenith Bank",
     secondaryAccount: s.invoice_secondary_account_number || "1223849502",

@@ -96,11 +96,11 @@ export default function Invoices() {
   const [bankSettings, setBankSettings] = useState(null)
   const [bankForm, setBankForm]         = useState({
     invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-    invoice_account_name: 'Bems Farms Limited',
+    invoice_account_name: 'Bems Farms Global Ltd',
     invoice_account_number: '1023849502',
     invoice_secondary_bank: 'Zenith Bank',
     invoice_secondary_account_number: '1223849502',
-    invoice_company_name: 'Bems Farms Limited',
+    invoice_company_name: 'Bems Farms Global Ltd',
     invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
     invoice_rc_number: '',
     invoice_tin: '',
@@ -1325,7 +1325,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="e.g. Bems Farms Limited"
+                        placeholder="e.g. Bems Farms Global Ltd"
                         value={bankForm.invoice_account_name || ''}
                         onChange={e => {
                           const val = e.target.value
@@ -1402,7 +1402,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="Bems Farms Limited"
+                        placeholder="Bems Farms Global Ltd"
                         value={bankForm.invoice_company_name || ''}
                         onChange={e => setBankForm(f => ({ ...f, invoice_company_name: e.target.value }))}
                       />
@@ -1531,7 +1531,7 @@ export default function Invoices() {
                 {/* Waybill Document Header */}
                 <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
                   <div>
-                    <h4 className="fw-bolder mb-1 text-success">BEMS FARMS LIMITED</h4>
+                    <h4 className="fw-bolder mb-1 text-success">BEMS FARMS GLOBAL LTD</h4>
                     <div className="small text-muted">Premium Farm Produce, Fish & Poultry · Wholesale & B2B Division</div>
                     <div className="small text-muted">Km 5, Farm Settlement Road, Umuahia, Abia State · Tel: +234 800 000 2367</div>
                   </div>

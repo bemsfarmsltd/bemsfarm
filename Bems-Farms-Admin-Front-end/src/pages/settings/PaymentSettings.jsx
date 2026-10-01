@@ -284,7 +284,7 @@ export default function PaymentSettings() {
                           <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Account Name</label>
                           <input
                             className="form-control"
-                            placeholder="Bems Farms Limited"
+                            placeholder="Bems Farms Global Ltd"
                             value={form.account_name}
                             onChange={e => fld('account_name', e.target.value)}
                           />

@@ -73,10 +73,10 @@
 }
 
 .bems-doc-body {
-  padding: 14mm 15mm 160px 17mm;
+  padding: 14mm 15mm 70px 17mm;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -941,12 +941,21 @@
   }
   .bems-doc-body {
     display: block !important;
-    padding: 10mm 14mm 150px 14mm !important;
+    padding: 10mm 14mm 65px 14mm !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
   .bems-doc-page-1-multi .bems-doc-body {
     padding-bottom: 24px !important;
+  }
+  .bems-doc-body .bems-doc-sign {
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    padding-bottom: 4px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 210px !important;
+    gap: 16px !important;
+    align-items: end !important;
   }
   .bems-doc-footer-group {
     position: absolute !important;
@@ -958,11 +967,6 @@
     page-break-inside: avoid !important;
     background: #ffffff !important;
     z-index: 10 !important;
-  }
-  .bems-doc-footer-group .bems-doc-sign {
-    padding: 0 14mm 10px 14mm !important;
-    gap: 16px !important;
-    grid-template-columns: 1fr 210px !important;
   }
   .bems-doc-head {
     margin-bottom: 8px !important;

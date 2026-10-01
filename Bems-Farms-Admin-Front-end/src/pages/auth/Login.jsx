@@ -424,7 +424,7 @@ export default function Login() {
 
         {/* Bottom copyright */}
         <div className="login-bottom-copyright">
-          &copy; {new Date().getFullYear()} Bems Farms Limited &bull; Internal Operations Portal
+          &copy; {new Date().getFullYear()} Bems Farms Global Ltd &bull; Internal Operations Portal
         </div>
       </div>
     </div>

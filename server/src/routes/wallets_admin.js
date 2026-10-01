@@ -1379,7 +1379,7 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         period_end: periodEnd,
       },
       company: {
-        name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Limited',
+        name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Global Ltd',
         address: invoiceSettings.invoice_company_address || bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
         rc_number: '',
         tin: '',

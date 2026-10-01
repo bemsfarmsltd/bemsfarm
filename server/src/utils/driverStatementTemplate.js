@@ -84,7 +84,7 @@ function generateSecurityCode(ref, amount) {
   return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`;
 }
 
-function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED') {
+function getOfficialStampSvg(companyName = 'BEMS FARMS GLOBAL LTD') {
   return `
     <div class="bems-official-stamp" style="display:inline-block;width:82px;height:82px;transform:rotate(-12deg);user-select:none;flex-shrink:0;mix-blend-mode:multiply;opacity:0.94;">
       <svg viewBox="0 0 140 140" width="82" height="82" style="display:block;overflow:visible">
@@ -150,7 +150,7 @@ function renderDriverStatementHtml({
   const balanceInWords = numberToWords(closingBalance);
   const securityCode = generateSecurityCode(statementRef, closingBalance);
 
-  const companyName = company.name || 'Bems Farms Limited';
+  const companyName = company.name || 'Bems Farms Global Ltd';
   const companyAddress = company.address || 'Central Farm Settlement Hub, Umuahia, Abia State';
   const companyEmail = company.email || 'corporate@bemsfarms.com';
   const companyPhone = company.phone || '+234 800 236 7326 / +234 814 000 0000';
@@ -304,10 +304,10 @@ function renderDriverStatementHtml({
     }
 
     .bems-doc-body {
-      padding: 14mm 15mm 160px 17mm;
+      padding: 14mm 15mm 70px 17mm;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     /* Header */
@@ -656,12 +656,15 @@ function renderDriverStatementHtml({
       box-sizing: border-box;
     }
 
+    .bems-doc-sign,
+    .bems-doc-body .bems-doc-sign,
     .bems-doc-footer-group .bems-doc-sign {
       display: grid;
-      grid-template-columns: 1fr minmax(260px, auto);
-      gap: 32px;
+      grid-template-columns: 1fr 210px;
+      gap: 16px;
       align-items: end;
-      padding: 0 15mm 16px 17mm;
+      margin-top: 10px;
+      padding: 10px 0 4px 0;
     }
     .bems-doc-keep {
       padding: 10px 14px;
@@ -809,7 +812,7 @@ function renderDriverStatementHtml({
       }
       .bems-doc-body {
         display: block !important;
-        padding: 10mm 14mm 160px 14mm !important;
+        padding: 10mm 14mm 65px 14mm !important;
         overflow: hidden !important;
         box-sizing: border-box !important;
       }
@@ -843,6 +846,16 @@ function renderDriverStatementHtml({
       .bems-doc-verify { padding: 6px 10px !important; }
       .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
+      .bems-doc-body .bems-doc-sign,
+      .bems-doc-sign {
+        margin-top: 10px !important;
+        padding-top: 8px !important;
+        padding-bottom: 4px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 210px !important;
+        gap: 16px !important;
+        align-items: end !important;
+      }
       .bems-doc-footer-group {
         position: absolute !important;
         bottom: 0 !important;
@@ -853,11 +866,6 @@ function renderDriverStatementHtml({
         page-break-inside: avoid !important;
         background: #ffffff !important;
         z-index: 10 !important;
-      }
-      .bems-doc-footer-group .bems-doc-sign {
-        padding: 0 14mm 14px 14mm !important;
-        gap: 16px !important;
-        grid-template-columns: 1fr 210px !important;
       }
       .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
       .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: center !important; }
@@ -1074,11 +1082,7 @@ function renderDriverStatementHtml({
         </dl>
       </section>
 
-      </div>
-
-    <!-- Pinned Footer Group (Signature + Thanks + Bottom Bar) -->
-    <div class="bems-doc-footer-group">
-      <!-- Sign-off & Audit Notice -->
+      <!-- Sign-off & Audit Notice (Together with Totals at the Top) -->
       <section class="bems-doc-sign">
         <div class="bems-doc-keep">
           <b>Audit &amp; Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
@@ -1097,6 +1101,10 @@ function renderDriverStatementHtml({
         </div>
       </section>
 
+      </div>
+
+    <!-- Pinned Footer Group (Thanks + Bottom Bar) -->
+    <div class="bems-doc-footer-group">
       <!-- Thanks Banner -->
       <div class="bems-doc-thanks">
         <h3>Thank you for powering Bems Farms logistics.</h3>

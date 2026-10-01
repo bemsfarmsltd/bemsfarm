@@ -1777,7 +1777,7 @@ export default function LandingPage() {
                   Verify Any Bems Farms Invoice, Receipt or Sales Slip
                 </h2>
                 <p className="mt-4 text-base leading-7 text-emerald-100/80 max-w-2xl">
-                  Every official document issued by Bems Farms Limited carries a cryptographic security code and verifiable QR code. Whether you received a commercial invoice, wholesale quote, POS retail receipt, or delivery waybill, verify its authenticity, payment status, and complete ledger in seconds.
+                  Every official document issued by Bems Farms Global Ltd carries a cryptographic security code and verifiable QR code. Whether you received a commercial invoice, wholesale quote, POS retail receipt, or delivery waybill, verify its authenticity, payment status, and complete ledger in seconds.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-4 items-center">
                   <Link

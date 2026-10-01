@@ -2,7 +2,7 @@ import React, { useId } from 'react'
 
 /**
  * BemsOfficialStamp
- * Permanent, executive-grade corporate seal for Bems Farms Limited.
+ * Permanent, executive-grade corporate seal for Bems Farms Global Ltd.
  * Rendered as a vector SVG for crisp 300+ DPI print, PDF, and high-DPI screen displays.
  */
 export default function BemsOfficialStamp({
@@ -10,7 +10,7 @@ export default function BemsOfficialStamp({
   tilt = -12,
   color = '#0c4a2a',
   accentColor = '#b8860b',
-  companyName = 'BEMS FARMS LIMITED',
+  companyName = 'BEMS FARMS GLOBAL LTD',
   state = 'ABIA STATE · NIGERIA',
   className = '',
   style = {}
@@ -32,7 +32,7 @@ export default function BemsOfficialStamp({
         flexShrink: 0,
         ...style
       }}
-      title="Bems Farms Limited Official Corporate Seal"
+      title="Bems Farms Global Ltd Official Corporate Seal"
     >
       <svg
         viewBox="0 0 140 140"
@@ -41,6 +41,7 @@ export default function BemsOfficialStamp({
         style={{ display: 'block', overflow: 'visible' }}
       >
         <defs>
+          {/* Top text arc: Sweeps over the top half of the circle */}
           <path
             id={topArcId}
             d="M 18 70 A 52 52 0 0 1 122 70"
@@ -99,10 +100,10 @@ export default function BemsOfficialStamp({
         {/* Circular Top Text */}
         <text
           fill={color}
-          fontSize="9.2"
+          fontSize="8.4"
           fontWeight="800"
           fontFamily="'Cinzel', 'Trajan Pro', 'Georgia', serif"
-          letterSpacing="2.2"
+          letterSpacing="1.4"
         >
           <textPath
             href={`#${topArcId}`}

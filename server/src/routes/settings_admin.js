@@ -326,11 +326,11 @@ const DEFAULT_INVOICE_SETTINGS = {
   invoice_prefix: 'INV-',
   invoice_next_number: '1001',
   invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-  invoice_account_name: 'Bems Farms Limited',
+  invoice_account_name: 'Bems Farms Global Ltd',
   invoice_account_number: '1023849502',
   invoice_secondary_bank: 'Zenith Bank',
   invoice_secondary_account_number: '1223849502',
-  invoice_company_name: 'Bems Farms Limited',
+  invoice_company_name: 'Bems Farms Global Ltd',
   invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
   invoice_rc_number: '',
   invoice_tin: '',
@@ -340,7 +340,7 @@ const DEFAULT_INVOICE_SETTINGS = {
   invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
   // Direct aliases for document renderer
   bank_name: 'Moniepoint MFB / Zenith Bank',
-  account_name: 'Bems Farms Limited',
+  account_name: 'Bems Farms Global Ltd',
   account_number: '1023849502',
   company_signature_url: '',
 };

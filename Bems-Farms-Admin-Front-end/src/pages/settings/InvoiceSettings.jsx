@@ -8,11 +8,11 @@ const BLANK = {
   invoice_prefix: 'INV-',
   invoice_next_number: '1001',
   invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-  invoice_account_name: 'Bems Farms Limited',
+  invoice_account_name: 'Bems Farms Global Ltd',
   invoice_account_number: '1023849502',
   invoice_secondary_bank: 'Zenith Bank',
   invoice_secondary_account_number: '1223849502',
-  invoice_company_name: 'Bems Farms Limited',
+  invoice_company_name: 'Bems Farms Global Ltd',
   invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
   invoice_rc_number: '',
   invoice_tin: '',
@@ -119,7 +119,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Bems Farms Limited"
+                    placeholder="Bems Farms Global Ltd"
                     value={form.invoice_account_name || ''}
                     onChange={e => fld('invoice_account_name', e.target.value)}
                   />
@@ -187,7 +187,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Bems Farms Limited"
+                    placeholder="Bems Farms Global Ltd"
                     value={form.invoice_company_name || ''}
                     onChange={e => fld('invoice_company_name', e.target.value)}
                   />
@@ -420,7 +420,7 @@ export default function InvoiceSettings() {
               >
                 <BemsOfficialStamp
                   size={120}
-                  companyName={form.invoice_company_name || 'BEMS FARMS LIMITED'}
+                  companyName={form.invoice_company_name || 'BEMS FARMS GLOBAL LTD'}
                 />
                 <div className="mt-3">
                   <span className="badge bg-success text-white px-2.5 py-1" style={{ fontSize: 11 }}>
@@ -446,7 +446,7 @@ export default function InvoiceSettings() {
               <div className="p-4 bg-white rounded border shadow-sm">
                 <div className="d-flex justify-content-between align-items-start mb-3">
                   <div>
-                    <h5 className="fw-bold mb-0 text-dark">{form.invoice_company_name || 'Bems Farms Limited'}</h5>
+                    <h5 className="fw-bold mb-0 text-dark">{form.invoice_company_name || 'Bems Farms Global Ltd'}</h5>
                     <small className="text-muted">{form.invoice_company_address || 'Central Farm Settlement Hub, Umuahia'}</small>
                     <div className="text-muted mt-1" style={{ fontSize: 11 }}>
                       {form.invoice_email || 'corporate@bemsfarms.com'} · {form.invoice_phone || '+234 800 236 7326'}
@@ -465,7 +465,7 @@ export default function InvoiceSettings() {
                   </div>
                   <div className="bg-light p-3 rounded text-dark font-monospace fs-12 border">
                     <div><strong>Bank:</strong> {form.invoice_bank_name || 'Moniepoint MFB / Zenith Bank'}</div>
-                    <div><strong>Account Name:</strong> {form.invoice_account_name || 'Bems Farms Limited'}</div>
+                    <div><strong>Account Name:</strong> {form.invoice_account_name || 'Bems Farms Global Ltd'}</div>
                     <div><strong>Account Number:</strong> <span className="text-primary fw-bold">{form.invoice_account_number || '1023849502'}</span></div>
                     {form.invoice_secondary_bank && form.invoice_secondary_account_number && (
                       <div className="mt-1 pt-1 border-top text-muted">

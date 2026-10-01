@@ -113,12 +113,12 @@ export default function VerifyDocumentPage() {
   const bankSettings = useMemo(() => {
     if (!result?.company) return null;
     return {
-      invoice_company_name: result.company.name || 'Bems Farms Limited',
+      invoice_company_name: result.company.name || 'Bems Farms Global Ltd',
       invoice_company_address: result.company.address || 'Central Farm Settlement Hub, Umuahia, Abia State',
       invoice_phone: result.company.phone || '+234 800 236 7326 / +234 814 000 0000',
       invoice_email: result.company.email || 'corporate@bemsfarms.com',
       invoice_bank_name: result.company.bankName || 'Moniepoint MFB / Zenith Bank',
-      invoice_account_name: result.company.accountName || 'Bems Farms Limited',
+      invoice_account_name: result.company.accountName || 'Bems Farms Global Ltd',
       invoice_account_number: result.company.accountNumber || '1023849502',
       invoice_secondary_bank: result.company.secondaryBank || 'Zenith Bank',
       invoice_secondary_account_number: result.company.secondaryAccount || '1223849502',

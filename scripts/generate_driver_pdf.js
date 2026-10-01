@@ -296,7 +296,7 @@ const fullHtml = `<!DOCTYPE html>
   ${parsedBody}
 
   <div class="footer">
-    <div>Bems Farms Limited · Driver App & Logistics Integration</div>
+    <div>Bems Farms Global Ltd · Driver App & Logistics Integration</div>
     <div>Generated for Mobile Engineering Team</div>
   </div>
 

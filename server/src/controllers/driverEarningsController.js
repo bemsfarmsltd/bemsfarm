@@ -1001,7 +1001,7 @@ const requestAccountStatement = async (req, res, next) => {
     } catch (_) {}
 
     const company = {
-      name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Limited',
+      name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Global Ltd',
       address: invoiceSettings.invoice_company_address || bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
       rc_number: '',
       tin: '',
