@@ -1367,9 +1367,7 @@ function renderDriverStatementHtml({
           <div class="nm">${driverName}</div>
           <p>
             <b>Wallet Account:</b> <span class="mono">${walletAccountNo}</span><br>
-            <b>Phone:</b> ${driverPhone} · <b>Email:</b> ${driverEmail}<br>
-            <b>Vehicle:</b> ${vehicleType} (${vehiclePlate})<br>
-            <b>License No:</b> ${licenseNumber} · <b>Base:</b> Abia & Rivers Region
+            <b>Phone:</b> ${driverPhone} · <b>Email:</b> ${driverEmail}
           </p>
         </div>
 
