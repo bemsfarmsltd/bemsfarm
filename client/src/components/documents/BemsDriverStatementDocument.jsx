@@ -146,6 +146,8 @@ export default function BemsDriverStatementDocument({
     return Math.max(0, priorNet + Number(summary.opening_balance || 0))
   }, [statement, activeDateRange, summary.opening_balance])
 
+  const openingBalance = computedOpeningBalance
+
   // Compute summary figures
   const totalCredits = useMemo(() => {
     return filteredStatement.reduce((acc, item) => acc + (item.type === 'credit' ? (parseFloat(item.amount) || 0) : 0), 0)
