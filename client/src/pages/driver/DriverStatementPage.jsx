@@ -356,7 +356,7 @@ export default function DriverStatementPage() {
 
   const isMultiPage = statement.length > 4;
 
-  let page1Count = Math.min(statement.length, 10);
+  let page1Count = Math.min(statement.length, 8);
   if (isMultiPage && statement.length - page1Count < 2) {
     page1Count = Math.max(4, statement.length - 2);
   }
@@ -1606,13 +1606,13 @@ export default function DriverStatementPage() {
                   <table className="bems-doc-table">
                     <thead>
                       <tr>
-                        <th style={{ width: "5%" }}>#</th>
-                        <th style={{ width: "13%" }}>Date</th>
+                        <th style={{ width: "4%" }}>#</th>
+                        <th style={{ width: "12%" }}>Date</th>
                         <th>Activity & Transaction Details</th>
-                        <th style={{ width: "16%" }}>Reference</th>
-                        <th className="c" style={{ width: "10%" }}>Type</th>
-                        <th className="r" style={{ width: "14%" }}>Amount (₦)</th>
-                        <th className="r" style={{ width: "15%" }}>Balance (₦)</th>
+                        <th style={{ width: "15%" }}>Reference</th>
+                        <th className="c" style={{ width: "8%" }}>Type</th>
+                        <th className="r" style={{ width: "13%" }}>Amount (₦)</th>
+                        <th className="r" style={{ width: "14%" }}>Balance (₦)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1795,13 +1795,13 @@ export default function DriverStatementPage() {
                       <table className="bems-doc-table">
                         <thead>
                           <tr>
-                            <th style={{ width: "5%" }}>#</th>
-                            <th style={{ width: "13%" }}>Date</th>
+                            <th style={{ width: "4%" }}>#</th>
+                            <th style={{ width: "12%" }}>Date</th>
                             <th>Activity & Transaction Details</th>
-                            <th style={{ width: "16%" }}>Reference</th>
-                            <th className="c" style={{ width: "10%" }}>Type</th>
-                            <th className="r" style={{ width: "14%" }}>Amount (₦)</th>
-                            <th className="r" style={{ width: "15%" }}>Balance (₦)</th>
+                            <th style={{ width: "15%" }}>Reference</th>
+                            <th className="c" style={{ width: "8%" }}>Type</th>
+                            <th className="r" style={{ width: "13%" }}>Amount (₦)</th>
+                            <th className="r" style={{ width: "14%" }}>Balance (₦)</th>
                           </tr>
                         </thead>
                         <tbody>

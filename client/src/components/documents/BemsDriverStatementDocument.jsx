@@ -245,7 +245,7 @@ export default function BemsDriverStatementDocument({
   // When multi-page, closing totals & signatures move to the final page, allowing Page 1 to comfortably hold up to 10 transactions.
   const isMultiPage = filteredStatement.length > 4
 
-  let page1Count = Math.min(filteredStatement.length, 10)
+  let page1Count = Math.min(filteredStatement.length, 8)
   if (isMultiPage && filteredStatement.length - page1Count < 2) {
     page1Count = Math.max(4, filteredStatement.length - 2)
   }
@@ -502,13 +502,13 @@ export default function BemsDriverStatementDocument({
           <table className="bems-doc-table">
             <thead>
               <tr>
-                <th style={{ width: '5%' }}>#</th>
-                <th style={{ width: '13%' }}>Date</th>
+                <th style={{ width: '4%' }}>#</th>
+                <th style={{ width: '12%' }}>Date</th>
                 <th>Activity & Transaction Details</th>
-                <th style={{ width: '16%' }}>Reference</th>
-                <th className="c" style={{ width: '10%' }}>Type</th>
-                <th className="r" style={{ width: '14%' }}>Amount (₦)</th>
-                <th className="r" style={{ width: '15%' }}>Balance (₦)</th>
+                <th style={{ width: '15%' }}>Reference</th>
+                <th className="c" style={{ width: '8%' }}>Type</th>
+                <th className="r" style={{ width: '13%' }}>Amount (₦)</th>
+                <th className="r" style={{ width: '14%' }}>Balance (₦)</th>
               </tr>
             </thead>
             <tbody>
@@ -694,13 +694,13 @@ export default function BemsDriverStatementDocument({
               <table className="bems-doc-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '5%' }}>#</th>
-                    <th style={{ width: '13%' }}>Date</th>
+                    <th style={{ width: '4%' }}>#</th>
+                    <th style={{ width: '12%' }}>Date</th>
                     <th>Activity & Transaction Details</th>
-                    <th style={{ width: '16%' }}>Reference</th>
-                    <th className="c" style={{ width: '10%' }}>Type</th>
-                    <th className="r" style={{ width: '14%' }}>Amount (₦)</th>
-                    <th className="r" style={{ width: '15%' }}>Balance (₦)</th>
+                    <th style={{ width: '15%' }}>Reference</th>
+                    <th className="c" style={{ width: '8%' }}>Type</th>
+                    <th className="r" style={{ width: '13%' }}>Amount (₦)</th>
+                    <th className="r" style={{ width: '14%' }}>Balance (₦)</th>
                   </tr>
                 </thead>
                 <tbody>
