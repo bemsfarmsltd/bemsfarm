@@ -2345,10 +2345,14 @@ export default function DriversManagement() {
           {/* Official Driver Statement of Account Modal */}
           {/* Official Driver Statement of Account Modal */}
           {activeModal === 'statement' && selected && (() => {
+            const rawDriverName = selected.name || statementData?.driver?.name || 'Driver'
+            const cleanDriverName = String(rawDriverName).replace(/[/\\:*?"<>|]/g, ' ').trim() || 'Driver'
+            const documentFileName = `${cleanDriverName} Commission Statement of Account - Bems Farms`
+
             const handlePrintStatement = () => {
               printOfficialDocument(
                 '.bems-doc-print-target',
-                `Statement_of_Account_${(selected.name || 'Driver').replace(/\s+/g, '_')}`
+                documentFileName
               )
             }
 

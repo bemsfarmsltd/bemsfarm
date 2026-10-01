@@ -1058,6 +1058,10 @@ const requestAccountStatement = async (req, res, next) => {
         autoPrint: query.print === "true" || query.download === "true",
       });
 
+      if (query.download === "true" || format === "download" || req.path.endsWith("/download")) {
+        const cleanName = (driver.name || 'Driver').replace(/[/\\:*?"<>|]/g, ' ').trim();
+        res.setHeader("Content-Disposition", `inline; filename="${cleanName} Commission Statement of Account - Bems Farms.html"`);
+      }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(htmlContent);
     }

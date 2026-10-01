@@ -805,10 +805,18 @@ export default function BemsDriverStatementDocument({
  * Uses an invisible in-DOM iframe to preserve same-origin assets, fonts,
  * and prevent Chrome print preview from clipping headers or showing blank screens.
  */
-export function printOfficialDocument(targetSelector = '.bems-doc-print-target', title = 'Statement of Account') {
+export function printOfficialDocument(targetSelector = '.bems-doc-print-target', title = 'Commission Statement of Account - Bems Farms') {
   const target = typeof targetSelector === 'string' ? document.querySelector(targetSelector) : targetSelector
+  const originalTitle = document.title
   if (!target) {
-    window.print()
+    try {
+      document.title = title
+      window.print()
+    } finally {
+      setTimeout(() => {
+        document.title = originalTitle
+      }, 3000)
+    }
     return
   }
 
@@ -915,9 +923,16 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
 </html>`)
   doc.close()
 
+  try {
+    doc.title = title
+  } catch (_) {}
+
   // Wait for fonts and images to settle in the iframe, then trigger print
   setTimeout(() => {
     try {
+      // Temporarily set parent window document.title so all browsers (especially Chrome Save as PDF)
+      // assign the intended download filename.
+      document.title = title
       iframe.contentWindow.focus()
       iframe.contentWindow.print()
     } catch (e) {
@@ -925,10 +940,11 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
       window.print()
     } finally {
       setTimeout(() => {
+        document.title = originalTitle
         if (iframe && iframe.parentNode) {
           iframe.parentNode.removeChild(iframe)
         }
-      }, 4000)
+      }, 5000)
     }
   }, 400)
 }

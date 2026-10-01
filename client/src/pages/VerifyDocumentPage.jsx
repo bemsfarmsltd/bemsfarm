@@ -66,7 +66,15 @@ export default function VerifyDocumentPage() {
   };
 
   const handlePrint = () => {
-    printOfficialDocument('.bems-doc-print-target', result?.documentType || 'Official Document');
+    let title = 'Official Document - Bems Farms';
+    if (result?.isStatement || result?.documentType === 'driver_statement' || result?.driver) {
+      const driverName = result?.driver?.name || 'Driver';
+      const cleanDriverName = String(driverName).replace(/[/\\:*?"<>|]/g, ' ').trim() || 'Driver';
+      title = `${cleanDriverName} Commission Statement of Account - Bems Farms`;
+    } else if (result?.invoiceReference) {
+      title = `${result.invoiceReference} - Bems Farms Global Ltd`;
+    }
+    printOfficialDocument('.bems-doc-print-target', title);
   };
 
   // ── Transform result data for BemsOfficialDocument (Receipts & Invoices) ──

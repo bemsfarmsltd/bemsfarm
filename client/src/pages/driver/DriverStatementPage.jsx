@@ -289,16 +289,29 @@ export default function DriverStatementPage() {
   const companyPhone = (company.phone && !company.phone.includes('800 236 7326')) ? company.phone : "";
 
   const handlePrint = useCallback(() => {
+    const cleanDriverName = String(driverName || 'Driver').replace(/[/\\:*?"<>|]/g, ' ').trim() || 'Driver';
+    const title = `${cleanDriverName} Commission Statement of Account - Bems Farms`;
+    const originalTitle = document.title;
     const target = document.getElementById('bems-driver-statement-print-area')
     if (!target) {
-      window.scrollTo(0, 0);
-      window.print();
+      try {
+        document.title = title;
+        window.scrollTo(0, 0);
+        window.print();
+      } finally {
+        setTimeout(() => { document.title = originalTitle; }, 3000);
+      }
       return;
     }
     const printWindow = window.open('', '_blank', 'width=950,height=900');
     if (!printWindow) {
-      window.scrollTo(0, 0);
-      window.print();
+      try {
+        document.title = title;
+        window.scrollTo(0, 0);
+        window.print();
+      } finally {
+        setTimeout(() => { document.title = originalTitle; }, 3000);
+      }
       return;
     }
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
@@ -308,7 +321,7 @@ export default function DriverStatementPage() {
     printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Statement of Account — ${driverName}</title>
+  <title>${title}</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${styles}
@@ -1045,7 +1058,7 @@ export default function DriverStatementPage() {
           .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; padding: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; position: relative !important; z-index: 1 !important; }
           .bems-doc-sig b { text-align: center !important; }
           .bems-doc-sig span { text-align: center !important; }
-          .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 14px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 22px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.92 !important; }
         }
       `}</style>

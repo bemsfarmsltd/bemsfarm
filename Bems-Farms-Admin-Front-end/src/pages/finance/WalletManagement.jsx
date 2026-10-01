@@ -1911,10 +1911,14 @@ export default function WalletManagement() {
 
       {/* 3. Official Driver Statement Document Modal */}
       {statementDriver && (() => {
+        const rawDriverName = statementDriver.name || statementData?.driver?.name || 'Driver'
+        const cleanDriverName = String(rawDriverName).replace(/[/\\:*?"<>|]/g, ' ').trim() || 'Driver'
+        const documentFileName = `${cleanDriverName} Commission Statement of Account - Bems Farms`
+
         const handlePrintStatement = () => {
           printOfficialDocument(
             '.bems-doc-print-target',
-            `Statement_of_Account_${(statementDriver.name || 'Driver').replace(/\s+/g, '_')}`
+            documentFileName
           )
         }
 
