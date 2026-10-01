@@ -27,26 +27,31 @@ if (IS_TEST) {
 }
 
 // ── Core send helper ──────────────────────────────────────────────────────────
-async function sendMail({ to, subject, html }) {
+async function sendMail({ to, subject, html, attachments }) {
+  const recipientDisplay = Array.isArray(to) ? to.join(", ") : to;
   if (IS_TEST) {
-    console.log(`📧 [EMAIL TEST] To: ${to} | Subject: ${subject}`);
+    console.log(`📧 [EMAIL TEST] To: ${recipientDisplay} | Subject: ${subject}`);
     return { status: "test" };
   }
   try {
-    const { data, error } = await resend.emails.send({
+    const payload = {
       from: `BemsFarms 🌿 <${FROM}>`,
       to,
       subject,
       html,
-    });
+    };
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      payload.attachments = attachments;
+    }
+    const { data, error } = await resend.emails.send(payload);
     if (error) {
-      console.error(`❌ Resend error to ${to}:`, error);
+      console.error(`❌ Resend error to ${recipientDisplay}:`, error);
       return { status: "failed", error };
     }
-    console.log(`✅ Email sent to ${to} — ID: ${data.id}`);
-    return { status: "sent", id: data.id };
+    console.log(`✅ Email sent to ${recipientDisplay} — ID: ${data?.id}`);
+    return { status: "sent", id: data?.id };
   } catch (err) {
-    console.error(`❌ Email failed to ${to}:`, err.message);
+    console.error(`❌ Email failed to ${recipientDisplay}:`, err.message);
     return { status: "failed", error: err.message };
   }
 }
@@ -645,6 +650,173 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
   });
 }
 
+async function sendDriverStatementEmail({
+  email,
+  name,
+  driver,
+  summary,
+  transactions = [],
+  statementRef,
+  securityCode,
+  verifyUrl,
+  webPortalUrl,
+  downloadUrl,
+  htmlAttachment,
+}) {
+  const safeName = name || driver?.name || "Driver";
+  const refCode = statementRef || `SOA-${driver?.wallet_account_number || "DRV"}-${new Date().getFullYear()}`;
+  const periodText = summary?.period_label || `${summary?.start_date || "Inception"} – ${summary?.end_date || "Present"}`;
+  const totalEarned = Number(summary?.total_earned ?? summary?.total_credits ?? 0).toLocaleString();
+  const totalWithdrawn = Number(summary?.total_withdrawn ?? summary?.total_debits ?? 0).toLocaleString();
+  const closingBalance = Number(summary?.closing_balance ?? summary?.available_balance ?? 0).toLocaleString();
+  const deliveriesCount = summary?.total_deliveries ?? summary?.completed_deliveries ?? 0;
+
+  const txRows = (transactions || []).slice(-10).map((tx) => {
+    const isCr = tx.type === "credit";
+    const amt = Number(tx.amount || 0).toLocaleString();
+    const dateFormatted = tx.date
+      ? new Date(tx.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+      : "—";
+    return `
+      <tr>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E2E8F0; font-size: 12px; color: #475569;">${dateFormatted}</td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E2E8F0; font-size: 12px; color: #1E293B;">
+          <strong>${tx.reference || "—"}</strong><br/>
+          <span style="font-size: 11px; color: #64748B;">${tx.description || tx.category || "Commission Settlement"}</span>
+        </td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center;">
+          <span style="padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: ${isCr ? "#DCFCE7; color: #15803D;" : "#FEE2E2; color: #B91C1C;"}">
+            ${isCr ? "CREDIT" : "DEBIT"}
+          </span>
+        </td>
+        <td style="padding: 10px 8px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 700; text-align: right; color: ${isCr ? "#15803D;" : "#B91C1C;"}">
+          ${isCr ? "+" : "-"}₦${amt}
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const attachments = [];
+  if (htmlAttachment) {
+    const cleanDriverName = safeName.replace(/[/\\:*?"<>|]/g, " ").trim() || "Driver";
+    attachments.push({
+      filename: `${cleanDriverName} Commission Statement of Account - Bems Farms.html`,
+      content: Buffer.from(htmlAttachment).toString("base64"),
+    });
+  }
+
+  const emailHtml = `
+    <div style="${emailStyles}">
+      <div style="background: linear-gradient(135deg, #0F3622, #1B4332); padding: 32px 36px; border-radius: 16px 16px 0 0; text-align: center;">
+        <span style="display: inline-block; background: rgba(255,255,255,0.15); color: #86EFAC; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px;">
+          Official Logistics Settlement Record
+        </span>
+        <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">🌿 Bems Farms Global Ltd</h1>
+        <p style="color: rgba(255,255,255,0.8); margin: 6px 0 0; font-size: 14px;">Driver Commission Statement of Account</p>
+      </div>
+
+      <div style="background: #F59E0B; height: 4px;"></div>
+
+      <div style="padding: 28px 32px; background: #ffffff;">
+        <div style="border-bottom: 1px solid #E2E8F0; padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="color: #0F3622; margin: 0 0 6px; font-size: 20px; font-weight: 800;">
+            Statement for ${safeName}
+          </h2>
+          <p style="color: #64748B; margin: 0; font-size: 13px;">
+            Statement Reference: <strong style="color: #0F3622; font-family: monospace;">${refCode}</strong> &bull; Period: <strong>${periodText}</strong>
+          </p>
+        </div>
+
+        <p style="color: #334155; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+          Hello ${safeName},<br/>
+          Here is your requested official <strong>Commission Statement of Account</strong> from Bems Farms Global Ltd Fleet & Logistics Operations.
+        </p>
+
+        <!-- Balance / Summary Card -->
+        <div style="background: #0F3622; border-radius: 12px; padding: 22px; color: #ffffff; margin-bottom: 24px;">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #86EFAC; font-weight: 700; margin-bottom: 4px;">
+            Net Available / Closing Balance
+          </div>
+          <div style="font-size: 32px; font-weight: 800; color: #ffffff; letter-spacing: -0.03em; margin-bottom: 16px;">
+            ₦${closingBalance}
+          </div>
+          <table style="width: 100%; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 12px; font-size: 12px;">
+            <tr>
+              <td style="color: rgba(255,255,255,0.7); padding: 4px 0;">Total Earned (Gross):</td>
+              <td style="text-align: right; font-weight: 700; color: #86EFAC;">+₦${totalEarned}</td>
+            </tr>
+            <tr>
+              <td style="color: rgba(255,255,255,0.7); padding: 4px 0;">Total Disbursed (Withdrawals):</td>
+              <td style="text-align: right; font-weight: 700; color: #FCA5A5;">-₦${totalWithdrawn}</td>
+            </tr>
+            <tr>
+              <td style="color: rgba(255,255,255,0.7); padding: 4px 0;">Completed Deliveries:</td>
+              <td style="text-align: right; font-weight: 700; color: #ffffff;">${deliveriesCount} drops</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Recent Transactions -->
+        ${transactions && transactions.length > 0 ? `
+          <h3 style="color: #0F3622; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px;">
+            Recent Statement Activity (${Math.min(transactions.length, 10)} entries)
+          </h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <thead>
+              <tr style="background: #F8FAFC; text-align: left; font-size: 11px; color: #64748B; text-transform: uppercase;">
+                <th style="padding: 8px; border-bottom: 2px solid #E2E8F0;">Date</th>
+                <th style="padding: 8px; border-bottom: 2px solid #E2E8F0;">Reference / Description</th>
+                <th style="padding: 8px; border-bottom: 2px solid #E2E8F0; text-align: center;">Type</th>
+                <th style="padding: 8px; border-bottom: 2px solid #E2E8F0; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${txRows}
+            </tbody>
+          </table>
+        ` : ""}
+
+        <!-- Actions -->
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px; text-align: center; margin-bottom: 20px;">
+          <p style="color: #475569; font-size: 13px; margin: 0 0 14px;">
+            Your official audited A4 statement document is attached to this email. You can also view or verify it online anytime:
+          </p>
+          <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+            ${downloadUrl ? `
+              <a href="${downloadUrl}" style="background: #15803D; color: #ffffff; padding: 11px 20px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; display: inline-block; margin: 4px;">
+                📥 Download A4 Document
+              </a>
+            ` : ""}
+            ${verifyUrl ? `
+              <a href="${verifyUrl}" style="background: #0F3622; color: #ffffff; padding: 11px 20px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; display: inline-block; margin: 4px;">
+                🔍 Verify Authenticity Online
+              </a>
+            ` : ""}
+          </div>
+        </div>
+
+        <p style="color: #94A3B8; font-size: 11px; line-height: 1.5; margin: 0; text-align: center;">
+          Security Verification Hash: <code style="font-family: monospace; color: #0F3622;">${securityCode || "SEC-VERIFIED"}</code>
+        </p>
+      </div>
+
+      <div style="background: #0F3622; padding: 20px 32px; border-radius: 0 0 16px 16px; text-align: center;">
+        <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 12px;">
+          &copy; 2026 Bems Farms Global Ltd &bull; Central Fleet Settlement Hub, Umuahia, Abia State<br/>
+          <a href="mailto:corporate@bemsfarms.com" style="color: #86EFAC; text-decoration: none;">corporate@bemsfarms.com</a>
+        </p>
+      </div>
+    </div>
+  `;
+
+  return sendMail({
+    to: email,
+    subject: `📄 ${safeName} Commission Statement of Account - Bems Farms`,
+    html: emailHtml,
+    attachments,
+  });
+}
+
 module.exports = {
   sendMail,
   sendWelcomeEmail,
@@ -659,5 +831,6 @@ module.exports = {
   sendDriverApprovedEmail,
   sendDriverRejectionEmail,
   sendDriverPasswordResetEmail,
+  sendDriverStatementEmail,
   sendAdminAlertEmail,
 };

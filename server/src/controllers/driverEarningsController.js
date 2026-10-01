@@ -1031,10 +1031,10 @@ const requestAccountStatement = async (req, res, next) => {
 
     const statementRef = `SOA-${driver.wallet_account_number || `DRV-${driver.id}`}-${new Date().getFullYear()}`;
     const securityCode = generateSecurityCode(statementRef, closingBalance);
+    const verifyUrl = `https://bemsfarms.com/verify?type=driver_statement&ref=${encodeURIComponent(statementRef)}&code=${encodeURIComponent(securityCode)}`;
 
     let qrDataUrl = "";
     try {
-      const verifyUrl = `https://bemsfarms.com/verify?type=driver_statement&ref=${encodeURIComponent(statementRef)}&code=${encodeURIComponent(securityCode)}`;
       qrDataUrl = await QRCode.toDataURL(verifyUrl, {
         width: 240,
         margin: 1,
@@ -1044,20 +1044,20 @@ const requestAccountStatement = async (req, res, next) => {
       console.warn("QR code generation warning:", qrErr.message);
     }
 
+    const htmlContent = renderDriverStatementHtml({
+      driver: {
+        ...driver,
+        wallet_account_number: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, '0')}`,
+      },
+      summary,
+      company,
+      statement: statementWithBalances,
+      qrDataUrl,
+      autoPrint: query.print === "true" || query.download === "true",
+    });
+
     // ── Direct HTML / Download Document Mode ───────────────────────────
     if (isHtmlRequested) {
-      const htmlContent = renderDriverStatementHtml({
-        driver: {
-          ...driver,
-          wallet_account_number: driver.wallet_account_number || `DRV-${String(driver.id).padStart(4, '0')}`,
-        },
-        summary,
-        company,
-        statement: statementWithBalances,
-        qrDataUrl,
-        autoPrint: query.print === "true" || query.download === "true",
-      });
-
       if (query.download === "true" || format === "download" || req.path.endsWith("/download")) {
         const cleanName = (driver.name || 'Driver').replace(/[/\\:*?"<>|]/g, ' ').trim();
         res.setHeader("Content-Disposition", `inline; filename="${cleanName} Commission Statement of Account - Bems Farms.html"`);
@@ -1066,38 +1066,116 @@ const requestAccountStatement = async (req, res, next) => {
       return res.send(htmlContent);
     }
 
-    // Email delivery if requested
-    let emailSent = false;
-    const recipientEmail = typeof email === "string" && email.includes("@") ? email.trim() : driver.email;
-    if (recipientEmail && (email === true || email === "true" || typeof email === "string")) {
-      try {
-        const emailService = require("../services/emailService");
-        if (typeof emailService.sendDriverStatementEmail === "function") {
-          await emailService.sendDriverStatementEmail({
-            email: recipientEmail,
-            name: driver.name,
-            summary,
-            transactions: statementWithBalances,
-          });
-          emailSent = true;
-        }
-      } catch (mailErr) {
-        console.warn("Statement email notice:", mailErr.message);
-      }
-    }
-
+    // ── Email Delivery (Drivers receive statement via email, can also add emails for others) ──
     const currentToken = req.headers.authorization?.startsWith("Bearer ")
       ? req.headers.authorization.split(" ")[1]
       : (req.query?.token || "");
 
+    const sendEmailExplicit = body.send_email ?? query.send_email ?? body.sendEmail ?? query.sendEmail;
+    const shouldSendEmail = sendEmailExplicit !== false && sendEmailExplicit !== "false" && sendEmailExplicit !== 0;
+
+    const sendToDriverExplicit = body.send_to_driver ?? query.send_to_driver ?? body.sendToDriver ?? query.sendToDriver;
+    const sendToDriver = sendToDriverExplicit !== false && sendToDriverExplicit !== "false" && sendToDriverExplicit !== 0;
+
+    // Collect recipient emails
+    const rawCandidates = [
+      ...(sendToDriver && driver.email ? [driver.email] : []),
+      body.additional_email,
+      query.additional_email,
+      body.additional_emails,
+      query.additional_emails,
+      body.additionalEmail,
+      query.additionalEmail,
+      body.extra_email,
+      query.extra_email,
+      body.send_to_email,
+      query.send_to_email,
+      body.recipient_email,
+      query.recipient_email,
+      body.recipient_emails,
+      query.recipient_emails,
+      body.email,
+      query.email,
+      body.emails,
+      query.emails,
+    ];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const recipientSet = new Set();
+    const additionalEmailsList = [];
+
+    const processEmailCandidate = (val) => {
+      if (!val || typeof val === "boolean") return;
+      if (Array.isArray(val)) {
+        val.forEach(processEmailCandidate);
+        return;
+      }
+      if (typeof val === "string") {
+        val.split(/[,;]/).map(s => s.trim().toLowerCase()).forEach(addr => {
+          if (emailRegex.test(addr)) {
+            recipientSet.add(addr);
+            if (driver.email && addr !== driver.email.toLowerCase()) {
+              additionalEmailsList.push(addr);
+            }
+          }
+        });
+      }
+    };
+
+    rawCandidates.forEach(processEmailCandidate);
+    const recipients = Array.from(recipientSet);
+
+    const emailsSent = [];
+    const emailErrors = [];
+
+    if (shouldSendEmail && recipients.length > 0) {
+      try {
+        const emailService = require("../services/emailService");
+        if (typeof emailService.sendDriverStatementEmail === "function") {
+          for (const targetEmail of recipients) {
+            try {
+              await emailService.sendDriverStatementEmail({
+                email: targetEmail,
+                name: driver.name,
+                driver,
+                summary,
+                transactions: statementWithBalances,
+                statementRef,
+                securityCode,
+                verifyUrl,
+                webPortalUrl: "https://bemsfarms.com/driver/statement",
+                downloadUrl: `https://bemsfarms.com/api/driver/wallet/statement/download${currentToken ? `?token=${currentToken}` : ''}`,
+                htmlAttachment: htmlContent,
+              });
+              emailsSent.push(targetEmail);
+            } catch (err) {
+              console.warn(`Statement email delivery failure to ${targetEmail}:`, err.message);
+              emailErrors.push({ email: targetEmail, error: err.message });
+            }
+          }
+        }
+      } catch (serviceErr) {
+        console.warn("Statement email service warning:", serviceErr.message);
+      }
+    }
+
+    const hasSent = emailsSent.length > 0;
+    const recipientDisplay = emailsSent.join(", ");
+
     res.json({
       success: true,
       status: "success",
-      message: emailSent
-        ? `Account statement generated and sent to ${recipientEmail}`
+      message: hasSent
+        ? `Account statement generated and emailed to ${recipientDisplay}`
         : "Account statement generated successfully",
-      email_sent: emailSent,
-      recipient_email: emailSent ? recipientEmail : null,
+      email_sent: hasSent,
+      recipients: emailsSent,
+      driver_email: driver.email || null,
+      additional_emails: Array.from(new Set(additionalEmailsList)),
+      email_errors: emailErrors.length > 0 ? emailErrors : undefined,
+      statement_reference: statementRef,
+      security_code: securityCode,
+      verify_url: verifyUrl,
       statement_download_url: `/api/driver/wallet/statement/download${currentToken ? `?token=${currentToken}` : ''}`,
       statement_view_url: `/api/driver/wallet/statement?format=html${currentToken ? `&token=${currentToken}` : ''}`,
       web_portal_url: `/driver/statement`,

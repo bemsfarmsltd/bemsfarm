@@ -145,8 +145,14 @@ router.get("/wallet", driverProtect, driverEarningsController.getEarnings);
 router.get("/wallet/history", driverProtect, driverEarningsController.getWalletHistory);
 router.get("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
 router.post("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
+router.post("/wallet/statement/email", driverProtect, driverEarningsController.requestAccountStatement);
 router.get("/wallet/statement/download", driverProtect, driverEarningsController.requestAccountStatement);
 router.get("/wallet/statement/html", driverProtect, driverEarningsController.requestAccountStatement);
+
+router.get("/statement", driverProtect, driverEarningsController.requestAccountStatement);
+router.post("/statement", driverProtect, driverEarningsController.requestAccountStatement);
+router.post("/statement/email", driverProtect, driverEarningsController.requestAccountStatement);
+router.get("/statement/download", driverProtect, driverEarningsController.requestAccountStatement);
 router.get("/banks", optionalDriverProtect, driverEarningsController.getBanks);
 router.post("/withdraw", driverProtect, driverEarningsController.requestWithdrawal);
 
