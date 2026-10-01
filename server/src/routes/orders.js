@@ -862,7 +862,7 @@ router.patch(
 
       const result = await pool.query(
         `UPDATE orders
-       SET status = $1, delivered_at = CASE WHEN $1 = 'delivered' THEN NOW() ELSE delivered_at END, updated_at = NOW()
+       SET status = $1::varchar, delivered_at = CASE WHEN $1::varchar = 'delivered' THEN NOW() ELSE delivered_at END, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
         [status, id],

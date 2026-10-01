@@ -464,7 +464,7 @@ router.patch(
           [del.rows[0].order_id],
         );
         await client.query(
-          "UPDATE orders SET status=$1, delivered_at = CASE WHEN $1 = 'delivered' THEN NOW() ELSE delivered_at END, updated_at=NOW() WHERE id=$2",
+          "UPDATE orders SET status=$1::varchar, delivered_at = CASE WHEN $1::varchar = 'delivered' THEN NOW() ELSE delivered_at END, updated_at=NOW() WHERE id=$2",
           [orderStatus, del.rows[0].order_id],
         );
         await client.query(

@@ -362,7 +362,7 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
     // status to "received" regardless of anyReceived.
     const newStatus = !processedAny ? po.rows[0].status : (allReceived ? "received" : "partial");
     await client.query(
-      "UPDATE purchase_orders SET status=$1, received_date=CASE WHEN $1='received' THEN CURRENT_DATE ELSE received_date END, updated_at=NOW() WHERE id=$2",
+      "UPDATE purchase_orders SET status=$1::varchar, received_date=CASE WHEN $1::varchar='received' THEN CURRENT_DATE ELSE received_date END, updated_at=NOW() WHERE id=$2",
       [newStatus, req.params.id]
     );
 

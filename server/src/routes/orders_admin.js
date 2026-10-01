@@ -1384,14 +1384,15 @@ router.patch(
       } else {
         await client.query(
           `UPDATE orders 
-           SET status=$1, tracking_status=$1, 
+           SET status = $1::varchar, 
+               tracking_status = $1::varchar, 
                payment_status = CASE 
-                 WHEN $1 = 'delivered' AND LOWER(COALESCE(payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery') THEN 'paid' 
+                 WHEN $1::varchar = 'delivered' AND LOWER(COALESCE(payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery') THEN 'paid' 
                  ELSE payment_status 
                END,
-               invoice_printed = CASE WHEN $1 = 'processing' THEN true ELSE invoice_printed END, 
-               updated_at=NOW() 
-           WHERE id=$2`,
+               invoice_printed = CASE WHEN $1::varchar = 'processing' THEN true ELSE invoice_printed END, 
+               updated_at = NOW() 
+           WHERE id = $2`,
           [nextStatus, resolvedId],
         );
       }
