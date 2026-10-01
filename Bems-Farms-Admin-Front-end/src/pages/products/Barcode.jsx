@@ -395,14 +395,14 @@ export default function Barcode() {
     let pageSize = '50mm 25mm'
     let w = '50mm'
     let h = '25mm'
-    let barcodeW = '42mm' // 42mm on 50mm paper leaves optimal 4mm quiet zones on left and right
-    let barcodeH = showDates ? '8.5mm' : '10.5mm' // Guaranteed 10.5mm tall optical bars (more than 2.5x taller than old 4mm)
+    let barcodeW = '44mm' // 44mm on 50mm paper spans 88% width with 3mm optical quiet margins
+    let barcodeH = showDates ? '9mm' : '11.5mm' // 11.5mm tall optical bars (nearly 50% of the entire sticker height)
     let barModuleWidth = 2.0
-    let barHeightPx = 60
+    let barHeightPx = 65
     let fontSizeName = '7.5px'
     let fontSizePrice = '9.5px'
     let fontSizeSku = '7.5px'
-    let labelPadding = '0.8mm 2mm 0.6mm'
+    let labelPadding = '0.6mm 1.5mm 0.6mm'
 
     if (labelTemplate === 'thermal_50x30') {
       pageSize = '50mm 30mm'
