@@ -550,13 +550,23 @@ export default function DriverStatementPage() {
         .bems-doc-hero-meta {
           position: relative;
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           border-top: 1px solid rgba(255, 255, 255, .12);
           background: rgba(0, 0, 0, .18);
           z-index: 2;
+          overflow: hidden;
         }
-        .bems-doc-hero-meta > div { padding: 10px 18px; }
+        .bems-doc-hero-meta > div { padding: 10px 14px 11px; }
+        .bems-doc-hero-meta .cap { letter-spacing: .12em; white-space: nowrap; }
         .bems-doc-hero-meta > div + div { border-left: 1px solid rgba(255, 255, 255, .1); }
+        .bems-doc-hero,
+        .bems-doc-hero-top,
+        .bems-doc-hero-top > div,
+        .bems-doc-amt,
+        .bems-doc-words {
+          border-left: none !important;
+          border-right: none !important;
+        }
         .bems-doc-hero-meta p {
           font-size: 11.5px;
           font-weight: 600;
@@ -1012,14 +1022,32 @@ export default function DriverStatementPage() {
           .bems-doc-head { margin-bottom: 12px !important; }
           .bems-doc-logo img { height: 44px !important; }
           .bems-doc-meta-right h1 { font-size: 24px !important; }
-          .bems-doc-hero { border-radius: 10px !important; margin-bottom: 12px !important; }
-          .bems-doc-hero-top { padding: 12px 18px !important; }
-          .bems-doc-amt { font-size: 32px !important; margin: 4px 0 !important; }
+          .bems-doc-hero {
+            border-radius: 10px !important;
+            margin-bottom: 12px !important;
+            border-left: none !important;
+            border-right: none !important;
+          }
+          .bems-doc-hero-top {
+            padding: 12px 18px !important;
+            border-left: none !important;
+            border-right: none !important;
+          }
+          .bems-doc-amt {
+            font-size: 32px !important;
+            margin: 4px 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+          }
           .bems-doc-stamp { width: 72px !important; height: 72px !important; }
           .bems-doc-stamp b { font-size: 14px !important; }
           .bems-doc-stamp span { font-size: 7px !important; }
-          .bems-doc-hero-meta > div { padding: 8px 14px !important; }
-          .bems-doc-hero-meta p { font-size: 12px !important; }
+          .bems-doc-hero-meta {
+            grid-template-columns: repeat(5, 1fr) !important;
+            overflow: hidden !important;
+          }
+          .bems-doc-hero-meta > div { padding: 6px 10px !important; }
+          .bems-doc-hero-meta p { font-size: 11.5px !important; }
           .bems-doc-parties { border-radius: 10px !important; margin-bottom: 12px !important; }
           .bems-doc-party { padding: 10px 16px !important; }
           .bems-doc-party .nm { font-size: 14px !important; margin: 3px 0 !important; }

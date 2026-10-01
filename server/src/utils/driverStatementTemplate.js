@@ -444,13 +444,23 @@ function renderDriverStatementHtml({
     .bems-doc-hero-meta {
       position: relative;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       border-top: 1px solid rgba(255, 255, 255, .12);
       background: rgba(0, 0, 0, .18);
       z-index: 2;
+      overflow: hidden;
     }
-    .bems-doc-hero-meta > div { padding: 10px 18px; }
+    .bems-doc-hero-meta > div { padding: 10px 14px; }
+    .bems-doc-hero-meta .cap { letter-spacing: .12em; white-space: nowrap; }
     .bems-doc-hero-meta > div + div { border-left: 1px solid rgba(255, 255, 255, .1); }
+    .bems-doc-hero,
+    .bems-doc-hero-top,
+    .bems-doc-hero-top > div,
+    .bems-doc-amt,
+    .bems-doc-words {
+      border-left: none !important;
+      border-right: none !important;
+    }
     .bems-doc-hero-meta p {
       font-size: 11.5px;
       font-weight: 600;
@@ -822,13 +832,30 @@ function renderDriverStatementHtml({
       .bems-doc-head { margin-bottom: 0 !important; }
       .bems-doc-logo img { height: 38px !important; }
       .bems-doc-meta-right h1 { font-size: 22px !important; }
-      .bems-doc-hero { border-radius: 8px !important; }
-      .bems-doc-hero-top { padding: 8px 14px 6px !important; }
-      .bems-doc-amt { font-size: 28px !important; margin: 2px 0 !important; }
+      .bems-doc-hero {
+        border-radius: 8px !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
+      .bems-doc-hero-top {
+        padding: 8px 14px 6px !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
+      .bems-doc-amt {
+        font-size: 28px !important;
+        margin: 2px 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
       .bems-doc-stamp { width: 66px !important; height: 66px !important; }
       .bems-doc-stamp b { font-size: 13px !important; }
       .bems-doc-stamp span { font-size: 6.5px !important; }
-      .bems-doc-hero-meta > div { padding: 5px 12px 6px !important; }
+      .bems-doc-hero-meta {
+        grid-template-columns: repeat(5, 1fr) !important;
+        overflow: hidden !important;
+      }
+      .bems-doc-hero-meta > div { padding: 5px 8px !important; }
       .bems-doc-hero-meta p { font-size: 11px !important; }
       .bems-doc-parties { border-radius: 8px !important; }
       .bems-doc-party { padding: 6px 12px !important; }
@@ -960,12 +987,16 @@ function renderDriverStatementHtml({
 
         <div class="bems-doc-hero-meta">
           <div>
+            <div class="cap">Opening Balance</div>
+            <p>₦${openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div>
             <div class="cap">Total Earned (Gross)</div>
-            <p>₦${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p>+₦${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <div>
             <div class="cap">Total Disbursed</div>
-            <p>₦${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p>-₦${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <div>
             <div class="cap">Completed Drops</div>

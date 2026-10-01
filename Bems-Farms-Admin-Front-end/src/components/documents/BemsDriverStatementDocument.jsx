@@ -913,6 +913,17 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
       padding: 0 !important;
       box-shadow: none !important;
     }
+    .bems-doc-hero, .bems-doc-hero-top, .bems-doc-hero-top > div, .bems-doc-amt {
+      border-left: none !important;
+      border-right: none !important;
+    }
+    .bems-doc-hero-meta {
+      grid-template-columns: repeat(5, 1fr) !important;
+      overflow: hidden !important;
+    }
+    .bems-doc-hero-meta > div {
+      padding: 5px 8px !important;
+    }
   </style>
 </head>
 <body>
