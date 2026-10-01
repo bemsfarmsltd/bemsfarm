@@ -235,13 +235,13 @@ export default function BemsDriverStatementDocument({
 
   // ── Multi-Page Chunking Logic ──
   // Rule: Statement has exactly 1 Official Header (Page 1) and 1 Official Footer (Last Page).
-  // Single executive A4 page comfortably accommodates up to 3 itemized transactions
-  // alongside official header, balance hero, driver profile, 4 KPI cards, totals, and signatures.
-  const isMultiPage = filteredStatement.length > 3
+  // Single page fits up to 4 transactions alongside all summary cards, totals, and signatures.
+  // When multi-page, closing totals & signatures move to the final page, allowing Page 1 to comfortably hold up to 10 transactions.
+  const isMultiPage = filteredStatement.length > 4
 
-  let page1Count = Math.min(filteredStatement.length, 6)
+  let page1Count = Math.min(filteredStatement.length, 10)
   if (isMultiPage && filteredStatement.length - page1Count < 2) {
-    page1Count = Math.ceil(filteredStatement.length / 2)
+    page1Count = Math.max(4, filteredStatement.length - 2)
   }
 
   const page1Rows = isMultiPage ? filteredStatement.slice(0, page1Count) : filteredStatement
@@ -255,7 +255,7 @@ export default function BemsDriverStatementDocument({
         remainingPages.push({ rows: remaining, isFinal: true })
         remaining = []
       } else {
-        const chunkSize = Math.min(12, remaining.length - 1)
+        const chunkSize = Math.min(12, remaining.length - 2)
         remainingPages.push({ rows: remaining.slice(0, chunkSize), isFinal: false })
         remaining = remaining.slice(chunkSize)
       }

@@ -348,11 +348,11 @@ export default function DriverStatementPage() {
     printWindow.document.close();
   }, [driverName]);
 
-  const isMultiPage = statement.length > 3;
+  const isMultiPage = statement.length > 4;
 
-  let page1Count = Math.min(statement.length, 6);
+  let page1Count = Math.min(statement.length, 10);
   if (isMultiPage && statement.length - page1Count < 2) {
-    page1Count = Math.ceil(statement.length / 2);
+    page1Count = Math.max(4, statement.length - 2);
   }
 
   const page1Rows = isMultiPage ? statement.slice(0, page1Count) : statement;
@@ -366,7 +366,7 @@ export default function DriverStatementPage() {
         remainingPages.push({ rows: remaining, isFinal: true });
         remaining = [];
       } else {
-        const chunkSize = Math.min(12, remaining.length - 1);
+        const chunkSize = Math.min(12, remaining.length - 2);
         remainingPages.push({ rows: remaining.slice(0, chunkSize), isFinal: false });
         remaining = remaining.slice(chunkSize);
       }
