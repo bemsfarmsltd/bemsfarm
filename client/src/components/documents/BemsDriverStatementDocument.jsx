@@ -450,8 +450,7 @@ export default function BemsDriverStatementDocument({
               <div className="nm">{driverName}</div>
               <p>
                 <b>Wallet Account:</b> <span className="mono">{walletAccountNo}</span><br />
-                <b>Phone:</b> {driverPhone}<br />
-                <b>Email:</b> {driverEmail}
+                <b>Phone:</b> {driverPhone} · <b>Email:</b> {driverEmail}
               </p>
             </div>
 

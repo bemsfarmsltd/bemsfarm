@@ -1363,8 +1363,7 @@ function renderDriverStatementHtml({
           <div class="nm">${driverName}</div>
           <p>
             <b>Wallet Account:</b> <span class="mono">${walletAccountNo}</span><br>
-            <b>Phone:</b> ${driverPhone}<br>
-            <b>Email:</b> ${driverEmail}
+            <b>Phone:</b> ${driverPhone} · <b>Email:</b> ${driverEmail}
           </p>
         </div>
 
