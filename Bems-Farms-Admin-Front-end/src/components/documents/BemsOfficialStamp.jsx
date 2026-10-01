@@ -10,7 +10,6 @@ export default function BemsOfficialStamp({
   tilt = -12,
   color = '#0c4a2a',
   accentColor = '#b8860b',
-  rcNumber = 'RC 1849204',
   companyName = 'BEMS FARMS LIMITED',
   state = 'ABIA STATE · NIGERIA',
   className = '',
@@ -128,7 +127,7 @@ export default function BemsOfficialStamp({
             startOffset="50%"
             textAnchor="middle"
           >
-            ★ {rcNumber} · {state} ★
+            ★ {state} ★
           </textPath>
         </text>
 

@@ -84,7 +84,7 @@ function generateSecurityCode(ref, amount) {
   return `${h1.slice(0, 4)}-${h1.slice(4, 8)}-${h2.slice(0, 4)}-${h2.slice(4, 8)}`;
 }
 
-function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED', rcNumber = 'RC 1849204') {
+function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED') {
   return `
     <div class="bems-official-stamp" style="display:inline-block;width:82px;height:82px;transform:rotate(-12deg);user-select:none;flex-shrink:0;mix-blend-mode:multiply;opacity:0.94;">
       <svg viewBox="0 0 140 140" width="82" height="82" style="display:block;overflow:visible">
@@ -100,7 +100,7 @@ function getOfficialStampSvg(companyName = 'BEMS FARMS LIMITED', rcNumber = 'RC 
           <textPath href="#srv-stamp-top" startOffset="50%" text-anchor="middle">★ ${companyName} ★</textPath>
         </text>
         <text fill="#0c4a2a" font-size="7.2" font-weight="700" font-family="'Cinzel', Georgia, serif" letter-spacing="1.1">
-          <textPath href="#srv-stamp-btm" startOffset="50%" text-anchor="middle">★ ${rcNumber} · ABIA STATE ★</textPath>
+          <textPath href="#srv-stamp-btm" startOffset="50%" text-anchor="middle">★ ABIA STATE · NIGERIA ★</textPath>
         </text>
         <polygon points="70,44 71.8,49.5 77.5,49.5 73,53 74.8,58.5 70,55 65.2,58.5 67,53 62.5,49.5 68.2,49.5" fill="#b8860b" />
         <text x="70" y="69" text-anchor="middle" fill="#0c4a2a" font-size="11.5" font-weight="900" font-family="'Cinzel', Georgia, serif" letter-spacing="2.5">OFFICIAL</text>
@@ -152,8 +152,6 @@ function renderDriverStatementHtml({
 
   const companyName = company.name || 'Bems Farms Limited';
   const companyAddress = company.address || 'Central Farm Settlement Hub, Umuahia, Abia State';
-  const rcNumber = company.rc_number || 'RC 1849204';
-  const tinNumber = company.tin || 'TIN 24819402-0001';
   const companyEmail = company.email || 'corporate@bemsfarms.com';
   const companyPhone = company.phone || '+234 800 236 7326 / +234 814 000 0000';
 
@@ -910,7 +908,7 @@ function renderDriverStatementHtml({
           <div class="bems-doc-co">
             <b>${companyName}</b> · Logistics & Fleet Operations<br>
             ${companyAddress}<br>
-            ${rcNumber} · ${tinNumber} · ${companyEmail}
+            ${companyEmail} · ${companyPhone}
           </div>
         </div>
 
@@ -1094,7 +1092,7 @@ function renderDriverStatementHtml({
             <span>Financial Controller &amp; Head of Logistics</span>
           </div>
           <div class="bems-doc-stamp-wrapper">
-            ${getOfficialStampSvg(companyName, rcNumber)}
+            ${getOfficialStampSvg(companyName)}
           </div>
         </div>
       </section>
@@ -1109,7 +1107,7 @@ function renderDriverStatementHtml({
       <div class="bems-doc-foot">
         <span>${companyPhone}</span>
         <span>www.bemsfarms.com</span>
-        <span>${rcNumber} · ${tinNumber}</span>
+        <span>${companyEmail}</span>
       </div>
     </div>
   </div>

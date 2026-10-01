@@ -171,8 +171,6 @@ export default function BemsOfficialDocument({
   const secondaryAccount = effectiveSettings.invoice_secondary_account_number || effectiveSettings.secondary_account || ''
   const companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Limited'
   const companyAddress = effectiveSettings.invoice_company_address || effectiveSettings.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
-  const rcNumber = effectiveSettings.invoice_rc_number || effectiveSettings.rc_number || 'RC 1849204'
-  const tinNumber = effectiveSettings.invoice_tin || effectiveSettings.tin || 'TIN 24819402-0001'
   const companyEmail = effectiveSettings.invoice_email || effectiveSettings.email || 'corporate@bemsfarms.com'
   const companyPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || '+234 800 236 7326 / +234 814 000 0000'
   const paymentTerms = effectiveSettings.invoice_payment_terms || effectiveSettings.payment_terms || `Payment is due by ${dueDate}. Goods are released on confirmation of payment. Prices are in Nigerian naira.`
@@ -230,7 +228,7 @@ export default function BemsOfficialDocument({
               </div>
               <div className="bems-doc-co">
                 <b>{companyName}</b> · {companyAddress}<br />
-                {rcNumber} · {tinNumber} · {companyEmail}
+                {companyEmail} · {companyPhone}
               </div>
             </div>
 
@@ -548,7 +546,6 @@ export default function BemsOfficialDocument({
                 <BemsOfficialStamp
                   size={84}
                   companyName={companyName}
-                  rcNumber={rcNumber}
                 />
               </div>
             </div>
@@ -564,7 +561,7 @@ export default function BemsOfficialDocument({
           <div className="bems-doc-foot">
             <span>{companyPhone}</span>
             <span>www.bemsfarms.com</span>
-            <span>{rcNumber} · {tinNumber}</span>
+            <span>{companyEmail}</span>
           </div>
         </div>
 

@@ -421,11 +421,10 @@ export default function InvoiceSettings() {
                 <BemsOfficialStamp
                   size={120}
                   companyName={form.invoice_company_name || 'BEMS FARMS LIMITED'}
-                  rcNumber={form.invoice_rc_number || 'RC 1849204'}
                 />
                 <div className="mt-3">
-                  <span className="badge bg-success text-white px-2.5 py-1 font-monospace" style={{ fontSize: 11 }}>
-                    {form.invoice_rc_number || 'RC 1849204'}
+                  <span className="badge bg-success text-white px-2.5 py-1" style={{ fontSize: 11 }}>
+                    Official Corporate Seal
                   </span>
                   <div className="text-muted small mt-1 font-monospace" style={{ fontSize: 11 }}>
                     Federal Republic of Nigeria
@@ -449,8 +448,8 @@ export default function InvoiceSettings() {
                   <div>
                     <h5 className="fw-bold mb-0 text-dark">{form.invoice_company_name || 'Bems Farms Limited'}</h5>
                     <small className="text-muted">{form.invoice_company_address || 'Central Farm Settlement Hub, Umuahia'}</small>
-                    <div className="text-muted font-monospace mt-1" style={{ fontSize: 11 }}>
-                      {form.invoice_rc_number || 'RC 1849204'} · {form.invoice_tin || 'TIN 24819402-0001'}
+                    <div className="text-muted mt-1" style={{ fontSize: 11 }}>
+                      {form.invoice_email || 'corporate@bemsfarms.com'} · {form.invoice_phone || '+234 800 236 7326'}
                     </div>
                   </div>
                   <div className="text-end">

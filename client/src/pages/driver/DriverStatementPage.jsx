@@ -282,8 +282,6 @@ export default function DriverStatementPage() {
 
   const companyName = company.name || "Bems Farms Limited";
   const companyAddress = company.address || "Central Farm Settlement Hub, Umuahia, Abia State";
-  const rcNumber = company.rc_number || "RC 1849204";
-  const tinNumber = company.tin || "TIN 24819402-0001";
   const companyEmail = company.email || "corporate@bemsfarms.com";
   const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
 
@@ -1258,7 +1256,7 @@ export default function DriverStatementPage() {
                       <div className="bems-doc-co">
                         <b>{companyName}</b> · Logistics & Fleet Operations<br />
                         {companyAddress}<br />
-                        {rcNumber} · {tinNumber} · {companyEmail}
+                        {companyEmail} · {companyPhone}
                       </div>
                     </div>
 
@@ -1521,7 +1519,6 @@ export default function DriverStatementPage() {
                           <BemsOfficialStamp
                             size={82}
                             companyName={companyName}
-                            rcNumber={company.rc_number || "RC 1849204"}
                           />
                         </div>
                       </div>
@@ -1534,7 +1531,7 @@ export default function DriverStatementPage() {
                     <div className="bems-doc-foot">
                       <span>{companyPhone}</span>
                       <span>www.bemsfarms.com</span>
-                      <span>{rcNumber} · {tinNumber}</span>
+                      <span>{companyEmail}</span>
                     </div>
                   </div>
                 ) : (
@@ -1690,7 +1687,6 @@ export default function DriverStatementPage() {
                           <BemsOfficialStamp
                             size={82}
                             companyName={companyName}
-                            rcNumber={company.rc_number || "RC 1849204"}
                           />
                         </div>
                       </div>
@@ -1703,7 +1699,7 @@ export default function DriverStatementPage() {
                     <div className="bems-doc-foot">
                       <span>{companyPhone}</span>
                       <span>www.bemsfarms.com</span>
-                      <span>{rcNumber} · {tinNumber}</span>
+                      <span>{companyEmail}</span>
                     </div>
                   </div>
                 </div>
