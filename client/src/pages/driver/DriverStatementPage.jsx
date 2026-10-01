@@ -725,11 +725,11 @@ export default function DriverStatementPage() {
           text-align: center;
         }
         .bems-doc-sig-img {
-          height: 48px;
+          height: 52px;
           max-width: 130px;
           object-fit: contain;
           display: block;
-          margin: 0 auto -6px auto;
+          margin: 0 auto 3px auto;
           mix-blend-mode: multiply !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
@@ -738,7 +738,7 @@ export default function DriverStatementPage() {
           filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.04));
         }
         .bems-doc-sig-placeholder {
-          height: 38px;
+          height: 48px;
         }
         .bems-doc-sig .ln {
           height: 0 !important;
@@ -768,7 +768,7 @@ export default function DriverStatementPage() {
         .bems-doc-stamp-wrapper {
           position: absolute;
           left: 50%;
-          top: 40px;
+          top: 14px;
           transform: translate(-50%, -50%);
           z-index: 2;
           pointer-events: none;
@@ -974,11 +974,11 @@ export default function DriverStatementPage() {
           .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
           .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: center !important; }
           .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; text-align: center !important; }
-          .bems-doc-sig-img { height: 44px !important; max-width: 120px !important; margin: 0 auto -6px auto !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; position: relative !important; z-index: 3 !important; }
+          .bems-doc-sig-img { height: 48px !important; max-width: 120px !important; margin: 0 auto 3px auto !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; position: relative !important; z-index: 3 !important; }
           .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; padding: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; position: relative !important; z-index: 1 !important; }
           .bems-doc-sig b { text-align: center !important; }
           .bems-doc-sig span { text-align: center !important; }
-          .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 38px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 14px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.92 !important; }
         }
       `}</style>
