@@ -61,10 +61,11 @@ export default function DriverCommissions() {
   const [payConfirm, setPayConfirm] = useState(false)
   const [viewModal, setViewModal] = useState(null) // driverId
   const [busyId, setBusyId]       = useState(null)
+  const [expandedDrivers, setExpandedDrivers] = useState({})
 
-  const [statementDriver, setStatementDriver] = useState(null)
-  const [statementData, setStatementData] = useState(null)
-  const [loadingStatement, setLoadingStatement] = useState(false)
+  const toggleExpand = (driverId) => {
+    setExpandedDrivers(prev => ({ ...prev, [driverId]: !prev[driverId] }))
+  }
 
   const openStatement = async (c) => {
     const driverId = c.driverId || c.driver_id
@@ -127,17 +128,65 @@ export default function DriverCommissions() {
     }
   }
 
-  const openPay = (c) => { setPayModal(c); setPayForm({ bankAccountId: '', paymentRef: '' }); setPayConfirm(false) }
+  const approveAllPending = async (driverGroup) => {
+    const pending = driverGroup.pendingRecords || driverGroup.records.filter(r => r.status === 'pending')
+    if (!pending.length) return
+    setBusyId(driverGroup.driverId)
+    try {
+      for (const r of pending) {
+        await api.patch(`/admin/accounts/commissions/${r.id}`, { status: 'approved' })
+      }
+      await load()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not approve pending commissions.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const openPay = (c) => {
+    setPayModal({
+      ...c,
+      recordIds: [c.id],
+    })
+    setPayForm({ bankAccountId: '', paymentRef: '' })
+    setPayConfirm(false)
+  }
+
+  const openPayForDriver = (driverGroup) => {
+    const toPay = driverGroup.approvedRecords.length > 0
+      ? driverGroup.approvedRecords
+      : driverGroup.records.filter(r => r.status !== 'paid')
+    if (!toPay.length) return
+    const totalAmount = toPay.reduce((s, r) => s + (Number(r.netPayout) || 0), 0)
+    const totalDeliveries = toPay.reduce((s, r) => s + (Number(r.deliveries) || 0), 0)
+    setPayModal({
+      driverId: driverGroup.driverId,
+      driver: driverGroup.driver,
+      phone: driverGroup.phone,
+      periodFrom: driverGroup.periodFrom,
+      periodTo: driverGroup.periodTo,
+      deliveries: totalDeliveries,
+      netPayout: totalAmount,
+      recordIds: toPay.map(r => r.id),
+    })
+    setPayForm({ bankAccountId: '', paymentRef: '' })
+    setPayConfirm(false)
+  }
+
   const closePay = () => { setPayModal(null); setPayConfirm(false) }
 
   const confirmPay = async () => {
-    setBusyId(payModal.id)
+    const ids = payModal.recordIds || [payModal.id]
+    setBusyId(payModal.driverId || payModal.id)
     try {
-      await api.patch(`/admin/accounts/commissions/${payModal.id}`, {
-        status: 'paid',
-        bank_account_id: payForm.bankAccountId ? Number(payForm.bankAccountId) : undefined,
-        payment_ref: payForm.paymentRef || undefined,
-      })
+      for (const id of ids) {
+        await api.patch(`/admin/accounts/commissions/${id}`, {
+          status: 'paid',
+          bank_account_id: payForm.bankAccountId ? Number(payForm.bankAccountId) : undefined,
+          payment_ref: payForm.paymentRef || undefined,
+        })
+      }
       await load()
       closePay()
     } catch (e) {
@@ -147,20 +196,77 @@ export default function DriverCommissions() {
     }
   }
 
-  // Group loaded rows by driver — for the driver cards and per-driver history
+  // Group loaded rows by driver — for the driver cards and consolidated table view
   const byDriver = useMemo(() => {
     const map = new Map()
     records.forEach(c => {
-      if (!map.has(c.driverId)) map.set(c.driverId, { driverId: c.driverId, driver: c.driver, phone: c.phone, records: [] })
+      if (!map.has(c.driverId)) {
+        map.set(c.driverId, {
+          driverId: c.driverId,
+          driver: c.driver,
+          phone: c.phone,
+          vehiclePlate: c.vehiclePlate,
+          records: [],
+        })
+      }
       map.get(c.driverId).records.push(c)
     })
-    return Array.from(map.values()).map(d => ({
-      ...d,
-      unpaid: d.records.filter(r => r.status !== 'paid').reduce((s, r) => s + r.netPayout, 0),
-      totalEarned: d.records.reduce((s, r) => s + r.netPayout, 0),
-      totalDeliveries: d.records.reduce((s, r) => s + r.deliveries, 0),
-      lastPaid: d.records.filter(r => r.paidAt).sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt))[0]?.paidAt,
-    }))
+    return Array.from(map.values()).map(d => {
+      const recs = d.records
+      const deliveries = recs.reduce((s, r) => s + (Number(r.deliveries) || 0), 0)
+      const netPayout = recs.reduce((s, r) => s + (Number(r.netPayout) || 0), 0)
+      const baseAmount = recs.reduce((s, r) => s + (Number(r.baseAmount) || 0), 0)
+      const bonus = recs.reduce((s, r) => s + (Number(r.bonus) || 0), 0)
+      const deductions = recs.reduce((s, r) => s + (Number(r.deductions) || 0), 0)
+
+      const fromDates = recs.map(r => r.periodFrom).filter(Boolean).sort()
+      const toDates = recs.map(r => r.periodTo).filter(Boolean).sort()
+      const periodFrom = fromDates[0] || null
+      const periodTo = toDates[toDates.length - 1] || null
+
+      const pendingRecords = recs.filter(r => r.status === 'pending')
+      const approvedRecords = recs.filter(r => r.status === 'approved')
+      const paidRecords = recs.filter(r => r.status === 'paid')
+
+      const pendingAmount = pendingRecords.reduce((s, r) => s + (Number(r.netPayout) || 0), 0)
+      const approvedAmount = approvedRecords.reduce((s, r) => s + (Number(r.netPayout) || 0), 0)
+      const paidAmount = paidRecords.reduce((s, r) => s + (Number(r.netPayout) || 0), 0)
+
+      let overallStatus = 'pending'
+      if (recs.length > 0 && recs.every(r => r.status === 'paid')) {
+        overallStatus = 'paid'
+      } else if (recs.length > 0 && recs.every(r => r.status === 'approved')) {
+        overallStatus = 'approved'
+      } else if (pendingRecords.length > 0 && approvedRecords.length > 0) {
+        overallStatus = 'mixed'
+      } else if (approvedRecords.length > 0) {
+        overallStatus = 'approved'
+      } else if (pendingRecords.length > 0) {
+        overallStatus = 'pending'
+      }
+
+      return {
+        ...d,
+        deliveries,
+        netPayout,
+        baseAmount,
+        bonus,
+        deductions,
+        periodFrom,
+        periodTo,
+        pendingRecords,
+        approvedRecords,
+        paidRecords,
+        pendingAmount,
+        approvedAmount,
+        paidAmount,
+        overallStatus,
+        unpaid: recs.filter(r => r.status !== 'paid').reduce((s, r) => s + (Number(r.netPayout) || 0), 0),
+        totalEarned: netPayout,
+        totalDeliveries: deliveries,
+        lastPaid: recs.filter(r => r.paidAt).sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt))[0]?.paidAt,
+      }
+    })
   }, [records])
 
   const paidRecords = records.filter(r => r.status === 'paid').sort((a, b) => new Date(b.paidAt || 0) - new Date(a.paidAt || 0))
@@ -396,7 +502,12 @@ export default function DriverCommissions() {
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white border-bottom">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div className="fw-medium" style={{ fontSize:14 }}>Commission Records</div>
+            <div className="d-flex align-items-center gap-2">
+              <div className="fw-medium" style={{ fontSize:14 }}>Commission Records</div>
+              <span className="badge bg-light text-secondary border fw-normal" style={{ fontSize:11 }}>
+                {byDriver.length} {byDriver.length === 1 ? 'Driver' : 'Drivers'} (Consolidated)
+              </span>
+            </div>
             <div className="d-flex gap-2">
               <div className="input-group input-group-sm" style={{ width: 200 }}>
                 <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted"/></span>
@@ -428,51 +539,163 @@ export default function DriverCommissions() {
                   <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
                   Loading commissions…
                 </td></tr>
-              ) : records.length === 0 && (
+              ) : byDriver.length === 0 && (
                 <tr><td colSpan={6} className="text-center py-5 text-muted">No commission records yet — generate some above.</td></tr>
               )}
-              {!loading && records.map(c => (
-                <tr key={c.id}>
-                  <td className="px-3 py-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                        style={{ width:26, height:26, fontSize:10, background:colorFor(c.driverId) }}>{ini(c.driver)}</div>
-                      <span style={{ fontSize:12 }}>{c.driver}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-dark font-medium" style={{ fontSize:12 }}>
-                    {c.periodFrom && c.periodTo ? (
-                      fmtD(c.periodFrom) === fmtD(c.periodTo) ? fmtD(c.periodFrom) : `${fmtD(c.periodFrom)} – ${fmtD(c.periodTo)}`
-                    ) : fmtD(c.periodFrom || c.periodTo)}
-                  </td>
-                  <td className="px-3 py-2">{c.deliveries}</td>
-                  <td className="px-3 py-2 fw-semibold">{fmt(c.netPayout)}</td>
-                  <td className="px-3 py-2">
-                    <span className={`badge border ${STATUS_CFG[c.status]?.cls}`} style={{ fontSize:11 }}>{STATUS_CFG[c.status]?.label}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="d-flex gap-1">
-                      {c.status === 'pending' && (
-                        <button className="btn btn-sm btn-outline-info" style={{ fontSize:11, padding:'2px 8px' }}
-                          disabled={busyId === c.id} onClick={() => approveCommission(c)}>
-                          {busyId === c.id ? <span className="spinner-border spinner-border-sm" /> : 'Approve'}
+              {!loading && byDriver.map(d => (
+                <>
+                  <tr key={d.driverId} className={expandedDrivers[d.driverId] ? 'table-light' : ''}>
+                    <td className="px-3 py-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                          style={{ width:28, height:28, fontSize:10, background:colorFor(d.driverId) }}>
+                          {ini(d.driver)}
+                        </div>
+                        <div>
+                          <div className="fw-semibold text-dark" style={{ fontSize:12.5 }}>{d.driver}</div>
+                          <div className="text-muted d-flex align-items-center gap-1" style={{ fontSize:10.5 }}>
+                            <span>{d.phone || 'Driver'}</span>
+                            {d.records.length > 1 && (
+                              <span className="badge bg-light text-secondary border px-1.5 py-0.5" style={{ fontSize:9.5 }}>
+                                {d.records.length} periods
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-dark font-medium" style={{ fontSize:12 }}>
+                      {d.periodFrom && d.periodTo ? (
+                        fmtD(d.periodFrom) === fmtD(d.periodTo) ? fmtD(d.periodFrom) : `${fmtD(d.periodFrom)} – ${fmtD(d.periodTo)}`
+                      ) : fmtD(d.periodFrom || d.periodTo)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="fw-semibold text-dark">{d.deliveries}</span>
+                      <span className="text-muted ms-1" style={{ fontSize:11 }}>trips</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="fw-bold text-dark" style={{ fontSize:13.5 }}>{fmt(d.netPayout)}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {d.overallStatus === 'mixed' ? (
+                        <div className="d-flex flex-column gap-1">
+                          {d.approvedRecords.length > 0 && (
+                            <span className="badge border bg-info-subtle text-info border-info-subtle" style={{ fontSize:10 }}>
+                              Approved: {fmt(d.approvedAmount)}
+                            </span>
+                          )}
+                          {d.pendingRecords.length > 0 && (
+                            <span className="badge border bg-warning-subtle text-warning border-warning-subtle" style={{ fontSize:10 }}>
+                              Pending: {fmt(d.pendingAmount)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={`badge border ${STATUS_CFG[d.overallStatus]?.cls}`} style={{ fontSize:11 }}>
+                          {STATUS_CFG[d.overallStatus]?.label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="d-flex align-items-center gap-1 flex-wrap">
+                        {d.pendingRecords.length > 0 && (
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            style={{ fontSize:11, padding:'2px 8px' }}
+                            disabled={busyId === d.driverId}
+                            onClick={() => approveAllPending(d)}
+                            title="Approve pending commissions for this driver"
+                          >
+                            {busyId === d.driverId ? (
+                              <span className="spinner-border spinner-border-sm" />
+                            ) : (
+                              d.approvedRecords.length > 0 ? `Approve (${fmt(d.pendingAmount)})` : 'Approve'
+                            )}
+                          </button>
+                        )}
+                        {d.approvedRecords.length > 0 && (
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            style={{ fontSize:11, padding:'2px 8px' }}
+                            onClick={() => openPayForDriver(d)}
+                            title="Pay approved commissions"
+                          >
+                            Pay {d.pendingRecords.length > 0 ? `(${fmt(d.approvedAmount)})` : ''}
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          style={{ fontSize:11, padding:'2px 8px' }}
+                          onClick={() => openStatement(d)}
+                          title="View Official Statement of Account"
+                        >
+                          <i className="ri-file-list-3-line me-1" />Statement
                         </button>
-                      )}
-                      {c.status === 'approved' && (
-                        <button className="btn btn-sm btn-outline-success" style={{ fontSize:11, padding:'2px 8px' }}
-                          onClick={() => openPay(c)}>Pay</button>
-                      )}
-                      <button
-                        className="btn btn-sm btn-outline-secondary"
-                        style={{ fontSize:11, padding:'2px 8px' }}
-                        onClick={() => openStatement(c)}
-                        title="View Official Statement of Account"
-                      >
-                        <i className="ri-file-list-3-line me-1" />Statement
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                        {d.records.length > 1 && (
+                          <button
+                            className={`btn btn-sm ${expandedDrivers[d.driverId] ? 'btn-secondary text-white' : 'btn-light border text-muted'}`}
+                            style={{ fontSize:11, padding:'2px 6px' }}
+                            onClick={() => toggleExpand(d.driverId)}
+                            title={expandedDrivers[d.driverId] ? "Hide individual periods" : "View individual periods breakdown"}
+                          >
+                            <i className={expandedDrivers[d.driverId] ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Sub-rows for period breakdown if expanded */}
+                  {expandedDrivers[d.driverId] && d.records.map((c, idx) => (
+                    <tr key={c.id || idx} style={{ background:'#f8fafc', fontSize:12 }}>
+                      <td className="px-3 py-1.5 text-muted">
+                        <div className="d-flex align-items-center gap-1.5 ps-3">
+                          <i className="ri-corner-down-right-line text-secondary" style={{ fontSize:11 }} />
+                          <span style={{ fontSize:11 }}>Period #{idx + 1}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-1.5 text-muted" style={{ fontSize:11.5 }}>
+                        {c.periodFrom && c.periodTo ? (
+                          fmtD(c.periodFrom) === fmtD(c.periodTo) ? fmtD(c.periodFrom) : `${fmtD(c.periodFrom)} – ${fmtD(c.periodTo)}`
+                        ) : fmtD(c.periodFrom || c.periodTo)}
+                      </td>
+                      <td className="px-3 py-1.5 text-muted" style={{ fontSize:11.5 }}>
+                        {c.deliveries} trips
+                      </td>
+                      <td className="px-3 py-1.5 fw-medium text-dark" style={{ fontSize:12 }}>
+                        {fmt(c.netPayout)}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className={`badge border ${STATUS_CFG[c.status]?.cls}`} style={{ fontSize:10 }}>
+                          {STATUS_CFG[c.status]?.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="d-flex gap-1">
+                          {c.status === 'pending' && (
+                            <button
+                              className="btn btn-sm btn-outline-info"
+                              style={{ fontSize:10, padding:'1px 6px' }}
+                              disabled={busyId === c.id}
+                              onClick={() => approveCommission(c)}
+                            >
+                              {busyId === c.id ? <span className="spinner-border spinner-border-sm" /> : 'Approve'}
+                            </button>
+                          )}
+                          {c.status === 'approved' && (
+                            <button
+                              className="btn btn-sm btn-outline-success"
+                              style={{ fontSize:10, padding:'1px 6px' }}
+                              onClick={() => openPay(c)}
+                            >
+                              Pay
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ))}
             </tbody>
           </table>
