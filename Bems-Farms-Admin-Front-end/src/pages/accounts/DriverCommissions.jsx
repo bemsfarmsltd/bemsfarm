@@ -62,6 +62,9 @@ export default function DriverCommissions() {
   const [viewModal, setViewModal] = useState(null) // driverId
   const [busyId, setBusyId]       = useState(null)
   const [expandedDrivers, setExpandedDrivers] = useState({})
+  const [statementDriver, setStatementDriver] = useState(null)
+  const [statementData, setStatementData] = useState(null)
+  const [loadingStatement, setLoadingStatement] = useState(false)
 
   const toggleExpand = (driverId) => {
     setExpandedDrivers(prev => ({ ...prev, [driverId]: !prev[driverId] }))
