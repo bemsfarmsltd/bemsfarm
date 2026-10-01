@@ -396,27 +396,39 @@ export default function Barcode() {
     let pageSize = '50mm 30mm'
     let w = '50mm'
     let h = '30mm'
-    let innerH = '29.3mm'
-    let barcodeH = '8.5mm'
-    let fontSizeName = '9.5px'
-    let fontSizePrice = '12px'
+    let innerH = '26mm'
+    let barcodeH = '6.8mm'
+    let fontSizeName = '8.5px'
+    let fontSizePrice = '11px'
+    let labelPadding = '1.8mm 2.2mm'
 
-    if (labelTemplate === 'compact_40x20') {
+    if (labelTemplate === 'thermal_50x25') {
+      pageSize = '50mm 25mm'
+      w = '50mm'
+      h = '25mm'
+      innerH = '21.5mm'
+      barcodeH = '5.8mm'
+      fontSizeName = '8px'
+      fontSizePrice = '10px'
+      labelPadding = '1.2mm 2mm'
+    } else if (labelTemplate === 'compact_40x20') {
       pageSize = '40mm 20mm'
       w = '40mm'
       h = '20mm'
-      innerH = '19.4mm'
-      barcodeH = '6mm'
-      fontSizeName = '8px'
-      fontSizePrice = '10px'
+      innerH = '18mm'
+      barcodeH = '5.5mm'
+      fontSizeName = '7.5px'
+      fontSizePrice = '9.5px'
+      labelPadding = '1mm 1.8mm'
     } else if (labelTemplate === 'crate_100x75') {
       pageSize = '100mm 75mm'
       w = '100mm'
       h = '75mm'
-      innerH = '74mm'
-      barcodeH = '28mm'
+      innerH = '70mm'
+      barcodeH = '26mm'
       fontSizeName = '16px'
       fontSizePrice = '22px'
+      labelPadding = '4mm 5mm'
     }
 
     // Grab the rendered SVGs from the hidden canvas or queue preview
@@ -488,14 +500,16 @@ export default function Barcode() {
               width: ${w};
               height: ${innerH};
               max-height: ${innerH};
-              padding: 1.5mm 1.8mm;
+              padding: ${labelPadding};
               display: flex;
               flex-direction: column;
-              justify-content: space-between;
+              justify-content: flex-start;
+              gap: ${labelTemplate==='crate_100x75' ? '2.5mm' : '0.8mm'};
               overflow: hidden;
               page-break-inside: avoid;
               break-inside: avoid;
               background: #fff;
+              box-sizing: border-box;
             }
             .label-page:not(:last-child) {
               page-break-after: always;
@@ -505,11 +519,12 @@ export default function Barcode() {
               display: flex; 
               justify-content: space-between; 
               align-items: center;
-              font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; 
+              font-size: ${labelTemplate==='crate_100x75' ? '12px' : '6.5px'}; 
               font-weight: 800; 
-              border-bottom: 1px solid #000; 
-              padding-bottom: 1px; 
-              margin-bottom: 1px; 
+              border-bottom: 0.8px solid #000; 
+              padding-bottom: 0.5px; 
+              margin-bottom: 0;
+              line-height: 1.1; 
             }
             .brand-pill { 
               background: #000; 
@@ -520,7 +535,8 @@ export default function Barcode() {
             }
             .brand-tag {
               color: #333;
-              font-size: 6.5px;
+              font-size: 6px;
+              font-weight: 600;
             }
             .name { 
               font-size: ${fontSizeName}; 
@@ -529,12 +545,14 @@ export default function Barcode() {
               overflow: hidden; 
               text-overflow: ellipsis; 
               line-height: 1.15;
+              margin: 0;
             }
             .price-row { 
               display: flex; 
               justify-content: space-between; 
               align-items: baseline; 
               line-height: 1.1;
+              margin: 0;
             }
             .price { 
               font-size: ${fontSizePrice}; 
@@ -542,7 +560,7 @@ export default function Barcode() {
               color: #000;
             }
             .unit { 
-              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7.5px'}; 
+              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7px'}; 
               font-weight: 600;
               color: #444; 
             }
@@ -551,32 +569,32 @@ export default function Barcode() {
               display: flex;
               justify-content: center;
               align-items: center;
-              margin: auto 0 0;
+              margin: 0.5mm 0 0;
               line-height: 1;
             }
             .barcode svg { 
               height: ${barcodeH} !important; 
               width: auto !important; 
-              max-width: 98% !important; 
+              max-width: 95% !important; 
               shape-rendering: crispEdges !important;
             }
             .sku { 
               text-align: center; 
-              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7.5px'}; 
+              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '6.8px'}; 
               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
               font-weight: 700;
               letter-spacing: 0.5px;
               line-height: 1;
-              margin-top: 1px;
+              margin-top: 0.4mm;
             }
             .dates { 
               display: flex; 
               justify-content: space-between; 
-              font-size: ${labelTemplate==='crate_100x75' ? '9px' : '6px'}; 
+              font-size: ${labelTemplate==='crate_100x75' ? '9px' : '5.5px'}; 
               color: #444; 
               border-top: 0.5px solid #666; 
-              padding-top: 1px; 
-              margin-top: 1px; 
+              padding-top: 0.5px; 
+              margin-top: 0.5mm; 
             }
           </style>
         </head>
@@ -1353,6 +1371,7 @@ export default function Barcode() {
                   onChange={(e) => setLabelTemplate(e.target.value)}
                 >
                   <option value="thermal_50x30">Standard Item / Shelf (50mm × 30mm) — XP-365B Recommended</option>
+                  <option value="thermal_50x25">Low-Profile Produce (50mm × 25mm)</option>
                   <option value="compact_40x20">Compact Produce Sticker (40mm × 20mm)</option>
                   <option value="crate_100x75">Pallet &amp; Delivery Crate Tag (100mm × 75mm)</option>
                   <option value="sheet_a4">Standard A4 Sticker Sheet (24-up Grid)</option>
