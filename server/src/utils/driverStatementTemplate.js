@@ -158,47 +158,201 @@ function renderDriverStatementHtml({
   const companyEmail = company.email || 'corporate@bemsfarms.com';
   const companyPhone = (company.phone && !company.phone.includes('800 236 7326')) ? company.phone : '';
 
-  const rowsHtml = statement && statement.length > 0 ? statement.map((ev, idx) => {
-    const isCredit = ev.type === 'credit';
-    const amt = parseFloat(ev.amount) || 0;
-    const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null;
-    const tagHtml = ev.order_id 
-      ? `<span class="bems-doc-tag" style="background:#e0f2fe;color:#0369a1;">Order #${ev.order_id}</span>` 
-      : '';
-    const addrHtml = ev.delivery_address 
-      ? `<div style="font-size:9.5px;color:#64748b;margin-top:2px;">${ev.delivery_address}</div>` 
-      : '';
+  const isMultiPage = statement && statement.length > 3;
+
+  let page1Count = Math.min(statement.length, 6);
+  if (isMultiPage && statement.length - page1Count < 2) {
+    page1Count = Math.ceil(statement.length / 2);
+  }
+
+  const page1Rows = isMultiPage ? statement.slice(0, page1Count) : statement;
+  const afterPage1 = isMultiPage ? statement.slice(page1Count) : [];
+
+  const remainingPages = [];
+  if (isMultiPage && afterPage1.length > 0) {
+    let remaining = [...afterPage1];
+    while (remaining.length > 0) {
+      if (remaining.length <= 8) {
+        remainingPages.push({ rows: remaining, isFinal: true });
+        remaining = [];
+      } else {
+        const chunkSize = Math.min(12, remaining.length - 1);
+        remainingPages.push({ rows: remaining.slice(0, chunkSize), isFinal: false });
+        remaining = remaining.slice(chunkSize);
+      }
+    }
+  }
+  const totalPages = 1 + remainingPages.length;
+
+  function renderRowsHtml(rows, startIndex = 0) {
+    if (!rows || rows.length === 0) {
+      return `
+        <tr>
+          <td colspan="7" class="c" style="padding:30px 12px;color:#64748b;">
+            No recorded transactions during this statement period.
+          </td>
+        </tr>
+      `;
+    }
+    return rows.map((ev, idx) => {
+      const isCredit = ev.type === 'credit';
+      const amt = parseFloat(ev.amount) || 0;
+      const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null;
+      const tagHtml = ev.order_id 
+        ? `<span class="bems-doc-tag" style="background:#e0f2fe;color:#0369a1;margin-left:6px;">Order #${ev.order_id}</span>` 
+        : '';
+      const addrHtml = ev.delivery_address 
+        ? `<div style="font-size:9.5px;color:#64748b;margin-top:2px;">${ev.delivery_address}</div>` 
+        : '';
+
+      return `
+        <tr>
+          <td class="mono">${String(startIndex + idx + 1).padStart(2, '0')}</td>
+          <td class="mono" style="font-size:10.5px;">${formatDate(ev.date)}</td>
+          <td class="it">
+            <b>${cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
+            ${tagHtml}
+            ${addrHtml}
+          </td>
+          <td class="mono" style="font-size:10px;color:#0f3622;font-weight:600;">${ev.reference || '—'}</td>
+          <td class="c">
+            <span class="${isCredit ? 'bems-stmt-badge-cr' : 'bems-stmt-badge-dr'}">
+              ${isCredit ? 'CR' : 'DR'}
+            </span>
+          </td>
+          <td class="r mono ${isCredit ? 'bems-stmt-amt-cr' : 'bems-stmt-amt-dr'}">
+            ${isCredit ? '+' : '-'}₦${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </td>
+          <td class="r mono" style="font-weight:600;color:#0f3622;">
+            ${runningBal !== null ? `₦${runningBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const totalsAndSignoffHtml = `
+      <!-- Verification & Totals -->
+      <section class="bems-doc-vt">
+        <div class="bems-doc-verify">
+          <div class="qr" style="padding:4px;background:#ffffff;border:1px solid #c9d6ce;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+            ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Verify Statement" style="width:72px;height:72px;display:block;">` : '<div style="width:72px;height:72px;background:#eef7f2;"></div>'}
+          </div>
+          <div>
+            <h4>Verified Logistics Settlement</h4>
+            <p>Scan with any smartphone camera or visit bemsfarms.com/verify to authenticate this official statement.</p>
+            <div class="cap" style="margin-bottom:2px;">Security Verification Code</div>
+            <div class="code">${securityCode}</div>
+          </div>
+        </div>
+
+        <dl class="bems-doc-tot">
+          <dt>Gross Delivery Earnings</dt>
+          <dd class="mono">₦${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+
+          <dt>Disbursed to Bank</dt>
+          <dd class="mono">₦${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+
+          ${pendingPayouts > 0 ? `
+            <dt>In-Flight Payouts</dt>
+            <dd class="mono" style="color:#d97706;">₦${pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+          ` : ''}
+
+          <dt class="grand">Closing Balance</dt>
+          <dd class="grand">
+            <span class="naira" style="font-size:14px;">₦</span>${closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </dd>
+
+          <dt>Settlement Account</dt>
+          <dd class="mono" style="font-size:9.5px;color:#8a6d12;">${accountNumber} (${bankName})</dd>
+        </dl>
+      </section>
+
+      <!-- Sign-off & Audit Notice -->
+      <section class="bems-doc-sign">
+        <div class="bems-doc-keep">
+          <b>Audit &amp; Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+        </div>
+
+        <div class="bems-doc-sign-right">
+          <div class="bems-doc-sig">
+            ${signatureUrl ? `<img src="${signatureUrl}" alt="Authorised Signature" class="bems-doc-sig-img" />` : ''}
+            <div class="ln"></div>
+            <b>For ${companyName}</b>
+            <span>Financial Controller &amp; Head of Logistics</span>
+          </div>
+          <div class="bems-doc-stamp-wrapper">
+            ${getOfficialStampSvg(companyName)}
+          </div>
+        </div>
+      </section>
+  `;
+
+  const footerGroupHtml = `
+    <div class="bems-doc-footer-group">
+      <!-- Thanks Banner -->
+      <div class="bems-doc-thanks">
+        <h3>Thank you for powering Bems Farms logistics.</h3>
+        <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+      </div>
+
+      <!-- Footer -->
+      <div class="bems-doc-foot">
+        <span>${companyPhone || 'Logistics & Fleet Hub'}</span>
+        <span>www.bemsfarms.com</span>
+        <span>${companyEmail}</span>
+      </div>
+    </div>
+  `;
+
+  const continuationPagesHtml = isMultiPage ? remainingPages.map((page, pageIdx) => {
+    const pageNum = pageIdx + 2;
+    let priorRowsCount = page1Rows.length;
+    for (let i = 0; i < pageIdx; i++) {
+      priorRowsCount += remainingPages[i].rows.length;
+    }
+    const pageRowsHtml = renderRowsHtml(page.rows, priorRowsCount);
 
     return `
-      <tr>
-        <td class="mono">${String(idx + 1).padStart(2, '0')}</td>
-        <td class="mono" style="font-size:10.5px;">${formatDate(ev.date)}</td>
-        <td class="it">
-          <b>${cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
-          ${tagHtml}
-          ${addrHtml}
-        </td>
-        <td class="mono" style="font-size:10px;color:#0f3622;font-weight:600;">${ev.reference || '—'}</td>
-        <td class="c">
-          <span class="${isCredit ? 'bems-stmt-badge-cr' : 'bems-stmt-badge-dr'}">
-            ${isCredit ? 'CR' : 'DR'}
-          </span>
-        </td>
-        <td class="r mono ${isCredit ? 'bems-stmt-amt-cr' : 'bems-stmt-amt-dr'}">
-          ${isCredit ? '+' : '-'}₦${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </td>
-        <td class="r mono" style="font-weight:600;color:#0f3622;">
-          ${runningBal !== null ? `₦${runningBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-        </td>
-      </tr>
+      <!-- Continuation Page ${pageNum} of ${totalPages} -->
+      <div class="bems-doc-page ${!page.isFinal ? 'bems-doc-page-intermediate' : ''}">
+        <div class="bems-doc-body" style="${!page.isFinal ? 'padding-bottom:24px !important;' : ''}">
+          <!-- Discreet Continuation Bar (NO HEADER ON CONTINUATION PAGES) -->
+          <div class="bems-stmt-page-head">
+            <span>Official Statement of Account (Continued) — ${statementRef}</span>
+            <span>Page ${pageNum} of ${totalPages}</span>
+          </div>
+
+          <!-- Table Continuation -->
+          <table class="bems-doc-table">
+            <thead>
+              <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:13%;">Date</th>
+                <th>Activity & Transaction Details</th>
+                <th style="width:16%;">Reference</th>
+                <th class="c" style="width:10%;">Type</th>
+                <th class="r" style="width:14%;">Amount (₦)</th>
+                <th class="r" style="width:15%;">Balance (₦)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pageRowsHtml}
+            </tbody>
+          </table>
+
+          ${page.isFinal ? totalsAndSignoffHtml : `
+            <div class="bems-stmt-page-indicator">
+              <span>Statement ${statementRef} · Driver: ${driverName}</span>
+              <span style="font-weight:600;color:#0f3622;">Page ${pageNum} of ${totalPages} · Continues on Page ${pageNum + 1} ──►</span>
+            </div>
+          `}
+        </div>
+
+        ${page.isFinal ? footerGroupHtml : ''}
+      </div>
     `;
-  }).join('') : `
-    <tr>
-      <td colspan="7" class="c" style="padding:30px 12px;color:#64748b;">
-        No recorded transactions during this statement period.
-      </td>
-    </tr>
-  `;
+  }).join('') : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -287,14 +441,21 @@ function renderDriverStatementHtml({
     /* Page container */
     .bems-doc-page {
       width: 210mm;
+      height: 297mm;
       min-height: 297mm;
-      margin: 0 auto;
+      max-height: 297mm;
+      margin: 0 auto 32px auto;
       background: #ffffff;
       position: relative;
       overflow: hidden;
       display: block;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      box-shadow: 0 20px 60px rgba(15, 54, 34, .18);
       text-align: left;
+      box-sizing: border-box;
+    }
+
+    .bems-doc-page:last-child {
+      margin-bottom: 0;
     }
 
     .bems-doc-page::before {
@@ -307,10 +468,48 @@ function renderDriverStatementHtml({
     }
 
     .bems-doc-body {
-      padding: 14mm 15mm 70px 17mm;
+      padding: 10mm 14mm 85px 14mm;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 10px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .bems-doc-page-1-multi .bems-doc-body,
+    .bems-doc-page-intermediate .bems-doc-body {
+      padding-bottom: 24px !important;
+    }
+
+    .bems-stmt-page-indicator {
+      padding: 8px 14mm;
+      font-size: 9.5px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed var(--bems-line);
+      background: #fafcfb;
+      margin-top: auto !important;
+      width: 100% !important;
+      box-sizing: border-box;
+      flex-shrink: 0 !important;
+    }
+
+    .bems-stmt-page-head {
+      padding: 8px 14mm;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--bems-g9);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--bems-line);
+      background: #fafcfb;
+      margin-bottom: 12px;
+      margin-left: -14mm;
+      margin-right: -14mm;
+      margin-top: -10mm;
     }
 
     /* Header */
@@ -665,7 +864,7 @@ function renderDriverStatementHtml({
     .bems-doc-table th:first-child { border-radius: 6px 0 0 6px; }
     .bems-doc-table th:last-child { border-radius: 0 6px 6px 0; }
     .bems-doc-table td {
-      padding: 10px 10px;
+      padding: 6.5px 10px;
       border-bottom: 1px solid var(--bems-line);
       vertical-align: middle;
       font-size: 11px;
@@ -939,13 +1138,22 @@ function renderDriverStatementHtml({
         background: #ffffff !important;
         box-sizing: border-box !important;
         overflow: visible !important;
-        page-break-after: auto;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      .bems-doc-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
       }
       .bems-doc-body {
         display: block !important;
-        padding: 10mm 14mm 65px 14mm !important;
+        padding: 10mm 14mm 85px 14mm !important;
         overflow: hidden !important;
         box-sizing: border-box !important;
+      }
+      .bems-doc-page-1-multi .bems-doc-body,
+      .bems-doc-page-intermediate .bems-doc-body {
+        padding-bottom: 24px !important;
       }
       .bems-doc-head { margin-bottom: 0 !important; }
       .bems-doc-logo img { height: 38px !important; }
@@ -993,7 +1201,7 @@ function renderDriverStatementHtml({
       .bems-stmt-kpi-card .kpi-val { font-size: 12.5px !important; }
       .bems-doc-table { margin-top: 2px !important; }
       .bems-doc-table th { padding: 5px 8px !important; font-size: 8px !important; }
-      .bems-doc-table td { padding: 5px 8px !important; font-size: 10px !important; }
+      .bems-doc-table td { padding: 5.5px 8px !important; font-size: 10px !important; }
       .bems-doc-table tr { page-break-inside: avoid !important; }
       .bems-doc-hero, .bems-doc-parties, .bems-stmt-kpi-grid, .bems-doc-vt, .bems-doc-sign {
         page-break-inside: avoid !important;
@@ -1004,8 +1212,8 @@ function renderDriverStatementHtml({
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
       .bems-doc-body .bems-doc-sign,
       .bems-doc-sign {
-        margin-top: 34px !important;
-        padding-top: 10px !important;
+        margin-top: 10px !important;
+        padding-top: 8px !important;
         padding-bottom: 4px !important;
         display: grid !important;
         grid-template-columns: 1fr 210px !important;
@@ -1059,9 +1267,9 @@ function renderDriverStatementHtml({
     </div>
   </div>
 
-  <!-- A4 Printable Document Root -->
-  <div class="bems-doc-page" id="statement-document">
-    <div class="bems-doc-body">
+  <!-- A4 Printable Document Root (Page 1) -->
+  <div class="bems-doc-page ${isMultiPage ? 'bems-doc-page-1-multi' : ''}" id="statement-document">
+    <div class="bems-doc-body" style="${isMultiPage ? 'padding-bottom:24px !important;' : ''}">
 
       <!-- Header -->
       <header class="bems-doc-head">
@@ -1215,83 +1423,23 @@ function renderDriverStatementHtml({
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml}
+          ${renderRowsHtml(page1Rows, 0)}
         </tbody>
       </table>
 
-      <!-- Verification & Totals -->
-      <section class="bems-doc-vt">
-        <div class="bems-doc-verify">
-          <div class="qr">
-            ${qrDataUrl ? `<img src="${qrDataUrl}" alt="Verify Statement" style="width:72px;height:72px;display:block;">` : '<div style="width:72px;height:72px;background:#eef7f2;"></div>'}
-          </div>
-          <div>
-            <h4>Verified Logistics Settlement</h4>
-            <p>Scan with any smartphone camera or visit bemsfarms.com/verify to authenticate this official statement.</p>
-            <div class="cap" style="margin-bottom:2px;">Security Verification Code</div>
-            <div class="code">${securityCode}</div>
-          </div>
+      ${!isMultiPage ? totalsAndSignoffHtml : `
+        <div class="bems-stmt-page-indicator">
+          <span>Statement ${statementRef} · Driver: ${driverName}</span>
+          <span style="font-weight:600;color:#0f3622;">Page 1 of ${totalPages} · Continues on Page 2 ──►</span>
         </div>
+      `}
 
-        <dl class="bems-doc-tot">
-          <dt>Gross Delivery Earnings</dt>
-          <dd class="mono">₦${totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-
-          <dt>Disbursed to Bank</dt>
-          <dd class="mono">₦${totalDebits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-
-          ${pendingPayouts > 0 ? `
-            <dt>In-Flight Payouts</dt>
-            <dd class="mono" style="color:#d97706;">₦${pendingPayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-          ` : ''}
-
-          <dt class="grand">Closing Balance</dt>
-          <dd class="grand">
-            <span class="naira" style="font-size:14px;">₦</span>${closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </dd>
-
-          <dt>Settlement Account</dt>
-          <dd class="mono" style="font-size:9.5px;color:#8a6d12;">${accountNumber} (${bankName})</dd>
-        </dl>
-      </section>
-
-      <!-- Sign-off & Audit Notice (Together with Totals at the Top) -->
-      <section class="bems-doc-sign">
-        <div class="bems-doc-keep">
-          <b>Audit &amp; Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
-        </div>
-
-        <div class="bems-doc-sign-right">
-          <div class="bems-doc-sig">
-            ${signatureUrl ? `<img src="${signatureUrl}" alt="Authorised Signature" class="bems-doc-sig-img" />` : ''}
-            <div class="ln"></div>
-            <b>For ${companyName}</b>
-            <span>Financial Controller &amp; Head of Logistics</span>
-          </div>
-          <div class="bems-doc-stamp-wrapper">
-            ${getOfficialStampSvg(companyName)}
-          </div>
-        </div>
-      </section>
-
-      </div>
-
-    <!-- Pinned Footer Group (Thanks + Bottom Bar) -->
-    <div class="bems-doc-footer-group">
-      <!-- Thanks Banner -->
-      <div class="bems-doc-thanks">
-        <h3>Thank you for powering Bems Farms logistics.</h3>
-        <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
-      </div>
-
-      <!-- Footer -->
-      <div class="bems-doc-foot">
-        <span>${companyPhone}</span>
-        <span>www.bemsfarms.com</span>
-        <span>${companyEmail}</span>
-      </div>
     </div>
+
+    ${!isMultiPage ? footerGroupHtml : ''}
   </div>
+
+  ${continuationPagesHtml}
 
   ${autoPrint ? `
     <script>
