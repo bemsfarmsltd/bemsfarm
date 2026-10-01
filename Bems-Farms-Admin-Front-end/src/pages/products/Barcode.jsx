@@ -37,6 +37,7 @@ export default function Barcode() {
   const [customBarcodeVal, setCustomBarcodeVal] = useState('')
   const [savingBarcode, setSavingBarcode] = useState(false)
   const [autoGeneratingAll, setAutoGeneratingAll] = useState(false)
+  const [showPrinterGuideModal, setShowPrinterGuideModal] = useState(false)
 
   // Scanner Verification Tool
   const [scannedInput, setScannedInput] = useState('')
@@ -373,52 +374,74 @@ export default function Barcode() {
   }
 
   // Print Action
-  const handleTriggerPrint = () => {
-    if (totalLabelsInQueue === 0) {
+  // Print Action
+  const handleTriggerPrint = (itemsOverride = null) => {
+    const isSingleTest = Array.isArray(itemsOverride)
+    const targetItems = isSingleTest ? itemsOverride : printableLabelArray
+
+    if (!isSingleTest && targetItems.length === 0) {
       return toast.error('Please select at least one product to print')
     }
     
-    if (labelTemplate === 'sheet_a4') {
+    if (labelTemplate === 'sheet_a4' && !isSingleTest) {
       window.print()
       return
     }
 
-    const printWindow = window.open('', '_blank', 'width=600,height=600')
-    if (!printWindow) return
+    const printWindow = window.open('', '_blank', 'width=650,height=650')
+    if (!printWindow) {
+      return toast.error('Pop-up window blocked. Please allow pop-ups to print barcode labels.')
+    }
 
     let pageSize = '50mm 30mm'
     let w = '50mm'
     let h = '30mm'
+    let innerH = '29.3mm'
+    let barcodeH = '8.5mm'
+    let fontSizeName = '9.5px'
+    let fontSizePrice = '12px'
+
     if (labelTemplate === 'compact_40x20') {
       pageSize = '40mm 20mm'
       w = '40mm'
       h = '20mm'
+      innerH = '19.4mm'
+      barcodeH = '6mm'
+      fontSizeName = '8px'
+      fontSizePrice = '10px'
     } else if (labelTemplate === 'crate_100x75') {
       pageSize = '100mm 75mm'
       w = '100mm'
       h = '75mm'
+      innerH = '74mm'
+      barcodeH = '28mm'
+      fontSizeName = '16px'
+      fontSizePrice = '22px'
     }
 
-    // Grab the rendered SVGs from the hidden canvas
+    // Grab the rendered SVGs from the hidden canvas or queue preview
     const getSvgStr = (val) => {
       const bHtml = document.querySelector(`#printable-barcode-canvas .bc-${val}`)?.innerHTML || ''
       return bHtml
     }
 
-    const labelsHtml = printableLabelArray.map(item => {
+    const labelsHtml = targetItems.map(item => {
       const priceStr = formatNaira(item.price || item.unit_price)
-      const isCompact = labelTemplate === 'compact_40x20'
-      const svg = document.getElementById(`svg-queue-${item.id}-${item.copyIndex}`)?.outerHTML || getSvgStr(item.barcodeValue) || ''
+      const svgContainer = document.getElementById(`svg-queue-${item.id}-${item.copyIndex}`)
+      const svg = svgContainer?.querySelector('svg')?.outerHTML 
+        || svgContainer?.outerHTML 
+        || getSvgStr(item.barcodeValue) 
+        || ''
       
       return `
         <div class="label-page">
           ${showBrandHeader ? `
             <div class="header">
-              <span>BEMS FARMS</span>
-              <span>Fresh Produce</span>
+              <span class="brand-pill">BEMS FARMS</span>
+              <span class="brand-tag">Fresh Produce</span>
             </div>
           ` : ''}
-          ${showProductName ? `<div class="name">${item.name}</div>` : ''}
+          ${showProductName ? `<div class="name" title="${item.name}">${item.name}</div>` : ''}
           ${showPrice ? `
             <div class="price-row">
               <span class="price">${priceStr}</span>
@@ -426,10 +449,10 @@ export default function Barcode() {
             </div>
           ` : ''}
           <div class="barcode">${svg}</div>
-          ${showSku ? `<div class="sku">UGC: ${item.barcodeValue}</div>` : ''}
+          ${showSku ? `<div class="sku">${item.barcodeValue}</div>` : ''}
           ${showDates ? `
             <div class="dates">
-              <span>Packed: ${new Date().toLocaleDateString('en-GB')}</span>
+              <span>PKD: ${new Date().toLocaleDateString('en-GB')}</span>
               <span>Origin: Nigeria</span>
             </div>
           ` : ''}
@@ -441,43 +464,132 @@ export default function Barcode() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print Queue</title>
+          <meta charset="utf-8">
+          <title>${isSingleTest ? 'XP-365B Test Label (50x30)' : 'Bems Farms Barcode Labels'}</title>
           <style>
-            @page { size: ${pageSize}; margin: 0; }
-            body { 
-              font-family: system-ui, sans-serif; 
-              margin: 0; 
-              padding: 0;
+            @page { 
+              size: ${pageSize}; 
+              margin: 0mm; 
+            }
+            * {
+              box-sizing: border-box;
+            }
+            html, body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              margin: 0 !important; 
+              padding: 0 !important;
               background: #fff;
               color: #000;
+              width: ${w};
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             .label-page {
               width: ${w};
-              height: ${h};
-              padding: 1.5mm;
-              box-sizing: border-box;
+              height: ${innerH};
+              max-height: ${innerH};
+              padding: 1.5mm 1.8mm;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
               overflow: hidden;
-              page-break-after: always;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              background: #fff;
             }
-            .header { display: flex; justify-content: space-between; font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 1px; margin-bottom: 2px; }
-            .header span:first-child { background: #000; color: #fff; padding: 1px 4px; border-radius: 2px; }
-            .name { font-size: ${labelTemplate==='crate_100x75' ? '16px' : '9px'}; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-            .price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1px; }
-            .price { font-size: ${labelTemplate==='crate_100x75' ? '22px' : '11px'}; font-weight: bold; }
-            .unit { font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; color: #333; }
-            .barcode { text-align: center; margin-top: auto; }
-            .barcode svg { height: ${labelTemplate==='crate_100x75' ? '30mm' : (labelTemplate==='compact_40x20' ? '6mm' : '8mm')} !important; width: auto !important; max-width: 100% !important; }
-            .sku { text-align: center; font-size: ${labelTemplate==='crate_100x75' ? '10px' : '6px'}; font-family: monospace; margin-top: 1px; }
-            .dates { display: flex; justify-content: space-between; font-size: ${labelTemplate==='crate_100x75' ? '9px' : '5px'}; color: #333; border-top: 1px solid #ccc; padding-top: 1px; margin-top: 1px; }
+            .label-page:not(:last-child) {
+              page-break-after: always;
+              break-after: page;
+            }
+            .header { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center;
+              font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; 
+              font-weight: 800; 
+              border-bottom: 1px solid #000; 
+              padding-bottom: 1px; 
+              margin-bottom: 1px; 
+            }
+            .brand-pill { 
+              background: #000; 
+              color: #fff; 
+              padding: 0.5px 3.5px; 
+              border-radius: 2px; 
+              letter-spacing: 0.5px;
+            }
+            .brand-tag {
+              color: #333;
+              font-size: 6.5px;
+            }
+            .name { 
+              font-size: ${fontSizeName}; 
+              font-weight: 700; 
+              white-space: nowrap; 
+              overflow: hidden; 
+              text-overflow: ellipsis; 
+              line-height: 1.15;
+            }
+            .price-row { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: baseline; 
+              line-height: 1.1;
+            }
+            .price { 
+              font-size: ${fontSizePrice}; 
+              font-weight: 900; 
+              color: #000;
+            }
+            .unit { 
+              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7.5px'}; 
+              font-weight: 600;
+              color: #444; 
+            }
+            .barcode { 
+              text-align: center; 
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              margin: auto 0 0;
+              line-height: 1;
+            }
+            .barcode svg { 
+              height: ${barcodeH} !important; 
+              width: auto !important; 
+              max-width: 98% !important; 
+              shape-rendering: crispEdges !important;
+            }
+            .sku { 
+              text-align: center; 
+              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7.5px'}; 
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+              font-weight: 700;
+              letter-spacing: 0.5px;
+              line-height: 1;
+              margin-top: 1px;
+            }
+            .dates { 
+              display: flex; 
+              justify-content: space-between; 
+              font-size: ${labelTemplate==='crate_100x75' ? '9px' : '6px'}; 
+              color: #444; 
+              border-top: 0.5px solid #666; 
+              padding-top: 1px; 
+              margin-top: 1px; 
+            }
           </style>
         </head>
         <body>
           ${labelsHtml}
           <script>
-            window.onload = function() { window.print(); window.close(); }
+            window.onload = function() {
+              window.focus();
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 250);
+            };
           </script>
         </body>
       </html>
@@ -496,6 +608,33 @@ export default function Barcode() {
     })
     return list
   }, [printQueue])
+
+  // Print a single test label (50x30mm) for XP-365B alignment verification
+  const handlePrintTestLabel = () => {
+    let testItem = null
+    if (printableLabelArray.length > 0) {
+      testItem = { ...printableLabelArray[0], copyIndex: 1, totalCopies: 1 }
+    } else if (products.length > 0) {
+      const p = products[0]
+      testItem = {
+        ...p,
+        barcodeValue: p.barcode || p.sku || `BF-${p.id}`,
+        copyIndex: 1,
+        totalCopies: 1,
+      }
+    } else {
+      testItem = {
+        id: 'test-demo-1',
+        name: 'Fresh Farm Produce Sample',
+        price: 3500,
+        unit: 'Per Unit',
+        barcodeValue: '61500001001',
+        copyIndex: 1,
+        totalCopies: 1,
+      }
+    }
+    handleTriggerPrint([testItem])
+  }
 
   return (
     <div className="container-fluid py-3 barcode-studio-page">
@@ -593,6 +732,24 @@ export default function Barcode() {
         <div className="d-flex gap-2 align-items-center flex-wrap">
           <button
             type="button"
+            className="btn btn-outline-secondary d-flex align-items-center gap-1.5 shadow-sm"
+            onClick={() => setShowPrinterGuideModal(true)}
+            title="Open Xprinter XP-365B setup, calibration & driver guide"
+          >
+            <i className="ri-settings-5-line"></i> XP-365B Setup Guide
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-outline-primary d-flex align-items-center gap-1.5 shadow-sm"
+            onClick={handlePrintTestLabel}
+            title="Print 1 sample 50x30mm label to test Xprinter XP-365B alignment"
+          >
+            <i className="ri-printer-line"></i> Test 1 Label (50×30)
+          </button>
+
+          <button
+            type="button"
             className="btn btn-outline-success d-flex align-items-center gap-1 shadow-sm"
             onClick={handleAutoGenerateAllMissing}
             disabled={autoGeneratingAll || productsMissingBarcode.length === 0}
@@ -612,7 +769,7 @@ export default function Barcode() {
           <button
             type="button"
             className="btn btn-primary d-flex align-items-center gap-2 shadow-sm px-4"
-            onClick={handleTriggerPrint}
+            onClick={() => handleTriggerPrint()}
             disabled={totalLabelsInQueue === 0}
           >
             <i className="ri-printer-line fs-5"></i>
@@ -1195,7 +1352,7 @@ export default function Barcode() {
                   value={labelTemplate}
                   onChange={(e) => setLabelTemplate(e.target.value)}
                 >
-                  <option value="thermal_50x30">Standard Shelf / Item (50mm × 30mm)</option>
+                  <option value="thermal_50x30">Standard Item / Shelf (50mm × 30mm) — XP-365B Recommended</option>
                   <option value="compact_40x20">Compact Produce Sticker (40mm × 20mm)</option>
                   <option value="crate_100x75">Pallet &amp; Delivery Crate Tag (100mm × 75mm)</option>
                   <option value="sheet_a4">Standard A4 Sticker Sheet (24-up Grid)</option>
@@ -1608,6 +1765,196 @@ export default function Barcode() {
                     {savingBarcode ? 'Saving…' : 'Save & Assign Barcode'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Xprinter XP-365B Setup & Calibration Guide ────── */}
+      {showPrinterGuideModal && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content rounded-4 shadow-lg border-0 overflow-hidden">
+              <div className="modal-header bg-dark text-white border-0 py-3 px-4 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="avatar size-9 rounded-2 bg-success text-white d-flex align-items-center justify-content-center">
+                    <i className="ri-printer-line fs-4"></i>
+                  </div>
+                  <div>
+                    <h6 className="modal-title fw-bold text-white mb-0">Xprinter XP-365B Configuration Guide</h6>
+                    <small className="text-light opacity-75">
+                      Standard 50mm × 30mm Barcode &amp; Shelf Label Setup
+                    </small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowPrinterGuideModal(false)}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+                {/* Quick Info Badges */}
+                <div className="d-flex gap-2 flex-wrap mb-4">
+                  <span className="badge bg-primary-subtle text-primary border px-2.5 py-1.5 font-monospace">
+                    <i className="ri-ruler-line me-1"></i> 50mm (W) × 30mm (H)
+                  </span>
+                  <span className="badge bg-success-subtle text-success border px-2.5 py-1.5">
+                    <i className="ri-checkbox-circle-line me-1"></i> Gap Roll (Die-Cut)
+                  </span>
+                  <span className="badge bg-warning-subtle text-dark border px-2.5 py-1.5">
+                    <i className="ri-alert-line me-1"></i> Margins: None (0mm)
+                  </span>
+                  <span className="badge bg-secondary-subtle text-dark border px-2.5 py-1.5 font-monospace">
+                    203 DPI / 8 dots/mm
+                  </span>
+                </div>
+
+                {/* Step 1: Gap Sensor Calibration */}
+                <div className="card border-0 shadow-none bg-light rounded-3 p-3.5 mb-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="badge bg-dark rounded-circle size-6 d-inline-flex align-items-center justify-content-center text-white fw-bold">
+                      1
+                    </span>
+                    <h6 className="mb-0 fw-bold text-dark">Hardware Gap Sensor Calibration (Crucial)</h6>
+                  </div>
+                  <p className="text-muted small mb-2">
+                    Prevents the XP-365B from feeding blank labels or stopping midway across labels:
+                  </p>
+                  <ol className="small text-dark mb-0 ps-3" style={{ lineHeight: '1.7' }}>
+                    <li>Ensure the 50×30mm roll is loaded thermal side up, and paper roll guides are snug against the roll.</li>
+                    <li>Turn the printer power switch <strong>OFF</strong>.</li>
+                    <li>Press and <strong>HOLD the PAUSE / FEED button</strong> on the printer front.</li>
+                    <li>While holding the button, flip the power switch <strong>ON</strong>.</li>
+                    <li>When you hear <strong>2 quick beeps</strong>, release the button immediately.</li>
+                    <li>The printer feeds 2–3 labels and halts precisely on the tear-off gap line.</li>
+                    <li>Tap the <strong>FEED button once</strong>: it should feed exactly 1 label and stop on the gap.</li>
+                  </ol>
+                </div>
+
+                {/* Step 2: Browser Print Dialog Settings */}
+                <div className="card border-0 shadow-none bg-light rounded-3 p-3.5 mb-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="badge bg-primary rounded-circle size-6 d-inline-flex align-items-center justify-content-center text-white fw-bold">
+                      2
+                    </span>
+                    <h6 className="mb-0 fw-bold text-dark">Browser Print Dialog Settings (Chrome / Edge / Safari)</h6>
+                  </div>
+                  <p className="text-muted small mb-2">
+                    When you click <strong>Print Queue</strong> or <strong>Test 1 Label</strong>, set these in the print pop-up:
+                  </p>
+                  <div className="table-responsive">
+                    <table className="table table-sm table-bordered bg-white small mb-0">
+                      <tbody>
+                        <tr>
+                          <td className="fw-bold bg-light" style={{ width: '35%' }}>Destination</td>
+                          <td>Select <code>Xprinter XP-365B</code> (or 2-inch label driver)</td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold bg-light">Paper Size</td>
+                          <td>Select <code>50mm x 30mm</code> (or custom 50×30 defined in driver)</td>
+                        </tr>
+                        <tr className="table-warning">
+                          <td className="fw-bold text-danger">Margins (CRITICAL)</td>
+                          <td>
+                            <strong>Set to "None" (0mm)</strong><br />
+                            <small className="text-muted">Leaving on 'Default' adds 10mm margins, which shrinks and clips the label.</small>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold bg-light">Scale</td>
+                          <td><code>100%</code> / Default</td>
+                        </tr>
+                        <tr>
+                          <td className="fw-bold bg-light">Options / Checkboxes</td>
+                          <td>
+                            <strong>Uncheck "Headers and footers"</strong><br />
+                            <small className="text-muted">Prevents the browser URL and date from printing across the top/bottom of stickers.</small>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Step 3: Operating System Driver Setup */}
+                <div className="card border-0 shadow-none bg-light rounded-3 p-3.5 mb-3">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <span className="badge bg-success rounded-circle size-6 d-inline-flex align-items-center justify-content-center text-white fw-bold">
+                      3
+                    </span>
+                    <h6 className="mb-0 fw-bold text-dark">OS Driver Paper Size Definition</h6>
+                  </div>
+                  <div className="row g-3 small">
+                    <div className="col-12 col-md-6 border-end-md">
+                      <div className="fw-bold text-dark mb-1">
+                        <i className="ri-windows-line text-primary me-1"></i> Windows Setup:
+                      </div>
+                      <ol className="ps-3 mb-0" style={{ lineHeight: '1.6' }}>
+                        <li>Open <strong>Control Panel → Devices &amp; Printers</strong>.</li>
+                        <li>Right-click <code>XP-365B</code> → <strong>Printing Preferences</strong>.</li>
+                        <li>Under <strong>Page Setup</strong>, click <strong>New Stock</strong>:
+                          <br />&bull; Name: <code>50x30</code>
+                          <br />&bull; Width: <code>50.0 mm</code>, Height: <code>30.0 mm</code>
+                        </li>
+                        <li>Under <strong>Stock / Media Type</strong>:
+                          <br />&bull; Type: <code>Labels with Gaps</code>
+                          <br />&bull; Gap Height: <code>2.0 mm</code>
+                        </li>
+                        <li>Under <strong>Options</strong>: Speed <code>2.0 - 3.0 in/s</code>, Darkness: <code>10 - 12</code>.</li>
+                      </ol>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <div className="fw-bold text-dark mb-1">
+                        <i className="ri-apple-line text-dark me-1"></i> macOS Setup:
+                      </div>
+                      <ol className="ps-3 mb-0" style={{ lineHeight: '1.6' }}>
+                        <li>Open <strong>System Settings → Printers &amp; Scanners</strong>.</li>
+                        <li>Select <code>XP-365B</code>.</li>
+                        <li>Under <strong>Default Paper Size</strong>, choose <strong>Manage Custom Sizes</strong>.</li>
+                        <li>Click <code>+</code>:
+                          <br />&bull; Name: <code>50x30mm</code>
+                          <br />&bull; Width: <code>50 mm</code>, Height: <code>30 mm</code>
+                          <br />&bull; Non-Printable Area (Margins): <code>0 mm</code> on all sides.
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instant Test Label Callout */}
+                <div className="border border-success-subtle bg-success-subtle p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    <h6 className="mb-0 fw-bold text-success-emphasis">Ready to verify your XP-365B?</h6>
+                    <small className="text-success-emphasis">
+                      Click below to print 1 single test label with sample barcode and verify alignment.
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-success d-inline-flex align-items-center gap-1.5 shadow-sm"
+                    onClick={() => {
+                      handlePrintTestLabel()
+                    }}
+                  >
+                    <i className="ri-printer-line"></i> Print 1 Test Label (50×30)
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-footer border-0 bg-light py-2.5 px-4 d-flex justify-content-between">
+                <span className="small text-muted">
+                  Bems Farms POS &bull; Universal Goods Code (UGC) System
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-dark px-4"
+                  onClick={() => setShowPrinterGuideModal(false)}
+                >
+                  Done / Close Guide
+                </button>
               </div>
             </div>
           </div>
