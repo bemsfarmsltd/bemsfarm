@@ -93,13 +93,13 @@ router.put("/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/availability", driverProtect, driverAuthController.toggleAvailability);
 
 // ── 2. Profile Photo / Avatar Upload ─────────────────────────────────
-router.post("/upload/avatar", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
-router.post("/upload/photo", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
-router.post("/upload/profile-photo", driverProtect, driverUploadController.uploadAvatar.any(), driverUploadController.uploadProfilePhoto);
+router.post("/upload/avatar", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
+router.post("/upload/photo", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
+router.post("/upload/profile-photo", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
 
 // ── 2b. KYC & Document Uploads (Public or Authenticated) ─────────────
-router.post("/upload/kyc", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
-router.post("/upload/document", driverUploadController.uploadDoc.single("document"), driverUploadController.uploadKYCDocument);
+router.post("/upload/kyc", driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
+router.post("/upload/document", driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
 
 // ── 2. Deliveries / Orders (Automated Mapping & Dispatch) ───────────
 router.get("/deliveries/available", driverProtect, driverDeliveryController.getAvailableDeliveries);
@@ -131,7 +131,7 @@ router.post("/deliveries/:orderId/request-return", driverProtect, driverDelivery
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 
 // ── 3. Proof of Delivery (POD) Image Upload (accepts 'photo', 'image', 'file', etc.) ──
-router.post("/upload/proof", driverProtect, driverUploadController.upload.any(), driverUploadController.uploadProofPhoto);
+router.post("/upload/proof", driverProtect, driverUploadController.proofUploadMiddleware, driverUploadController.uploadProofPhoto);
 
 // ── 4. Location Telemetry & Heartbeat Ping ────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);

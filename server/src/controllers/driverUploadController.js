@@ -22,23 +22,78 @@ if (!fs.existsSync(avatarUploadDir)) {
 }
 
 // Whitelisted file types and extensions
-const ALLOWED_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic"]);
+const ALLOWED_IMAGE_EXTS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+  ".jfif",
+  ".pjpeg",
+  ".pjp",
+  ".bmp",
+  ".gif"
+]);
 const ALLOWED_IMAGE_MIMES = new Set([
   "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif"
-]);
-const ALLOWED_DOC_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".pdf"]);
-const ALLOWED_DOC_MIMES = new Set([
-  "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/webp",
   "image/heic",
   "image/heif",
+  "image/jfif",
+  "image/pjpeg",
+  "image/pjp",
+  "image/x-png",
+  "image/bmp",
+  "image/gif"
+]);
+const ALLOWED_DOC_EXTS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+  ".jfif",
+  ".pdf"
+]);
+const ALLOWED_DOC_MIMES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "image/jfif",
   "application/pdf"
 ]);
+
+// Helper to determine if file is acceptable image
+function isAcceptableImage(originalname, mimetype) {
+  const rawExt = path.extname(originalname || "").toLowerCase();
+  const mime = (mimetype || "").toLowerCase();
+  return (
+    mime.startsWith("image/") ||
+    ALLOWED_IMAGE_MIMES.has(mime) ||
+    ALLOWED_IMAGE_EXTS.has(rawExt) ||
+    ((mime === "application/octet-stream" || !mime) && ALLOWED_IMAGE_EXTS.has(rawExt))
+  );
+}
+
+// Helper to determine if file is acceptable doc
+function isAcceptableDoc(originalname, mimetype) {
+  const rawExt = path.extname(originalname || "").toLowerCase();
+  const mime = (mimetype || "").toLowerCase();
+  return (
+    mime.startsWith("image/") ||
+    mime === "application/pdf" ||
+    ALLOWED_DOC_MIMES.has(mime) ||
+    ALLOWED_DOC_EXTS.has(rawExt) ||
+    ((mime === "application/octet-stream" || !mime) && ALLOWED_DOC_EXTS.has(rawExt))
+  );
+}
 
 // Configure multer storage for Proof of Delivery
 const proofStorage = multer.diskStorage({
@@ -47,7 +102,14 @@ const proofStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const rawExt = path.extname(file.originalname || "").toLowerCase();
-    const ext = ALLOWED_IMAGE_EXTS.has(rawExt) ? rawExt : ".jpg";
+    let ext = ALLOWED_IMAGE_EXTS.has(rawExt) ? rawExt : "";
+    if (!ext) {
+      const mime = (file.mimetype || "").toLowerCase();
+      if (mime.includes("png")) ext = ".png";
+      else if (mime.includes("webp")) ext = ".webp";
+      else if (mime.includes("heic") || mime.includes("heif")) ext = ".heic";
+      else ext = ".jpg";
+    }
     const unique = `POD_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     cb(null, unique);
   }
@@ -60,7 +122,15 @@ const docStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const rawExt = path.extname(file.originalname || "").toLowerCase();
-    const ext = ALLOWED_DOC_EXTS.has(rawExt) ? rawExt : (file.mimetype === "application/pdf" ? ".pdf" : ".jpg");
+    let ext = ALLOWED_DOC_EXTS.has(rawExt) ? rawExt : "";
+    if (!ext) {
+      const mime = (file.mimetype || "").toLowerCase();
+      if (mime === "application/pdf") ext = ".pdf";
+      else if (mime.includes("png")) ext = ".png";
+      else if (mime.includes("webp")) ext = ".webp";
+      else if (mime.includes("heic") || mime.includes("heif")) ext = ".heic";
+      else ext = ".jpg";
+    }
     const docType = (req.body.doc_type || req.query.type || "DOC").toUpperCase().replace(/[^A-Z0-9_]/g, "");
     const unique = `${docType}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     cb(null, unique);
@@ -71,9 +141,7 @@ const upload = multer({
   storage: proofStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: function (req, file, cb) {
-    const rawExt = path.extname(file.originalname || "").toLowerCase();
-    const mime = (file.mimetype || "").toLowerCase();
-    if (ALLOWED_IMAGE_EXTS.has(rawExt) && ALLOWED_IMAGE_MIMES.has(mime)) {
+    if (isAcceptableImage(file.originalname, file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) are permitted"));
@@ -85,9 +153,7 @@ const uploadDoc = multer({
   storage: docStorage,
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
   fileFilter: function (req, file, cb) {
-    const rawExt = path.extname(file.originalname || "").toLowerCase();
-    const mime = (file.mimetype || "").toLowerCase();
-    if (ALLOWED_DOC_EXTS.has(rawExt) && ALLOWED_DOC_MIMES.has(mime)) {
+    if (isAcceptableDoc(file.originalname, file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) or PDF documents are permitted"));
@@ -181,18 +247,19 @@ const uploadKYCDocument = async (req, res, next) => {
     const docType = (req.body.doc_type || req.query.type || "document").toLowerCase();
 
     // 1. Multipart file upload
-    if (req.file) {
+    const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['document', 'file', 'image', 'kyc'].includes(f.fieldname)) || req.files[0])) || null;
+    if (file) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const fileUrl = `${baseUrl}/uploads/documents/${req.file.filename}`;
+      const fileUrl = `${baseUrl}/uploads/documents/${file.filename}`;
 
       return res.status(201).json({
         status: "success",
         message: "KYC document uploaded successfully",
         doc_type: docType,
         url: fileUrl,
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype
+        filename: file.filename,
+        size: file.size,
+        mimetype: file.mimetype
       });
     }
 
@@ -262,15 +329,45 @@ const uploadAvatar = multer({
   storage: avatarStorage,
   limits: { fileSize: 6 * 1024 * 1024 }, // 6MB limit
   fileFilter: function (req, file, cb) {
-    const rawExt = path.extname(file.originalname || "").toLowerCase();
-    const mime = (file.mimetype || "").toLowerCase();
-    if (ALLOWED_IMAGE_EXTS.has(rawExt) && ALLOWED_IMAGE_MIMES.has(mime)) {
+    if (isAcceptableImage(file.originalname, file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error("Only image files (JPG, PNG, WEBP, HEIC) are permitted for profile photo"));
     }
   }
 });
+
+// Middleware wrappers that intercept Multer errors and return clean HTTP 400 responses
+const handleMulter = (multerMiddleware) => (req, res, next) => {
+  multerMiddleware(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            status: "error",
+            success: false,
+            message: "File exceeds the allowed size limit. Please upload a smaller file.",
+          });
+        }
+        return res.status(400).json({
+          status: "error",
+          success: false,
+          message: `Upload error: ${err.message}`,
+        });
+      }
+      return res.status(400).json({
+        status: "error",
+        success: false,
+        message: err.message || "Invalid file format.",
+      });
+    }
+    next();
+  });
+};
+
+const proofUploadMiddleware = handleMulter(upload.any());
+const docUploadMiddleware = handleMulter(uploadDoc.any());
+const avatarUploadMiddleware = handleMulter(uploadAvatar.any());
 
 // ── POST /api/driver/upload/avatar & /api/driver/upload/profile-photo ─
 // Upload Driver Avatar / Profile picture
@@ -279,9 +376,10 @@ const uploadProfilePhoto = async (req, res, next) => {
     const driverId = req.driver?.id;
     let fileUrl = null;
 
-    if (req.file) {
+    const file = req.file || (Array.isArray(req.files) && req.files[0]) || null;
+    if (file) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      fileUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
+      fileUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
     } else {
       const { image, photo, avatar, file_base64, image_base64 } = req.body || {};
       const rawBase64 = image || photo || avatar || file_base64 || image_base64;
@@ -334,6 +432,9 @@ module.exports = {
   upload,
   uploadDoc,
   uploadAvatar,
+  proofUploadMiddleware,
+  docUploadMiddleware,
+  avatarUploadMiddleware,
   uploadProofPhoto,
   uploadKYCDocument,
   uploadProfilePhoto,
