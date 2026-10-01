@@ -23,7 +23,7 @@ export default function Barcode() {
   const [printQueue, setPrintQueue] = useState({})
   
   // Label Customizer Settings
-  const [labelTemplate, setLabelTemplate] = useState('thermal_50x30') // 'thermal_50x30' | 'compact_40x20' | 'crate_100x75' | 'sheet_a4'
+  const [labelTemplate, setLabelTemplate] = useState('thermal_50x25') // 'thermal_50x25' | 'thermal_50x30' | 'compact_40x20' | 'crate_100x75' | 'sheet_a4'
   const [showBrandHeader, setShowBrandHeader] = useState(true)
   const [showProductName, setShowProductName] = useState(true)
   const [showCategory, setShowCategory] = useState(true)
@@ -393,33 +393,33 @@ export default function Barcode() {
       return toast.error('Pop-up window blocked. Please allow pop-ups to print barcode labels.')
     }
 
-    let pageSize = '50mm 30mm'
+    let pageSize = '50mm 25mm'
     let w = '50mm'
-    let h = '30mm'
-    let innerH = '26mm'
-    let barcodeH = '6.8mm'
-    let fontSizeName = '8.5px'
-    let fontSizePrice = '11px'
-    let labelPadding = '1.8mm 2.2mm'
+    let h = '25mm'
+    let innerH = '20.5mm'
+    let barcodeH = '5.2mm'
+    let fontSizeName = '7.5px'
+    let fontSizePrice = '9.5px'
+    let labelPadding = '0.8mm 2mm'
 
-    if (labelTemplate === 'thermal_50x25') {
-      pageSize = '50mm 25mm'
+    if (labelTemplate === 'thermal_50x30') {
+      pageSize = '50mm 30mm'
       w = '50mm'
-      h = '25mm'
-      innerH = '21.5mm'
-      barcodeH = '5.8mm'
+      h = '30mm'
+      innerH = '24.5mm'
+      barcodeH = '6.2mm'
       fontSizeName = '8px'
       fontSizePrice = '10px'
-      labelPadding = '1.2mm 2mm'
+      labelPadding = '1.2mm 2.2mm'
     } else if (labelTemplate === 'compact_40x20') {
       pageSize = '40mm 20mm'
       w = '40mm'
       h = '20mm'
-      innerH = '18mm'
-      barcodeH = '5.5mm'
-      fontSizeName = '7.5px'
-      fontSizePrice = '9.5px'
-      labelPadding = '1mm 1.8mm'
+      innerH = '17.5mm'
+      barcodeH = '5mm'
+      fontSizeName = '7px'
+      fontSizePrice = '9px'
+      labelPadding = '0.8mm 1.8mm'
     } else if (labelTemplate === 'crate_100x75') {
       pageSize = '100mm 75mm'
       w = '100mm'
@@ -761,9 +761,9 @@ export default function Barcode() {
             type="button"
             className="btn btn-outline-primary d-flex align-items-center gap-1.5 shadow-sm"
             onClick={handlePrintTestLabel}
-            title="Print 1 sample 50x30mm label to test Xprinter XP-365B alignment"
+            title="Print 1 sample 50x25mm label to test Xprinter XP-365B alignment"
           >
-            <i className="ri-printer-line"></i> Test 1 Label (50×30)
+            <i className="ri-printer-line"></i> Test 1 Label (50×25)
           </button>
 
           <button
@@ -1370,8 +1370,8 @@ export default function Barcode() {
                   value={labelTemplate}
                   onChange={(e) => setLabelTemplate(e.target.value)}
                 >
-                  <option value="thermal_50x30">Standard Item / Shelf (50mm × 30mm) — XP-365B Recommended</option>
-                  <option value="thermal_50x25">Low-Profile Produce (50mm × 25mm)</option>
+                  <option value="thermal_50x25">Standard Produce / Shelf (50mm × 25mm) — Recommended</option>
+                  <option value="thermal_50x30">Tall Item / Shelf (50mm × 30mm)</option>
                   <option value="compact_40x20">Compact Produce Sticker (40mm × 20mm)</option>
                   <option value="crate_100x75">Pallet &amp; Delivery Crate Tag (100mm × 75mm)</option>
                   <option value="sheet_a4">Standard A4 Sticker Sheet (24-up Grid)</option>
