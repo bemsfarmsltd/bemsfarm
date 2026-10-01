@@ -799,8 +799,8 @@ export default function BemsDriverStatementDocument({
 
 /**
  * Clean Print Utility for Official Documents
- * Spawns an isolated window at scroll (0,0) to prevent Chrome's print engine
- * from clipping headers or applying scrolled modal offsets.
+ * Uses an invisible in-DOM iframe to preserve same-origin assets, fonts,
+ * and prevent Chrome print preview from clipping headers or showing blank screens.
  */
 export function printOfficialDocument(targetSelector = '.bems-doc-print-target', title = 'Statement of Account') {
   const target = typeof targetSelector === 'string' ? document.querySelector(targetSelector) : targetSelector
@@ -809,29 +809,36 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
     return
   }
 
-  // Ensure scroll is reset on any active modal overlay and window
-  const overlay = document.querySelector('.bems-doc-modal-overlay')
-  if (overlay) overlay.scrollTop = 0
-  window.scrollTo(0, 0)
+  // Remove any lingering print iframes
+  const oldIframe = document.getElementById('bems-doc-print-iframe')
+  if (oldIframe) oldIframe.remove()
 
-  const printWindow = window.open('', '_blank', 'width=950,height=900')
-  if (!printWindow) {
-    // Popup was blocked by browser: fallback to window.print() after a brief reflow delay
-    setTimeout(() => {
-      window.print()
-    }, 150)
-    return
-  }
+  // Create an invisible in-DOM iframe
+  const iframe = document.createElement('iframe')
+  iframe.id = 'bems-doc-print-iframe'
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = 'none'
+  iframe.style.zIndex = '-9999'
+  document.body.appendChild(iframe)
 
-  // Collect active stylesheets
+  const doc = iframe.contentWindow.document
+
+  // Copy stylesheets, stripping any conflicting visibility:hidden rules
   const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-    .map(s => s.outerHTML)
+    .map(s => {
+      const html = s.outerHTML
+      return html.replace(/visibility\s*:\s*hidden\s*!important/gi, '')
+    })
     .join('\n')
 
   const contentHtml = target.innerHTML
 
-  printWindow.document.open()
-  printWindow.document.write(`<!DOCTYPE html>
+  doc.open()
+  doc.write(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -848,6 +855,7 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
     }
     *, *::before, *::after {
       box-sizing: border-box !important;
+      visibility: visible !important;
     }
     html, body {
       margin: 0 !important;
@@ -859,20 +867,33 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
     }
     .no-print, .no-print * {
       display: none !important;
+      visibility: hidden !important;
+    }
+    .bems-doc-root {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
     }
     .bems-doc-page {
       margin: 0 auto !important;
       box-shadow: none !important;
       border: none !important;
+      width: 210mm !important;
+      height: 296mm !important;
+      min-height: 296mm !important;
+      max-height: 296.5mm !important;
+      overflow: hidden !important;
       page-break-after: always !important;
       break-after: page !important;
-      width: 210mm !important;
-      min-height: 297mm !important;
-      max-height: 297mm !important;
     }
     .bems-doc-page:last-child {
-      page-break-after: auto !important;
-      break-after: auto !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+    .bems-doc-page::before {
+      display: none !important;
     }
     .bems-doc-print-target {
       position: static !important;
@@ -887,16 +908,24 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
   <div class="bems-doc-root">
     ${contentHtml}
   </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.focus();
-        window.print();
-        window.close();
-      }, 350);
-    };
-  </script>
 </body>
 </html>`)
-  printWindow.document.close()
+  doc.close()
+
+  // Wait for fonts and images to settle in the iframe, then trigger print
+  setTimeout(() => {
+    try {
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    } catch (e) {
+      console.warn('Iframe print error, falling back to window.print():', e)
+      window.print()
+    } finally {
+      setTimeout(() => {
+        if (iframe && iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe)
+        }
+      }, 4000)
+    }
+  }, 400)
 }
