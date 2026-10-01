@@ -787,7 +787,63 @@ function renderDriverStatementHtml({
       color: #ffffff;
     }
 
-    /* Parties */
+    .bems-doc-parties-unified {
+      border: 1px solid var(--bems-line);
+      border-radius: 10px;
+      background: #fafcfb;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .bems-doc-party-line {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      font-size: 10.5px;
+      color: var(--bems-ink);
+      line-height: 1.4;
+    }
+    .bems-doc-party-line + .bems-doc-party-line {
+      padding-top: 7px;
+      border-top: 1px dashed var(--bems-line);
+    }
+    .bems-party-label {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #065f46;
+      background: #ecfdf5;
+      border: 1px solid #d1fae5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .bems-party-name {
+      font-family: 'Fraunces', serif;
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--bems-g9);
+      white-space: nowrap;
+    }
+    .bems-party-item {
+      color: var(--bems-ink);
+      white-space: nowrap;
+    }
+    .bems-party-item b {
+      color: var(--bems-muted);
+      font-weight: 600;
+      font-size: 10px;
+      margin-right: 3px;
+    }
+    .bems-party-sep {
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
     .bems-doc-parties {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1357,23 +1413,25 @@ function renderDriverStatementHtml({
       </section>
 
       <!-- Parties Block -->
-      <section class="bems-doc-parties">
-        <div class="bems-doc-party">
-          <div class="cap">Driver & Fleet Profile</div>
-          <div class="nm">${driverName}</div>
-          <p>
-            <b>Wallet Account:</b> <span class="mono">${walletAccountNo}</span><br>
-            <b>Phone:</b> ${driverPhone} · <b>Email:</b> ${driverEmail}
-          </p>
+      <section class="bems-doc-parties-unified">
+        <div class="bems-doc-party-line">
+          <span class="bems-party-label">Driver Profile</span>
+          <span class="bems-party-name">${driverName}</span>
+          <span class="bems-party-sep">·</span>
+          <span class="bems-party-item"><b>Wallet:</b> <span class="mono">${walletAccountNo}</span></span>
+          <span class="bems-party-sep">·</span>
+          <span class="bems-party-item"><b>Phone:</b> ${driverPhone}</span>
+          <span class="bems-party-sep">·</span>
+          <span class="bems-party-item"><b>Email:</b> ${driverEmail}</span>
         </div>
 
-        <div class="bems-doc-party">
-          <div class="cap">Designated Bank Settlement Details</div>
-          <div class="nm">${bankName}</div>
-          <p>
-            <b>Account Name:</b> ${accountName}<br>
-            <b>Account Number (NUBAN):</b> <span class="mono">${accountNumber}</span>
-          </p>
+        <div class="bems-doc-party-line">
+          <span class="bems-party-label">Settlement Bank</span>
+          <span class="bems-party-name">${bankName}</span>
+          <span class="bems-party-sep">·</span>
+          <span class="bems-party-item"><b>Account Name:</b> ${accountName}</span>
+          <span class="bems-party-sep">·</span>
+          <span class="bems-party-item"><b>NUBAN:</b> <span class="mono">${accountNumber}</span></span>
         </div>
       </section>
 

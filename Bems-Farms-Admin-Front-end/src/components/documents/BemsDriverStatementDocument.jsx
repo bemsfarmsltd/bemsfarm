@@ -444,23 +444,25 @@ export default function BemsDriverStatementDocument({
           </section>
 
           {/* ── DRIVER PROFILE & SETTLEMENT ACCOUNT DETAILS (PAGE 1 ONLY) ── */}
-          <section className="bems-doc-parties">
-            <div className="bems-doc-party">
-              <div className="cap">Driver & Fleet Profile</div>
-              <div className="nm">{driverName}</div>
-              <p>
-                <b>Wallet Account:</b> <span className="mono">{walletAccountNo}</span><br />
-                <b>Phone:</b> {driverPhone} · <b>Email:</b> {driverEmail}
-              </p>
+          <section className="bems-doc-parties-unified">
+            <div className="bems-doc-party-line">
+              <span className="bems-party-label">Driver Profile</span>
+              <span className="bems-party-name">{driverName}</span>
+              <span className="bems-party-sep">·</span>
+              <span className="bems-party-item"><b>Wallet:</b> <span className="mono">{walletAccountNo}</span></span>
+              <span className="bems-party-sep">·</span>
+              <span className="bems-party-item"><b>Phone:</b> {driverPhone}</span>
+              <span className="bems-party-sep">·</span>
+              <span className="bems-party-item"><b>Email:</b> {driverEmail}</span>
             </div>
 
-            <div className="bems-doc-party help">
-              <div className="cap">Designated Bank Settlement Details</div>
-              <div className="nm">{bankName}</div>
-              <p>
-                <b>Account Name:</b> {accountName}<br />
-                <b>Account Number (NUBAN):</b> <span className="mono">{accountNumber}</span>
-              </p>
+            <div className="bems-doc-party-line">
+              <span className="bems-party-label">Settlement Bank</span>
+              <span className="bems-party-name">{bankName}</span>
+              <span className="bems-party-sep">·</span>
+              <span className="bems-party-item"><b>Account Name:</b> {accountName}</span>
+              <span className="bems-party-sep">·</span>
+              <span className="bems-party-item"><b>NUBAN:</b> <span className="mono">{accountNumber}</span></span>
             </div>
           </section>
 
