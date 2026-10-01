@@ -1279,10 +1279,6 @@ function renderDriverStatementHtml({
           <div class="bems-doc-logo">
             <img src="https://api.bemsfarms.com/uploads/bemsfarms_logo.png" alt="Bems Farms" onerror="this.src='/bemsfarms_logo_compact.png'">
           </div>
-          <div class="bems-doc-dept-badge">
-            <span class="badge-pulse-dot"></span>
-            Logistics & Fleet Operations Hub
-          </div>
           <div class="bems-doc-co">
             <b>${companyName}</b> · RC: 1892041<br>
             ${companyAddress}<br>
@@ -1367,7 +1363,8 @@ function renderDriverStatementHtml({
           <div class="nm">${driverName}</div>
           <p>
             <b>Wallet Account:</b> <span class="mono">${walletAccountNo}</span><br>
-            <b>Phone:</b> ${driverPhone} · <b>Email:</b> ${driverEmail}
+            <b>Phone:</b> ${driverPhone}<br>
+            <b>Email:</b> ${driverEmail}
           </p>
         </div>
 
@@ -1376,9 +1373,7 @@ function renderDriverStatementHtml({
           <div class="nm">${bankName}</div>
           <p>
             <b>Account Name:</b> ${accountName}<br>
-            <b>Account Number (NUBAN):</b> <span class="mono">${accountNumber}</span><br>
-            <b>Settlement Mode:</b> Monnify Instant / Scheduled Fleet Batch<br>
-            <b>Logistics Helpline:</b> ${companyPhone}
+            <b>Account Number (NUBAN):</b> <span class="mono">${accountNumber}</span>
           </p>
         </div>
       </section>

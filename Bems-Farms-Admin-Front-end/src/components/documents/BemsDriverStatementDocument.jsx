@@ -357,10 +357,6 @@ export default function BemsDriverStatementDocument({
                   }}
                 />
               </div>
-              <div className="bems-doc-dept-badge">
-                <span className="badge-pulse-dot" />
-                Logistics & Fleet Operations Hub
-              </div>
               <div className="bems-doc-co">
                 <b>{companyName}</b> · RC: 1892041<br />
                 {companyAddress}<br />
@@ -454,7 +450,8 @@ export default function BemsDriverStatementDocument({
               <div className="nm">{driverName}</div>
               <p>
                 <b>Wallet Account:</b> <span className="mono">{walletAccountNo}</span><br />
-                <b>Phone:</b> {driverPhone} · <b>Email:</b> {driverEmail}
+                <b>Phone:</b> {driverPhone}<br />
+                <b>Email:</b> {driverEmail}
               </p>
             </div>
 
@@ -463,9 +460,7 @@ export default function BemsDriverStatementDocument({
               <div className="nm">{bankName}</div>
               <p>
                 <b>Account Name:</b> {accountName}<br />
-                <b>Account Number (NUBAN):</b> <span className="mono">{accountNumber}</span><br />
-                <b>Settlement Mode:</b> Monnify Instant / Scheduled Fleet Batch<br />
-                {companyPhone && <><b>Logistics Helpline:</b> {companyPhone}</>}
+                <b>Account Number (NUBAN):</b> <span className="mono">{accountNumber}</span>
               </p>
             </div>
           </section>
