@@ -42,11 +42,17 @@ function numberToWords(num) {
 
 function cleanStatementDescription(desc) {
   if (!desc) return "";
-  return String(desc)
+  let cleaned = String(desc)
     .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, "")
     .replace(/\s*\(Customer Fee.*?\)/gi, "")
     .replace(/\s*\(Customer Delivery Fee.*?\)/gi, "")
     .trim();
+
+  if (/^Zone Delivery Drop:\s*/i.test(cleaned)) {
+    const zone = cleaned.replace(/^Zone Delivery Drop:\s*/i, "").trim();
+    return `Zone: ${zone}`;
+  }
+  return cleaned;
 }
 
 function formatDate(val, withTime = false) {
@@ -1624,13 +1630,8 @@ export default function DriverStatementPage() {
                                 <b>{cleanStatementDescription(ev.description) || (isCredit ? "Delivery Drop Commission" : "Bank Withdrawal")}</b>
                                 {ev.order_id && (
                                   <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1", marginLeft: 6 }}>
-                                    Order #{ev.order_id}
+                                    Order #{String(ev.order_id).replace(/^Order\s*#?/i, "")}
                                   </span>
-                                )}
-                                {ev.delivery_address && (
-                                  <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 3 }}>
-                                    {ev.delivery_address}
-                                  </div>
                                 )}
                               </td>
                               <td className="mono" style={{ fontSize: 10, color: "#0f3622", fontWeight: 600 }}>
@@ -1817,13 +1818,8 @@ export default function DriverStatementPage() {
                                   <b>{cleanStatementDescription(ev.description) || (isCredit ? "Delivery Drop Commission" : "Bank Withdrawal")}</b>
                                   {ev.order_id && (
                                     <span className="bems-doc-tag" style={{ background: "#e0f2fe", color: "#0369a1", marginLeft: 6 }}>
-                                      Order #{ev.order_id}
+                                      Order #{String(ev.order_id).replace(/^Order\s*#?/i, "")}
                                     </span>
-                                  )}
-                                  {ev.delivery_address && (
-                                    <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 3 }}>
-                                      {ev.delivery_address}
-                                    </div>
                                   )}
                                 </td>
                                 <td className="mono" style={{ fontSize: 10, color: "#0f3622", fontWeight: 600 }}>

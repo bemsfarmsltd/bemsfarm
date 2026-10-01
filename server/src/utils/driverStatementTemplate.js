@@ -63,11 +63,17 @@ function formatDate(val, withTime = false) {
 
 function cleanStatementDescription(desc) {
   if (!desc) return '';
-  return String(desc)
+  let cleaned = String(desc)
     .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
     .replace(/\s*\(Customer Fee.*?\)/gi, '')
     .replace(/\s*\(Customer Delivery Fee.*?\)/gi, '')
     .trim();
+
+  if (/^Zone Delivery Drop:\s*/i.test(cleaned)) {
+    const zone = cleaned.replace(/^Zone Delivery Drop:\s*/i, '').trim();
+    return `Zone: ${zone}`;
+  }
+  return cleaned;
 }
 
 function generateSecurityCode(ref, amount) {
@@ -199,10 +205,7 @@ function renderDriverStatementHtml({
       const amt = parseFloat(ev.amount) || 0;
       const runningBal = ev.running_balance !== undefined ? parseFloat(ev.running_balance) : null;
       const tagHtml = ev.order_id 
-        ? `<span class="bems-doc-tag" style="background:#e0f2fe;color:#0369a1;margin-left:6px;">Order #${ev.order_id}</span>` 
-        : '';
-      const addrHtml = ev.delivery_address 
-        ? `<div style="font-size:9.5px;color:#64748b;margin-top:2px;">${ev.delivery_address}</div>` 
+        ? `<span class="bems-doc-tag" style="background:#e0f2fe;color:#0369a1;margin-left:6px;">Order #${String(ev.order_id).replace(/^Order\s*#?/i, '')}</span>` 
         : '';
 
       return `
@@ -212,7 +215,6 @@ function renderDriverStatementHtml({
           <td class="it">
             <b>${cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
             ${tagHtml}
-            ${addrHtml}
           </td>
           <td class="mono" style="font-size:10px;color:#0f3622;font-weight:600;">${ev.reference || '—'}</td>
           <td class="c">
