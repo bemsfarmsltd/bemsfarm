@@ -425,49 +425,159 @@ export default function DriverStatementPage() {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
+          padding-bottom: 14px;
+          margin-bottom: 12px;
+          border-bottom: 1px solid #e9ecef;
+          position: relative;
+        }
+
+        .bems-doc-head::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          width: 72px;
+          height: 2.5px;
+          background: var(--bems-g6, #10b981);
+          border-radius: 2px;
         }
 
         .bems-doc-logo img {
-          height: 48px;
+          height: 46px;
           width: auto;
           display: block;
           object-fit: contain;
         }
 
-        .bems-doc-co {
-          margin-top: 8px;
-          font-size: 10px;
-          color: var(--bems-muted);
-          line-height: 1.6;
+        .bems-doc-dept-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 8.5px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #065f46;
+          background: #ecfdf5;
+          border: 1px solid #d1fae5;
+          padding: 2.5px 8px;
+          border-radius: 4px;
+          margin-top: 6px;
         }
-        .bems-doc-co b { color: var(--bems-ink2); font-weight: 600; }
+
+        .bems-doc-dept-badge .badge-pulse-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #10b981;
+        }
+
+        .bems-doc-co {
+          margin-top: 5px;
+          font-size: 9.5px;
+          color: var(--bems-muted, #556b61);
+          line-height: 1.5;
+        }
+        .bems-doc-co b { color: var(--bems-ink, #0f2d23); font-weight: 700; font-size: 10.5px; }
 
         .bems-doc-meta-right { text-align: right; }
-        .bems-doc-meta-right h1 {
-          font-family: 'Fraunces', serif;
+
+        .bems-doc-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 8.5px;
           font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #065f46;
+          background: #f0fdf9;
+          border: 1px solid #a7f3d0;
+          padding: 3px 10px;
+          border-radius: 999px;
+          margin-bottom: 4px;
+        }
+
+        .bems-doc-status-badge .badge-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #10b981;
+        }
+
+        .bems-doc-meta-right h1 {
+          font-family: 'Fraunces', Georgia, serif;
+          font-weight: 800;
           font-size: 28px;
           line-height: 1.1;
-          color: var(--bems-g9);
-          margin: 3px 0 0;
+          color: var(--bems-g9, #064e3b);
+          letter-spacing: -0.02em;
+          margin: 0;
         }
+
+        .bems-doc-ref-wrap {
+          margin-top: 6px;
+        }
+
+        .bems-doc-ref-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 4px 10px;
+          border-radius: 5px;
+          background: #064e3b;
+          color: #ffffff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
+        }
+
+        .bems-doc-ref-pill .ref-prefix {
+          color: #6ee7b7;
+          font-size: 8.5px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+        }
+
         .bems-doc-meta-right .no {
           display: inline-block;
           margin-top: 6px;
           padding: 4px 10px;
-          border-radius: 6px;
-          background: var(--bems-gold1);
-          color: #6d5d17;
+          border-radius: 5px;
+          background: #064e3b;
+          color: #ffffff;
           font-family: 'JetBrains Mono', monospace;
           font-weight: 600;
-          font-size: 11.5px;
-          letter-spacing: .04em;
+          font-size: 11px;
+          letter-spacing: .05em;
+          box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
         }
-        .bems-doc-meta-right .dt {
-          margin-top: 5px;
+
+        .bems-doc-dates {
+          margin-top: 6px;
           font-size: 10px;
-          color: var(--bems-muted);
-          line-height: 1.4;
+          color: var(--bems-muted, #64748b);
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .bems-doc-dates b {
+          color: #1e293b;
+          font-weight: 600;
+        }
+
+        .bems-doc-dates .dt-sep {
+          opacity: 0.5;
+        }
+
+        .bems-doc-meta-right .dt {
+          margin-top: 6px;
+          font-size: 10px;
+          color: var(--bems-muted, #64748b);
         }
 
         .bems-doc-hero {
@@ -1312,20 +1422,33 @@ export default function DriverStatementPage() {
                           onError={(e) => { e.currentTarget.src = "/bemsfarms_logo_compact.png"; }}
                         />
                       </div>
+                      <div className="bems-doc-dept-badge">
+                        <span className="badge-pulse-dot" />
+                        Logistics & Fleet Operations Hub
+                      </div>
                       <div className="bems-doc-co">
-                        <b>{companyName}</b> · Logistics & Fleet Operations<br />
+                        <b>{companyName}</b> · RC: 1892041<br />
                         {companyAddress}<br />
                         {companyEmail}{companyPhone ? ` · ${companyPhone}` : ''}
                       </div>
                     </div>
 
                     <div className="bems-doc-meta-right">
-                      <div className="cap">Official Settlement Record</div>
+                      <div className="bems-doc-status-badge">
+                        <span className="badge-dot" />
+                        Official Settlement Record
+                      </div>
                       <h1>Statement of Account</h1>
-                      <div className="no">{statementRef}</div>
-                      <div className="dt">
-                        Period: {formatDate(periodStart)} – {formatDate(periodEnd)}<br />
-                        Generated on {issuedDate}
+                      <div className="bems-doc-ref-wrap">
+                        <span className="bems-doc-ref-pill">
+                          <span className="ref-prefix">DOCUMENT ID</span>
+                          {statementRef}
+                        </span>
+                      </div>
+                      <div className="bems-doc-dates">
+                        <span>Period: <b>{formatDate(periodStart)} – {formatDate(periodEnd)}</b></span>
+                        <span className="dt-sep">·</span>
+                        <span>Generated: <b>{issuedDate}</b></span>
                       </div>
                     </div>
                   </header>

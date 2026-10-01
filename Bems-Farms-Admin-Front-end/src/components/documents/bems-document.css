@@ -91,58 +91,166 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+  position: relative;
+}
+
+.bems-doc-head::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 72px;
+  height: 2.5px;
+  background: var(--bems-g6, #10b981);
+  border-radius: 2px;
 }
 
 .bems-doc-logo img {
-  height: 50px;
+  height: 46px;
   width: auto;
   display: block;
   object-fit: contain;
 }
 
+.bems-doc-dept-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  padding: 2.5px 8px;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.bems-doc-dept-badge .badge-pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
 .bems-doc-co {
-  margin-top: 8px;
-  font-size: 10px;
-  color: var(--bems-muted);
-  line-height: 1.6;
+  margin-top: 5px;
+  font-size: 9.5px;
+  color: var(--bems-muted, #556b61);
+  line-height: 1.5;
 }
 
 .bems-doc-co b {
-  color: var(--bems-ink2);
-  font-weight: 600;
+  color: var(--bems-ink, #0f2d23);
+  font-weight: 700;
+  font-size: 10.5px;
 }
 
 .bems-doc-meta-right {
   text-align: right;
 }
 
-.bems-doc-meta-right h1 {
-  font-family: 'Fraunces', serif;
+.bems-doc-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8.5px;
   font-weight: 700;
-  font-size: 30px;
-  line-height: 1;
-  color: var(--bems-g9);
-  letter-spacing: -.01em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #065f46;
+  background: #f0fdf9;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.bems-doc-status-badge .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.bems-doc-meta-right h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--bems-g9, #064e3b);
+  letter-spacing: -0.02em;
   margin: 0;
+}
+
+.bems-doc-ref-wrap {
+  margin-top: 6px;
+}
+
+.bems-doc-ref-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  background: #064e3b;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
+}
+
+.bems-doc-ref-pill .ref-prefix {
+  color: #6ee7b7;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 
 .bems-doc-meta-right .no {
   display: inline-block;
-  margin-top: 9px;
+  margin-top: 6px;
   padding: 4px 10px;
-  border-radius: 6px;
-  background: var(--bems-gold1);
-  color: #6d5d17;
+  border-radius: 5px;
+  background: #064e3b;
+  color: #ffffff;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  font-size: 12px;
-  letter-spacing: .04em;
+  font-size: 11px;
+  letter-spacing: .05em;
+  box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
+}
+
+.bems-doc-dates {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--bems-muted, #64748b);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.bems-doc-dates b {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.bems-doc-dates .dt-sep {
+  opacity: 0.5;
 }
 
 .bems-doc-meta-right .dt {
   margin-top: 6px;
-  font-size: 10.5px;
-  color: var(--bems-muted);
+  font-size: 10px;
+  color: var(--bems-muted, #64748b);
 }
 
 /* Hero */
@@ -988,13 +1096,23 @@
     z-index: 10 !important;
   }
   .bems-doc-head {
+    padding-bottom: 10px !important;
     margin-bottom: 8px !important;
+    border-bottom: 1px solid #e9ecef !important;
   }
   .bems-doc-logo img {
-    height: 40px !important;
+    height: 38px !important;
   }
   .bems-doc-meta-right h1 {
     font-size: 22px !important;
+  }
+  .bems-doc-ref-pill {
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+  }
+  .bems-doc-dates {
+    font-size: 9px !important;
+    margin-top: 4px !important;
   }
   .bems-doc-hero {
     border-radius: 8px !important;
