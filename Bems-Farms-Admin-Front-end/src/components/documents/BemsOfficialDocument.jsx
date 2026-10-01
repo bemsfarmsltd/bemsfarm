@@ -517,6 +517,10 @@ export default function BemsOfficialDocument({
             </dl>
           </section>
 
+        </div>
+
+        {/* ── FOOTER GROUP (DOCKED AT ABSOLUTE BOTTOM) ── */}
+        <div className="bems-doc-footer-group">
           {/* ── SIGN-OFF & TERMS ── */}
           <section className="bems-doc-sign">
             {isReceipt ? (
@@ -550,19 +554,18 @@ export default function BemsOfficialDocument({
             </div>
           </section>
 
-        </div>
+          {/* ── THANKS BANNER ── */}
+          <div className="bems-doc-thanks">
+            <h3>{isReceipt ? `Thank you for choosing ${companyName}.` : 'Thank you for your order.'}</h3>
+            <span>{footerNote}</span>
+          </div>
 
-        {/* ── THANKS BANNER ── */}
-        <div className="bems-doc-thanks">
-          <h3>{isReceipt ? `Thank you for choosing ${companyName}.` : 'Thank you for your order.'}</h3>
-          <span>{footerNote}</span>
-        </div>
-
-        {/* ── FOOTER ── */}
-        <div className="bems-doc-foot">
-          <span>{companyPhone}</span>
-          <span>www.bemsfarms.com</span>
-          <span>{rcNumber} · {tinNumber}</span>
+          {/* ── FOOTER ── */}
+          <div className="bems-doc-foot">
+            <span>{companyPhone}</span>
+            <span>www.bemsfarms.com</span>
+            <span>{rcNumber} · {tinNumber}</span>
+          </div>
         </div>
 
       </div>

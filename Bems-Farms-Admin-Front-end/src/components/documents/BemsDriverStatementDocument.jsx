@@ -574,33 +574,6 @@ export default function BemsDriverStatementDocument({
                   <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
                 </dl>
               </section>
-
-              {/* Sign-off & Notice */}
-              <section className="bems-doc-sign">
-                <div className="bems-doc-keep terms">
-                  <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
-                </div>
-
-                <div className="bems-doc-sign-right">
-                  <div className="bems-doc-sig">
-                    {effectiveSignature ? (
-                      <img src={effectiveSignature} alt="Authorised Signature" className="bems-doc-sig-img" />
-                    ) : (
-                      <div className="bems-doc-sig-placeholder" />
-                    )}
-                    <div className="ln" />
-                    <b>For {companyName}</b>
-                    <span>Financial Controller &amp; Head of Logistics</span>
-                  </div>
-                  <div className="bems-doc-stamp-wrapper">
-                    <BemsOfficialStamp
-                      size={82}
-                      companyName={companyName}
-                      rcNumber={rcNumber}
-                    />
-                  </div>
-                </div>
-              </section>
             </>
           )}
 
@@ -609,6 +582,33 @@ export default function BemsDriverStatementDocument({
         {/* ── Page 1 Bottom: Either Only Footer (if 1 Page) OR Continuation Indicator (NO FOOTER if 2 Pages) ── */}
         {!isMultiPage ? (
           <div className="bems-doc-footer-group">
+            {/* Sign-off & Notice */}
+            <section className="bems-doc-sign">
+              <div className="bems-doc-keep terms">
+                <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+              </div>
+
+              <div className="bems-doc-sign-right">
+                <div className="bems-doc-sig">
+                  {effectiveSignature ? (
+                    <img src={effectiveSignature} alt="Authorised Signature" className="bems-doc-sig-img" />
+                  ) : (
+                    <div className="bems-doc-sig-placeholder" />
+                  )}
+                  <div className="ln" />
+                  <b>For {companyName}</b>
+                  <span>Financial Controller &amp; Head of Logistics</span>
+                </div>
+                <div className="bems-doc-stamp-wrapper">
+                  <BemsOfficialStamp
+                    size={82}
+                    companyName={companyName}
+                    rcNumber={rcNumber}
+                  />
+                </div>
+              </div>
+            </section>
+
             <div className="bems-doc-thanks">
               <h3>Thank you for powering Bems Farms logistics.</h3>
               <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
@@ -750,7 +750,11 @@ export default function BemsDriverStatementDocument({
               </dl>
             </section>
 
-            {/* Sign-off Block & Audit Notice */}
+          </div>
+
+          {/* ── THE ONLY OFFICIAL FOOTER GROUP ON THE STATEMENT (DOCKED AT ABSOLUTE BOTTOM OF PAGE 2) ── */}
+          <div className="bems-doc-footer-group">
+            {/* Sign-off Block & Audit Notice (Positioned Gracefully at Bottom Above Thanks Banner) */}
             <section className="bems-doc-sign">
               <div className="bems-doc-keep terms">
                 <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
@@ -777,10 +781,6 @@ export default function BemsDriverStatementDocument({
               </div>
             </section>
 
-          </div>
-
-          {/* ── THE ONLY OFFICIAL FOOTER GROUP ON THE STATEMENT (DOCKED AT BOTTOM OF PAGE 2) ── */}
-          <div className="bems-doc-footer-group">
             <div className="bems-doc-thanks">
               <h3>Thank you for powering Bems Farms logistics.</h3>
               <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>

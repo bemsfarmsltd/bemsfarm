@@ -54,9 +54,6 @@
   background: #ffffff;
   position: relative;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   box-shadow: 0 20px 60px rgba(15, 54, 34, .18);
   text-align: left;
   box-sizing: border-box;
@@ -76,13 +73,11 @@
 }
 
 .bems-doc-body {
-  padding: 14mm 15mm 0 17mm;
+  padding: 14mm 15mm 160px 17mm;
   display: flex;
   flex-direction: column;
   gap: 18px;
   overflow: hidden;
-  flex: 1 1 auto;
-  min-height: 0;
   box-sizing: border-box;
 }
 
@@ -645,12 +640,24 @@
   print-color-adjust: exact !important;
 }
 
-/* Footer Group (Anchored to Bottom of A4 Document via Flexbox) */
+/* Footer Group (Anchored to Absolute Bottom of A4 Document) */
 .bems-doc-footer-group {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  flex-shrink: 0;
   background: #ffffff;
-  margin-top: auto;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.bems-doc-footer-group .bems-doc-sign {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, auto);
+  gap: 32px;
+  align-items: end;
+  padding: 0 15mm 16px 17mm;
 }
 
 /* Thanks banner & Footer */
@@ -913,9 +920,7 @@
   }
   .bems-doc-page {
     position: relative !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    display: block !important;
     width: 210mm !important;
     height: 297mm !important;
     min-height: 297mm !important;
@@ -926,7 +931,7 @@
     border: none !important;
     background: #ffffff !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     page-break-after: always !important;
     break-after: page !important;
   }
@@ -935,22 +940,26 @@
     break-after: auto !important;
   }
   .bems-doc-body {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 1 auto !important;
-    padding: 10mm 14mm 0 14mm !important;
+    display: block !important;
+    padding: 10mm 14mm 160px 14mm !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
-    min-height: 0 !important;
   }
   .bems-doc-footer-group {
-    position: static !important;
-    margin-top: auto !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     background: #ffffff !important;
-    flex-shrink: 0 !important;
+    z-index: 10 !important;
+  }
+  .bems-doc-footer-group .bems-doc-sign {
+    padding: 0 14mm 14px 14mm !important;
+    gap: 16px !important;
+    grid-template-columns: 1fr 210px !important;
   }
   .bems-doc-head {
     margin-bottom: 12px !important;

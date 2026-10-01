@@ -338,9 +338,6 @@ export default function DriverStatementPage() {
           background: #ffffff;
           position: relative;
           overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
           box-shadow: 0 20px 60px rgba(0,0,0,0.4);
           text-align: left;
           box-sizing: border-box;
@@ -360,13 +357,11 @@ export default function DriverStatementPage() {
         }
 
         .bems-doc-body {
-          padding: 14mm 15mm 0 17mm;
+          padding: 14mm 15mm 160px 17mm;
           display: flex;
           flex-direction: column;
           gap: 16px;
           overflow: hidden;
-          flex: 1 1 auto;
-          min-height: 0;
           box-sizing: border-box;
         }
 
@@ -808,10 +803,22 @@ export default function DriverStatementPage() {
         .bems-doc-thanks span { font-size: 10px; color: var(--bems-muted); }
 
         .bems-doc-footer-group {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
           width: 100%;
-          flex-shrink: 0;
           background: #ffffff;
-          margin-top: auto;
+          z-index: 10;
+          box-sizing: border-box;
+        }
+
+        .bems-doc-footer-group .bems-doc-sign {
+          display: grid;
+          grid-template-columns: 1fr minmax(260px, auto);
+          gap: 32px;
+          align-items: end;
+          padding: 0 15mm 16px 17mm;
         }
 
         .bems-doc-thanks {
@@ -892,9 +899,7 @@ export default function DriverStatementPage() {
           }
           .bems-doc-page {
             position: relative !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
+            display: block !important;
             width: 210mm !important;
             height: 297mm !important;
             min-height: 297mm !important;
@@ -905,7 +910,7 @@ export default function DriverStatementPage() {
             border: none !important;
             background: #ffffff !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             page-break-after: always !important;
             break-after: page !important;
           }
@@ -914,22 +919,26 @@ export default function DriverStatementPage() {
             break-after: auto !important;
           }
           .bems-doc-body {
-            display: flex !important;
-            flex-direction: column !important;
-            flex: 1 1 auto !important;
-            padding: 10mm 14mm 0 14mm !important;
+            display: block !important;
+            padding: 10mm 14mm 160px 14mm !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
-            min-height: 0 !important;
           }
           .bems-doc-footer-group {
-            position: static !important;
-            margin-top: auto !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
             width: 100% !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
             background: #ffffff !important;
-            flex-shrink: 0 !important;
+            z-index: 10 !important;
+          }
+          .bems-doc-footer-group .bems-doc-sign {
+            padding: 0 14mm 14px 14mm !important;
+            gap: 16px !important;
+            grid-template-columns: 1fr 210px !important;
           }
           .bems-doc-thanks {
             margin-left: 0 !important;
@@ -1441,33 +1450,6 @@ export default function DriverStatementPage() {
                           <dd className="mono" style={{ fontSize: 9.5, color: "#8a6d12" }}>{accountNumber} ({bankName})</dd>
                         </dl>
                       </section>
-
-                      {/* Sign-off & Audit Notice */}
-                      <section className="bems-doc-sign">
-                        <div className="bems-doc-keep">
-                          <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
-                        </div>
-
-                        <div className="bems-doc-sign-right">
-                          <div className="bems-doc-sig">
-                            {signatureUrl ? (
-                              <img src={signatureUrl} alt="Authorised Signature" className="bems-doc-sig-img" />
-                            ) : (
-                              <div className="bems-doc-sig-placeholder" />
-                            )}
-                            <div className="ln"></div>
-                            <b>For {companyName}</b>
-                            <span>Financial Controller &amp; Head of Logistics</span>
-                          </div>
-                          <div className="bems-doc-stamp-wrapper">
-                            <BemsOfficialStamp
-                              size={82}
-                              companyName={companyName}
-                              rcNumber={company.rc_number || "RC 1849204"}
-                            />
-                          </div>
-                        </div>
-                      </section>
                     </>
                   )}
 
@@ -1476,6 +1458,33 @@ export default function DriverStatementPage() {
                 {/* Page 1 Bottom: Only Footer (if 1 Page) OR Continuation Indicator (NO FOOTER if 2 Pages) */}
                 {!isMultiPage ? (
                   <div className="bems-doc-footer-group">
+                    {/* Sign-off & Audit Notice */}
+                    <section className="bems-doc-sign">
+                      <div className="bems-doc-keep">
+                        <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+                      </div>
+
+                      <div className="bems-doc-sign-right">
+                        <div className="bems-doc-sig">
+                          {signatureUrl ? (
+                            <img src={signatureUrl} alt="Authorised Signature" className="bems-doc-sig-img" />
+                          ) : (
+                            <div className="bems-doc-sig-placeholder" />
+                          )}
+                          <div className="ln"></div>
+                          <b>For {companyName}</b>
+                          <span>Financial Controller &amp; Head of Logistics</span>
+                        </div>
+                        <div className="bems-doc-stamp-wrapper">
+                          <BemsOfficialStamp
+                            size={82}
+                            companyName={companyName}
+                            rcNumber={company.rc_number || "RC 1849204"}
+                          />
+                        </div>
+                      </div>
+                    </section>
+
                     <div className="bems-doc-thanks">
                       <h3>Thank you for powering Bems Farms logistics.</h3>
                       <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
@@ -1614,6 +1623,10 @@ export default function DriverStatementPage() {
                       </dl>
                     </section>
 
+                  </div>
+
+                  {/* The ONLY Footer of the Statement, Docked at Absolute Bottom of Last Page */}
+                  <div className="bems-doc-footer-group">
                     {/* Sign-off & Audit Notice */}
                     <section className="bems-doc-sign">
                       <div className="bems-doc-keep">
@@ -1641,10 +1654,6 @@ export default function DriverStatementPage() {
                       </div>
                     </section>
 
-                  </div>
-
-                  {/* The ONLY Footer of the Statement, Docked at Bottom of Last Page */}
-                  <div className="bems-doc-footer-group">
                     <div className="bems-doc-thanks">
                       <h3>Thank you for powering Bems Farms logistics.</h3>
                       <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>

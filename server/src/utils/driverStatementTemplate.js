@@ -291,9 +291,7 @@ function renderDriverStatementHtml({
       background: #ffffff;
       position: relative;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      display: block;
       box-shadow: 0 20px 60px rgba(0,0,0,0.4);
       text-align: left;
     }
@@ -308,11 +306,10 @@ function renderDriverStatementHtml({
     }
 
     .bems-doc-body {
-      padding: 14mm 15mm 0 17mm;
+      padding: 14mm 15mm 160px 17mm;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      flex: 1;
     }
 
     /* Header */
@@ -649,15 +646,24 @@ function renderDriverStatementHtml({
       font-size: 15px;
     }
 
-    /* Sign-off */
-    .bems-doc-sign {
-      margin-top: auto;
+    /* Footer Group (Anchored to Absolute Bottom of A4 Document) */
+    .bems-doc-footer-group {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background: #ffffff;
+      z-index: 10;
+      box-sizing: border-box;
+    }
+
+    .bems-doc-footer-group .bems-doc-sign {
       display: grid;
       grid-template-columns: 1fr minmax(260px, auto);
       gap: 32px;
       align-items: end;
-      padding-top: 24px;
-      padding-bottom: 12px;
+      padding: 0 15mm 16px 17mm;
     }
     .bems-doc-keep {
       padding: 10px 14px;
@@ -774,7 +780,7 @@ function renderDriverStatementHtml({
 
     @page {
       size: A4 portrait;
-      margin: 8mm 8mm 8mm 8mm;
+      margin: 0;
     }
 
     @media print {
@@ -788,18 +794,26 @@ function renderDriverStatementHtml({
       }
       .no-print, .no-print * { display: none !important; }
       .bems-doc-page {
-        width: 100% !important;
-        max-width: 100% !important;
+        position: relative !important;
+        display: block !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
         margin: 0 !important;
         padding: 0 !important;
         box-shadow: none !important;
         border: none !important;
-        min-height: auto !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
         page-break-after: auto;
       }
       .bems-doc-body {
-        padding: 0 3mm 0 5mm !important;
-        gap: 8px !important;
+        display: block !important;
+        padding: 10mm 14mm 160px 14mm !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
       }
       .bems-doc-head { margin-bottom: 0 !important; }
       .bems-doc-logo img { height: 38px !important; }
@@ -831,11 +845,20 @@ function renderDriverStatementHtml({
       .bems-doc-verify { padding: 6px 10px !important; }
       .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
-      .bems-doc-sign {
-        margin-top: auto !important;
-        padding-top: 24px !important;
+      .bems-doc-footer-group {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        background: #ffffff !important;
+        z-index: 10 !important;
+      }
+      .bems-doc-footer-group .bems-doc-sign {
+        padding: 0 14mm 14px 14mm !important;
         gap: 16px !important;
-        padding-bottom: 12px !important;
         grid-template-columns: 1fr 210px !important;
       }
       .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
@@ -1053,10 +1076,14 @@ function renderDriverStatementHtml({
         </dl>
       </section>
 
+      </div>
+
+    <!-- Pinned Footer Group (Signature + Thanks + Bottom Bar) -->
+    <div class="bems-doc-footer-group">
       <!-- Sign-off & Audit Notice -->
       <section class="bems-doc-sign">
         <div class="bems-doc-keep">
-          <b>Audit & Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
+          <b>Audit &amp; Settlement Notice.</b> This Statement of Account reflects all verified delivery compensations, bonuses, adjustments, and electronic bank settlements recorded in the Bems Farms driver settlement system. All figures are audited and reconciled against delivery telemetry and payment gateway logs. Please report any discrepancies within 14 days.
         </div>
 
         <div class="bems-doc-sign-right">
@@ -1072,19 +1099,18 @@ function renderDriverStatementHtml({
         </div>
       </section>
 
-    </div>
+      <!-- Thanks Banner -->
+      <div class="bems-doc-thanks">
+        <h3>Thank you for powering Bems Farms logistics.</h3>
+        <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
+      </div>
 
-    <!-- Thanks Banner -->
-    <div class="bems-doc-thanks">
-      <h3>Thank you for powering Bems Farms logistics.</h3>
-      <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
-    </div>
-
-    <!-- Footer -->
-    <div class="bems-doc-foot">
-      <span>${companyPhone}</span>
-      <span>www.bemsfarms.com</span>
-      <span>${rcNumber} · ${tinNumber}</span>
+      <!-- Footer -->
+      <div class="bems-doc-foot">
+        <span>${companyPhone}</span>
+        <span>www.bemsfarms.com</span>
+        <span>${rcNumber} · ${tinNumber}</span>
+      </div>
     </div>
   </div>
 
