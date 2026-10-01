@@ -475,11 +475,23 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     builder.kickDrawer()
   }
 
-  const isInvoice = receiptData.receiptType === 'invoice' || receiptData.isInvoice || String(receiptNumber || '').startsWith('ORD-')
-  const docTitle = isInvoice ? 'OFFICIAL INVOICE' : 'SALES RECEIPT'
-  const docNumberLabel = isInvoice ? 'Invoice #:' : 'Receipt #:'
-  const docFooter = isInvoice ? 'THANK YOU FOR YOUR ORDER!' : 'THANK YOU FOR SHOPPING WITH US!'
-  const docNote = isInvoice ? 'Keep this invoice for your records' : 'Freshness you can trust, every day.'
+  const isInvoice = receiptData.receiptType === 'invoice' || (Boolean(receiptData.isInvoice) && receiptData.receiptType !== 'online' && receiptData.receiptType !== 'pos')
+  const docTitle = isInvoice
+    ? 'OFFICIAL INVOICE'
+    : (receiptData.receiptType === 'online' || receiptData.isOnlineFulfillment
+        ? 'PAYMENT RECEIPT'
+        : 'SALES RECEIPT')
+  const docNumberLabel = isInvoice ? 'Invoice #:' : (receiptData.receiptType === 'online' || receiptData.isOnlineFulfillment ? 'Order #:' : 'Receipt #:')
+  const docFooter = isInvoice
+    ? 'INTERNAL USE ONLY — PACKING LIST'
+    : (receiptData.receiptType === 'online' || receiptData.isOnlineFulfillment
+        ? 'THANK YOU FOR SHOPPING WITH BEMS FARMS!'
+        : 'THANK YOU FOR SHOPPING WITH US!')
+  const docNote = isInvoice
+    ? 'Staff copy — packing list'
+    : (receiptData.receiptType === 'online' || receiptData.isOnlineFulfillment
+        ? 'Customer copy — keep for your records'
+        : 'Freshness you can trust, every day.')
 
   // 1. Header & Store Branding
   builder.align('center')

@@ -1673,15 +1673,20 @@ export default function POS() {
 
         const completedReceipt = {
           orderId: orderId || fulfilledOnlineId,
+          receiptType: 'online',
+          isInvoice: false,
           isOnlineFulfillment: true,
+          channel: 'Online Order',
+          status: 'PAID',
           customer,
           cart: [...cart],
+          items: [...cart],
           subtotal,
           discountPct,
           discountAmt,
           vat,
           total,
-          method: 'Online Order (Packed)',
+          method: 'Online / Paid',
           orderNote,
           change: 0,
           cashReceived: total,
@@ -1781,8 +1786,13 @@ export default function POS() {
     const change = method === 'Cash' && cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
     const receiptData = {
       orderId,
+      receiptType: 'pos',
+      isInvoice: false,
+      channel: 'POS Terminal',
+      status: 'PAID',
       customer,
       cart: [...cart],
+      items: [...cart],
       subtotal,
       discountPct,
       discountAmt,
@@ -4266,7 +4276,7 @@ export default function POS() {
                         className="btn btn-outline-secondary flex-fill py-2 d-flex align-items-center justify-content-center gap-1"
                         onClick={() => handlePrintReceipt(successData)}
                       >
-                        <i className="ri-printer-line" /> Print Packing Slip
+                        <i className="ri-printer-line" /> {successData?.receiptType === 'invoice' || successData?.isInvoice ? 'Print Packing Slip' : 'Print Customer Receipt'}
                       </button>
                       <button
                         type="button"
@@ -4607,12 +4617,12 @@ export default function POS() {
       {successData && activeModal !== 'receipt' && (
         <div className="pos-thermal-print-container">
           <ThermalReceipt
-            receiptType={successData.receiptType || (String(successData.orderId || '').startsWith('ORD-') ? 'invoice' : 'pos')}
+            receiptType={successData.receiptType || (successData.isInvoice ? 'invoice' : (successData.isOnlineFulfillment ? 'online' : 'pos'))}
             receiptNumber={successData.orderId}
             date={`${successData.date} · ${successData.time}`}
             customer={successData.customer?.name || (typeof successData.cust === 'string' ? successData.cust : undefined)}
             customerPhone={successData.customer?.phone}
-            channel={successData.channel || (String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
+            channel={successData.channel || (successData.isOnlineFulfillment || String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
             cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : (successData.cashier || 'Cashier')}
             status="PAID"
             items={successData.cart || successData.items || []}
@@ -4637,12 +4647,12 @@ export default function POS() {
 
             <div className="thermal-receipt-preview thermal-receipt-preview--pos">
               <ThermalReceipt
-                receiptType={successData.receiptType || (String(successData.orderId || '').startsWith('ORD-') ? 'invoice' : 'pos')}
+                receiptType={successData.receiptType || (successData.isInvoice ? 'invoice' : (successData.isOnlineFulfillment ? 'online' : 'pos'))}
                 receiptNumber={successData.orderId}
                 date={`${successData.date} · ${successData.time}`}
                 customer={successData.customer?.name || (typeof successData.cust === 'string' ? successData.cust : undefined)}
                 customerPhone={successData.customer?.phone}
-                channel={successData.channel || (String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
+                channel={successData.channel || (successData.isOnlineFulfillment || String(successData.orderId || '').startsWith('ORD-') ? 'Online Order' : 'POS Terminal')}
                 cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : (successData.cashier || 'Cashier')}
                 status="PAID"
                 items={successData.cart || successData.items || []}
