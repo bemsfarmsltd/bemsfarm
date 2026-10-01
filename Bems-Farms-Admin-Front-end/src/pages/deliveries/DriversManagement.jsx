@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
-import BemsDriverStatementDocument from '../../components/documents/BemsDriverStatementDocument'
+import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
 
 const STATUS_CFG = {
   active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
@@ -2346,10 +2346,10 @@ export default function DriversManagement() {
           {/* Official Driver Statement of Account Modal */}
           {activeModal === 'statement' && selected && (() => {
             const handlePrintStatement = () => {
-              const overlay = document.querySelector('.bems-doc-modal-overlay')
-              if (overlay) overlay.scrollTop = 0
-              window.scrollTo(0, 0)
-              window.print()
+              printOfficialDocument(
+                '.bems-doc-print-target',
+                `Statement_of_Account_${(selected.name || 'Driver').replace(/\s+/g, '_')}`
+              )
             }
 
             return (

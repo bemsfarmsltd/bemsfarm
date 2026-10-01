@@ -941,9 +941,12 @@
   }
   .bems-doc-body {
     display: block !important;
-    padding: 10mm 14mm 160px 14mm !important;
+    padding: 10mm 14mm 150px 14mm !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+  }
+  .bems-doc-page-1-multi .bems-doc-body {
+    padding-bottom: 24px !important;
   }
   .bems-doc-footer-group {
     position: absolute !important;
@@ -957,79 +960,79 @@
     z-index: 10 !important;
   }
   .bems-doc-footer-group .bems-doc-sign {
-    padding: 0 14mm 14px 14mm !important;
+    padding: 0 14mm 10px 14mm !important;
     gap: 16px !important;
     grid-template-columns: 1fr 210px !important;
   }
   .bems-doc-head {
-    margin-bottom: 12px !important;
+    margin-bottom: 8px !important;
   }
   .bems-doc-logo img {
-    height: 44px !important;
+    height: 40px !important;
   }
   .bems-doc-meta-right h1 {
-    font-size: 24px !important;
+    font-size: 22px !important;
   }
   .bems-doc-hero {
-    border-radius: 10px !important;
-    margin-bottom: 12px !important;
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
   }
   .bems-doc-hero-top {
-    padding: 12px 18px !important;
-  }
-  .bems-doc-amt {
-    font-size: 32px !important;
-    margin: 4px 0 !important;
-  }
-  .bems-doc-stamp {
-    width: 72px !important;
-    height: 72px !important;
-  }
-  .bems-doc-stamp b {
-    font-size: 14px !important;
-  }
-  .bems-doc-stamp span {
-    font-size: 7px !important;
-  }
-  .bems-doc-hero-meta > div {
     padding: 8px 14px !important;
   }
+  .bems-doc-amt {
+    font-size: 26px !important;
+    margin: 2px 0 !important;
+  }
+  .bems-doc-stamp {
+    width: 66px !important;
+    height: 66px !important;
+  }
+  .bems-doc-stamp b {
+    font-size: 13px !important;
+  }
+  .bems-doc-stamp span {
+    font-size: 6.5px !important;
+  }
+  .bems-doc-hero-meta > div {
+    padding: 5px 12px !important;
+  }
   .bems-doc-hero-meta p {
-    font-size: 12px !important;
+    font-size: 11px !important;
   }
   .bems-doc-parties {
-    border-radius: 10px !important;
-    margin-bottom: 12px !important;
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
   }
   .bems-doc-party {
-    padding: 10px 16px !important;
+    padding: 6px 12px !important;
   }
   .bems-doc-party .nm {
-    font-size: 14px !important;
-    margin: 3px 0 !important;
+    font-size: 13px !important;
+    margin: 2px 0 !important;
   }
   .bems-doc-party p {
-    font-size: 11px !important;
-    line-height: 1.5 !important;
+    font-size: 10px !important;
+    line-height: 1.4 !important;
   }
   .bems-stmt-kpi-grid {
-    gap: 10px !important;
-    margin-bottom: 12px !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
   }
   .bems-stmt-kpi-card {
-    padding: 8px 12px !important;
-    border-radius: 8px !important;
+    padding: 5px 10px !important;
+    border-radius: 6px !important;
   }
   .bems-stmt-kpi-card .kpi-label {
-    font-size: 8.5px !important;
-    margin-bottom: 3px !important;
+    font-size: 8px !important;
+    margin-bottom: 2px !important;
   }
   .bems-stmt-kpi-card .kpi-val {
-    font-size: 14px !important;
+    font-size: 12.5px !important;
   }
   .bems-doc-table {
-    margin-top: 6px !important;
-    margin-bottom: 14px !important;
+    margin-top: 4px !important;
+    margin-bottom: 10px !important;
   }
   .bems-doc-table thead {
     display: table-header-group !important;
@@ -1038,12 +1041,12 @@
     display: table-row-group !important;
   }
   .bems-doc-table th {
-    padding: 8px 10px !important;
-    font-size: 8.5px !important;
+    padding: 6px 8px !important;
+    font-size: 8px !important;
   }
   .bems-doc-table td {
-    padding: 9px 10px !important;
-    font-size: 10.5px !important;
+    padding: 5.5px 8px !important;
+    font-size: 9.5px !important;
     vertical-align: top !important;
   }
   .bems-doc-table tr {
@@ -1055,26 +1058,26 @@
     break-inside: avoid !important;
   }
   .bems-doc-vt {
-    gap: 20px !important;
-    grid-template-columns: 1fr 240px !important;
-    margin-bottom: 14px !important;
+    gap: 14px !important;
+    grid-template-columns: 1fr 230px !important;
+    margin-bottom: 10px !important;
   }
   .bems-doc-verify {
-    padding: 10px 14px !important;
-    border-radius: 10px !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
   }
   .bems-doc-verify h4 {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
   .bems-doc-verify p {
-    font-size: 10px !important;
+    font-size: 9px !important;
   }
   .bems-doc-tot dt, .bems-doc-tot dd {
-    font-size: 11px !important;
+    font-size: 9.5px !important;
   }
   .bems-doc-tot .grand {
-    padding: 8px 12px !important;
-    font-size: 15px !important;
+    padding: 6px 10px !important;
+    font-size: 13.5px !important;
   }
   .bems-doc-sign {
     margin-top: auto !important;

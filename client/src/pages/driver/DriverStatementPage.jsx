@@ -288,14 +288,56 @@ export default function DriverStatementPage() {
   const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
 
   const handlePrint = useCallback(() => {
-    window.scrollTo(0, 0);
-    window.print();
-  }, []);
+    const target = document.getElementById('bems-driver-statement-print-area')
+    if (!target) {
+      window.scrollTo(0, 0);
+      window.print();
+      return;
+    }
+    const printWindow = window.open('', '_blank', 'width=950,height=900');
+    if (!printWindow) {
+      window.scrollTo(0, 0);
+      window.print();
+      return;
+    }
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(s => s.outerHTML)
+      .join('\n');
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Statement of Account — ${driverName}</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${styles}
+  <style>
+    @page { size: A4 portrait; margin: 0; }
+    body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    .no-print, .no-print * { display: none !important; }
+    .bems-doc-page { margin: 0 auto !important; box-shadow: none !important; }
+  </style>
+</head>
+<body>
+  ${target.innerHTML}
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+        window.close();
+      }, 350);
+    };
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
+  }, [driverName]);
 
-  const isMultiPage = statement.length > 5;
-  const page1Rows = isMultiPage ? statement.slice(0, 6) : statement;
-  const remainingRows = isMultiPage ? statement.slice(6) : [];
-  const totalPages = isMultiPage ? 2 : 1;
+  const isMultiPage = statement.length > 9;
+  const page1Rows = isMultiPage ? statement.slice(0, 10) : statement;
+  const remainingRows = isMultiPage ? statement.slice(10) : [];
+  const totalPages = isMultiPage ? (remainingRows.length > 14 ? 3 : 2) : 1;
 
   return (
     <div className="min-h-screen bg-slate-900 py-6 px-3 sm:px-6 text-slate-800">
@@ -1196,12 +1238,12 @@ export default function DriverStatementPage() {
             </div>
           ) : (
             /* ── Official A4 Document Target ── */
-            <>
+            <div id="bems-driver-statement-print-area">
               {/* ══════════════════════════════════════════════════════════════════════
                   PAGE 1 (Always Has the Only Official Header)
                   ══════════════════════════════════════════════════════════════════════ */}
-              <div className="bems-doc-page">
-                <div className="bems-doc-body">
+              <div className={`bems-doc-page ${isMultiPage ? 'bems-doc-page-1-multi' : ''}`}>
+                <div className="bems-doc-body" style={isMultiPage ? { paddingBottom: '24px' } : undefined}>
 
                   {/* Header (PAGE 1 ONLY) */}
                   <header className="bems-doc-head">
@@ -1537,7 +1579,7 @@ export default function DriverStatementPage() {
 
                           return (
                             <tr key={ev.id || idx}>
-                              <td className="mono">{String(idx + 7).padStart(2, "0")}</td>
+                              <td className="mono">{String(page1Rows.length + idx + 1).padStart(2, "0")}</td>
                               <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                               <td className="it">
                                 <b>{cleanStatementDescription(ev.description) || (isCredit ? "Delivery Drop Commission" : "Bank Withdrawal")}</b>
@@ -1666,7 +1708,7 @@ export default function DriverStatementPage() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import api from '../../lib/api'
-import BemsDriverStatementDocument from '../../components/documents/BemsDriverStatementDocument'
+import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
 
 const DUTY_STATUS_CFG = {
   active:      { label: 'Active',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line' },
@@ -1912,10 +1912,10 @@ export default function WalletManagement() {
       {/* 3. Official Driver Statement Document Modal */}
       {statementDriver && (() => {
         const handlePrintStatement = () => {
-          const overlay = document.querySelector('.bems-doc-modal-overlay')
-          if (overlay) overlay.scrollTop = 0
-          window.scrollTo(0, 0)
-          window.print()
+          printOfficialDocument(
+            '.bems-doc-print-target',
+            `Statement_of_Account_${(statementDriver.name || 'Driver').replace(/\s+/g, '_')}`
+          )
         }
 
         return (
@@ -1942,12 +1942,12 @@ export default function WalletManagement() {
                   display: block !important;
                 }
                 .bems-doc-print-target {
-                  position: absolute !important;
-                  left: 0 !important;
-                  top: 0 !important;
+                  position: static !important;
+                  left: auto !important;
+                  top: auto !important;
                   width: 100% !important;
                   max-width: 100% !important;
-                  margin: 0 !important;
+                  margin: 0 auto !important;
                   padding: 0 !important;
                   box-shadow: none !important;
                   border: none !important;
@@ -1964,15 +1964,20 @@ export default function WalletManagement() {
                   overflow: visible !important;
                 }
                 .bems-doc-page {
-                  width: 100% !important;
-                  max-width: 100% !important;
-                  margin: 0 !important;
+                  width: 210mm !important;
+                  max-width: 210mm !important;
+                  margin: 0 auto !important;
                   padding: 0 !important;
                   box-shadow: none !important;
                   border: none !important;
-                  min-height: auto !important;
+                  min-height: 297mm !important;
+                  max-height: 297mm !important;
                   display: block !important;
                   overflow: visible !important;
+                  page-break-after: always !important;
+                  break-after: page !important;
+                }
+                .bems-doc-page:last-child {
                   page-break-after: auto !important;
                   break-after: auto !important;
                 }

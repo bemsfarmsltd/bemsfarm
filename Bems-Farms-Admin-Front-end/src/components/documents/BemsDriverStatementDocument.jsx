@@ -234,10 +234,11 @@ export default function BemsDriverStatementDocument({
 
   // ── Multi-Page Chunking Logic ──
   // Rule: Statement has exactly 1 Header (Page 1) and 1 Footer (Last Page).
-  // Single page fits up to 5 rows along with all cards, totals, and signatures.
-  const isMultiPage = filteredStatement.length > 5
-  const page1Rows = isMultiPage ? filteredStatement.slice(0, 6) : filteredStatement
-  const remainingRows = isMultiPage ? filteredStatement.slice(6) : []
+  // Single executive A4 page comfortably accommodates up to 9 itemized transactions
+  // alongside official header, balance hero, driver profile, 4 KPI cards, totals, and signatures.
+  const isMultiPage = filteredStatement.length > 9
+  const page1Rows = isMultiPage ? filteredStatement.slice(0, 10) : filteredStatement
+  const remainingRows = isMultiPage ? filteredStatement.slice(10) : []
   const totalPages = isMultiPage ? (remainingRows.length > 14 ? 3 : 2) : 1
 
   return (
@@ -310,8 +311,8 @@ export default function BemsDriverStatementDocument({
       {/* ══════════════════════════════════════════════════════════════════════
           PAGE 1 (Always Has the Only Official Header)
           ══════════════════════════════════════════════════════════════════════ */}
-      <div className="bems-doc-page">
-        <div className="bems-doc-body">
+      <div className={`bems-doc-page ${isMultiPage ? 'bems-doc-page-1-multi' : ''}`}>
+        <div className="bems-doc-body" style={isMultiPage ? { paddingBottom: '24px' } : undefined}>
 
           {/* ── OFFICIAL HEADER (PAGE 1 ONLY) ── */}
           <header className="bems-doc-head">
@@ -662,7 +663,7 @@ export default function BemsDriverStatementDocument({
 
                   return (
                     <tr key={ev.id || idx}>
-                      <td className="mono">{String(idx + 7).padStart(2, '0')}</td>
+                      <td className="mono">{String(page1Rows.length + idx + 1).padStart(2, '0')}</td>
                       <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                       <td className="it">
                         <b>{cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
@@ -798,4 +799,108 @@ export default function BemsDriverStatementDocument({
 
     </div>
   )
+}
+
+/**
+ * Clean Print Utility for Official Documents
+ * Spawns an isolated window at scroll (0,0) to prevent Chrome's print engine
+ * from clipping headers or applying scrolled modal offsets.
+ */
+export function printOfficialDocument(targetSelector = '.bems-doc-print-target', title = 'Statement of Account') {
+  const target = typeof targetSelector === 'string' ? document.querySelector(targetSelector) : targetSelector
+  if (!target) {
+    window.print()
+    return
+  }
+
+  // Ensure scroll is reset on any active modal overlay and window
+  const overlay = document.querySelector('.bems-doc-modal-overlay')
+  if (overlay) overlay.scrollTop = 0
+  window.scrollTo(0, 0)
+
+  const printWindow = window.open('', '_blank', 'width=950,height=900')
+  if (!printWindow) {
+    // Popup was blocked by browser: fallback to window.print() after a brief reflow delay
+    setTimeout(() => {
+      window.print()
+    }, 150)
+    return
+  }
+
+  // Collect active stylesheets
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map(s => s.outerHTML)
+    .join('\n')
+
+  const contentHtml = target.innerHTML
+
+  printWindow.document.open()
+  printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${styles}
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      width: 100% !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .no-print, .no-print * {
+      display: none !important;
+    }
+    .bems-doc-page {
+      margin: 0 auto !important;
+      box-shadow: none !important;
+      border: none !important;
+      page-break-after: always !important;
+      break-after: page !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      max-height: 297mm !important;
+    }
+    .bems-doc-page:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+    .bems-doc-print-target {
+      position: static !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="bems-doc-root">
+    ${contentHtml}
+  </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+        window.close();
+      }, 350);
+    };
+  </script>
+</body>
+</html>`)
+  printWindow.document.close()
 }
