@@ -450,9 +450,16 @@ function renderDriverStatementHtml({
       z-index: 2;
       overflow: hidden;
     }
-    .bems-doc-hero-meta > div { padding: 10px 14px; }
+    .bems-doc-hero-meta > div,
+    .bems-doc-hero-meta > div + div {
+      padding: 10px 14px;
+      border: none !important;
+      border-left: none !important;
+      border-right: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
     .bems-doc-hero-meta .cap { letter-spacing: .12em; white-space: nowrap; }
-    .bems-doc-hero-meta > div + div { border-left: 1px solid rgba(255, 255, 255, .1); }
     .bems-doc-hero,
     .bems-doc-hero-top,
     .bems-doc-hero-top > div,
@@ -855,7 +862,15 @@ function renderDriverStatementHtml({
         grid-template-columns: repeat(5, 1fr) !important;
         overflow: hidden !important;
       }
-      .bems-doc-hero-meta > div { padding: 5px 8px !important; }
+      .bems-doc-hero-meta > div,
+      .bems-doc-hero-meta > div + div {
+        padding: 5px 8px !important;
+        border: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
       .bems-doc-hero-meta p { font-size: 11px !important; }
       .bems-doc-parties { border-radius: 8px !important; }
       .bems-doc-party { padding: 6px 12px !important; }

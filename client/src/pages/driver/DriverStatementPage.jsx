@@ -558,7 +558,14 @@ export default function DriverStatementPage() {
         }
         .bems-doc-hero-meta > div { padding: 10px 14px 11px; }
         .bems-doc-hero-meta .cap { letter-spacing: .12em; white-space: nowrap; }
-        .bems-doc-hero-meta > div + div { border-left: 1px solid rgba(255, 255, 255, .1); }
+        .bems-doc-hero-meta > div,
+        .bems-doc-hero-meta > div + div {
+          border: none !important;
+          border-left: none !important;
+          border-right: none !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
         .bems-doc-hero,
         .bems-doc-hero-top,
         .bems-doc-hero-top > div,
@@ -1046,7 +1053,15 @@ export default function DriverStatementPage() {
             grid-template-columns: repeat(5, 1fr) !important;
             overflow: hidden !important;
           }
-          .bems-doc-hero-meta > div { padding: 6px 10px !important; }
+          .bems-doc-hero-meta > div,
+          .bems-doc-hero-meta > div + div {
+            padding: 6px 10px !important;
+            border: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
           .bems-doc-hero-meta p { font-size: 11.5px !important; }
           .bems-doc-parties { border-radius: 10px !important; margin-bottom: 12px !important; }
           .bems-doc-party { padding: 10px 16px !important; }

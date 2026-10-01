@@ -921,8 +921,14 @@ export function printOfficialDocument(targetSelector = '.bems-doc-print-target',
       grid-template-columns: repeat(5, 1fr) !important;
       overflow: hidden !important;
     }
-    .bems-doc-hero-meta > div {
+    .bems-doc-hero-meta > div,
+    .bems-doc-hero-meta > div + div {
       padding: 5px 8px !important;
+      border: none !important;
+      border-left: none !important;
+      border-right: none !important;
+      outline: none !important;
+      box-shadow: none !important;
     }
   </style>
 </head>
