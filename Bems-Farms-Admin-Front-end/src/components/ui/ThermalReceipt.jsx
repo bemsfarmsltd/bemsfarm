@@ -10,8 +10,8 @@ function Barcode({ value }) {
       try {
         JsBarcode(svgRef.current, value, {
           format: "CODE128",
-          width: 1.5,
-          height: 24,
+          width: 1.8,
+          height: 38,
           displayValue: false,
           margin: 2,
           background: "transparent",

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import BarcodeSvg from '../../components/ui/BarcodeSvg'
-import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
+import { generateUniversalGoodsCode, renderBarcodeToElement } from '../../lib/barcodeGenerator'
 
 export default function Barcode() {
   const [searchParams] = useSearchParams()
@@ -374,7 +374,6 @@ export default function Barcode() {
   }
 
   // Print Action
-  // Print Action
   const handleTriggerPrint = (itemsOverride = null) => {
     const isSingleTest = Array.isArray(itemsOverride)
     const targetItems = isSingleTest ? itemsOverride : printableLabelArray
@@ -396,72 +395,103 @@ export default function Barcode() {
     let pageSize = '50mm 25mm'
     let w = '50mm'
     let h = '25mm'
-    let innerH = '20.5mm'
-    let barcodeH = '5.2mm'
+    let barcodeW = '42mm' // 42mm on 50mm paper leaves optimal 4mm quiet zones on left and right
+    let barcodeH = showDates ? '8.5mm' : '10.5mm' // Guaranteed 10.5mm tall optical bars (more than 2.5x taller than old 4mm)
+    let barModuleWidth = 2.0
+    let barHeightPx = 60
     let fontSizeName = '7.5px'
     let fontSizePrice = '9.5px'
-    let labelPadding = '0.8mm 2mm'
+    let fontSizeSku = '7.5px'
+    let labelPadding = '0.8mm 2mm 0.6mm'
 
     if (labelTemplate === 'thermal_50x30') {
       pageSize = '50mm 30mm'
       w = '50mm'
       h = '30mm'
-      innerH = '24.5mm'
-      barcodeH = '6.2mm'
+      barcodeW = '43mm'
+      barcodeH = showDates ? '11.5mm' : '14mm'
+      barModuleWidth = 2.2
+      barHeightPx = 80
       fontSizeName = '8px'
-      fontSizePrice = '10px'
-      labelPadding = '1.2mm 2.2mm'
+      fontSizePrice = '10.5px'
+      fontSizeSku = '8px'
+      labelPadding = '1mm 2.2mm 0.8mm'
     } else if (labelTemplate === 'compact_40x20') {
       pageSize = '40mm 20mm'
       w = '40mm'
       h = '20mm'
-      innerH = '17.5mm'
-      barcodeH = '5mm'
-      fontSizeName = '7px'
-      fontSizePrice = '9px'
-      labelPadding = '0.8mm 1.8mm'
+      barcodeW = '34mm'
+      barcodeH = '8mm'
+      barModuleWidth = 1.6
+      barHeightPx = 45
+      fontSizeName = '6.8px'
+      fontSizePrice = '8.8px'
+      fontSizeSku = '6.8px'
+      labelPadding = '0.6mm 1.5mm 0.5mm'
     } else if (labelTemplate === 'crate_100x75') {
       pageSize = '100mm 75mm'
       w = '100mm'
       h = '75mm'
-      innerH = '70mm'
-      barcodeH = '26mm'
+      barcodeW = '88mm'
+      barcodeH = '35mm'
+      barModuleWidth = 3.5
+      barHeightPx = 150
       fontSizeName = '16px'
       fontSizePrice = '22px'
-      labelPadding = '4mm 5mm'
+      fontSizeSku = '12px'
+      labelPadding = '3mm 5mm 2.5mm'
     }
 
-    // Grab the rendered SVGs from the hidden canvas or queue preview
-    const getSvgStr = (val) => {
-      const bHtml = document.querySelector(`#printable-barcode-canvas .bc-${val}`)?.innerHTML || ''
-      return bHtml
+    // Generate crisp, scan-calibrated SVG vector barcode with 100% full-height bars
+    const generateBarcodeVector = (val) => {
+      if (!val) return ''
+      try {
+        const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        renderBarcodeToElement(svgEl, val, {
+          format: symbology === 'EAN13' && String(val).length === 13 ? 'EAN13' : 'CODE128',
+          width: barModuleWidth,
+          height: barHeightPx,
+          displayValue: false, // Pure bars in SVG so 100% of height is optical scan area
+          margin: 0,
+          lineColor: '#000000',
+        })
+        svgEl.setAttribute('preserveAspectRatio', 'none')
+        svgEl.removeAttribute('width')
+        svgEl.removeAttribute('height')
+        return svgEl.outerHTML
+      } catch (err) {
+        console.warn('Barcode print render error:', err)
+        return ''
+      }
     }
 
     const labelsHtml = targetItems.map(item => {
       const priceStr = formatNaira(item.price || item.unit_price)
-      const svgContainer = document.getElementById(`svg-queue-${item.id}-${item.copyIndex}`)
-      const svg = svgContainer?.querySelector('svg')?.outerHTML 
-        || svgContainer?.outerHTML 
-        || getSvgStr(item.barcodeValue) 
-        || ''
+      const svg = generateBarcodeVector(item.barcodeValue)
       
       return `
         <div class="label-page">
-          ${showBrandHeader ? `
-            <div class="header">
-              <span class="brand-pill">BEMS FARMS</span>
-              <span class="brand-tag">Fresh Produce</span>
-            </div>
-          ` : ''}
-          ${showProductName ? `<div class="name" title="${item.name}">${item.name}</div>` : ''}
-          ${showPrice ? `
-            <div class="price-row">
-              <span class="price">${priceStr}</span>
-              ${showCategory ? `<span class="unit">${item.unit || 'Per Unit'}</span>` : ''}
-            </div>
-          ` : ''}
-          <div class="barcode">${svg}</div>
-          ${showSku ? `<div class="sku">${item.barcodeValue}</div>` : ''}
+          <div class="label-top-section">
+            ${showBrandHeader ? `
+              <div class="header">
+                <span class="brand-pill">BEMS FARMS</span>
+                <span class="brand-tag">Fresh Produce</span>
+              </div>
+            ` : ''}
+            ${showProductName ? `<div class="name" title="${item.name}">${item.name}</div>` : ''}
+            ${showPrice ? `
+              <div class="price-row">
+                <span class="price">${priceStr}</span>
+                ${showCategory ? `<span class="unit">${item.unit || 'Per Unit'}</span>` : ''}
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="barcode-wrap">
+            <div class="barcode">${svg}</div>
+            ${showHumanCode || showSku ? `<div class="sku">${item.barcodeValue}</div>` : ''}
+          </div>
+
           ${showDates ? `
             <div class="dates">
               <span>PKD: ${new Date().toLocaleDateString('en-GB')}</span>
@@ -477,7 +507,7 @@ export default function Barcode() {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>${isSingleTest ? 'XP-365B Test Label (50x30)' : 'Bems Farms Barcode Labels'}</title>
+          <title>${isSingleTest ? 'XP-365B Test Label (50x25)' : 'Bems Farms Barcode Labels'}</title>
           <style>
             @page { 
               size: ${pageSize}; 
@@ -493,18 +523,20 @@ export default function Barcode() {
               background: #fff;
               color: #000;
               width: ${w};
+              height: ${h};
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+              overflow: hidden;
             }
             .label-page {
               width: ${w};
-              height: ${innerH};
-              max-height: ${innerH};
+              height: ${h};
+              max-height: ${h};
               padding: ${labelPadding};
               display: flex;
               flex-direction: column;
               justify-content: flex-start;
-              gap: ${labelTemplate==='crate_100x75' ? '2.5mm' : '0.8mm'};
+              gap: 0.5mm;
               overflow: hidden;
               page-break-inside: avoid;
               break-inside: avoid;
@@ -515,16 +547,21 @@ export default function Barcode() {
               page-break-after: always;
               break-after: page;
             }
+            .label-top-section {
+              display: flex;
+              flex-direction: column;
+              gap: 0.4mm;
+            }
             .header { 
               display: flex; 
               justify-content: space-between; 
-              align-items: center;
+              align-items: center; 
               font-size: ${labelTemplate==='crate_100x75' ? '12px' : '6.5px'}; 
               font-weight: 800; 
               border-bottom: 0.8px solid #000; 
-              padding-bottom: 0.5px; 
+              padding-bottom: 0.4px; 
               margin-bottom: 0;
-              line-height: 1.1; 
+              line-height: 1; 
             }
             .brand-pill { 
               background: #000; 
@@ -564,28 +601,38 @@ export default function Barcode() {
               font-weight: 600;
               color: #444; 
             }
+            .barcode-wrap {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              margin: 0.3mm 0 0;
+              width: 100%;
+            }
             .barcode { 
               text-align: center; 
               display: flex;
               justify-content: center;
               align-items: center;
-              margin: 0.5mm 0 0;
+              width: 100%;
               line-height: 1;
             }
             .barcode svg { 
+              width: ${barcodeW} !important;
               height: ${barcodeH} !important; 
-              width: auto !important; 
-              max-width: 95% !important; 
+              display: block !important;
+              margin: 0 auto !important;
               shape-rendering: crispEdges !important;
             }
             .sku { 
               text-align: center; 
-              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '6.8px'}; 
+              font-size: ${fontSizeSku}; 
               font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
               font-weight: 700;
-              letter-spacing: 0.5px;
+              letter-spacing: 0.8px;
               line-height: 1;
-              margin-top: 0.4mm;
+              margin-top: 0.3mm;
+              color: #000;
             }
             .dates { 
               display: flex; 
@@ -593,8 +640,8 @@ export default function Barcode() {
               font-size: ${labelTemplate==='crate_100x75' ? '9px' : '5.5px'}; 
               color: #444; 
               border-top: 0.5px solid #666; 
-              padding-top: 0.5px; 
-              margin-top: 0.5mm; 
+              padding-top: 0.4px; 
+              margin-top: 0.3mm; 
             }
           </style>
         </head>
@@ -694,7 +741,7 @@ export default function Barcode() {
 
         .label-preview-thermal {
           width: 240px;
-          min-height: 145px;
+          min-height: 165px;
           background: #ffffff;
           border: 1.5px solid #1f2937;
           border-radius: 6px;
@@ -1522,8 +1569,8 @@ export default function Barcode() {
                         <BarcodeSvg
                           value={printableLabelArray[0].barcodeValue}
                           format={symbology}
-                          width={labelTemplate === 'compact_40x20' ? 1.2 : 1.6}
-                          height={labelTemplate === 'compact_40x20' ? 28 : 42}
+                          width={labelTemplate === 'compact_40x20' ? 1.4 : 1.9}
+                          height={labelTemplate === 'compact_40x20' ? 38 : labelTemplate === 'crate_100x75' ? 95 : 58}
                           displayValue={showHumanCode}
                           fontSize={10}
                         />
@@ -1669,8 +1716,8 @@ export default function Barcode() {
                 <BarcodeSvg
                   value={item.barcodeValue}
                   format={symbology}
-                  width={labelTemplate === 'compact_40x20' ? 1.1 : 1.5}
-                  height={labelTemplate === 'compact_40x20' ? 26 : 38}
+                  width={labelTemplate === 'compact_40x20' ? 1.4 : 1.8}
+                  height={labelTemplate === 'compact_40x20' ? 36 : labelTemplate === 'crate_100x75' ? 95 : 56}
                   displayValue={showHumanCode}
                   fontSize={9}
                 />
