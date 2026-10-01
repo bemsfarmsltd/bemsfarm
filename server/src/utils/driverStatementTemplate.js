@@ -166,7 +166,7 @@ function renderDriverStatementHtml({
 
   const isMultiPage = statement && statement.length > 4;
 
-  let page1Count = Math.min(statement.length, 8);
+  let page1Count = Math.min(statement.length, 10);
   if (isMultiPage && statement.length - page1Count < 2) {
     page1Count = Math.max(4, statement.length - 2);
   }

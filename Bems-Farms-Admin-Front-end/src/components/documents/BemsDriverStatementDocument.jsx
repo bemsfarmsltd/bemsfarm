@@ -245,7 +245,7 @@ export default function BemsDriverStatementDocument({
   // When multi-page, closing totals & signatures move to the final page, allowing Page 1 to comfortably hold up to 10 transactions.
   const isMultiPage = filteredStatement.length > 4
 
-  let page1Count = Math.min(filteredStatement.length, 8)
+  let page1Count = Math.min(filteredStatement.length, 10)
   if (isMultiPage && filteredStatement.length - page1Count < 2) {
     page1Count = Math.max(4, filteredStatement.length - 2)
   }
