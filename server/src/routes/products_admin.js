@@ -319,6 +319,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
         p.stock, p.low_stock_threshold,
         p.status, p.is_featured, p.available_for_sale,
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
+        p.barcode_last_printed_at,
         cat.name AS category,
         COALESCE(
           SUM(oi.subtotal) FILTER (WHERE o.status NOT IN ('cancelled','failed')),
@@ -347,6 +348,48 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
     next(err);
   }
 });
+
+// ── POST /api/admin/products/mark-barcodes-printed ───────────────
+// Records timestamp when barcode labels are printed to prevent duplicate reprints
+router.post(
+  "/mark-barcodes-printed",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { productIds } = req.body;
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ message: "productIds must be a non-empty array" });
+      }
+
+      const validIds = productIds
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id) && id > 0);
+
+      if (validIds.length === 0) {
+        return res.status(400).json({ message: "No valid product IDs provided" });
+      }
+
+      const now = new Date();
+      const result = await pool.query(
+        `UPDATE products 
+         SET barcode_last_printed_at = $1 
+         WHERE id = ANY($2::int[]) 
+         RETURNING id, barcode_last_printed_at`,
+        [now, validIds]
+      );
+
+      res.json({
+        success: true,
+        updatedCount: result.rowCount,
+        printed_at: now.toISOString(),
+        updatedProducts: result.rows,
+      });
+    } catch (err) {
+      console.error("POST /admin/products/mark-barcodes-printed error:", err.message);
+      next(err);
+    }
+  }
+);
 
 // ── GET /api/admin/products/form-data ────────────────────────────
 // Returns categories, brands, units for dropdowns

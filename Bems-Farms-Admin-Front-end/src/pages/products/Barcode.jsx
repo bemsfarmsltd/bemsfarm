@@ -49,19 +49,32 @@ export default function Barcode() {
     setLoading(true)
     try {
       const [prodRes, formRes] = await Promise.all([
-        api.get('/admin/products', { params: { limit: 300 } }),
+        api.get('/admin/products', { params: { limit: 500 } }),
         api.get('/admin/products/form-data').catch(() => ({ data: {} })),
       ])
       
       const prods = prodRes.data?.products || []
-      setProducts(prods)
+
+      // Merge backend barcode_last_printed_at with localStorage cache
+      let localCache = {}
+      try {
+        localCache = JSON.parse(localStorage.getItem('bems_barcode_last_printed') || '{}')
+      } catch {}
+
+      const mergedProds = prods.map((p) => {
+        const cached = localCache[p.id]?.timestamp || localCache[p.id] || null
+        const lastPrinted = p.barcode_last_printed_at || cached || null
+        return { ...p, barcode_last_printed_at: lastPrinted }
+      })
+
+      setProducts(mergedProds)
       if (formRes.data?.categories) {
         setCategories(formRes.data.categories)
       }
 
       // If productId URL param is provided, auto-queue it with its stock quantity
-      if (targetProductId && prods.length > 0) {
-        const found = prods.find((p) => String(p.id) === String(targetProductId))
+      if (targetProductId && mergedProds.length > 0) {
+        const found = mergedProds.find((p) => String(p.id) === String(targetProductId))
         if (found) {
           const stockCount = Math.max(1, parseInt(found.stock ?? found.stock_quantity ?? found.quantity ?? 1) || 1)
           setPrintQueue({ [found.id]: { product: found, copies: stockCount } })
@@ -78,6 +91,33 @@ export default function Barcode() {
     }
   }
 
+  // Format relative last printed timestamp
+  const formatLastPrinted = (dateStr) => {
+    if (!dateStr) return null
+    try {
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return null
+      const now = new Date()
+      const diffMs = now - date
+      const diffMins = Math.floor(diffMs / 60000)
+
+      if (diffMins < 1) return 'Just now'
+      if (diffMins < 60) return `${diffMins}m ago`
+
+      const isToday = date.toDateString() === now.toDateString()
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      if (isToday) return `Today, ${timeStr}`
+
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+      if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${timeStr}`
+
+      return `${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${timeStr}`
+    } catch {
+      return null
+    }
+  }
+
   useEffect(() => {
     fetchProducts()
   }, [targetProductId])
@@ -86,6 +126,9 @@ export default function Barcode() {
   const totalProducts = products.length
   const productsWithBarcode = useMemo(() => products.filter((p) => p.barcode && p.barcode.trim()), [products])
   const productsMissingBarcode = useMemo(() => products.filter((p) => !p.barcode || !p.barcode.trim()), [products])
+  const productsUnprinted = useMemo(() => {
+    return products.filter((p) => p.barcode && p.barcode.trim() && !p.barcode_last_printed_at)
+  }, [products])
   const barcodeCoveragePct = totalProducts > 0 ? Math.round((productsWithBarcode.length / totalProducts) * 100) : 0
 
   // Filtered products list
@@ -94,6 +137,7 @@ export default function Barcode() {
       // Tab filter
       if (activeTab === 'with_barcode' && (!p.barcode || !p.barcode.trim())) return false
       if (activeTab === 'missing_barcode' && p.barcode && p.barcode.trim()) return false
+      if (activeTab === 'unprinted' && (!p.barcode || !p.barcode.trim() || p.barcode_last_printed_at)) return false
       if (activeTab === 'queue' && !printQueue[p.id]) return false
 
       // Category filter
@@ -390,6 +434,33 @@ export default function Barcode() {
     const printWindow = window.open('', '_blank', 'width=650,height=650')
     if (!printWindow) {
       return toast.error('Pop-up window blocked. Please allow pop-ups to print barcode labels.')
+    }
+
+    // Record last printed timestamp for all target products
+    const printedProductIds = [...new Set(targetItems.map((item) => item.id).filter(Boolean))]
+    if (printedProductIds.length > 0) {
+      const nowIso = new Date().toISOString()
+
+      // Update local React state instantly
+      setProducts((prev) =>
+        prev.map((p) => (printedProductIds.includes(p.id) ? { ...p, barcode_last_printed_at: nowIso } : p))
+      )
+
+      // Update localStorage cache
+      try {
+        const localCache = JSON.parse(localStorage.getItem('bems_barcode_last_printed') || '{}')
+        printedProductIds.forEach((id) => {
+          localCache[id] = { timestamp: nowIso }
+        })
+        localStorage.setItem('bems_barcode_last_printed', JSON.stringify(localCache))
+      } catch (e) {
+        console.warn('LocalStorage save error:', e)
+      }
+
+      // Persist to database
+      api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds }).catch((err) =>
+        console.warn('Could not persist barcode_last_printed_at to server:', err)
+      )
     }
 
     let pageSize = '50mm 25mm'
@@ -968,6 +1039,14 @@ export default function Barcode() {
                   </button>
                   <button
                     type="button"
+                    className={`btn btn-sm ${activeTab === 'unprinted' ? 'btn-info text-white' : 'btn-light'}`}
+                    onClick={() => setActiveTab('unprinted')}
+                    title="Products with a barcode that have not been printed yet"
+                  >
+                    <i className="ri-time-line me-1"></i> Not Printed Yet ({productsUnprinted.length})
+                  </button>
+                  <button
+                    type="button"
                     className={`btn btn-sm ${activeTab === 'missing_barcode' ? 'btn-warning text-dark' : 'btn-light'}`}
                     onClick={() => setActiveTab('missing_barcode')}
                   >
@@ -984,6 +1063,15 @@ export default function Barcode() {
 
                 {/* Batch add to queue */}
                 <div className="d-flex gap-2 align-items-center flex-wrap">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => addAllToQueue(productsUnprinted)}
+                    disabled={productsUnprinted.length === 0}
+                    title="Add all products that have never been printed to queue"
+                  >
+                    <i className="ri-add-circle-line me-1"></i> Queue Unprinted ({productsUnprinted.length})
+                  </button>
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-secondary"
@@ -1113,6 +1201,7 @@ export default function Barcode() {
                     <th>Product</th>
                     <th>Price &amp; Stock</th>
                     <th>Universal Barcode</th>
+                    <th>Last Printed</th>
                     <th>Copies to Print</th>
                     <th className="text-end pe-3">Actions</th>
                   </tr>
@@ -1120,14 +1209,14 @@ export default function Barcode() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-5 text-muted">
+                      <td colSpan="7" className="text-center py-5 text-muted">
                         <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                         Loading barcode catalog…
                       </td>
                     </tr>
                   ) : filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-5 text-muted">
+                      <td colSpan="7" className="text-center py-5 text-muted">
                         <i className="ri-barcode-line fs-1 d-block mb-2 text-muted opacity-50"></i>
                         No products found matching your current filter.
                       </td>
@@ -1219,6 +1308,28 @@ export default function Barcode() {
                                 >
                                   <i className="ri-magic-line me-1"></i> Generate
                                 </button>
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            {p.barcode_last_printed_at ? (
+                              <div>
+                                <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
+                                  <i className="ri-check-double-line"></i> Printed
+                                </span>
+                                <div
+                                  className="text-muted fs-xs mt-0.5 fw-medium"
+                                  style={{ fontSize: '11px' }}
+                                  title={new Date(p.barcode_last_printed_at).toLocaleString()}
+                                >
+                                  {formatLastPrinted(p.barcode_last_printed_at)}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
+                                  <i className="ri-time-line"></i> Never
+                                </span>
                               </div>
                             )}
                           </td>
