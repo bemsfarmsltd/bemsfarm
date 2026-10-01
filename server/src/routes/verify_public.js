@@ -32,8 +32,8 @@ async function getCompanySettings() {
   return {
     name:          s.invoice_company_name || s.store_name || "Bems Farms Limited",
     address:       s.invoice_company_address || s.store_address || "Central Farm Settlement Hub, Umuahia, Abia State",
-    rc:            s.invoice_rc_number || "RC 1849204",
-    tin:           s.invoice_tin || "TIN 24819402-0001",
+    rc:            "",
+    tin:           "",
     phone:         s.invoice_phone || s.store_phone || "+234 800 236 7326 / +234 814 000 0000",
     email:         s.invoice_email || s.store_email || "corporate@bemsfarms.com",
     bankName:      s.invoice_bank_name || s.bank_name || "Moniepoint MFB / Zenith Bank",
@@ -58,8 +58,6 @@ router.get("/bank-details", async (req, res, next) => {
       secondaryBank: company.secondaryBank,
       secondaryAccount: company.secondaryAccount,
       companyName: company.name,
-      rc: company.rc,
-      tin: company.tin,
       supportEmail: company.email,
       supportPhone: company.phone,
     });

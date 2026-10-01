@@ -393,7 +393,7 @@ export default function POSSettings() {
                       <input
                         type="text"
                         className="form-control border-start-0 ps-0 font-monospace"
-                        placeholder="RC 1849204"
+                        placeholder="e.g. 1849204"
                         value={form.store_registration_number || ''}
                         onChange={(e) => fld('store_registration_number', e.target.value)}
                       />
@@ -407,7 +407,7 @@ export default function POSSettings() {
                       <input
                         type="text"
                         className="form-control border-start-0 ps-0 font-monospace"
-                        placeholder="TIN 24819402-0001"
+                        placeholder="Optional tax ID"
                         value={form.store_tax_id || ''}
                         onChange={(e) => fld('store_tax_id', e.target.value)}
                       />

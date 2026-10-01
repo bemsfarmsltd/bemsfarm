@@ -1788,7 +1788,7 @@ export default function LandingPage() {
                     <span aria-hidden="true">→</span>
                   </Link>
                   <span className="text-xs text-emerald-200/70">
-                    RC 1849204 · Primary Corporate Registry
+                    Central Primary Corporate Registry
                   </span>
                 </div>
               </div>

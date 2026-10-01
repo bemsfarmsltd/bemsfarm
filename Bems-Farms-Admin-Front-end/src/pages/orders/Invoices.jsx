@@ -102,8 +102,8 @@ export default function Invoices() {
     invoice_secondary_account_number: '1223849502',
     invoice_company_name: 'Bems Farms Limited',
     invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
-    invoice_rc_number: 'RC 1849204',
-    invoice_tin: 'TIN 24819402-0001',
+    invoice_rc_number: '',
+    invoice_tin: '',
     invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
     invoice_email: 'corporate@bemsfarms.com',
     invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
@@ -1412,7 +1412,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm font-monospace"
-                        placeholder="RC 1849204"
+                        placeholder="Optional"
                         value={bankForm.invoice_rc_number || ''}
                         onChange={e => setBankForm(f => ({ ...f, invoice_rc_number: e.target.value }))}
                       />
@@ -1422,7 +1422,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm font-monospace"
-                        placeholder="TIN 24819402-0001"
+                        placeholder="Optional"
                         value={bankForm.invoice_tin || ''}
                         onChange={e => setBankForm(f => ({ ...f, invoice_tin: e.target.value }))}
                       />

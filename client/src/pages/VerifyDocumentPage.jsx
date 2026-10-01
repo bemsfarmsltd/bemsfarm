@@ -3,7 +3,9 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import api from '../services/api';
-import logo from '../assets/bemsfarms_logo_compact.png';
+import BemsOfficialDocument from '../components/documents/BemsOfficialDocument';
+import BemsDriverStatementDocument, { printOfficialDocument } from '../components/documents/BemsDriverStatementDocument';
+import '../components/documents/bems-document.css';
 
 export default function VerifyDocumentPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -15,7 +17,6 @@ export default function VerifyDocumentPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   const performVerification = useCallback(async (refToVerify, codeToVerify) => {
     const qRef = (refToVerify || '').trim();
@@ -64,23 +65,89 @@ export default function VerifyDocumentPage() {
     performVerification(inputRef, inputCode);
   };
 
-  const handleCopyAccount = (text) => {
-    navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handlePrint = () => {
+    printOfficialDocument('.bems-doc-print-target', result?.documentType || 'Official Document');
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // ── Transform result data for BemsOfficialDocument (Receipts & Invoices) ──
+  const officialDocData = useMemo(() => {
+    if (!result || result.isStatement) return null;
+    const invRef = result.invoiceReference || result.reference || 'INV-2026-0001';
+    const recRef = result.receiptReference || (invRef.startsWith('INV-') ? invRef.replace('INV-', 'REC-') : `REC-${invRef}`);
+    const isReceipt = result.isReceipt || result.isPaid || result.documentType?.includes('Receipt') || result.reference?.startsWith('REC-');
+
+    return {
+      id: result.reference || invRef,
+      invoice_ref: invRef,
+      receiptNo: recRef,
+      paymentRef: result.payment?.reference || result.reference,
+      transactionRef: result.payment?.reference || result.reference,
+      issuedDate: result.issuedDate,
+      dueDate: result.dueDate || result.issuedDate,
+      paidDate: result.paidDate || result.issuedDate,
+      customer: {
+        name: result.customer?.name || (result.isPos ? 'Walk-in Retail Customer' : 'Valued Customer'),
+        address: result.customer?.address || 'Nigeria',
+        phone: result.customer?.phone || '',
+        email: result.customer?.email || '',
+      },
+      items: (result.items || []).map((it) => ({
+        name: it.name || 'Produce Item',
+        pack: it.pack || 'Unit',
+        qty: Number(it.qty || 1),
+        price: Number(it.price || 0),
+        total: Number(it.total || 0),
+        tag: it.sku || '',
+      })),
+      subtotal: Number(result.financials?.subtotal || 0),
+      discount: Number(result.financials?.discount || 0),
+      deliveryFee: Number(result.financials?.deliveryFee || 0),
+      amount: Number(result.financials?.total || 0),
+      amountPaid: Number(result.financials?.amountPaid || 0),
+      status: result.isPaid ? 'paid' : (result.statusCode || 'pending'),
+      paymentMethod: result.payment?.method || (result.isPos ? 'POS Terminal / Cash' : 'Bank Transfer'),
+      signature_url: result.company?.signature_url || '',
+    };
+  }, [result]);
+
+  const bankSettings = useMemo(() => {
+    if (!result?.company) return null;
+    return {
+      invoice_company_name: result.company.name || 'Bems Farms Limited',
+      invoice_company_address: result.company.address || 'Central Farm Settlement Hub, Umuahia, Abia State',
+      invoice_phone: result.company.phone || '+234 800 236 7326 / +234 814 000 0000',
+      invoice_email: result.company.email || 'corporate@bemsfarms.com',
+      invoice_bank_name: result.company.bankName || 'Moniepoint MFB / Zenith Bank',
+      invoice_account_name: result.company.accountName || 'Bems Farms Limited',
+      invoice_account_number: result.company.accountNumber || '1023849502',
+      invoice_secondary_bank: result.company.secondaryBank || 'Zenith Bank',
+      invoice_secondary_account_number: result.company.secondaryAccount || '1223849502',
+      invoice_payment_terms: result.company.paymentTerms || 'Payment is due on issue date. Goods are released on confirmation of payment.',
+      invoice_footer: result.company.footer || 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+    };
+  }, [result]);
+
+  const docType = useMemo(() => {
+    if (!result) return 'invoice';
+    if (result.isReceipt || result.isPaid || result.documentType?.includes('Receipt') || result.reference?.startsWith('REC-')) {
+      return 'receipt';
+    }
+    if (result.documentType?.toLowerCase().includes('proforma')) {
+      return 'proforma';
+    }
+    if (result.documentType?.toLowerCase().includes('tax')) {
+      return 'tax_invoice';
+    }
+    return 'invoice';
+  }, [result]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fbfaf6] text-[#123d27]">
       <Navbar />
 
-      <main className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
         {/* Verification Hero Header */}
-        <div className="text-center mb-10 no-print">
+        <div className="text-center mb-8 no-print">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8f5ed] border border-[#c1e5cf] text-[#123d27] text-xs font-semibold uppercase tracking-wider mb-4 shadow-sm">
             <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -91,7 +158,7 @@ export default function VerifyDocumentPage() {
             Verify Bems Farms Documents
           </h1>
           <p className="text-sm sm:text-base text-[#4a6b57] max-w-2xl mx-auto leading-relaxed">
-            Verify genuine Bems Farms payment receipts, proforma invoices, commercial tax bills, POS store slips, and dispatch waybills directly from our central farm registry.
+            Verify genuine Bems Farms payment receipts, commercial tax bills, POS store slips, and driver statements directly from our central registry.
           </p>
         </div>
 
@@ -112,7 +179,7 @@ export default function VerifyDocumentPage() {
                   <input
                     type="text"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#123d27] focus:border-[#123d27] text-sm font-mono uppercase bg-[#fafafa]"
-                    placeholder="e.g. REC-2026-0007, INV-2026-0007, POS-1001"
+                    placeholder="e.g. SOA-DRV-0004-2026, REC-2026-0007, POS-1001"
                     value={inputRef}
                     onChange={(e) => setInputRef(e.target.value)}
                   />
@@ -126,7 +193,7 @@ export default function VerifyDocumentPage() {
                 <input
                   type="text"
                   className="w-full px-3.5 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#123d27] focus:border-[#123d27] text-sm font-mono uppercase bg-[#fafafa]"
-                  placeholder="e.g. 1E86-13B0..."
+                  placeholder="e.g. 618D-CDED..."
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value)}
                 />
@@ -194,14 +261,14 @@ export default function VerifyDocumentPage() {
                   BF-MUFN4UJ1 (Order Receipt)
                 </button>
               </div>
-              <span className="text-gray-400">RC 1849204 · Registered in Nigeria</span>
+              <span className="text-gray-400">Primary Corporate Registry · Abia State</span>
             </div>
           </form>
         </div>
 
         {/* Error Notification */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-6 mb-8 flex items-start gap-4">
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-6 mb-8 flex items-start gap-4 no-print">
             <div className="p-2 bg-red-100 rounded-xl text-red-600 flex-shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -218,523 +285,82 @@ export default function VerifyDocumentPage() {
           </div>
         )}
 
-        {/* Verification Certificate */}
+        {/* ── VERIFIED OFFICIAL DOCUMENT RENDERING ── */}
         {result && (
-          <div className="bg-white rounded-2xl shadow-xl border border-[#cfe2d7] overflow-hidden print:border-0 print:shadow-none print:m-0">
-            {/* Certificate Top Banner */}
-            <div className="bg-[#123d27] text-white p-6 sm:p-8 relative overflow-hidden">
-              <div className="absolute right-0 top-0 bottom-0 opacity-10 flex items-center pr-6 pointer-events-none">
-                <img src={logo} alt="" className="w-64 h-64 object-contain filter invert" />
-              </div>
-
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-bold uppercase tracking-wider">
-                      <svg className="w-3.5 h-3.5 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                      </svg>
-                      Verified Authentic Document
-                    </span>
-                    <span className="text-xs text-emerald-200/80 font-mono">
-                      {result.authenticityNotice || 'Primary Registry Record'}
-                    </span>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold font-serif text-white tracking-wide">
-                    {result.documentType}
-                  </h2>
-                  <div className="text-sm font-mono text-emerald-200 mt-1">
-                    Reference: <strong className="text-white text-base">{result.reference}</strong>
-                    {result.invoiceReference && result.invoiceReference !== result.reference && (
-                      <span className="ml-2 text-xs opacity-75">(Invoice: {result.invoiceReference})</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="sm:text-right no-print">
-                  <div className="text-xs uppercase tracking-wider text-emerald-200/80 font-medium">Status</div>
-                  <div className="inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-lg bg-emerald-600 text-white font-bold text-sm shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse" />
-                    {result.status}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Cryptographic Security Seal Strip */}
-            <div className="bg-[#f0f8f3] border-b border-[#cfe2d7] px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-[#123d27] uppercase tracking-wider">Security Code:</span>
-                <span className="font-mono font-bold text-[#123d27] bg-white px-2 py-0.5 rounded border border-[#b8dbc6]">
-                  {result.securityCode}
+          <div className="space-y-6">
+            {/* Top Verification Telemetry & Print Action Bar */}
+            <div className="no-print bg-white rounded-2xl p-4 sm:p-5 border border-[#cfe2d7] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold uppercase tracking-wider">
+                  <svg className="w-3.5 h-3.5 text-emerald-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  Verified Authentic
                 </span>
-                {result.securityCodeMatched && (
-                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                    </svg>
-                    Validated
+                <span className="font-mono text-xs font-bold text-gray-800">
+                  {result.reference}
+                </span>
+                {result.securityCode && (
+                  <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    Sec Code: <strong>{result.securityCode}</strong>
                   </span>
                 )}
-              </div>
-              <div className="text-gray-500">
-                Verified at: {new Date(result.verifiedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
-              </div>
-            </div>
-
-            {/* Document Body */}
-            <div className="p-6 sm:p-8 space-y-8">
-              {/* ── Driver Statement Certificate View ── */}
-              {result.isStatement ? (
-                <>
-                  {/* Parties: Company & Driver Profile */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Issued By</h3>
-                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.company?.name || 'Bems Farms Limited'}</div>
-                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        {result.company?.address || 'Central Farm Settlement Hub, Umuahia, Abia State'}<br />
-                        <strong>RC:</strong> {result.company?.rc || '1849204'} · <strong>TIN:</strong> {result.company?.tin || '24819402-0001'}<br />
-                        <strong>Email:</strong> {result.company?.email || 'corporate@bemsfarms.com'}<br />
-                        <strong>Fleet Helpline:</strong> {result.company?.phone || '+234 800 236 7326'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Logistics Partner &amp; Driver Profile</h3>
-                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.driver?.name}</div>
-                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        <strong>Wallet Account:</strong> <span className="font-mono text-emerald-800 font-semibold">{result.driver?.walletAccountNumber}</span><br />
-                        {result.driver?.phone && <><strong>Phone:</strong> {result.driver.phone} · </>}
-                        {result.driver?.email && <><strong>Email:</strong> {result.driver.email}<br /></>}
-                        <strong>Vehicle:</strong> {result.driver?.vehicleType} ({result.driver?.vehiclePlate || 'N/A'})<br />
-                        <strong>License:</strong> {result.driver?.licenseNumber || '—'} · <strong>Base:</strong> Abia &amp; Rivers Region
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bank & Settlement Details */}
-                  <div className="bg-[#f0f8f3] border border-[#bcdbc8] rounded-xl p-4 text-xs">
-                    <div className="font-bold text-sm text-[#123d27] mb-2 flex items-center gap-1.5">
-                      <span>🏦</span>
-                      <span>Designated Bank Settlement Account</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
-                      <div>
-                        <span className="text-gray-500 block text-[10px] uppercase">Bank Name</span>
-                        <strong className="text-gray-900 text-xs">{result.driver?.bankName || 'Designated Commercial Bank'}</strong>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block text-[10px] uppercase">Account Name</span>
-                        <strong className="text-gray-900 text-xs">{result.driver?.accountName || result.driver?.name}</strong>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block text-[10px] uppercase">Account Number (NUBAN)</span>
-                        <strong className="text-emerald-800 text-sm">{result.driver?.accountNumber || '—'}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4-KPI Settlement Strip */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                      <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Opening Balance</div>
-                      <div className="text-sm font-bold font-mono text-gray-800">
-                        ₦{Number(result.financials?.openingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl">
-                      <div className="text-[10px] uppercase font-bold text-emerald-800 mb-1">Total Gross Earnings (+)</div>
-                      <div className="text-sm font-bold font-mono text-emerald-700">
-                        +₦{Number(result.financials?.totalCredits || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-red-50/60 border border-red-200 rounded-xl">
-                      <div className="text-[10px] uppercase font-bold text-red-800 mb-1">Total Withdrawals (-)</div>
-                      <div className="text-sm font-bold font-mono text-red-700">
-                        -₦{Number(result.financials?.totalDebits || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-emerald-900 border border-emerald-950 text-white rounded-xl">
-                      <div className="text-[10px] uppercase font-bold text-emerald-300 mb-1">Net Closing Balance</div>
-                      <div className="text-sm font-bold font-mono text-white">
-                        ₦{Number(result.financials?.closingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Itemized Statement Ledger */}
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-                      Itemized Logistics Ledger ({result.statement?.length || 0} Transactions)
-                    </h3>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-[#123d27] text-emerald-100 font-semibold text-[11px] uppercase tracking-wider">
-                          <tr>
-                            <th className="py-2.5 px-3">#</th>
-                            <th className="py-2.5 px-3">Date</th>
-                            <th className="py-2.5 px-3">Activity &amp; Description</th>
-                            <th className="py-2.5 px-3">Reference</th>
-                            <th className="py-2.5 px-3 text-center">Type</th>
-                            <th className="py-2.5 px-3 text-right">Amount (₦)</th>
-                            <th className="py-2.5 px-3 text-right">Balance (₦)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {result.statement && result.statement.length > 0 ? (
-                            result.statement.map((ev, idx) => {
-                              const isCredit = ev.type === 'credit';
-                              const amt = parseFloat(ev.amount) || 0;
-                              const bal = parseFloat(ev.running_balance) || 0;
-                              return (
-                                <tr key={idx} className="hover:bg-gray-50/50">
-                                  <td className="py-2.5 px-3 font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</td>
-                                  <td className="py-2.5 px-3 font-mono text-gray-700 whitespace-nowrap">
-                                    {new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-gray-900 font-medium">
-                                    {String(ev.description || '').replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '').trim()}
-                                    {ev.order_id && (
-                                      <span className="ml-1.5 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-mono text-[10px]">
-                                        #{ev.order_id}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="py-2.5 px-3 font-mono text-gray-600 text-[11px]">{ev.reference || '—'}</td>
-                                  <td className="py-2.5 px-3 text-center">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${isCredit ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                      {isCredit ? 'CR' : 'DR'}
-                                    </span>
-                                  </td>
-                                  <td className={`py-2.5 px-3 text-right font-mono font-semibold ${isCredit ? 'text-emerald-700' : 'text-red-700'}`}>
-                                    {isCredit ? '+' : '-'}₦{amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900">
-                                    ₦{bal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan="7" className="py-4 text-center text-gray-400">No recorded ledger movements.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Audit Notice & Sign-off */}
-                  <div className="bg-[#f9fbf9] p-4 rounded-xl border border-gray-200 text-xs text-gray-600 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="max-w-xl">
-                      <strong>Audit &amp; Settlement Notice:</strong> This verified statement reflects all completed delivery drops, verified commissions, and electronic bank payouts recorded in the Bems Farms logistics database. Reconciled against telemetry logs.
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="font-serif font-bold text-sm text-[#123d27]">Bems Farms Logistics</div>
-                      <div className="text-[11px] text-gray-500">Financial Controller &amp; Fleet Operations</div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Parties Section */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Issued By</h3>
-                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.company?.name || 'Bems Farms Limited'}</div>
-                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        {result.company?.address || 'Central Farm Settlement Hub, Umuahia, Abia State'}<br />
-                        <strong>RC:</strong> {result.company?.rc || '1849204'} · <strong>TIN:</strong> {result.company?.tin || '24819402-0001'}<br />
-                        <strong>Email:</strong> {result.company?.email || 'corporate@bemsfarms.com'}<br />
-                        <strong>Phone:</strong> {result.company?.phone || '+234 800 236 7326'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed / Issued To</h3>
-                      <div className="font-serif font-bold text-lg text-[#123d27]">{result.customer?.name || 'Valued Customer'}</div>
-                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        {result.customer?.address || 'Nigeria'}<br />
-                        {result.customer?.phone && <><strong>Phone:</strong> {result.customer.phone}<br /></>}
-                        {result.customer?.email && <><strong>Email:</strong> {result.customer.email}<br /></>}
-                        <strong>Sales Channel:</strong> {result.channel || 'Direct'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dates & Payment Details */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-[#f9fbf9] p-4 rounded-xl border border-[#e1ece4] text-xs">
-                    <div>
-                      <span className="text-gray-500 block mb-0.5">Date Issued</span>
-                      <span className="font-semibold text-gray-900 font-mono">
-                        {new Date(result.issuedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block mb-0.5">Payment Status</span>
-                      <span className={`font-semibold font-mono ${result.isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {result.isPaid ? 'Settled (Paid in Full)' : 'Awaiting Settlement'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block mb-0.5">Payment Method</span>
-                      <span className="font-semibold text-gray-900">{result.payment?.method || 'Bank Transfer'}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block mb-0.5">Transaction Ref</span>
-                      <span className="font-mono text-gray-900">{result.payment?.reference || result.reference}</span>
-                    </div>
-                  </div>
-
-                  {/* POS Sales Confirmation Telemetry */}
-                  {result.isPos && (
-                    <div className="bg-[#f0f7f3] border border-[#b8dbc6] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                      <div className="flex items-center gap-2.5">
-                        <span className="p-2 bg-[#123d27] text-white rounded-lg text-sm flex-shrink-0">
-                          🏪
-                        </span>
-                        <div>
-                          <div className="font-bold text-[#123d27] text-sm">Official In-Store POS Sale Confirmation</div>
-                          <div className="text-gray-600 text-[11px]">
-                            Processed and authenticated at Bems Farms Central Retail Hub (Abia State).
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2.5 font-mono text-xs flex-wrap">
-                        {result.cashier && (
-                          <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
-                            Cashier: <strong className="text-gray-900">{result.cashier}</strong>
-                          </span>
-                        )}
-                        {result.posSessionId && (
-                          <span className="bg-white px-2.5 py-1 rounded border border-[#c4e0ce]">
-                            Session: <strong className="text-gray-900">#{result.posSessionId}</strong>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Customer Delivery Confirmation Telemetry */}
-                  {result.customerConfirmed && (
-                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-xs">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-emerald-600 text-white rounded-lg flex-shrink-0">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm text-emerald-900">Delivery Receipt Confirmed by Customer</div>
-                          <div className="text-emerald-700 text-[11px]">
-                            The recipient officially inspected and confirmed safe receipt of the goods.
-                          </div>
-                        </div>
-                      </div>
-                      {result.customerConfirmedAt && (
-                        <div className="font-mono text-xs text-emerald-900 bg-white/90 px-3 py-1 rounded-lg border border-emerald-200">
-                          Confirmed: <strong>{new Date(result.customerConfirmedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Delivery Logistics & Driver Information */}
-                  {(result.driver || result.deliveredAt || result.deliveryRef) && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500">🚚</span>
-                        <span>
-                          {result.driver ? <><strong>Courier:</strong> {result.driver}</> : 'Fulfilled by Bems Logistics'}
-                          {result.deliveryCity && <> · <strong>Destination:</strong> {result.deliveryCity}</>}
-                          {result.deliveryRef && <> · <strong>Waybill:</strong> <span className="font-mono">{result.deliveryRef}</span></>}
-                        </span>
-                      </div>
-                      {result.deliveredAt && (
-                        <div className="text-[11px] font-mono text-slate-500">
-                          Delivered: {new Date(result.deliveredAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Itemized Table */}
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Itemized Produce &amp; Goods</h3>
-                    <div className="overflow-x-auto rounded-xl border border-gray-200">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-[#f5f8f6] border-b border-gray-200 text-[#123d27] font-semibold">
-                          <tr>
-                            <th className="py-2.5 px-3">#</th>
-                            <th className="py-2.5 px-3">Item Description</th>
-                            <th className="py-2.5 px-3 text-center">Pack</th>
-                            <th className="py-2.5 px-3 text-center">Qty</th>
-                            <th className="py-2.5 px-3 text-right">Unit Price (₦)</th>
-                            <th className="py-2.5 px-3 text-right">Total (₦)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {result.items && result.items.length > 0 ? (
-                            result.items.map((it, idx) => (
-                              <tr key={idx} className="hover:bg-gray-50/50">
-                                <td className="py-2.5 px-3 font-mono text-gray-400">{String(idx + 1).padStart(2, '0')}</td>
-                                <td className="py-2.5 px-3 font-medium text-gray-900">{it.name}</td>
-                                <td className="py-2.5 px-3 text-center text-gray-500">{it.pack || 'kg'}</td>
-                                <td className="py-2.5 px-3 text-center font-mono font-semibold">{it.qty}</td>
-                                <td className="py-2.5 px-3 text-right font-mono">{Number(it.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                <td className="py-2.5 px-3 text-right font-mono font-semibold text-gray-900">{Number(it.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan="6" className="py-4 text-center text-gray-400">Order items summary available on file.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Financial Totals */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pt-4 border-t border-gray-100">
-                    <div className="text-xs text-gray-500 max-w-sm">
-                      <strong>Terms &amp; Policies:</strong> {result.company?.paymentTerms || 'Goods are released upon confirmation of payment. Certified authentic produce by Bems Farms Limited.'}
-                    </div>
-
-                    <div className="w-full sm:w-72 space-y-1.5 text-xs font-mono">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Subtotal:</span>
-                        <span>₦{Number(result.financials?.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      {Number(result.financials?.discount || 0) > 0 && (
-                        <div className="flex justify-between text-emerald-700">
-                          <span>Discount:</span>
-                          <span>−₦{Number(result.financials?.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {Number(result.financials?.deliveryFee || 0) > 0 && (
-                        <div className="flex justify-between text-gray-600">
-                          <span>Delivery Fee:</span>
-                          <span>₦{Number(result.financials?.deliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-gray-600">
-                        <span>VAT (Exempt):</span>
-                        <span>₦0.00</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold text-[#123d27] pt-2 border-t border-gray-200">
-                        <span>Total Amount:</span>
-                        <span>₦{Number(result.financials?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex justify-between text-xs text-emerald-800 font-semibold">
-                        <span>Amount Paid:</span>
-                        <span>₦{Number(result.financials?.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      {Number(result.financials?.balanceDue || 0) > 0 ? (
-                        <div className="flex justify-between text-xs text-red-700 font-bold pt-1">
-                          <span>Balance Due:</span>
-                          <span>₦{Number(result.financials?.balanceDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between text-xs text-emerald-700 font-bold pt-1">
-                          <span>Balance Due:</span>
-                          <span>₦0.00 (Fully Settled)</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Bank Remittance Info if Awaiting Payment */}
-              {!result.isPaid && (
-                <div className="bg-[#eef7f2] border border-[#bcdbc8] rounded-xl p-5 text-xs text-[#123d27]">
-                  <div className="font-bold text-sm mb-1 flex items-center gap-1.5 text-emerald-900">
-                    <svg className="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    How to Complete Payment for this Invoice:
-                  </div>
-                  <p className="text-gray-600 mb-3">
-                    Please make a direct bank transfer to our official verified corporate account:
-                  </p>
-                  <div className="bg-white p-3.5 rounded-lg border border-[#c4e0ce] grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono">
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase">Bank Name</span>
-                      <strong className="text-gray-900">{result.company?.bankName || 'Moniepoint MFB / Zenith Bank'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase">Account Name</span>
-                      <strong className="text-gray-900">{result.company?.accountName || 'Bems Farms Limited'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase">Account Number</span>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-emerald-700 text-sm">{result.company?.accountNumber || '1023849502'}</strong>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyAccount(result.company?.accountNumber || '1023849502')}
-                          className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-sans text-[11px]"
-                        >
-                          {copied ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-2">
-                    Include your invoice reference <strong className="font-mono text-gray-900">{result.reference}</strong> as payment narration. Forward proof of payment to{' '}
-                    <a href={`mailto:${result.company?.email || 'corporate@bemsfarms.com'}`} className="underline font-semibold">{result.company?.email || 'corporate@bemsfarms.com'}</a>.
-                  </p>
-                </div>
-              )}
-
-              {/* Barcode & Registry Authentication Strip */}
-              <div className="pt-6 border-t border-gray-100 flex flex-col items-center justify-center text-center">
-                <div
-                  className="w-48 sm:w-64 h-7 my-1 opacity-80"
-                  style={{
-                    background: 'repeating-linear-gradient(90deg, #000 0 1.5px, transparent 1.5px 3.5px, #000 3.5px 5.5px, transparent 5.5px 7.5px, #000 7.5px 9px, transparent 9px 12px)'
-                  }}
-                  aria-hidden="true"
-                />
-                <div className="font-mono text-xs font-bold tracking-widest text-[#123d27]">
-                  {result.reference}
-                </div>
-                <div className="text-[10px] text-gray-400 mt-0.5 uppercase tracking-wider">
-                  Official Bems Farms Document Barcode · Code 128 Compliant
-                </div>
+                <span className="text-xs text-emerald-700 font-medium">
+                  {result.status || 'Active · Reconciled'}
+                </span>
               </div>
 
-              {/* Actions Footer */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-gray-100 no-print">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="px-5 py-2.5 rounded-xl bg-[#123d27] hover:bg-[#0c2b1b] text-white font-medium text-xs shadow flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#123d27] hover:bg-[#0c2b1b] text-white font-medium text-xs shadow flex items-center justify-center gap-1.5 transition"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  <span>Print Official Certificate</span>
+                  <span>Print / Save PDF (A4)</span>
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setResult(null); setInputRef(''); setInputCode(''); setSearchParams({}); }}
-                    className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs"
-                  >
-                    Verify Another Document
-                  </button>
-                  <Link
-                    to="/products"
-                    className="px-4 py-2.5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs"
-                  >
-                    Return to Shop
-                  </Link>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setResult(null); setInputRef(''); setInputCode(''); setSearchParams({}); }}
+                  className="px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs transition"
+                >
+                  Verify Another
+                </button>
+              </div>
+            </div>
+
+            {/* Document Stage: Pixel-perfect replica of the authentic document sheet */}
+            <div className="bems-doc-stage-container w-full overflow-x-auto pb-12 flex justify-center">
+              <div
+                className="bems-doc-print-target shadow-2xl rounded-sm border border-[#e2e8f0] bg-white"
+                style={{ minWidth: 'min-content' }}
+              >
+                {result.isStatement ? (
+                  <BemsDriverStatementDocument
+                    driver={result.driver || {}}
+                    summary={{
+                      opening_balance: Number(result.financials?.openingBalance || 0),
+                      total_earnings: Number(result.financials?.totalCredits || 0),
+                      total_payouts: Number(result.financials?.totalDebits || 0),
+                      closing_balance: Number(result.financials?.closingBalance || 0),
+                      pending_payouts: Number(result.financials?.pendingPayouts || 0),
+                      total_trips: Number(result.financials?.totalTrips || 0),
+                    }}
+                    company={result.company || {}}
+                    statement={result.statement || []}
+                    period={{ start: null, end: null }}
+                    showFilterToolbar={false}
+                  />
+                ) : (
+                  <BemsOfficialDocument
+                    documentType={docType}
+                    data={officialDocData}
+                    bankSettings={bankSettings}
+                  />
+                )}
               </div>
             </div>
           </div>

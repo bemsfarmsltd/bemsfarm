@@ -1381,8 +1381,8 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
       company: {
         name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Limited',
         address: invoiceSettings.invoice_company_address || bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
-        rc_number: invoiceSettings.invoice_rc_number || bankSettings?.invoice_rc_number || 'RC 1849204',
-        tin: invoiceSettings.invoice_tin || bankSettings?.invoice_tin || 'TIN 24819402-0001',
+        rc_number: '',
+        tin: '',
         email: invoiceSettings.invoice_email || bankSettings?.invoice_email || 'corporate@bemsfarms.com',
         phone: invoiceSettings.invoice_phone || bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
         website: 'www.bemsfarms.com',

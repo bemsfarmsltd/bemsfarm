@@ -14,8 +14,8 @@ const BLANK = {
   invoice_secondary_account_number: '1223849502',
   invoice_company_name: 'Bems Farms Limited',
   invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
-  invoice_rc_number: 'RC 1849204',
-  invoice_tin: 'TIN 24819402-0001',
+  invoice_rc_number: '',
+  invoice_tin: '',
   invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
   invoice_email: 'corporate@bemsfarms.com',
   invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
@@ -198,7 +198,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control font-monospace"
-                    placeholder="RC 1849204"
+                    placeholder="Optional RC number"
                     value={form.invoice_rc_number || ''}
                     onChange={e => fld('invoice_rc_number', e.target.value)}
                   />
@@ -209,7 +209,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control font-monospace"
-                    placeholder="TIN 24819402-0001"
+                    placeholder="Optional TIN"
                     value={form.invoice_tin || ''}
                     onChange={e => fld('invoice_tin', e.target.value)}
                   />
