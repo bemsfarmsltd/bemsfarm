@@ -520,158 +520,51 @@ function renderDriverStatementHtml({
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 14px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid #e9ecef;
-      position: relative;
-    }
-
-    .bems-doc-head::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      width: 72px;
-      height: 2.5px;
-      background: var(--bems-g6);
-      border-radius: 2px;
     }
 
     .bems-doc-logo img {
-      height: 46px;
+      height: 50px;
       width: auto;
       display: block;
       object-fit: contain;
     }
 
-    .bems-doc-dept-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 8.5px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: #065f46;
-      background: #ecfdf5;
-      border: 1px solid #d1fae5;
-      padding: 2.5px 8px;
-      border-radius: 4px;
-      margin-top: 6px;
-    }
-
-    .bems-doc-dept-badge .badge-pulse-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-
     .bems-doc-co {
-      margin-top: 5px;
-      font-size: 9.5px;
+      margin-top: 8px;
+      font-size: 10px;
       color: var(--bems-muted);
-      line-height: 1.5;
+      line-height: 1.6;
     }
-    .bems-doc-co b { color: var(--bems-ink); font-weight: 700; font-size: 10.5px; }
+    .bems-doc-co b { color: var(--bems-ink2); font-weight: 600; }
 
     .bems-doc-meta-right { text-align: right; }
 
-    .bems-doc-status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 8.5px;
-      font-weight: 700;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: #065f46;
-      background: #f0fdf9;
-      border: 1px solid #a7f3d0;
-      padding: 3px 10px;
-      border-radius: 999px;
-      margin-bottom: 4px;
-    }
-
-    .bems-doc-status-badge .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-
     .bems-doc-meta-right h1 {
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 800;
-      font-size: 28px;
-      line-height: 1.1;
-      color: var(--bems-g9);
-      letter-spacing: -0.02em;
-      margin: 0;
-    }
-
-    .bems-doc-ref-wrap {
-      margin-top: 6px;
-    }
-
-    .bems-doc-ref-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 4px 10px;
-      border-radius: 5px;
-      background: #064e3b;
-      color: #ffffff;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
-    }
-
-    .bems-doc-ref-pill .ref-prefix {
-      color: #6ee7b7;
-      font-size: 8.5px;
+      font-family: 'Fraunces', serif;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      font-size: 30px;
+      line-height: 1;
+      color: var(--bems-g9);
+      letter-spacing: -.01em;
+      margin: 0;
     }
 
     .bems-doc-meta-right .no {
       display: inline-block;
-      margin-top: 6px;
+      margin-top: 9px;
       padding: 4px 10px;
-      border-radius: 5px;
-      background: #064e3b;
-      color: #ffffff;
+      border-radius: 6px;
+      background: var(--bems-gold1);
+      color: #6d5d17;
       font-family: 'JetBrains Mono', monospace;
       font-weight: 600;
-      font-size: 11px;
-      letter-spacing: .05em;
-      box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
-    }
-
-    .bems-doc-dates {
-      margin-top: 6px;
-      font-size: 10px;
-      color: var(--bems-muted);
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .bems-doc-dates b {
-      color: var(--bems-ink);
-      font-weight: 600;
-    }
-
-    .bems-doc-dates .dt-sep {
-      opacity: 0.5;
+      font-size: 12px;
+      letter-spacing: .04em;
     }
 
     .bems-doc-meta-right .dt {
       margin-top: 6px;
-      font-size: 10px;
+      font-size: 10.5px;
       color: var(--bems-muted);
     }
 
@@ -786,64 +679,6 @@ function renderDriverStatementHtml({
       margin: 2px 0 0;
       color: #ffffff;
     }
-
-    .bems-doc-parties-unified {
-      border: 1px solid var(--bems-line);
-      border-radius: 10px;
-      background: #fafcfb;
-      padding: 8px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-    .bems-doc-party-line {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px 10px;
-      font-size: 10.5px;
-      color: var(--bems-ink);
-      line-height: 1.4;
-    }
-    .bems-doc-party-line + .bems-doc-party-line {
-      padding-top: 7px;
-      border-top: 1px dashed var(--bems-line);
-    }
-    .bems-party-label {
-      font-size: 8.5px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #065f46;
-      background: #ecfdf5;
-      border: 1px solid #d1fae5;
-      padding: 2px 6px;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-    .bems-party-name {
-      font-family: 'Fraunces', serif;
-      font-weight: 700;
-      font-size: 13.5px;
-      color: var(--bems-g9);
-      white-space: nowrap;
-    }
-    .bems-party-item {
-      color: var(--bems-ink);
-      white-space: nowrap;
-    }
-    .bems-party-item b {
-      color: var(--bems-muted);
-      font-weight: 600;
-      font-size: 10px;
-      margin-right: 3px;
-    }
-    .bems-party-sep {
-      color: #94a3b8;
-      font-weight: 600;
-      font-size: 11px;
-    }
-
     .bems-doc-parties {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1336,28 +1171,19 @@ function renderDriverStatementHtml({
             <img src="https://api.bemsfarms.com/uploads/bemsfarms_logo.png" alt="Bems Farms" onerror="this.src='/bemsfarms_logo_compact.png'">
           </div>
           <div class="bems-doc-co">
-            <b>${companyName}</b> · RC: 1892041<br>
+            <b>${companyName}</b> · Logistics & Fleet Operations<br>
             ${companyAddress}<br>
             ${companyEmail} · ${companyPhone}
           </div>
         </div>
 
         <div class="bems-doc-meta-right">
-          <div class="bems-doc-status-badge">
-            <span class="badge-dot"></span>
-            Official Settlement Record
-          </div>
+          <div class="cap">Official Settlement Record</div>
           <h1>Statement of Account</h1>
-          <div class="bems-doc-ref-wrap">
-            <span class="bems-doc-ref-pill">
-              <span class="ref-prefix">DOCUMENT ID</span>
-              ${statementRef}
-            </span>
-          </div>
-          <div class="bems-doc-dates">
-            <span>Period: <b>${formatDate(periodStart)} – ${formatDate(periodEnd)}</b></span>
-            <span class="dt-sep">·</span>
-            <span>Generated: <b>${issuedDate}</b></span>
+          <div class="no">${statementRef}</div>
+          <div class="dt">
+            Period: ${formatDate(periodStart)} – ${formatDate(periodEnd)}<br>
+            Generated on ${issuedDate}
           </div>
         </div>
       </header>
@@ -1413,25 +1239,25 @@ function renderDriverStatementHtml({
       </section>
 
       <!-- Parties Block -->
-      <section class="bems-doc-parties-unified">
-        <div class="bems-doc-party-line">
-          <span class="bems-party-label">Driver Profile</span>
-          <span class="bems-party-name">${driverName}</span>
-          <span class="bems-party-sep">·</span>
-          <span class="bems-party-item"><b>Wallet:</b> <span class="mono">${walletAccountNo}</span></span>
-          <span class="bems-party-sep">·</span>
-          <span class="bems-party-item"><b>Phone:</b> ${driverPhone}</span>
-          <span class="bems-party-sep">·</span>
-          <span class="bems-party-item"><b>Email:</b> ${driverEmail}</span>
+      <section class="bems-doc-parties">
+        <div class="bems-doc-party">
+          <div class="cap">Driver & Fleet Profile</div>
+          <div class="nm">${driverName}</div>
+          <p>
+            <b>Wallet Account:</b> <span class="mono">${walletAccountNo}</span><br>
+            <b>Phone:</b> ${driverPhone}<br>
+            <b>Email:</b> ${driverEmail}
+          </p>
         </div>
 
-        <div class="bems-doc-party-line">
-          <span class="bems-party-label">Settlement Bank</span>
-          <span class="bems-party-name">${bankName}</span>
-          <span class="bems-party-sep">·</span>
-          <span class="bems-party-item"><b>Account Name:</b> ${accountName}</span>
-          <span class="bems-party-sep">·</span>
-          <span class="bems-party-item"><b>NUBAN:</b> <span class="mono">${accountNumber}</span></span>
+        <div class="bems-doc-party help">
+          <div class="cap">Designated Bank Settlement Details</div>
+          <div class="nm">${bankName}</div>
+          <p>
+            <b>Account Name:</b> ${accountName}<br>
+            <b>Account Number (NUBAN):</b> <span class="mono">${accountNumber}</span><br>
+            <b>Logistics Helpline:</b> ${companyPhone}
+          </p>
         </div>
       </section>
 

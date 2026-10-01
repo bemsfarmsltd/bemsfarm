@@ -1527,28 +1527,19 @@ export default function DriverStatementPage() {
                         />
                       </div>
                       <div className="bems-doc-co">
-                        <b>{companyName}</b> · RC: 1892041<br />
+                        <b>{companyName}</b> · Logistics & Fleet Operations<br />
                         {companyAddress}<br />
                         {companyEmail}{companyPhone ? ` · ${companyPhone}` : ''}
                       </div>
                     </div>
 
                     <div className="bems-doc-meta-right">
-                      <div className="bems-doc-status-badge">
-                        <span className="badge-dot" />
-                        Official Settlement Record
-                      </div>
+                      <div className="cap">Official Settlement Record</div>
                       <h1>Statement of Account</h1>
-                      <div className="bems-doc-ref-wrap">
-                        <span className="bems-doc-ref-pill">
-                          <span className="ref-prefix">DOCUMENT ID</span>
-                          {statementRef}
-                        </span>
-                      </div>
-                      <div className="bems-doc-dates">
-                        <span>Period: <b>{formatDate(periodStart)} – {formatDate(periodEnd)}</b></span>
-                        <span className="dt-sep">·</span>
-                        <span>Generated: <b>{issuedDate}</b></span>
+                      <div className="no">{statementRef}</div>
+                      <div className="dt">
+                        Period: {formatDate(periodStart)} – {formatDate(periodEnd)}<br />
+                        Generated on {issuedDate}
                       </div>
                     </div>
                   </header>
@@ -1605,25 +1596,25 @@ export default function DriverStatementPage() {
                   </section>
 
                   {/* Driver Profile & Bank Section (PAGE 1 ONLY) */}
-                  <section className="bems-doc-parties-unified">
-                    <div className="bems-doc-party-line">
-                      <span className="bems-party-label">Driver Profile</span>
-                      <span className="bems-party-name">{driverName}</span>
-                      <span className="bems-party-sep">·</span>
-                      <span className="bems-party-item"><b>Wallet:</b> <span className="mono">{walletAccountNo}</span></span>
-                      <span className="bems-party-sep">·</span>
-                      <span className="bems-party-item"><b>Phone:</b> {driverPhone}</span>
-                      <span className="bems-party-sep">·</span>
-                      <span className="bems-party-item"><b>Email:</b> {driverEmail}</span>
+                  <section className="bems-doc-parties">
+                    <div className="bems-doc-party">
+                      <div className="cap">Driver & Fleet Profile</div>
+                      <div className="nm">{driverName}</div>
+                      <p>
+                        <b>Wallet Account:</b> <span className="mono">{walletAccountNo}</span><br />
+                        <b>Phone:</b> {driverPhone}<br />
+                        <b>Email:</b> {driverEmail}
+                      </p>
                     </div>
 
-                    <div className="bems-doc-party-line">
-                      <span className="bems-party-label">Settlement Bank</span>
-                      <span className="bems-party-name">{bankName}</span>
-                      <span className="bems-party-sep">·</span>
-                      <span className="bems-party-item"><b>Account Name:</b> {accountName}</span>
-                      <span className="bems-party-sep">·</span>
-                      <span className="bems-party-item"><b>NUBAN:</b> <span className="mono">{accountNumber}</span></span>
+                    <div className="bems-doc-party help">
+                      <div className="cap">Designated Bank Settlement Details</div>
+                      <div className="nm">{bankName}</div>
+                      <p>
+                        <b>Account Name:</b> {accountName}<br />
+                        <b>Account Number (NUBAN):</b> <span className="mono">{accountNumber}</span><br />
+                        {companyPhone && <><b>Logistics Helpline:</b> {companyPhone}</>}
+                      </p>
                     </div>
                   </section>
 

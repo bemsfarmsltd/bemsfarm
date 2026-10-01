@@ -96,166 +96,58 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 14px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #e9ecef;
-  position: relative;
-}
-
-.bems-doc-head::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 72px;
-  height: 2.5px;
-  background: var(--bems-g6, #10b981);
-  border-radius: 2px;
 }
 
 .bems-doc-logo img {
-  height: 46px;
+  height: 50px;
   width: auto;
   display: block;
   object-fit: contain;
 }
 
-.bems-doc-dept-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #065f46;
-  background: #ecfdf5;
-  border: 1px solid #d1fae5;
-  padding: 2.5px 8px;
-  border-radius: 4px;
-  margin-top: 6px;
-}
-
-.bems-doc-dept-badge .badge-pulse-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #10b981;
-}
-
 .bems-doc-co {
-  margin-top: 5px;
-  font-size: 9.5px;
-  color: var(--bems-muted, #556b61);
-  line-height: 1.5;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--bems-muted);
+  line-height: 1.6;
 }
 
 .bems-doc-co b {
-  color: var(--bems-ink, #0f2d23);
-  font-weight: 700;
-  font-size: 10.5px;
+  color: var(--bems-ink2);
+  font-weight: 600;
 }
 
 .bems-doc-meta-right {
   text-align: right;
 }
 
-.bems-doc-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #065f46;
-  background: #f0fdf9;
-  border: 1px solid #a7f3d0;
-  padding: 3px 10px;
-  border-radius: 999px;
-  margin-bottom: 4px;
-}
-
-.bems-doc-status-badge .badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-}
-
 .bems-doc-meta-right h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 800;
-  font-size: 28px;
-  line-height: 1.1;
-  color: var(--bems-g9, #064e3b);
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-
-.bems-doc-ref-wrap {
-  margin-top: 6px;
-}
-
-.bems-doc-ref-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px;
-  border-radius: 5px;
-  background: #064e3b;
-  color: #ffffff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
-}
-
-.bems-doc-ref-pill .ref-prefix {
-  color: #6ee7b7;
-  font-size: 8.5px;
+  font-family: 'Fraunces', serif;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--bems-g9);
+  letter-spacing: -.01em;
+  margin: 0;
 }
 
 .bems-doc-meta-right .no {
   display: inline-block;
-  margin-top: 6px;
+  margin-top: 9px;
   padding: 4px 10px;
-  border-radius: 5px;
-  background: #064e3b;
-  color: #ffffff;
+  border-radius: 6px;
+  background: var(--bems-gold1);
+  color: #6d5d17;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  font-size: 11px;
-  letter-spacing: .05em;
-  box-shadow: 0 1px 3px rgba(6, 78, 59, 0.2);
-}
-
-.bems-doc-dates {
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--bems-muted, #64748b);
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 6px;
-}
-
-.bems-doc-dates b {
-  color: #1e293b;
-  font-weight: 600;
-}
-
-.bems-doc-dates .dt-sep {
-  opacity: 0.5;
+  font-size: 12px;
+  letter-spacing: .04em;
 }
 
 .bems-doc-meta-right .dt {
   margin-top: 6px;
-  font-size: 10px;
-  color: var(--bems-muted, #64748b);
+  font-size: 10.5px;
+  color: var(--bems-muted);
 }
 
 /* Hero */
@@ -423,70 +315,6 @@
 }
 
 /* Parties */
-.bems-doc-parties-unified {
-  border: 1px solid var(--bems-line);
-  border-radius: 10px;
-  background: #fafcfb;
-  padding: 8px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.bems-doc-party-line {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  font-size: 10.5px;
-  color: var(--bems-ink);
-  line-height: 1.4;
-}
-
-.bems-doc-party-line + .bems-doc-party-line {
-  padding-top: 7px;
-  border-top: 1px dashed var(--bems-line);
-}
-
-.bems-party-label {
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #065f46;
-  background: #ecfdf5;
-  border: 1px solid #d1fae5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.bems-party-name {
-  font-family: 'Fraunces', serif;
-  font-weight: 700;
-  font-size: 13.5px;
-  color: var(--bems-g9);
-  white-space: nowrap;
-}
-
-.bems-party-item {
-  color: var(--bems-ink);
-  white-space: nowrap;
-}
-
-.bems-party-item b {
-  color: var(--bems-muted);
-  font-weight: 600;
-  font-size: 10px;
-  margin-right: 3px;
-}
-
-.bems-party-sep {
-  color: #94a3b8;
-  font-weight: 600;
-  font-size: 11px;
-}
-
 .bems-doc-parties {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1166,23 +994,29 @@
     z-index: 10 !important;
   }
   .bems-doc-head {
-    padding-bottom: 10px !important;
     margin-bottom: 8px !important;
-    border-bottom: 1px solid #e9ecef !important;
   }
   .bems-doc-logo img {
-    height: 38px !important;
+    height: 40px !important;
   }
   .bems-doc-meta-right h1 {
-    font-size: 22px !important;
+    font-size: 24px !important;
   }
-  .bems-doc-ref-pill {
+  .bems-doc-meta-right .no {
+    display: inline-block !important;
+    margin-top: 6px !important;
     padding: 3px 8px !important;
-    font-size: 10px !important;
+    border-radius: 5px !important;
+    background: #f6f1dc !important;
+    color: #6d5d17 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    letter-spacing: .04em !important;
   }
-  .bems-doc-dates {
-    font-size: 9px !important;
-    margin-top: 4px !important;
+  .bems-doc-meta-right .dt {
+    margin-top: 5px !important;
+    font-size: 9.5px !important;
   }
   .bems-doc-hero {
     border-radius: 8px !important;
@@ -1226,19 +1060,6 @@
   }
   .bems-doc-hero-meta p {
     font-size: 11px !important;
-  }
-  .bems-doc-parties-unified {
-    border-radius: 8px !important;
-    padding: 6px 12px !important;
-    gap: 5px !important;
-    margin-bottom: 6px !important;
-  }
-  .bems-doc-party-line {
-    font-size: 9.5px !important;
-    gap: 4px 8px !important;
-  }
-  .bems-party-name {
-    font-size: 12px !important;
   }
   .bems-doc-parties {
     border-radius: 8px !important;
