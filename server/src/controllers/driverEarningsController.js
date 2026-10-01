@@ -1001,12 +1001,12 @@ const requestAccountStatement = async (req, res, next) => {
     } catch (_) {}
 
     const company = {
-      name: invoiceSettings.invoice_company_name || bankSettings?.invoice_company_name || 'Bems Farms Global Ltd',
+      name: 'Bems Farms Global Ltd',
       address: invoiceSettings.invoice_company_address || bankSettings?.invoice_company_address || 'Central Farm Settlement Hub, Umuahia, Abia State',
       rc_number: '',
       tin: '',
       email: invoiceSettings.invoice_email || bankSettings?.invoice_email || 'corporate@bemsfarms.com',
-      phone: invoiceSettings.invoice_phone || bankSettings?.invoice_phone || '+234 800 236 7326 / +234 814 000 0000',
+      phone: (invoiceSettings.invoice_phone && !invoiceSettings.invoice_phone.includes('800 236 7326')) ? invoiceSettings.invoice_phone : '',
       website: 'www.bemsfarms.com',
       signature_url: invoiceSettings.company_signature_url || bankSettings?.company_signature_url || '',
     };

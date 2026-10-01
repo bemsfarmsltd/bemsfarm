@@ -169,10 +169,14 @@ export default function BemsOfficialDocument({
   const accountNumber = effectiveSettings.invoice_account_number || effectiveSettings.account_number || '1023849502'
   const secondaryBank = effectiveSettings.invoice_secondary_bank || effectiveSettings.secondary_bank || ''
   const secondaryAccount = effectiveSettings.invoice_secondary_account_number || effectiveSettings.secondary_account || ''
-  const companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Global Ltd'
+  let companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Global Ltd'
+  if (!companyName || companyName.includes('Limited') || companyName === 'Bems Farms') {
+    companyName = 'Bems Farms Global Ltd'
+  }
   const companyAddress = effectiveSettings.invoice_company_address || effectiveSettings.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
   const companyEmail = effectiveSettings.invoice_email || effectiveSettings.email || 'corporate@bemsfarms.com'
-  const companyPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || '+234 800 236 7326 / +234 814 000 0000'
+  const rawPhone = effectiveSettings.invoice_phone || effectiveSettings.phone || ''
+  const companyPhone = (!rawPhone.includes('800 236 7326')) ? rawPhone : ''
   const paymentTerms = effectiveSettings.invoice_payment_terms || effectiveSettings.payment_terms || `Payment is due by ${dueDate}. Goods are released on confirmation of payment. Prices are in Nigerian naira.`
   const footerNote = effectiveSettings.invoice_footer || effectiveSettings.footer || 'Premium farm produce from Abia State to your table.'
 
@@ -228,7 +232,7 @@ export default function BemsOfficialDocument({
               </div>
               <div className="bems-doc-co">
                 <b>{companyName}</b> · {companyAddress}<br />
-                {companyEmail} · {companyPhone}
+                {companyEmail}{companyPhone ? ` · ${companyPhone}` : ''}
               </div>
             </div>
 
@@ -559,7 +563,7 @@ export default function BemsOfficialDocument({
 
           {/* ── FOOTER ── */}
           <div className="bems-doc-foot">
-            <span>{companyPhone}</span>
+            <span>{companyPhone || 'Logistics & Hub'}</span>
             <span>www.bemsfarms.com</span>
             <span>{companyEmail}</span>
           </div>

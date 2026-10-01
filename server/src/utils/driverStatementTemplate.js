@@ -150,10 +150,13 @@ function renderDriverStatementHtml({
   const balanceInWords = numberToWords(closingBalance);
   const securityCode = generateSecurityCode(statementRef, closingBalance);
 
-  const companyName = company.name || 'Bems Farms Global Ltd';
+  let companyName = company.name || 'Bems Farms Global Ltd';
+  if (!companyName || companyName.includes('Limited') || companyName === 'Bems Farms') {
+    companyName = 'Bems Farms Global Ltd';
+  }
   const companyAddress = company.address || 'Central Farm Settlement Hub, Umuahia, Abia State';
   const companyEmail = company.email || 'corporate@bemsfarms.com';
-  const companyPhone = company.phone || '+234 800 236 7326 / +234 814 000 0000';
+  const companyPhone = (company.phone && !company.phone.includes('800 236 7326')) ? company.phone : '';
 
   const rowsHtml = statement && statement.length > 0 ? statement.map((ev, idx) => {
     const isCredit = ev.type === 'credit';
@@ -663,8 +666,8 @@ function renderDriverStatementHtml({
       grid-template-columns: 1fr 210px;
       gap: 16px;
       align-items: end;
-      margin-top: 10px;
-      padding: 10px 0 4px 0;
+      margin-top: 36px;
+      padding: 12px 0 4px 0;
     }
     .bems-doc-keep {
       padding: 10px 14px;
@@ -848,8 +851,8 @@ function renderDriverStatementHtml({
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
       .bems-doc-body .bems-doc-sign,
       .bems-doc-sign {
-        margin-top: 10px !important;
-        padding-top: 8px !important;
+        margin-top: 34px !important;
+        padding-top: 10px !important;
         padding-bottom: 4px !important;
         display: grid !important;
         grid-template-columns: 1fr 210px !important;
@@ -874,7 +877,7 @@ function renderDriverStatementHtml({
       .bems-doc-sig .ln { height: 0 !important; margin: 0 !important; padding: 0 !important; border-bottom: 1.5px solid #111 !important; width: 100% !important; position: relative !important; z-index: 1 !important; }
       .bems-doc-sig b { text-align: center !important; }
       .bems-doc-sig span { text-align: center !important; }
-      .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 14px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .bems-doc-stamp-wrapper { position: absolute !important; left: 50% !important; top: 22px !important; transform: translate(-50%, -50%) !important; right: auto !important; margin: 0 !important; z-index: 2 !important; pointer-events: none !important; mix-blend-mode: multiply !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .bems-official-stamp { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; mix-blend-mode: multiply !important; opacity: 0.92 !important; }
       .bems-doc-thanks { padding: 6px 10mm !important; }
       .bems-doc-thanks h3 { font-size: 12.5px !important; }

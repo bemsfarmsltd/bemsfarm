@@ -623,7 +623,7 @@
 .bems-doc-stamp-wrapper {
   position: absolute;
   left: 50%;
-  top: 14px;
+  top: 22px;
   transform: translate(-50%, -50%);
   z-index: 2;
   pointer-events: none;
@@ -652,12 +652,15 @@
   box-sizing: border-box;
 }
 
+.bems-doc-body .bems-doc-sign,
+.bems-doc-sign,
 .bems-doc-footer-group .bems-doc-sign {
   display: grid;
   grid-template-columns: 1fr minmax(260px, auto);
   gap: 32px;
   align-items: end;
-  padding: 0 15mm 16px 17mm;
+  margin-top: 36px;
+  padding-top: 12px;
 }
 
 /* Thanks banner & Footer */
@@ -948,8 +951,9 @@
   .bems-doc-page-1-multi .bems-doc-body {
     padding-bottom: 24px !important;
   }
-  .bems-doc-body .bems-doc-sign {
-    margin-top: 10px !important;
+  .bems-doc-body .bems-doc-sign,
+  .bems-doc-sign {
+    margin-top: 34px !important;
     padding-top: 10px !important;
     padding-bottom: 4px !important;
     display: grid !important;
@@ -1137,7 +1141,7 @@
   .bems-doc-stamp-wrapper {
     position: absolute !important;
     left: 50% !important;
-    top: 14px !important;
+    top: 22px !important;
     transform: translate(-50%, -50%) !important;
     right: auto !important;
     margin: 0 !important;

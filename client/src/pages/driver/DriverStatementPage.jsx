@@ -280,10 +280,13 @@ export default function DriverStatementPage() {
     return () => { isMounted = false; };
   }, [statementRef, securityCode]);
 
-  const companyName = company.name || "Bems Farms Global Ltd";
+  let companyName = company.name || "Bems Farms Global Ltd";
+  if (!companyName || companyName.includes('Limited') || companyName === 'Bems Farms') {
+    companyName = "Bems Farms Global Ltd";
+  }
   const companyAddress = company.address || "Central Farm Settlement Hub, Umuahia, Abia State";
   const companyEmail = company.email || "corporate@bemsfarms.com";
-  const companyPhone = company.phone || "+234 800 236 7326 / +234 814 000 0000";
+  const companyPhone = (company.phone && !company.phone.includes('800 236 7326')) ? company.phone : "";
 
   const handlePrint = useCallback(() => {
     const target = document.getElementById('bems-driver-statement-print-area')
@@ -1256,7 +1259,7 @@ export default function DriverStatementPage() {
                       <div className="bems-doc-co">
                         <b>{companyName}</b> · Logistics & Fleet Operations<br />
                         {companyAddress}<br />
-                        {companyEmail} · {companyPhone}
+                        {companyEmail}{companyPhone ? ` · ${companyPhone}` : ''}
                       </div>
                     </div>
 
@@ -1342,7 +1345,7 @@ export default function DriverStatementPage() {
                         <b>Account Name:</b> {accountName}<br />
                         <b>Account Number (NUBAN):</b> <span className="mono">{accountNumber}</span><br />
                         <b>Settlement Mode:</b> Monnify Instant / Scheduled Fleet Batch<br />
-                        <b>Logistics Helpline:</b> {companyPhone}
+                        {companyPhone && <><b>Logistics Helpline:</b> {companyPhone}</>}
                       </p>
                     </div>
                   </section>
@@ -1529,7 +1532,7 @@ export default function DriverStatementPage() {
                       <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
                     </div>
                     <div className="bems-doc-foot">
-                      <span>{companyPhone}</span>
+                      <span>{companyPhone || 'Logistics & Fleet Hub'}</span>
                       <span>www.bemsfarms.com</span>
                       <span>{companyEmail}</span>
                     </div>
@@ -1697,7 +1700,7 @@ export default function DriverStatementPage() {
                       <span>Safe deliveries, fresh produce from Abia State farm hub to your table.</span>
                     </div>
                     <div className="bems-doc-foot">
-                      <span>{companyPhone}</span>
+                      <span>{companyPhone || 'Logistics & Fleet Hub'}</span>
                       <span>www.bemsfarms.com</span>
                       <span>{companyEmail}</span>
                     </div>

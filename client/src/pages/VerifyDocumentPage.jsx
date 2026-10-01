@@ -113,9 +113,9 @@ export default function VerifyDocumentPage() {
   const bankSettings = useMemo(() => {
     if (!result?.company) return null;
     return {
-      invoice_company_name: result.company.name || 'Bems Farms Global Ltd',
+      invoice_company_name: (result.company.name && !result.company.name.includes('Limited')) ? result.company.name : 'Bems Farms Global Ltd',
       invoice_company_address: result.company.address || 'Central Farm Settlement Hub, Umuahia, Abia State',
-      invoice_phone: result.company.phone || '+234 800 236 7326 / +234 814 000 0000',
+      invoice_phone: (result.company.phone && !result.company.phone.includes('800 236 7326')) ? result.company.phone : '',
       invoice_email: result.company.email || 'corporate@bemsfarms.com',
       invoice_bank_name: result.company.bankName || 'Moniepoint MFB / Zenith Bank',
       invoice_account_name: result.company.accountName || 'Bems Farms Global Ltd',
