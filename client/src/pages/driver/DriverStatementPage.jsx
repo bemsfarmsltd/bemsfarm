@@ -338,8 +338,9 @@ export default function DriverStatementPage() {
           background: #ffffff;
           position: relative;
           overflow: hidden;
-          display: grid;
-          grid-template-rows: 1fr auto;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
           box-shadow: 0 20px 60px rgba(0,0,0,0.4);
           text-align: left;
           box-sizing: border-box;
@@ -359,12 +360,14 @@ export default function DriverStatementPage() {
         }
 
         .bems-doc-body {
-          padding: 14mm 15mm 8mm 17mm;
+          padding: 14mm 15mm 0 17mm;
           display: flex;
           flex-direction: column;
           gap: 16px;
           overflow: hidden;
+          flex: 1 1 auto;
           min-height: 0;
+          box-sizing: border-box;
         }
 
         .bems-doc-head {
@@ -701,6 +704,7 @@ export default function DriverStatementPage() {
           grid-template-columns: 1fr minmax(260px, auto);
           gap: 32px;
           align-items: end;
+          padding-top: 24px;
           padding-bottom: 12px;
         }
         .bems-doc-keep {
@@ -807,11 +811,12 @@ export default function DriverStatementPage() {
           width: 100%;
           flex-shrink: 0;
           background: #ffffff;
-          /* Grid places this row at the bottom automatically */
+          margin-top: auto;
         }
 
         .bems-doc-thanks {
           margin-left: 6px;
+          flex-shrink: 0;
           padding: 12px 15mm 12px 11mm;
           background: var(--bems-g0);
           border-top: 1px solid var(--bems-line);
@@ -822,6 +827,7 @@ export default function DriverStatementPage() {
 
         .bems-doc-foot {
           margin-left: 6px;
+          flex-shrink: 0;
           padding: 6px 15mm 7px 11mm;
           background: var(--bems-g9);
           color: #a9c9b5;
@@ -886,7 +892,9 @@ export default function DriverStatementPage() {
           }
           .bems-doc-page {
             position: relative !important;
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
             width: 210mm !important;
             height: 297mm !important;
             min-height: 297mm !important;
@@ -897,8 +905,7 @@ export default function DriverStatementPage() {
             border: none !important;
             background: #ffffff !important;
             box-sizing: border-box !important;
-            /* overflow MUST be visible so absolute footer reaches page bottom */
-            overflow: visible !important;
+            overflow: hidden !important;
             page-break-after: always !important;
             break-after: page !important;
           }
@@ -907,20 +914,22 @@ export default function DriverStatementPage() {
             break-after: auto !important;
           }
           .bems-doc-body {
-            display: block !important;
-            padding: 10mm 14mm 80px 14mm !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+            padding: 10mm 14mm 0 14mm !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
+            min-height: 0 !important;
           }
           .bems-doc-footer-group {
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
+            position: static !important;
+            margin-top: auto !important;
             width: 100% !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
             background: #ffffff !important;
+            flex-shrink: 0 !important;
           }
           .bems-doc-thanks {
             margin-left: 0 !important;
@@ -970,7 +979,13 @@ export default function DriverStatementPage() {
           .bems-doc-verify p { font-size: 10px !important; }
           .bems-doc-tot dt, .bems-doc-tot dd { font-size: 11px !important; }
           .bems-doc-tot .grand { padding: 8px 12px !important; font-size: 15px !important; }
-          .bems-doc-sign { gap: 16px !important; padding-bottom: 6px !important; grid-template-columns: 1fr 210px !important; }
+          .bems-doc-sign {
+            margin-top: auto !important;
+            padding-top: 24px !important;
+            gap: 16px !important;
+            padding-bottom: 12px !important;
+            grid-template-columns: 1fr 210px !important;
+          }
           .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
           .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: center !important; }
           .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; text-align: center !important; }

@@ -293,6 +293,7 @@ function renderDriverStatementHtml({
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       box-shadow: 0 20px 60px rgba(0,0,0,0.4);
       text-align: left;
     }
@@ -655,6 +656,7 @@ function renderDriverStatementHtml({
       grid-template-columns: 1fr minmax(260px, auto);
       gap: 32px;
       align-items: end;
+      padding-top: 24px;
       padding-bottom: 12px;
     }
     .bems-doc-keep {
@@ -741,6 +743,7 @@ function renderDriverStatementHtml({
     /* Thanks & Foot */
     .bems-doc-thanks {
       margin-left: 6px;
+      flex-shrink: 0;
       padding: 10px 15mm 10px 11mm;
       background: var(--bems-g0);
       border-top: 1px solid var(--bems-line);
@@ -760,6 +763,7 @@ function renderDriverStatementHtml({
 
     .bems-doc-foot {
       margin-left: 6px;
+      flex-shrink: 0;
       padding: 6px 15mm 7px 11mm;
       background: var(--bems-g9);
       color: #a9c9b5;
@@ -827,7 +831,13 @@ function renderDriverStatementHtml({
       .bems-doc-verify { padding: 6px 10px !important; }
       .bems-doc-tot dt, .bems-doc-tot dd { font-size: 10px !important; }
       .bems-doc-tot .grand { padding: 5px 8px !important; font-size: 13px !important; }
-      .bems-doc-sign { gap: 16px !important; padding-bottom: 6px !important; grid-template-columns: 1fr 210px !important; }
+      .bems-doc-sign {
+        margin-top: auto !important;
+        padding-top: 24px !important;
+        gap: 16px !important;
+        padding-bottom: 12px !important;
+        grid-template-columns: 1fr 210px !important;
+      }
       .bems-doc-keep { font-size: 9px !important; padding: 6px 10px !important; line-height: 1.35 !important; }
       .bems-doc-sign-right { position: relative !important; width: 210px !important; max-width: 210px !important; display: block !important; text-align: center !important; }
       .bems-doc-sig { width: 100% !important; max-width: 210px !important; position: relative !important; z-index: 1 !important; text-align: center !important; }

@@ -54,8 +54,9 @@
   background: #ffffff;
   position: relative;
   overflow: hidden;
-  display: grid;
-  grid-template-rows: 1fr auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   box-shadow: 0 20px 60px rgba(15, 54, 34, .18);
   text-align: left;
   box-sizing: border-box;
@@ -75,12 +76,14 @@
 }
 
 .bems-doc-body {
-  padding: 14mm 15mm 8mm 17mm;
+  padding: 14mm 15mm 0 17mm;
   display: flex;
   flex-direction: column;
   gap: 18px;
   overflow: hidden;
+  flex: 1 1 auto;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .bems-doc-root .naira {
@@ -534,7 +537,8 @@
   grid-template-columns: 1fr minmax(260px, auto);
   gap: 32px;
   align-items: end;
-  padding-bottom: 16px;
+  padding-top: 24px;
+  padding-bottom: 14px;
 }
 
 .bems-doc-keep {
@@ -641,17 +645,18 @@
   print-color-adjust: exact !important;
 }
 
-/* Footer Group (Anchored to Absolute Bottom of A4 Document via CSS Grid) */
+/* Footer Group (Anchored to Bottom of A4 Document via Flexbox) */
 .bems-doc-footer-group {
   width: 100%;
   flex-shrink: 0;
   background: #ffffff;
-  /* CSS Grid auto row places this naturally at the page bottom */
+  margin-top: auto;
 }
 
 /* Thanks banner & Footer */
 .bems-doc-thanks {
   margin-left: 6px;
+  flex-shrink: 0;
   padding: 14px 15mm 14px 11mm;
   background: var(--bems-g0);
   border-top: 1px solid var(--bems-line);
@@ -676,6 +681,7 @@
 
 .bems-doc-foot {
   margin-left: 6px;
+  flex-shrink: 0;
   padding: 7px 15mm 8px 11mm;
   background: var(--bems-g9);
   color: #a9c9b5;
@@ -907,7 +913,9 @@
   }
   .bems-doc-page {
     position: relative !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
     width: 210mm !important;
     height: 297mm !important;
     min-height: 297mm !important;
@@ -918,8 +926,7 @@
     border: none !important;
     background: #ffffff !important;
     box-sizing: border-box !important;
-    /* overflow MUST be visible so absolute footer reaches page bottom */
-    overflow: visible !important;
+    overflow: hidden !important;
     page-break-after: always !important;
     break-after: page !important;
   }
@@ -928,21 +935,22 @@
     break-after: auto !important;
   }
   .bems-doc-body {
-    display: block !important;
-    /* large padding-bottom reserves room above the absolutely-placed footer */
-    padding: 10mm 14mm 80px 14mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    padding: 10mm 14mm 0 14mm !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+    min-height: 0 !important;
   }
   .bems-doc-footer-group {
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
+    position: static !important;
+    margin-top: auto !important;
     width: 100% !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     background: #ffffff !important;
+    flex-shrink: 0 !important;
   }
   .bems-doc-head {
     margin-bottom: 12px !important;
@@ -1060,8 +1068,10 @@
     font-size: 15px !important;
   }
   .bems-doc-sign {
+    margin-top: auto !important;
+    padding-top: 24px !important;
     gap: 16px !important;
-    padding-bottom: 6px !important;
+    padding-bottom: 12px !important;
     grid-template-columns: 1fr 210px !important;
   }
   .bems-doc-keep {
