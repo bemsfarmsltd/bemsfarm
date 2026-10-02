@@ -809,11 +809,13 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
     res.json({
       success: true,
       timeframe,
+      total_deliveries: allCount,
       this_week_summary: thisWeekSummary,
       summary: thisWeekSummary,
       all_time_summary: allTimeSummary,
       deliveries: formattedDeliveries,
       data: {
+        total_deliveries: allCount,
         this_week_summary: thisWeekSummary,
         all_time_summary: allTimeSummary,
         deliveries: formattedDeliveries,

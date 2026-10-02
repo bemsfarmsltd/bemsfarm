@@ -123,6 +123,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         ua.latitude, ua.longitude,
         c.status,
         COALESCE(o_agg.total_orders, c.total_orders, 0) AS total_orders,
+        COALESCE(o_agg.total_spent, c.total_spent, 0)   AS total_spent,
         c.joined_at, c.last_order_at, c.last_login,
         COALESCE(c.last_active_at, c.last_login) AS last_active_at,
         COALESCE(c.last_channel, 'web') AS last_channel,

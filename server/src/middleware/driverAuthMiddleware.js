@@ -48,7 +48,11 @@ const driverProtect = async (req, res, next) => {
         d.vehicle_plate,
         d.primary_zone_id AS zone_id,
         d.rating,
-        d.total_deliveries,
+        COALESCE(
+          (SELECT COUNT(*) FROM deliveries WHERE driver_id = d.id AND status = 'delivered'),
+          d.total_deliveries,
+          0
+        ) AS total_deliveries,
         d.success_rate,
         d.total_earnings,
         d.commission_per_delivery,
