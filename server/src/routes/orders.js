@@ -135,6 +135,31 @@ async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address
   };
 }
 
+// ─────────────────────────────────────────────
+// PUBLIC PAYMENT SETTINGS (CUSTOMER CHECKOUT)
+// ─────────────────────────────────────────────
+router.get("/payment-settings", async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT slug, name, is_enabled, is_live FROM payment_gateways"
+    );
+    const gateways = result.rows;
+    const codRow = gateways.find((g) => g.slug === "cod");
+    const codEnabled = codRow ? Boolean(codRow.is_enabled) : true;
+    res.json({
+      success: true,
+      cod_enabled: codEnabled,
+      gateways: gateways.map((g) => ({
+        slug: g.slug,
+        name: g.name,
+        is_enabled: g.is_enabled,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Create the server-owned payment snapshot before the customer opens
 // Monnify. The browser may disappear after payment; this record preserves the
 // exact item/price/total context needed to retry order creation safely.
@@ -276,6 +301,18 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     method = "monnify";
   } else {
     return res.status(400).json({ message: "Invalid payment method. Supported methods: 'card', 'monnify', or 'cashOnDelivery'" });
+  }
+
+  // Reject Cash on Delivery if disabled in admin settings
+  if (method === "cod") {
+    const codCheck = await pool.query(
+      "SELECT is_enabled FROM payment_gateways WHERE slug = 'cod' LIMIT 1"
+    );
+    if (codCheck.rows.length > 0 && !codCheck.rows[0].is_enabled) {
+      return res.status(400).json({
+        message: "Cash on Delivery is currently disabled by store management. Please complete your order using online payment (Card / Transfer).",
+      });
+    }
   }
 
   // Normalize address & payment reference aliases

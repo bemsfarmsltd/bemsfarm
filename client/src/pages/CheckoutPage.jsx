@@ -274,6 +274,7 @@ export default function CheckoutPage() {
   });
 
   const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod"
+  const [codEnabled, setCodEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [monnifyLoaded, setMonnifyLoaded] = useState(false);
@@ -323,6 +324,21 @@ export default function CheckoutPage() {
       console.warn("Zone verification error:", e);
     }
   };
+
+  useEffect(() => {
+    api.get("/orders/payment-settings")
+      .then((res) => {
+        if (res.data && typeof res.data.cod_enabled === "boolean") {
+          setCodEnabled(res.data.cod_enabled);
+          if (!res.data.cod_enabled) {
+            setPayMethod("monnify");
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch payment settings:", err);
+      });
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -768,6 +784,11 @@ export default function CheckoutPage() {
   // Cash on Delivery Execution
   const handleCOD = async (e) => {
     e.preventDefault();
+    if (!codEnabled) {
+      setError("Cash on Delivery is currently disabled by store management. Please select online payment (Card / Transfer).");
+      setPayMethod("monnify");
+      return;
+    }
     const validationErr = validateForm();
     if (validationErr) {
       setError(validationErr);
@@ -1640,56 +1661,96 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Option 2: Cash on Delivery */}
-                  <div
-                    onClick={() => setPayMethod("cod")}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "14px",
-                      padding: "16px 20px",
-                      borderRadius: "16px",
-                      cursor: "pointer",
-                      border: payMethod === "cod" ? "2px solid #143c2d" : "1px solid #E5E7EB",
-                      backgroundColor: payMethod === "cod" ? "#F4F9F5" : "#FFFFFF",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                      <div
-                        style={{
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "50%",
-                          border: payMethod === "cod" ? "6px solid #143c2d" : "2px solid #D1D5DB",
-                          backgroundColor: "#FFFFFF",
-                          flexShrink: 0,
-                          transition: "all 0.15s",
-                        }}
-                      />
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#111827" }}>
-                            Cash on Delivery / POS
+                  {codEnabled ? (
+                    <div
+                      onClick={() => setPayMethod("cod")}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "14px",
+                        padding: "16px 20px",
+                        borderRadius: "16px",
+                        cursor: "pointer",
+                        border: payMethod === "cod" ? "2px solid #143c2d" : "1px solid #E5E7EB",
+                        backgroundColor: payMethod === "cod" ? "#F4F9F5" : "#FFFFFF",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                        <div
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            border: payMethod === "cod" ? "6px solid #143c2d" : "2px solid #D1D5DB",
+                            backgroundColor: "#FFFFFF",
+                            flexShrink: 0,
+                            transition: "all 0.15s",
+                          }}
+                        />
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#111827" }}>
+                              Cash on Delivery / POS
+                            </p>
+                            <span style={{ backgroundColor: "#F3F4F6", color: "#4B5563", fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "12px" }}>
+                              Pay at Doorstep
+                            </span>
+                          </div>
+                          <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#6B7280" }}>
+                            Pay with cash or card swipe when your farm groceries arrive
                           </p>
-                          <span style={{ backgroundColor: "#F3F4F6", color: "#4B5563", fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "12px" }}>
-                            Pay at Doorstep
-                          </span>
                         </div>
-                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#6B7280" }}>
-                          Pay with cash or card swipe when your farm groceries arrive
-                        </p>
+                      </div>
+
+                      <div style={{ color: "#6B7280" }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="6" width="20" height="12" rx="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <path d="M6 12h.01M18 12h.01" />
+                        </svg>
                       </div>
                     </div>
-
-                    <div style={{ color: "#6B7280" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="6" width="20" height="12" rx="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <path d="M6 12h.01M18 12h.01" />
-                      </svg>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "14px",
+                        padding: "14px 18px",
+                        borderRadius: "16px",
+                        backgroundColor: "#F9FAFB",
+                        border: "1px dashed #D1D5DB",
+                        opacity: 0.75,
+                        cursor: "not-allowed",
+                      }}
+                      title="Cash on Delivery is currently disabled by store management"
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ color: "#9CA3AF" }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6B7280" }}>
+                              Cash on Delivery (Unavailable)
+                            </p>
+                            <span style={{ backgroundColor: "#FEE2E2", color: "#B91C1C", fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "12px" }}>
+                              Disabled
+                            </span>
+                          </div>
+                          <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#9CA3AF" }}>
+                            Store doorstep payment is currently disabled. Please pay online via Card/Transfer.
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Submit Action Button */}

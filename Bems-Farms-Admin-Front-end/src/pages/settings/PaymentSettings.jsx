@@ -5,6 +5,23 @@ import SettingsTabs from './SettingsTabs'
 
 const KNOWN_GATEWAYS = [
   {
+    slug: 'cod',
+    name: 'Cash on Delivery (COD) / Doorstep POS',
+    desc: 'Allow customers to order farm products and pay with cash or mobile card POS swipe upon delivery at their doorstep.',
+    color: '#10b981',
+    icon: 'ri-hand-coin-line',
+    currencies: 'NGN',
+    isOffline: true,
+  },
+  {
+    slug: 'monnify',
+    name: 'Monnify',
+    desc: 'Direct reserved account bank transfers and automated settlement for Nigerian merchants.',
+    color: '#0066f5',
+    icon: 'ri-building-4-line',
+    currencies: 'NGN',
+  },
+  {
     slug: 'paystack',
     name: 'Paystack',
     desc: 'Accept Cards, USSD, Bank Transfers, and Apple Pay seamlessly across Nigeria.',
@@ -19,14 +36,6 @@ const KNOWN_GATEWAYS = [
     color: '#fb9129',
     icon: 'ri-global-line',
     currencies: 'NGN, USD, GBP, EUR',
-  },
-  {
-    slug: 'monnify',
-    name: 'Monnify',
-    desc: 'Direct reserved account bank transfers and automated settlement for Nigerian merchants.',
-    color: '#0066f5',
-    icon: 'ri-building-4-line',
-    currencies: 'NGN',
   },
   {
     slug: 'bank_transfer',
@@ -138,13 +147,75 @@ export default function PaymentSettings() {
         </div>
       </div>
 
+      {/* Dedicated Quick Switch for Cash on Delivery */}
+      {(() => {
+        const cod = configured.find(g => g.slug === 'cod') || { slug: 'cod', name: 'Cash on Delivery', is_enabled: true };
+        const isEnabled = !!cod.is_enabled;
+        return (
+          <div className="card shadow-sm border mb-4" style={{ borderLeft: isEnabled ? '4px solid #10b981' : '4px solid #ef4444' }}>
+            <div className="card-body p-3 p-md-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-sm"
+                  style={{ width: 48, height: 48, background: isEnabled ? '#10b981' : '#6b7280' }}
+                >
+                  <i className="ri-hand-coin-line fs-24"></i>
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <h5 className="mb-0 fw-bold text-dark">Cash on Delivery (Doorstep Payment)</h5>
+                    {isEnabled ? (
+                      <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 fs-12 fw-bold">
+                        ● COD Enabled (Active on Storefront)
+                      </span>
+                    ) : (
+                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1 fs-12 fw-bold">
+                        ○ COD Disabled (Online Payments Only)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted mb-0" style={{ fontSize: 13 }}>
+                    {isEnabled
+                      ? 'Customers can choose Cash on Delivery at checkout to pay upon arrival with cash or card POS swipe.'
+                      : 'Cash on Delivery is currently TURNED OFF. Storefront customers are strictly required to pay online before orders are placed.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-3 ms-auto">
+                <button
+                  type="button"
+                  className={`btn btn-sm d-flex align-items-center gap-2 px-3 py-2 fw-semibold ${isEnabled ? 'btn-outline-danger' : 'btn-success text-white'}`}
+                  onClick={() => handleToggleQuick(cod, isEnabled)}
+                  title={isEnabled ? 'Click to disable Cash on Delivery' : 'Click to enable Cash on Delivery'}
+                >
+                  <i className={isEnabled ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'}></i>
+                  {isEnabled ? 'Disable Cash on Delivery' : 'Enable Cash on Delivery'}
+                </button>
+                <div className="form-check form-switch m-0 ms-1">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    id="cod-quick-switch"
+                    style={{ width: 48, height: 26, cursor: 'pointer' }}
+                    checked={isEnabled}
+                    onChange={() => handleToggleQuick(cod, isEnabled)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="row g-4">
         <div className="col-lg-8">
           <div className="card shadow-sm border mb-4">
             <div className="card-header bg-light-subtle py-3 d-flex justify-content-between align-items-center">
               <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
                 <i className="ri-bank-card-line text-primary"></i>
-                Supported Payment Processors
+                Supported Payment Processors &amp; Methods
               </h6>
               <span className="badge bg-white text-muted border px-2 py-1 fs-12">
                 {configured.filter(g => g.is_enabled).length} Active
@@ -170,7 +241,7 @@ export default function PaymentSettings() {
                             <h6 className="mb-0 fw-bold text-dark">{g.name}</h6>
                             {g.is_enabled ? (
                               <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fs-11 fw-medium">
-                                ● Enabled {g.is_live ? '(Live)' : '(Test Mode)'}
+                                ● Enabled {g.isOffline ? '(Doorstep)' : g.is_live ? '(Live)' : '(Test Mode)'}
                               </span>
                             ) : (
                               <span className="badge bg-secondary-subtle text-secondary border px-2 py-0.5 fs-11">
@@ -191,14 +262,15 @@ export default function PaymentSettings() {
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5 px-3"
                           onClick={() => openConfig(g)}
                         >
-                          <i className="ri-settings-3-line"></i> Configure Keys
+                          <i className="ri-settings-3-line"></i> {g.slug === 'cod' ? 'Configure COD' : 'Configure Keys'}
                         </button>
                         <div className="form-check form-switch m-0 ms-2">
                           <input
                             className="form-check-input"
                             type="checkbox"
                             role="switch"
-                            title={g.is_enabled ? 'Disable gateway' : 'Enable gateway'}
+                            style={{ width: 44, height: 22, cursor: 'pointer' }}
+                            title={g.is_enabled ? `Disable ${g.name}` : `Enable ${g.name}`}
                             checked={!!g.is_enabled}
                             onChange={() => handleToggleQuick(g, !!g.is_enabled)}
                           />
@@ -260,7 +332,25 @@ export default function PaymentSettings() {
 
                 <form onSubmit={handleSave}>
                   <div className="modal-body p-4">
-                    {form.slug === 'bank_transfer' ? (
+                    {form.slug === 'cod' ? (
+                      <div className="p-3 bg-light rounded border text-muted" style={{ fontSize: 13 }}>
+                        <div className="d-flex align-items-center gap-2 mb-2 text-dark">
+                          <i className="ri-hand-coin-line fs-20 text-success"></i>
+                          <h6 className="fw-bold mb-0">Cash on Delivery &amp; Doorstep Payment Settings</h6>
+                        </div>
+                        <p className="mb-2 text-dark">
+                          When this option is <strong>Enabled</strong>, shoppers on the web storefront and mobile app can complete their order without an upfront card or transfer payment, and settle directly with cash or portable POS upon delivery.
+                        </p>
+                        <div className="p-2.5 bg-white rounded border border-warning-subtle text-dark mb-0">
+                          <div className="fw-semibold text-warning-emphasis mb-1">
+                            <i className="ri-shield-check-line me-1"></i> Disabling Cash on Delivery:
+                          </div>
+                          <div className="text-muted" style={{ fontSize: 12 }}>
+                            Switching this off immediately removes Cash on Delivery from customer checkout and blocks unauthenticated API orders, enforcing 100% upfront online payments.
+                          </div>
+                        </div>
+                      </div>
+                    ) : form.slug === 'bank_transfer' ? (
                       <div className="row g-3">
                         <div className="col-12">
                           <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Bank Name</label>
@@ -336,11 +426,11 @@ export default function PaymentSettings() {
                             onChange={e => fld('is_enabled', e.target.checked)}
                           />
                           <label className="form-check-label text-dark fw-medium" style={{ fontSize: 13 }} htmlFor="is_enabled_modal">
-                            Enable this gateway at checkout
+                            {form.slug === 'cod' ? 'Allow Cash on Delivery at checkout' : 'Enable this gateway at checkout'}
                           </label>
                         </div>
                       </div>
-                      {form.slug !== 'bank_transfer' && (
+                      {form.slug !== 'bank_transfer' && form.slug !== 'cod' && (
                         <div className="col-md-6">
                           <div className="form-check form-switch">
                             <input

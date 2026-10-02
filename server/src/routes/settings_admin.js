@@ -140,7 +140,7 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
 // GET  /api/admin/settings/payment
 // POST /api/admin/settings/payment/:gateway
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payment", requireRole("superadmin"), async (req, res, next) => {
+router.get("/payment", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const gateways = await pool.query(
       "SELECT id, name, slug, is_live, is_enabled, webhook_url, updated_at FROM payment_gateways ORDER BY id"
@@ -152,7 +152,7 @@ router.get("/payment", requireRole("superadmin"), async (req, res, next) => {
   }
 });
 
-router.post("/payment/:slug", requireRole("superadmin"), async (req, res, next) => {
+router.post("/payment/:slug", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { slug } = req.params;
     const { public_key, secret_key, webhook_url, is_live, is_enabled, name } = req.body;
