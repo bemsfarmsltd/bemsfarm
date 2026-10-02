@@ -125,12 +125,16 @@ export default function CartPage() {
         <div className="bf-basket-inner">
 
           {/* Breadcrumb */}
-          <nav style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#9ca3af", marginBottom:24 }}>
-            <Link to="/" style={{ color:"#9ca3af", textDecoration:"none" }}>Home</Link>
-            <span>/</span>
-            <Link to="/products" style={{ color:"#9ca3af", textDecoration:"none" }}>Shop</Link>
-            <span>/</span>
-            <span style={{ color:"#111827", fontWeight:600 }}>Basket</span>
+          <nav aria-label="Breadcrumb" style={{ display: "inline-flex", alignItems: "center", flexWrap: "nowrap", whiteSpace: "nowrap", gap: 6, fontSize: 13, color: "#9ca3af", marginBottom: 24, lineHeight: 1 }}>
+            <Link to="/" style={{ color: "#9ca3af", textDecoration: "none", display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Home</Link>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <Link to="/products" style={{ color: "#9ca3af", textDecoration: "none", display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Shop</Link>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span style={{ color: "#111827", fontWeight: 600, display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Basket</span>
           </nav>
 
           {/* Heading */}

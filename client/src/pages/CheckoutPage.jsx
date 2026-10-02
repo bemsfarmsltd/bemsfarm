@@ -859,25 +859,33 @@ export default function CheckoutPage() {
           <div className="bf-checkout-header-inner">
             <div>
               {/* Breadcrumb */}
-              <div
+              <nav
+                aria-label="Breadcrumb"
                 style={{
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: "8px",
+                  flexWrap: "nowrap",
+                  whiteSpace: "nowrap",
+                  gap: "6px",
                   fontSize: "12px",
                   fontWeight: 600,
                   color: "#9CA3AF",
-                  marginBottom: "6px",
+                  marginBottom: "8px",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
+                  lineHeight: 1,
                 }}
               >
-                <Link to="/" style={{ color: "#6B7280", textDecoration: "none" }}>Home</Link>
-                <span>/</span>
-                <Link to="/cart" style={{ color: "#6B7280", textDecoration: "none" }}>Basket</Link>
-                <span>/</span>
-                <span style={{ color: "#143c2d", fontWeight: 700 }}>Checkout</span>
-              </div>
+                <Link to="/" style={{ color: "#6B7280", textDecoration: "none", display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Home</Link>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                <Link to="/cart" style={{ color: "#6B7280", textDecoration: "none", display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Basket</Link>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                <span style={{ color: "#143c2d", fontWeight: 700, display: "inline-flex", alignItems: "center", lineHeight: 1 }}>Checkout</span>
+              </nav>
               <h1
                 style={{
                   fontFamily: "var(--heading-font)",
