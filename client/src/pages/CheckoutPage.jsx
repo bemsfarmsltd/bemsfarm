@@ -20,6 +20,23 @@ const CHECKOUT_CSS = `
     min-height: 100vh;
     padding-bottom: 90px;
     position: relative;
+    font-family: var(--body-font) !important;
+  }
+  .bf-checkout-wrap h1,
+  .bf-checkout-wrap h2,
+  .bf-checkout-wrap h3,
+  .bf-checkout-wrap h4,
+  .bf-checkout-wrap h5,
+  .bf-checkout-wrap h6,
+  .bf-checkout-wrap p,
+  .bf-checkout-wrap span,
+  .bf-checkout-wrap strong,
+  .bf-checkout-wrap label,
+  .bf-checkout-wrap button,
+  .bf-checkout-wrap input,
+  .bf-checkout-wrap select,
+  .bf-checkout-wrap textarea {
+    font-family: var(--body-font) !important;
   }
   .bf-checkout-header {
     background-color: #FFFFFF;
@@ -812,8 +829,8 @@ export default function CheckoutPage() {
           </div>
           <h2
             style={{
-              fontFamily: "var(--heading-font)",
-              fontSize: "26px",
+              fontFamily: "var(--body-font)",
+              fontSize: "24px",
               fontWeight: 800,
               color: "#143c2d",
               margin: 0,
@@ -888,12 +905,12 @@ export default function CheckoutPage() {
               </nav>
               <h1
                 style={{
-                  fontFamily: "var(--heading-font)",
-                  fontSize: "clamp(20px, 3.5vw, 28px)",
-                  fontWeight: 900,
+                  fontFamily: "var(--body-font)",
+                  fontSize: "clamp(20px, 3.5vw, 26px)",
+                  fontWeight: 800,
                   color: "#143c2d",
                   margin: 0,
-                  letterSpacing: "-0.02em",
+                  letterSpacing: "-0.01em",
                 }}
               >
                 Secure Doorstep Checkout
@@ -1167,7 +1184,7 @@ export default function CheckoutPage() {
                       1
                     </div>
                     <div>
-                      <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "18px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
+                      <h2 style={{ fontFamily: "var(--body-font)", fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
                         Delivery Address
                       </h2>
                       <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6B7280" }}>
@@ -1561,7 +1578,7 @@ export default function CheckoutPage() {
                     2
                   </div>
                   <div>
-                    <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "18px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
+                    <h2 style={{ fontFamily: "var(--body-font)", fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
                       Payment Method
                     </h2>
                     <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6B7280" }}>
@@ -1738,7 +1755,7 @@ export default function CheckoutPage() {
             <div style={{ position: "sticky", top: "24px" }}>
               <div className="bf-checkout-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", borderBottom: "1px solid #F3F4F6", paddingBottom: "12px" }}>
-                  <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
+                  <h2 style={{ fontFamily: "var(--body-font)", fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
                     Order Summary
                   </h2>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "#6B7280", backgroundColor: "#F3F4F6", padding: "3px 10px", borderRadius: "12px" }}>
@@ -1978,12 +1995,12 @@ export default function CheckoutPage() {
                     }}
                   >
                     <div>
-                      <span style={{ fontSize: "15px", fontWeight: 800, color: "#111827", fontFamily: "var(--heading-font)" }}>
+                      <span style={{ fontSize: "15px", fontWeight: 800, color: "#111827", fontFamily: "var(--body-font)" }}>
                         Total Amount
                       </span>
                       <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#9CA3AF" }}>Including VAT & standard delivery</p>
                     </div>
-                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#143c2d", fontFamily: "var(--heading-font)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#143c2d", fontFamily: "var(--body-font)", whiteSpace: "nowrap", flexShrink: 0 }}>
                       ₦{total.toLocaleString()}
                     </span>
                   </div>
