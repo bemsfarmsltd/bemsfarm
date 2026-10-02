@@ -11,28 +11,6 @@ import logo from "../assets/bemsfarms_logo_compact.png";
 import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
 
-const DEFAULT_CATEGORIES = [
-  {
-    name: "Vegetables & Fresh Produce",
-    detail: "Hand-picked fresh tomatoes, peppers, tatase, rodo, and leafy greens directly in our aisles.",
-    image: "/bems_store_aisles.jpg",
-  },
-  {
-    name: "Grains & Pantry Staples",
-    detail: "Stone-free Nigerian rice, sorted beans, flours, and daily kitchen essentials.",
-    image: "/bems_store_checkout.jpg",
-  },
-  {
-    name: "Cooking Oils & Seasonings",
-    detail: "Pure unadulterated palm oil, groundnut oil, and bottled culinary oils from our packaging lab.",
-    image: "/bems_oil_packaging_station.jpg",
-  },
-  {
-    name: "Farm Hub & Logistics",
-    detail: "Central distribution hub ensuring fast doorstep dispatch and pickup.",
-    image: "/bems_farms_hub.jpg",
-  },
-];
 
 
 function StepIcon({ type, className = "h-5 w-5" }) {
@@ -983,7 +961,7 @@ export default function LandingPage() {
     detail: `Browse available ${name.toLowerCase()} from the live BemsFarms catalogue.`,
     image: categoryImages[index % categoryImages.length],
   }));
-  const categoryCards = dynamicCategories.length > 0 ? dynamicCategories : DEFAULT_CATEGORIES;
+  const categoryCards = dynamicCategories;
 
   const displayedProducts = [...products]
     .filter((product) => {

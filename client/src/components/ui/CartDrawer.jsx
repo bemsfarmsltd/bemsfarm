@@ -1,40 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { getNairaPrice } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
-
-// Popular pantry add-ons frequently bundled with staples
-const PANTRY_ADDONS = [
-  {
-    id: "addon-onions-1",
-    name: "Red Onions (Fresh Harvest)",
-    category_name: "Vegetables",
-    unit: "1kg pack",
-    price: 1800,
-    image_url: "/hero_food_4.jpg",
-    stock_quantity: 40,
-  },
-  {
-    id: "addon-rodo-1",
-    name: "Fresh Habanero / Ata Rodo",
-    category_name: "Vegetables",
-    unit: "500g basket",
-    price: 1500,
-    image_url: "/hero_food_2.jpg",
-    stock_quantity: 35,
-  },
-  {
-    id: "addon-oil-1",
-    name: "Bems Pure Palm Oil (Unadulterated)",
-    category_name: "Cooking Oils",
-    unit: "1 Litre bottle",
-    price: 3200,
-    image_url: "/hero_food_3.jpg",
-    stock_quantity: 25,
-  },
-];
+import api from "../../services/api";
 
 export default function CartDrawer() {
   const {
@@ -49,6 +19,34 @@ export default function CartDrawer() {
   } = useCart();
   const navigate = useNavigate();
   const drawerRef = useRef(null);
+  const [addons, setAddons] = useState([]);
+
+  // Fetch real in-stock products from the backend catalog (never hardcoded)
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchAddons() {
+      try {
+        const res = await api.get("/products", { params: { limit: 12 } });
+        const list = res.data?.products || [];
+        if (isMounted) {
+          const inStock = list.filter(
+            (p) => Number(p.id) && (Number(p.stock_quantity || p.stock || 0) > 0) && p.available_for_sale !== false
+          );
+          setAddons(inStock);
+        }
+      } catch (err) {
+        console.warn("Could not load cart drawer addons:", err);
+      }
+    }
+    fetchAddons();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const availableAddons = addons.filter(
+    (addon) => !cartItems.some((ci) => Number(ci.product?.id || ci.id) === Number(addon.id))
+  );
 
   // Close on Escape key and lock body scroll
   useEffect(() => {
@@ -389,8 +387,8 @@ export default function CartDrawer() {
                 })
               )}
 
-              {/* Instant Cross-Sell Staples */}
-              {cartItems.length > 0 && (
+              {/* Instant Cross-Sell Staples from live database */}
+              {cartItems.length > 0 && availableAddons.length > 0 && (
                 <div style={{ paddingTop: "12px", paddingBottom: "8px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
                     <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "#374151" }}>
@@ -399,8 +397,7 @@ export default function CartDrawer() {
                     <span style={{ fontSize: "10px", color: "#c85a17", fontWeight: 700 }}>1-Tap Add</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {PANTRY_ADDONS.map((addon) => {
-                      const alreadyInCart = Boolean(cartItems.find((ci) => ci.product.id === addon.id));
+                    {availableAddons.slice(0, 3).map((addon) => {
                       const price = getNairaPrice(addon.price);
                       return (
                         <div
@@ -417,7 +414,7 @@ export default function CartDrawer() {
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
                             <img
-                              src={addon.image_url}
+                              src={getProductImage(addon)}
                               alt={addon.name}
                               style={{
                                 height: "38px",
@@ -433,13 +430,12 @@ export default function CartDrawer() {
                                 {addon.name}
                               </p>
                               <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#6B7280" }}>
-                                {addon.unit} • ₦{price.toLocaleString()}
+                                {addon.unit || "Per item"} • ₦{price.toLocaleString()}
                               </p>
                             </div>
                           </div>
                           <button
                             type="button"
-                            disabled={alreadyInCart}
                             onClick={() => addToCart(addon)}
                             style={{
                               flexShrink: 0,
@@ -450,12 +446,13 @@ export default function CartDrawer() {
                               textTransform: "uppercase",
                               letterSpacing: "0.05em",
                               border: "none",
-                              cursor: alreadyInCart ? "default" : "pointer",
-                              backgroundColor: alreadyInCart ? "#E8F5E9" : "#143c2d",
-                              color: alreadyInCart ? "#2E7D32" : "#FFFFFF",
+                              cursor: "pointer",
+                              backgroundColor: "#143c2d",
+                              color: "#FFFFFF",
+                              transition: "all 0.15s ease",
                             }}
                           >
-                            {alreadyInCart ? "Added" : "+ Add"}
+                            + Add
                           </button>
                         </div>
                       );

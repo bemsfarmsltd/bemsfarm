@@ -351,45 +351,17 @@ export default function HomePage() {
     }
   };
 
-  // Dynamic Real Products Slideshow Groups (3 products per slide)
+  // Dynamic Real Products Slideshow Groups (3 real database products per slide)
   const heroSlideGroups = useMemo(() => {
     if (!products || products.length === 0) {
-      return [
-        [
-          {
-            id: "rice-featured",
-            name: "Stone-Free Parboiled Rice",
-            category_name: "Grains & Cereals",
-            unit: "1 kg bag",
-            price: 3750,
-            stock_quantity: 50,
-            image_url: "/hero_food_1.jpg",
-            is_bems_brand: true,
-          },
-          {
-            id: "yam-featured",
-            name: "Abuja Yam Tubers (Puna)",
-            category_name: "Tubers & Roots",
-            unit: "1 tuber",
-            price: 3000,
-            stock_quantity: 40,
-            image_url: "/hero_food_4.jpg",
-          },
-          {
-            id: "oil-featured",
-            name: "Pure Cold-Pressed Palm Oil",
-            category_name: "Cooking Oils",
-            unit: "1 Litre bottle",
-            price: 2500,
-            stock_quantity: 35,
-            image_url: "/hero_food_3.jpg",
-          },
-        ]
-      ];
+      return [];
     }
 
-    const available = products.filter((p) => Math.max(Number(p.stock_quantity || 0), Number(p.stock || 0)) > 0 || p.is_featured);
-    const pool = available.length >= 3 ? available : products;
+    const available = products.filter(
+      (p) => Number(p.id) && (Math.max(Number(p.stock_quantity || 0), Number(p.stock || 0)) > 0 || p.is_featured) && p.available_for_sale !== false
+    );
+    const pool = available.length >= 3 ? available : products.filter((p) => Number(p.id));
+    if (!pool.length) return [];
 
     const groups = [];
     for (let i = 0; i < pool.length; i += 3) {
@@ -572,55 +544,66 @@ export default function HomePage() {
               >
                 {/* Product 3-Cards Row with Animated Slide Transition */}
                 <div className="relative min-h-[200px] sm:min-h-[235px] lg:min-h-[260px] w-full flex items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={heroSlide}
-                      initial={{ opacity: 0, x: 30, scale: 0.98 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -30, scale: 0.98 }}
-                      transition={{ duration: 0.45, ease: "easeInOut" }}
-                      className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5"
-                    >
-                      {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
-                        const price = getNairaPrice(product.price);
-                        const isBemsOriginal = Boolean(
-                          product.name?.toLowerCase().includes("bems") ||
-                          product.brand?.toLowerCase().includes("bems") ||
-                          product.is_bems_brand
-                        );
+                  {heroSlideGroups.length > 0 ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={heroSlide}
+                        initial={{ opacity: 0, x: 30, scale: 0.98 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -30, scale: 0.98 }}
+                        transition={{ duration: 0.45, ease: "easeInOut" }}
+                        className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5"
+                      >
+                        {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
+                          const price = getNairaPrice(product.price);
+                          const isBemsOriginal = Boolean(
+                            product.name?.toLowerCase().includes("bems") ||
+                            product.brand?.toLowerCase().includes("bems") ||
+                            product.is_bems_brand
+                          );
 
-                        return (
-                          <div
-                            key={product.id}
-                            onClick={() => setQuickViewProduct(product)}
-                            className="group relative flex flex-col items-center justify-between rounded-2xl sm:rounded-3xl border border-white/25 bg-white/15 p-3 sm:p-4 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/70 cursor-pointer w-[105px] sm:w-[140px] lg:w-[160px] xl:w-[170px]"
-                            title={`Click to view ${product.name}`}
-                          >
-                            <div className="h-16 w-16 sm:h-24 sm:w-24 lg:h-28 lg:w-28 xl:h-32 xl:w-32 overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
-                              <img
-                                src={getProductImage(product)}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = "/hero_food_4.jpg";
-                                }}
-                              />
+                          return (
+                            <div
+                              key={product.id}
+                              onClick={() => setQuickViewProduct(product)}
+                              className="group relative flex flex-col items-center justify-between rounded-2xl sm:rounded-3xl border border-white/25 bg-white/15 p-3 sm:p-4 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/70 cursor-pointer w-[105px] sm:w-[140px] lg:w-[160px] xl:w-[170px]"
+                              title={`Click to view ${product.name}`}
+                            >
+                              <div className="h-16 w-16 sm:h-24 sm:w-24 lg:h-28 lg:w-28 xl:h-32 xl:w-32 overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
+                                <img
+                                  src={getProductImage(product)}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = "/hero_food_4.jpg";
+                                  }}
+                                />
+                              </div>
+                              <span className="mt-2 text-[11px] sm:text-xs lg:text-sm font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
+                                {product.name}
+                              </span>
+                              <span className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 text-center w-full">
+                                {isBemsOriginal ? "Bems Original" : product.category_name || "Fresh Harvest"}
+                              </span>
+                              <span className="mt-1.5 rounded-full bg-black/45 border border-white/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-white shadow-xs">
+                                ₦{price.toLocaleString("en-NG")}
+                              </span>
                             </div>
-                            <span className="mt-2 text-[11px] sm:text-xs lg:text-sm font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
-                              {product.name}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 text-center w-full">
-                              {isBemsOriginal ? "Bems Original" : product.category_name || "Fresh Harvest"}
-                            </span>
-                            <span className="mt-1.5 rounded-full bg-black/45 border border-white/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-white shadow-xs">
-                              ₦{price.toLocaleString("en-NG")}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </motion.div>
-                  </AnimatePresence>
+                          );
+                        })}
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5 animate-pulse">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="rounded-2xl sm:rounded-3xl border border-white/15 bg-white/10 p-3 sm:p-4 h-[180px] sm:h-[220px] w-[105px] sm:w-[140px] lg:w-[160px] xl:w-[170px]"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
