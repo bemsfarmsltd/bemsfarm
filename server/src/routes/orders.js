@@ -97,7 +97,32 @@ async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address
     }
   }
 
-  const deliveryFee = matchedZone ? parseFloat(matchedZone.delivery_fee) || 1000 : 1000;
+  // 4. Calculate real delivery fee: Base Zone Price + (Map Distance * Rate/KM)
+  const pricingService = require("../services/pricingService");
+  let distanceKm = 0;
+  if (latitude && longitude && matchedZone && matchedZone.center_lat && matchedZone.center_lng) {
+    const lat1 = parseFloat(latitude);
+    const lon1 = parseFloat(longitude);
+    const lat2 = parseFloat(matchedZone.center_lat);
+    const lon2 = parseFloat(matchedZone.center_lng);
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    distanceKm = Math.round(R * c * 10) / 10;
+  } else if (matchedZone && matchedZone.distanceKm !== undefined) {
+    distanceKm = matchedZone.distanceKm;
+  }
+
+  const pricing = pricingService.calculateDeliveryPricing({
+    zone: matchedZone || {},
+    distanceKm,
+  });
+
+  const deliveryFee = pricing.delivery_fee;
   const zoneId = matchedZone ? matchedZone.zone_id : "ZONE001";
   const zoneName = matchedZone ? matchedZone.zone_name : "Umuahia Urban & Metro";
 
@@ -105,6 +130,8 @@ async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address
     zone_id: zoneId,
     zone_name: zoneName,
     delivery_fee: deliveryFee,
+    distance_km: distanceKm,
+    driver_earning: pricing.driver_earning,
   };
 }
 

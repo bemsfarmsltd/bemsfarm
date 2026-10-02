@@ -245,13 +245,13 @@ export default function DeliveryZones() {
         zone_name: form.name,
         delivery_fee: Number(form.fee),
         min_order_amount: Number(form.minOrder || 0),
-        pricing_type: form.pricing_type || 'hybrid',
-        base_fee: form.base_fee !== '' && form.base_fee !== null && form.base_fee !== undefined ? Number(form.base_fee) : Number(form.fee),
-        base_distance_km: form.base_distance_km !== '' && form.base_distance_km !== null && form.base_distance_km !== undefined ? Number(form.base_distance_km) : 0,
-        per_km_rate: form.per_km_rate !== '' && form.per_km_rate !== null && form.per_km_rate !== undefined ? Number(form.per_km_rate) : 0,
-        min_fee: form.min_fee !== '' && form.min_fee !== null && form.min_fee !== undefined ? Number(form.min_fee) : Number(form.fee),
-        max_fee: form.max_fee !== '' && form.max_fee !== null && form.max_fee !== undefined ? Number(form.max_fee) : null,
-        surge_multiplier: form.surge_multiplier !== '' && form.surge_multiplier !== null && form.surge_multiplier !== undefined ? Number(form.surge_multiplier) : 1.0,
+        pricing_type: Number(form.per_km_rate) > 0 ? 'hybrid' : 'flat',
+        base_fee: Number(form.fee),
+        base_distance_km: 0,
+        per_km_rate: Number(form.per_km_rate || 0),
+        min_fee: Number(form.fee),
+        max_fee: null,
+        surge_multiplier: 1.0,
         free_delivery_threshold: form.free_delivery_threshold !== '' && form.free_delivery_threshold !== null && form.free_delivery_threshold !== undefined ? Number(form.free_delivery_threshold) : null,
         weight_surcharge_per_5kg: form.weight_surcharge_per_5kg !== '' && form.weight_surcharge_per_5kg !== null && form.weight_surcharge_per_5kg !== undefined ? Number(form.weight_surcharge_per_5kg) : 250,
         max_batch_orders: form.max_batch_orders !== '' && form.max_batch_orders !== null ? Number(form.max_batch_orders) : 3,
@@ -504,30 +504,22 @@ export default function DeliveryZones() {
                     </span>
                   </div>
 
-                  {/* Dynamic Pricing Engine Badge */}
+                  {/* Delivery Pricing Formula Badge */}
                   <div className="mb-3 p-2 rounded-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     <div className="d-flex align-items-center justify-content-between mb-1">
                       <span className="badge bg-success text-white" style={{ fontSize: 10, fontWeight: 700 }}>
-                        {zone.pricing_type === 'flat' ? 'Flat Rate Pricing' : '⚡ Dynamic Model 1A'}
+                        {Number(zone.per_km_rate) > 0 ? 'Base + Map Distance' : 'Fixed Flat Rate'}
                       </span>
-                      {Number(zone.surge_multiplier) > 1.0 && (
-                        <span className="badge bg-danger text-white" style={{ fontSize: 9 }}>
-                          🔥 {zone.surge_multiplier}x Surge
-                        </span>
-                      )}
+                      <span className="text-muted" style={{ fontSize: 10 }}>
+                        Driver: {zone.driver_commission_percent || 70}%
+                      </span>
                     </div>
-                    <div className="small fw-bold text-dark" style={{ fontSize: 11 }}>
-                      {zone.pricing_type === 'flat'
-                        ? `Fixed ${fmt(zone.fee)} flat fee across zone`
-                        : `${fmt(zone.base_fee || zone.fee)} base (${zone.base_distance_km || 0}km) + ${fmt(zone.per_km_rate)}/km`
+                    <div className="small fw-bold text-dark" style={{ fontSize: 12 }}>
+                      {Number(zone.per_km_rate) > 0
+                        ? `${fmt(zone.fee || zone.base_fee)} base + ${fmt(zone.per_km_rate)}/km`
+                        : `Fixed ${fmt(zone.fee || zone.base_fee)} flat fee`
                       }
                     </div>
-                    {zone.pricing_type !== 'flat' && (
-                      <div className="text-muted d-flex justify-content-between mt-1" style={{ fontSize: 10 }}>
-                        <span>Cap: {fmt(zone.min_fee || zone.fee)} – {zone.max_fee ? fmt(zone.max_fee) : 'No limit'}</span>
-                        {zone.free_delivery_threshold ? <span className="text-success fw-bold">Free @ {fmt(zone.free_delivery_threshold)}</span> : null}
-                      </div>
-                    )}
                   </div>
 
                   {/* Fee / Min Order / Deliveries */}
@@ -675,41 +667,29 @@ export default function DeliveryZones() {
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <span className="fw-bold small text-success">
                         <i className="ri-scales-3-line me-1" />
-                        Dynamic Logistics Pricing Rules (Model 1A)
+                        Zone Delivery Pricing
                       </span>
                       <span className="badge bg-success">
-                        {selected.pricing_type === 'flat' ? 'Flat Rate' : 'Base + Per-KM Rate'}
+                        {Number(selected.per_km_rate) > 0 ? 'Base + Map Distance' : 'Fixed Flat Rate'}
                       </span>
                     </div>
 
                     <div className="row g-2 text-dark small" style={{ fontSize: 12 }}>
                       <div className="col-6">
-                        <span className="text-muted">Base Rate: </span>
-                        <strong>{fmt(selected.base_fee || selected.fee)}</strong> (first {selected.base_distance_km || 0} km)
+                        <span className="text-muted">Base Delivery Fee: </span>
+                        <strong>{fmt(selected.base_fee || selected.fee)}</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted">Per-KM Rate: </span>
-                        <strong>{fmt(selected.per_km_rate)} / km</strong>
+                        <span className="text-muted">Add-on Rate: </span>
+                        <strong>{Number(selected.per_km_rate) > 0 ? `${fmt(selected.per_km_rate)} / km` : 'Fixed (No distance charge)'}</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted">Price Floor: </span>
-                        <strong>{fmt(selected.min_fee || selected.fee)}</strong>
+                        <span className="text-muted">Driver Commission: </span>
+                        <strong>{selected.driver_commission_percent || 70}%</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted">Price Ceiling: </span>
-                        <strong>{selected.max_fee ? fmt(selected.max_fee) : 'No Cap'}</strong>
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted">Surge Multiplier: </span>
-                        <strong>{selected.surge_multiplier || 1.0}x</strong> {Number(selected.surge_multiplier) > 1.0 && <span className="text-danger fw-bold">(Active)</span>}
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted">Free Delivery: </span>
-                        <strong>{selected.free_delivery_threshold ? `Orders $\ge$ ${fmt(selected.free_delivery_threshold)}` : 'None'}</strong>
-                      </div>
-                      <div className="col-12 mt-1 pt-1 border-top">
-                        <span className="text-muted">Weight Surcharge: </span>
-                        <strong>{fmt(selected.weight_surcharge_per_5kg || 250)}</strong> per 5kg over 10kg
+                        <span className="text-muted">Calculation: </span>
+                        <strong>Base + (Distance × Rate/KM)</strong>
                       </div>
                     </div>
                   </div>
@@ -888,7 +868,7 @@ export default function DeliveryZones() {
                     <div className="small" style={{ fontSize: 11 }}>
                       <span className="text-muted">Smart Routing Rule: </span>
                       <strong className="text-dark">
-                        Addresses with GPS $\le$ {form.radius_km || 25} km of ({form.center_lat || '5.5245'}, {form.center_lng || '7.4912'}) auto-map to this zone.
+                        Addresses within {form.radius_km || 25} km of ({form.center_lat || '5.5245'}, {form.center_lng || '7.4912'}) auto-map to this zone.
                       </strong>
                     </div>
                     <input
@@ -901,48 +881,26 @@ export default function DeliveryZones() {
                   </div>
                 </div>
 
-                {/* 4. Zone General Information */}
-                <div className="row g-3">
+                {/* 4. Zone Information */}
+                <div className="row g-3 mb-3">
                   <div className="col-12">
                     <label className="form-label fw-medium small">Zone Display Name *</label>
                     <input className="form-control" placeholder="e.g. Aba Commercial Hub & Suburbs"
                       value={form.name} onChange={e => setField('name', e.target.value)} />
                   </div>
-                  <div className="col-6">
-                    <label className="form-label fw-medium small">Customer Delivery Fee (₦) *</label>
-                    <input className="form-control" type="number" placeholder="e.g. 2500"
-                      value={form.fee} onChange={e => {
-                        const fee = e.target.value
-                        const pct = form.driver_commission_percent || 70
-                        const drvFee = fee ? Math.round(Number(fee) * (Number(pct) / 100)) : ''
-                        setForm(p => ({ ...p, fee, driver_earning_fee: drvFee }))
-                      }} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label fw-medium small">Driver Payout Earning (₦) *</label>
-                    <input className="form-control" type="number" placeholder="e.g. 1750"
-                      value={form.driver_earning_fee ?? ''} onChange={e => {
-                        const drvFee = e.target.value
-                        const fee = Number(form.fee) || 1
-                        const pct = drvFee ? Math.round((Number(drvFee) / fee) * 100) : 70
-                        setForm(p => ({ ...p, driver_earning_fee: drvFee, driver_commission_percent: pct }))
-                      }} />
-                    <div className="text-muted small mt-0.5" style={{ fontSize: 10 }}>
-                      Automatic driver drop commission ({form.driver_commission_percent || 70}% share)
-                    </div>
-                  </div>
-                  <div className="col-6">
+
+                  <div className="col-4">
                     <label className="form-label fw-medium small">Minimum Order Amount (₦) *</label>
                     <input className="form-control" type="number" placeholder="e.g. 5000"
                       value={form.minOrder} onChange={e => setField('minOrder', e.target.value)} />
                   </div>
-                  <div className="col-6">
+                  <div className="col-4">
                     <label className="form-label fw-medium small">Estimated Delivery SLA / ETA</label>
                     <select className="form-select" value={form.eta} onChange={e => setField('eta', e.target.value)}>
                       {ETA_OPTIONS.map(o => <option key={o}>{o}</option>)}
                     </select>
                   </div>
-                  <div className="col-6">
+                  <div className="col-4">
                     <label className="form-label fw-medium small">Zone Status</label>
                     <select className="form-select" value={form.active ? 'active' : 'inactive'}
                       onChange={e => setField('active', e.target.value === 'active')}>
@@ -950,6 +908,7 @@ export default function DeliveryZones() {
                       <option value="inactive">Inactive / Disabled</option>
                     </select>
                   </div>
+
                   <div className="col-12">
                     <label className="form-label fw-medium small">
                       Coverage Area Keywords / Landmarks <span className="text-muted">(comma-separated)</span>
@@ -957,209 +916,136 @@ export default function DeliveryZones() {
                     <input className="form-control" placeholder="e.g. Ariaria International, Faulks Road, Aba Owerri Road, Ogbor Hill"
                       value={areasInput} onChange={e => setAreasInput(e.target.value)} />
                     <div className="text-muted mt-1" style={{ fontSize: 10 }}>
-                      Used as secondary fallback for keyword matching when coordinates are outside the primary GPS radius.
+                      Used as fallback matching when customer address coordinates are not pinpointed.
                     </div>
                   </div>
                 </div>
 
-                {/* 5. DYNAMIC PRICING ENGINE & DISTANCE CONTROLS (MODEL 1A) */}
-                <div className="p-3 rounded-3 mb-4 mt-3" style={{ background: '#f8faf9', border: '1px solid #e5e7eb' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <span className="fw-bold small text-dark">
-                      <i className="ri-scales-3-line me-1 text-success" />
-                      5. Dynamic Pricing Engine &amp; Routing Rules (Model 1A)
+                {/* 5. SIMPLE DELIVERY PRICING & DISTANCE CALCULATION */}
+                <div className="p-3 rounded-3 mb-4" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="fw-bold small text-dark fs-14">
+                      <i className="ri-truck-line me-1 text-success" />
+                      Delivery Pricing &amp; Distance Calculation
                     </span>
-                    <div className="btn-group btn-group-sm">
-                      <button
-                        type="button"
-                        className={`btn ${form.pricing_type !== 'flat' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
-                        onClick={() => setField('pricing_type', 'hybrid')}
-                        style={{ fontSize: 11 }}
-                      >
-                        ⚡ Dynamic (Base + KM)
-                      </button>
-                      <button
-                        type="button"
-                        className={`btn ${form.pricing_type === 'flat' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
-                        onClick={() => setField('pricing_type', 'flat')}
-                        style={{ fontSize: 11 }}
-                      >
-                        🏷️ Flat Rate
-                      </button>
+                    <span className="badge bg-success text-white" style={{ fontSize: 11 }}>
+                      {Number(form.per_km_rate) > 0 ? 'Base + Map Distance' : 'Fixed Flat Rate'}
+                    </span>
+                  </div>
+                  <div className="text-muted small mb-3" style={{ fontSize: 11 }}>
+                    Every zone has a base delivery price. The system calculates distance by map during checkout and adds the per-KM rate so the customer pays the real price directly.
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold small text-dark mb-1">
+                        Base Delivery Price (₦) *
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control bg-white fw-bold"
+                        placeholder="e.g. 600"
+                        value={form.fee}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setForm(p => ({
+                            ...p,
+                            fee: val,
+                            base_fee: val,
+                            driver_earning_fee: val ? Math.round(Number(val) * (Number(p.driver_commission_percent || 70) / 100)) : ''
+                          }));
+                        }}
+                      />
+                      <div className="text-muted small mt-1" style={{ fontSize: 10 }}>
+                        Base price for any trip in this zone.
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold small text-dark mb-1">
+                        Add-on Rate Per KM (₦/km)
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control bg-white fw-bold"
+                        placeholder="e.g. 80 (or 0 for flat)"
+                        value={form.per_km_rate ?? ''}
+                        onChange={e => {
+                          const rate = e.target.value;
+                          setForm(p => ({
+                            ...p,
+                            per_km_rate: rate,
+                            pricing_type: Number(rate) > 0 ? 'hybrid' : 'flat'
+                          }));
+                        }}
+                      />
+                      <div className="text-muted small mt-1" style={{ fontSize: 10 }}>
+                        Added based on map distance to customer.
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold small text-dark mb-1">
+                        Driver Payout Share (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="100"
+                        className="form-control bg-white fw-bold"
+                        placeholder="e.g. 70"
+                        value={form.driver_commission_percent || 70}
+                        onChange={e => {
+                          const pct = e.target.value;
+                          setForm(p => ({
+                            ...p,
+                            driver_commission_percent: pct,
+                            driver_earning_fee: p.fee ? Math.round(Number(p.fee) * (Number(pct || 70) / 100)) : ''
+                          }));
+                        }}
+                      />
+                      <div className="text-muted small mt-1" style={{ fontSize: 10 }}>
+                        Driver earns this % of the total delivery fee.
+                      </div>
                     </div>
                   </div>
 
-                  {form.pricing_type === 'flat' ? (
-                    <div className="p-2.5 rounded-2 bg-white border text-muted small" style={{ fontSize: 11 }}>
-                      <i className="ri-information-line text-primary me-1" />
-                      This zone uses a flat delivery fee of <strong>₦{Number(form.fee || 0).toLocaleString()}</strong> regardless of trip distance or road curvature (ideal for fixed regional air cargo and long-distance dispatch).
-                    </div>
-                  ) : (
-                    <>
-                      <div className="row g-2 mb-3">
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Base Start Fee (₦) *</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 600"
-                            value={form.base_fee ?? ''}
-                            onChange={e => setField('base_fee', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Initial flag-drop charge</div>
-                        </div>
+                  {/* Clean Visual Checkout Explanation Card */}
+                  {(() => {
+                    const base = Number(form.fee || form.base_fee || 600);
+                    const rate = Number(form.per_km_rate || 0);
+                    const pct = Number(form.driver_commission_percent || 70) / 100;
+                    const sampleDist = 5;
+                    const sampleTotal = base + (sampleDist * rate);
+                    const sampleDriver = Math.round(sampleTotal * pct);
 
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Base Distance (KM)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 3"
-                            value={form.base_distance_km ?? ''}
-                            onChange={e => setField('base_distance_km', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Covered by base fee</div>
+                    return (
+                      <div className="p-3 rounded-2 bg-white border mt-3">
+                        <div className="fw-bold text-success mb-1" style={{ fontSize: 13 }}>
+                          <i className="ri-information-line me-1" /> How Delivery Is Calculated at Checkout:
                         </div>
-
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Rate Per KM (₦/km) *</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 80"
-                            value={form.per_km_rate ?? ''}
-                            onChange={e => setField('per_km_rate', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>After base distance</div>
+                        <div className="text-dark fw-bold mb-2" style={{ fontSize: 13 }}>
+                          {rate > 0
+                            ? `Real Delivery Price = Base Price (₦${base.toLocaleString()}) + (Map Distance in KM × ₦${rate.toLocaleString()}/km)`
+                            : `Real Delivery Price = Fixed ₦${base.toLocaleString()} Flat Delivery Fee`
+                          }
                         </div>
-                      </div>
-
-                      <div className="row g-2 mb-3">
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Min Price Floor (₦)</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 800"
-                            value={form.min_fee ?? ''}
-                            onChange={e => setField('min_fee', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Minimum trip fee</div>
-                        </div>
-
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Max Price Cap (₦)</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 2200 (optional)"
-                            value={form.max_fee ?? ''}
-                            onChange={e => setField('max_fee', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Ceiling price cap</div>
-                        </div>
-
-                        <div className="col-4">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Surge Multiplier</label>
-                          <select
-                            className="form-select form-select-sm bg-white"
-                            value={form.surge_multiplier || 1.0}
-                            onChange={e => setField('surge_multiplier', parseFloat(e.target.value))}
-                          >
-                            <option value="1.0">1.0x (Normal Weather/Traffic)</option>
-                            <option value="1.15">1.15x (+15% Peak Demand)</option>
-                            <option value="1.25">1.25x (+25% Heavy Rain / Traffic)</option>
-                            <option value="1.5">1.50x (+50% Storm / Flood Alert)</option>
-                            <option value="2.0">2.0x (+100% Emergency Rush)</option>
-                          </select>
-                          <div className="text-muted" style={{ fontSize: 9 }}>Weather/Rush pricing</div>
-                        </div>
-                      </div>
-
-                      <div className="row g-2 mb-2">
-                        <div className="col-6">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Free Delivery Cart Value (₦)</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 40000"
-                            value={form.free_delivery_threshold ?? ''}
-                            onChange={e => setField('free_delivery_threshold', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>100% free delivery above this subtotal</div>
-                        </div>
-
-                        <div className="col-6">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Bulk Weight Surcharge (₦/5kg)</label>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 250"
-                            value={form.weight_surcharge_per_5kg ?? 250}
-                            onChange={e => setField('weight_surcharge_per_5kg', e.target.value)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Per 5kg over 10kg bulk farm produce</div>
-                        </div>
-                      </div>
-
-                      <div className="row g-2 mb-2">
-                        <div className="col-6">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Max Orders Per Driver Batch</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="8"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 3"
-                            value={form.max_batch_orders ?? 3}
-                            onChange={e => setField('max_batch_orders', parseInt(e.target.value, 10) || 1)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Max combined deliveries on same route</div>
-                        </div>
-
-                        <div className="col-6">
-                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Route Batching Radius (KM)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            className="form-control form-control-sm bg-white"
-                            placeholder="e.g. 3.5"
-                            value={form.batch_radius_km ?? 3.5}
-                            onChange={e => setField('batch_radius_km', parseFloat(e.target.value) || 1)}
-                          />
-                          <div className="text-muted" style={{ fontSize: 9 }}>Max distance between combined drop-offs</div>
-                        </div>
-                      </div>
-
-                      {/* Interactive Formula Preview Simulation */}
-                      {(() => {
-                        const simDist = 10;
-                        const bFee = Number(form.base_fee || form.fee || 600);
-                        const bDist = Number(form.base_distance_km || 0);
-                        const pRate = Number(form.per_km_rate || 0);
-                        const billable = Math.max(0, simDist - bDist);
-                        let total = bFee + Math.round(billable * pRate);
-                        if (form.min_fee && total < Number(form.min_fee)) total = Number(form.min_fee);
-                        if (form.max_fee && total > Number(form.max_fee)) total = Number(form.max_fee);
-                        const surge = Number(form.surge_multiplier || 1.0);
-                        if (surge > 1.0) total = Math.round(total * surge);
-                        return (
-                          <div className="p-2.5 rounded-2 bg-white border mt-2 d-flex align-items-center justify-content-between">
-                            <div className="small" style={{ fontSize: 11 }}>
-                              <span className="text-muted">Live Simulator: </span>
-                              <strong className="text-success">
-                                {simDist} km trip = ₦{bFee.toLocaleString()} + ({billable}km × ₦{pRate}) {surge > 1.0 ? `× ${surge}x surge ` : ''}= ₦{total.toLocaleString()}
-                              </strong>
-                            </div>
-                            <span className="badge bg-light text-dark border" style={{ fontSize: 10 }}>
-                              Driver payout: ~₦{Math.round(total * (Number(form.driver_commission_percent || 70) / 100)).toLocaleString()}
-                            </span>
+                        {rate > 0 ? (
+                          <div className="p-2.5 rounded bg-light border text-muted small" style={{ fontSize: 11 }}>
+                            📍 <strong>Example (5 km Delivery):</strong><br />
+                            Customer enters address at checkout → Map calculates distance is <strong>5 km</strong>.<br />
+                            Customer sees and pays: <strong>₦{base.toLocaleString()} + (5 km × ₦{rate.toLocaleString()} = ₦{(5 * rate).toLocaleString()}) = ₦{sampleTotal.toLocaleString()}</strong>.<br />
+                            Driver receives: <strong>₦{sampleDriver.toLocaleString()}</strong> ({Math.round(pct * 100)}% share).
                           </div>
-                        );
-                      })()}
-                    </>
-                  )}
+                        ) : (
+                          <div className="p-2.5 rounded bg-light border text-muted small" style={{ fontSize: 11 }}>
+                            Customer pays exactly <strong>₦{base.toLocaleString()}</strong> at checkout regardless of distance.
+                            Driver receives <strong>₦{Math.round(base * pct).toLocaleString()}</strong>.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="row g-3">
