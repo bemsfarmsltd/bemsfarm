@@ -13,12 +13,16 @@ import CustomerSupportChat from "../ui/CustomerSupportChat";
   It reappears automatically on every other page.
 */
 
-// Routes where the floating chatbot icon should NOT appear
-const HIDE_CHATBOT_ON = ["/chef-chat"];
+// Routes where floating widgets/chatbots should NOT appear (to prevent blocking checkout inputs & actions)
+const HIDE_CHATBOT_ON = ["/chef-chat", "/checkout", "/order-confirmed", "/payment-recovery"];
+const HIDE_SUPPORT_CHAT_ON = ["/checkout", "/order-confirmed"];
+const HIDE_BROADCAST_ON = ["/checkout", "/order-confirmed"];
 
 export default function PageWrapper({ children, noFooter = false }) {
   const location = useLocation();
   const showChatbot = !HIDE_CHATBOT_ON.includes(location.pathname);
+  const showSupportChat = !HIDE_SUPPORT_CHAT_ON.includes(location.pathname);
+  const showBroadcast = !HIDE_BROADCAST_ON.includes(location.pathname);
 
   return (
     <div
@@ -36,8 +40,8 @@ export default function PageWrapper({ children, noFooter = false }) {
       </main>
       {!noFooter && <Footer />}
       {showChatbot && <AIChatbot />}
-      <CustomerSupportChat />
-      <BroadcastPopup />
+      {showSupportChat && <CustomerSupportChat />}
+      {showBroadcast && <BroadcastPopup />}
       <CartDrawer />
     </div>
   );

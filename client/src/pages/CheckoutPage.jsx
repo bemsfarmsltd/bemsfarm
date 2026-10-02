@@ -14,6 +14,191 @@ import { NIGERIAN_STATES, normalizeNigerianState, resolveNigerianPostalCode } fr
 const MONNIFY_API_KEY = import.meta.env.VITE_MONNIFY_API_KEY || "";
 const MONNIFY_CONTRACT_CODE = import.meta.env.VITE_MONNIFY_CONTRACT_CODE || "";
 
+const CHECKOUT_CSS = `
+  .bf-checkout-wrap {
+    background-color: #FAF8F5;
+    min-height: 100vh;
+    padding-bottom: 90px;
+    position: relative;
+  }
+  .bf-checkout-header {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid rgba(20, 60, 45, 0.08);
+    padding: 16px 16px;
+    position: relative;
+  }
+  @media (min-width: 640px) {
+    .bf-checkout-header {
+      padding: 22px 24px;
+    }
+  }
+  .bf-checkout-header-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .bf-checkout-header-inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+  .bf-stepper-wrap {
+    max-width: 1140px;
+    margin: 16px auto 20px;
+    padding: 0 14px;
+  }
+  @media (min-width: 640px) {
+    .bf-stepper-wrap {
+      margin: 22px auto 28px;
+      padding: 0 20px;
+    }
+  }
+  .bf-stepper-card {
+    background-color: #FFFFFF;
+    border: 1px solid rgba(20, 60, 45, 0.08);
+    border-radius: 16px;
+    padding: 10px 14px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  @media (min-width: 640px) {
+    .bf-stepper-card {
+      padding: 14px 22px;
+      gap: 16px;
+    }
+  }
+  .bf-step-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+  @media (min-width: 640px) {
+    .bf-step-item {
+      gap: 10px;
+    }
+  }
+  .bf-step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  @media (min-width: 640px) {
+    .bf-step-num {
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+    }
+  }
+  .bf-step-active {
+    background-color: #143c2d;
+    color: #FFFFFF;
+  }
+  .bf-step-inactive {
+    background-color: #E5E7EB;
+    color: #6B7280;
+  }
+  .bf-step-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 800;
+    color: #143c2d;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+  @media (min-width: 640px) {
+    .bf-step-title {
+      font-size: 13px;
+    }
+  }
+  .bf-step-sub {
+    margin: 0;
+    font-size: 11px;
+    color: #6B7280;
+    white-space: nowrap;
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .bf-step-sub {
+      display: block;
+    }
+  }
+  .bf-step-line {
+    flex: 1;
+    height: 2px;
+    background-color: #E5E7EB;
+    min-width: 12px;
+    border-radius: 99px;
+  }
+  .bf-checkout-main {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 14px;
+  }
+  @media (min-width: 640px) {
+    .bf-checkout-main {
+      padding: 0 20px;
+    }
+  }
+  .bf-checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (min-width: 960px) {
+    .bf-checkout-grid {
+      grid-template-columns: 1fr 380px;
+      gap: 28px;
+    }
+  }
+  .bf-checkout-card {
+    background-color: #FFFFFF;
+    border: 1px solid rgba(20, 60, 45, 0.08);
+    border-radius: 18px;
+    padding: 18px 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  }
+  @media (min-width: 640px) {
+    .bf-checkout-card {
+      border-radius: 20px;
+      padding: 26px;
+    }
+  }
+  .bf-location-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .bf-location-grid {
+      grid-template-columns: 1fr 1fr 130px;
+      gap: 14px;
+    }
+  }
+  .bf-postcode-col {
+    grid-column: span 2;
+  }
+  @media (min-width: 640px) {
+    .bf-postcode-col {
+      grid-column: span 1;
+    }
+  }
+`;
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -647,34 +832,11 @@ export default function CheckoutPage() {
 
   return (
     <PageWrapper>
-      <div
-        style={{
-          backgroundColor: "#FAF8F5",
-          minHeight: "100vh",
-          paddingBottom: "100px",
-          position: "relative",
-        }}
-      >
+      <style>{CHECKOUT_CSS}</style>
+      <div className="bf-checkout-wrap">
         {/* Top Header Banner */}
-        <div
-          style={{
-            backgroundColor: "#FFFFFF",
-            borderBottom: "1px solid rgba(20, 60, 45, 0.08)",
-            padding: "24px 20px",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "1140px",
-              margin: "0 auto",
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "16px",
-            }}
-          >
+        <div className="bf-checkout-header">
+          <div className="bf-checkout-header-inner">
             <div>
               {/* Breadcrumb */}
               <div
@@ -699,7 +861,7 @@ export default function CheckoutPage() {
               <h1
                 style={{
                   fontFamily: "var(--heading-font)",
-                  fontSize: "clamp(22px, 3.5vw, 30px)",
+                  fontSize: "clamp(20px, 3.5vw, 28px)",
                   fontWeight: 900,
                   color: "#143c2d",
                   margin: 0,
@@ -718,11 +880,12 @@ export default function CheckoutPage() {
                 gap: "8px",
                 backgroundColor: "rgba(20, 60, 45, 0.05)",
                 border: "1px solid rgba(20, 60, 45, 0.12)",
-                padding: "8px 16px",
+                padding: "7px 14px",
                 borderRadius: "999px",
                 color: "#143c2d",
                 fontSize: "12px",
                 fontWeight: 700,
+                alignSelf: "flex-start",
               }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -735,92 +898,40 @@ export default function CheckoutPage() {
         </div>
 
         {/* Progress Tracker Bar */}
-        <div style={{ maxWidth: "1140px", margin: "24px auto 32px", padding: "0 20px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
-              backgroundColor: "#FFFFFF",
-              padding: "12px 18px",
-              borderRadius: "16px",
-              border: "1px solid rgba(20, 60, 45, 0.08)",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#143c2d",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                }}
-              >
-                1
-              </div>
+        <div className="bf-stepper-wrap">
+          <div className="bf-stepper-card">
+            <div className="bf-step-item">
+              <div className="bf-step-num bf-step-active">1</div>
               <div>
-                <p style={{ margin: 0, fontSize: "12px", fontWeight: 800, color: "#143c2d" }}>Delivery</p>
-                <p style={{ margin: 0, fontSize: "11px", color: "#6B7280" }}>Address & Contact</p>
+                <p className="bf-step-title">Delivery</p>
+                <p className="bf-step-sub">Address & Contact</p>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#143c2d",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                }}
-              >
-                2
-              </div>
+            <div className="bf-step-line" />
+
+            <div className="bf-step-item">
+              <div className="bf-step-num bf-step-active">2</div>
               <div>
-                <p style={{ margin: 0, fontSize: "12px", fontWeight: 800, color: "#143c2d" }}>Payment</p>
-                <p style={{ margin: 0, fontSize: "11px", color: "#6B7280" }}>Card, Transfer, COD</p>
+                <p className="bf-step-title">Payment</p>
+                <p className="bf-step-sub">Card, Transfer, COD</p>
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", opacity: 0.6 }}>
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#E5E7EB",
-                  color: "#6B7280",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                }}
-              >
-                3
-              </div>
+            <div className="bf-step-line" />
+
+            <div className="bf-step-item" style={{ opacity: 0.65 }}>
+              <div className="bf-step-num bf-step-inactive">3</div>
               <div>
-                <p style={{ margin: 0, fontSize: "12px", fontWeight: 800, color: "#4B5563" }}>Confirmation</p>
-                <p style={{ margin: 0, fontSize: "11px", color: "#9CA3AF" }}>Track Dispatch</p>
+                <p className="bf-step-title" style={{ color: "#4B5563" }}>Confirm</p>
+                <p className="bf-step-sub">Track Dispatch</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main Content Layout */}
-        <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 20px" }}>
+        <div className="bf-checkout-main">
           {/* Error Banner */}
           <AnimatePresence>
             {error && (
@@ -916,26 +1027,11 @@ export default function CheckoutPage() {
             )}
           </AnimatePresence>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: "32px",
-              alignItems: "start",
-            }}
-          >
+          <div className="bf-checkout-grid">
             {/* Left Column: Form & Steps */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               {/* STEP 1: Delivery Details Card */}
-              <div
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid rgba(20, 60, 45, 0.08)",
-                  borderRadius: "20px",
-                  padding: "28px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
-                }}
-              >
+              <div className="bf-checkout-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid #F3F4F6", paddingBottom: "16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
@@ -1222,7 +1318,7 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "14px" }}>
+                  <div className="bf-location-grid">
                     <div>
                       <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         City / LGA *
@@ -1275,7 +1371,7 @@ export default function CheckoutPage() {
                       </select>
                     </div>
 
-                    <div>
+                    <div className="bf-postcode-col">
                       <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         Postal Code
                       </label>
@@ -1330,15 +1426,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* STEP 2: Payment Method Card */}
-              <div
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid rgba(20, 60, 45, 0.08)",
-                  borderRadius: "20px",
-                  padding: "28px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
-                }}
-              >
+              <div className="bf-checkout-card">
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", borderBottom: "1px solid #F3F4F6", paddingBottom: "16px" }}>
                   <div
                     style={{
@@ -1532,15 +1620,7 @@ export default function CheckoutPage() {
 
             {/* Right Column: Order Summary Card */}
             <div style={{ position: "sticky", top: "24px" }}>
-              <div
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid rgba(20, 60, 45, 0.08)",
-                  borderRadius: "20px",
-                  padding: "24px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
-                }}
-              >
+              <div className="bf-checkout-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", borderBottom: "1px solid #F3F4F6", paddingBottom: "12px" }}>
                   <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: 0 }}>
                     Order Summary
