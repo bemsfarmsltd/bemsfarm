@@ -17,7 +17,7 @@ const MONNIFY_CONTRACT_CODE = import.meta.env.VITE_MONNIFY_CONTRACT_CODE || "";
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { cartItems, cartSubtotal, clearCart, appliedCoupon, setAppliedCoupon } = useCart();
+  const { cartItems, cartSubtotal, clearCart, appliedCoupon, setAppliedCoupon, removeFromCart } = useCart();
 
   const pageMountTime = useRef(Date.now());
   const clickCount = useRef(0);
@@ -57,6 +57,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState(null);
   const [monnifyLoaded, setMonnifyLoaded] = useState(false);
   const [paymentRecoveryAvailable, setPaymentRecoveryAvailable] = useState(false);
+  const [staleItems, setStaleItems] = useState([]);
   const finalizingReference = useRef(null);
 
   // Saved Delivery Address Management
@@ -248,7 +249,7 @@ export default function CheckoutPage() {
 
       if (!product || typeof product.id === "undefined") {
         throw new Error(
-          "A cart item is missing product details. Please return to cart and refresh.",
+          "A cart item is missing product details. Please return to your basket and refresh.",
         );
       }
       const productId = Number(product.id);
@@ -271,30 +272,66 @@ export default function CheckoutPage() {
         );
       }
 
-      items.push({ product_id: productId, quantity: qty, price });
+      items.push({
+        product_id: productId,
+        quantity: qty,
+        price,
+        name: product.name || `Product #${productId}`,
+      });
     }
     return items;
   };
 
   const prepareCheckout = async () => {
     const localItems = buildOrderItems();
-    const refreshedItems = await Promise.all(
-      localItems.map(async (item) => {
-        const response = await api.get(`/products/${item.product_id}`);
-        const product = response.data.product;
-        const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
+    const refreshedItems = [];
+    const unavailable = [];
 
-        if (product.available_for_sale === false || stock < item.quantity) {
-          throw new Error(`"${product.name}" is no longer available in the requested quantity.`);
+    for (const item of localItems) {
+      try {
+        const response = await api.get(`/products/${item.product_id}`);
+        const product = response.data?.product;
+        if (!product) {
+          unavailable.push({ id: item.product_id, name: item.name });
+          continue;
         }
 
-        return {
+        const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
+        if (product.available_for_sale === false || stock <= 0) {
+          unavailable.push({ id: item.product_id, name: product.name || item.name });
+          continue;
+        }
+
+        if (stock < item.quantity) {
+          throw new Error(
+            `"${product.name}" only has ${stock} item${stock === 1 ? "" : "s"} left in stock. Please adjust your quantity in the basket.`,
+          );
+        }
+
+        refreshedItems.push({
           product_id: Number(product.id),
           quantity: item.quantity,
           price: Number(product.price),
-        };
-      })
-    );
+        });
+      } catch (err) {
+        if (err.response?.status === 404) {
+          unavailable.push({ id: item.product_id, name: item.name });
+        } else if (err.message && !err.response) {
+          throw err;
+        } else {
+          const detail = err.response?.data?.message || err.message;
+          throw new Error(detail || "Failed to verify items in your basket.");
+        }
+      }
+    }
+
+    if (unavailable.length > 0) {
+      setStaleItems(unavailable);
+      const names = unavailable.map((u) => `"${u.name}"`).join(", ");
+      throw new Error(
+        `${names} ${unavailable.length === 1 ? "is" : "are"} no longer available in our store catalog. Please remove from your cart to proceed.`,
+      );
+    }
 
     const subtotal = refreshedItems.reduce(
       (sum, item) => sum + getNairaPrice(item.price) * item.quantity,
@@ -415,6 +452,7 @@ export default function CheckoutPage() {
     let checkout;
     const paymentReference = `BF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     try {
+      setStaleItems([]);
       checkout = await prepareCheckout();
       const intent = await api.post("/orders/checkout-intent", {
         items: checkout.items,
@@ -434,7 +472,8 @@ export default function CheckoutPage() {
         paymentRef: paymentReference,
       }));
     } catch (cartErr) {
-      setError(cartErr.message);
+      const displayMsg = cartErr?.response?.data?.message || cartErr?.message || "Could not prepare checkout.";
+      setError(displayMsg);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -516,6 +555,7 @@ export default function CheckoutPage() {
 
     setLoading(true);
     setError(null);
+    setStaleItems([]);
     try {
       const checkout = await prepareCheckout();
       const orderId = await createOrder(undefined, checkout);
@@ -810,6 +850,32 @@ export default function CheckoutPage() {
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontWeight: 700 }}>Action Required</p>
                   <p style={{ margin: "4px 0 0", lineHeight: "1.4" }}>{error}</p>
+                  {staleItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        staleItems.forEach((stale) => removeFromCart(stale.id));
+                        setStaleItems([]);
+                        setError(null);
+                      }}
+                      style={{
+                        marginTop: "10px",
+                        background: "#DC2626",
+                        color: "#FFFFFF",
+                        border: "none",
+                        padding: "7px 14px",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      Remove Unavailable {staleItems.length === 1 ? "Item" : "Items"} from Basket
+                    </button>
+                  )}
                   {paymentRecoveryAvailable && (
                     <button
                       type="button"
