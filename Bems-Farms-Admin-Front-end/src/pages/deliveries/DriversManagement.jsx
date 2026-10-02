@@ -498,46 +498,57 @@ export default function DriversManagement() {
         </div>
       </div>
 
-      {/* Primary Mode Tabs (Fleet vs Payouts) */}
-      <div className="d-flex align-items-center gap-2 mb-4 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 480 }}>
-        <button
-          type="button"
-          className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
-            tabMode === 'fleet' ? 'btn-success text-white shadow-sm' : 'btn-light text-dark'
-          }`}
-          style={{
-            backgroundColor: tabMode === 'fleet' ? '#16a34a' : '#f8fafc',
-            color: tabMode === 'fleet' ? '#ffffff' : '#334155',
-            border: tabMode === 'fleet' ? '1px solid #15803d' : '1px solid #e2e8f0',
-          }}
-          onClick={() => setTabMode('fleet')}
+      {/* Primary Mode Tabs (Fleet vs Payouts) & Direct COD Shortcut */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-2 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 480, width: '100%' }}>
+          <button
+            type="button"
+            className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+              tabMode === 'fleet' ? 'btn-success text-white shadow-sm' : 'btn-light text-dark'
+            }`}
+            style={{
+              backgroundColor: tabMode === 'fleet' ? '#16a34a' : '#f8fafc',
+              color: tabMode === 'fleet' ? '#ffffff' : '#334155',
+              border: tabMode === 'fleet' ? '1px solid #15803d' : '1px solid #e2e8f0',
+            }}
+            onClick={() => setTabMode('fleet')}
+          >
+            <i className="ri-truck-line fs-16" />
+            <span>🚚 Fleet Directory ({drivers.length})</span>
+            {stats.pendingCompliance > 0 && (
+              <span className="badge rounded-pill px-2 py-0.5 fs-10" style={{ background: '#fef3c7', color: '#d97706' }}>
+                {stats.pendingCompliance} pending
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+              tabMode === 'payouts' ? 'btn-primary text-white shadow-sm' : 'btn-light text-dark'
+            }`}
+            style={{
+              backgroundColor: tabMode === 'payouts' ? '#2563eb' : '#f8fafc',
+              color: tabMode === 'payouts' ? '#ffffff' : '#334155',
+              border: tabMode === 'payouts' ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
+            }}
+            onClick={() => setTabMode('payouts')}
+          >
+            <i className="ri-wallet-3-line fs-16" />
+            <span>💳 Driver Wallets &amp; Payouts</span>
+            {payoutStats.pendingCount > 0 && (
+              <span className="badge bg-danger rounded-pill px-2 py-0.5 fs-10">{payoutStats.pendingCount}</span>
+            )}
+          </button>
+        </div>
+
+        <Link
+          to="/settings/payment"
+          className="btn btn-outline-success d-flex align-items-center gap-2 px-3 py-2 fw-semibold shadow-sm bg-white"
+          title="Open Payment & Cash on Delivery Settings"
         >
-          <i className="ri-truck-line fs-16" />
-          <span>🚚 Fleet Directory ({drivers.length})</span>
-          {stats.pendingCompliance > 0 && (
-            <span className="badge rounded-pill px-2 py-0.5 fs-10" style={{ background: '#fef3c7', color: '#d97706' }}>
-              {stats.pendingCompliance} pending
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
-            tabMode === 'payouts' ? 'btn-primary text-white shadow-sm' : 'btn-light text-dark'
-          }`}
-          style={{
-            backgroundColor: tabMode === 'payouts' ? '#2563eb' : '#f8fafc',
-            color: tabMode === 'payouts' ? '#ffffff' : '#334155',
-            border: tabMode === 'payouts' ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
-          }}
-          onClick={() => setTabMode('payouts')}
-        >
-          <i className="ri-wallet-3-line fs-16" />
-          <span>💳 Driver Wallets &amp; Payouts</span>
-          {payoutStats.pendingCount > 0 && (
-            <span className="badge bg-danger rounded-pill px-2 py-0.5 fs-10">{payoutStats.pendingCount}</span>
-          )}
-        </button>
+          <i className="ri-hand-coin-line fs-18 text-success" />
+          <span>Cash on Delivery (COD) Settings →</span>
+        </Link>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════

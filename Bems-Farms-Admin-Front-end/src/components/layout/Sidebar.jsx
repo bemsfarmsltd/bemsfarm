@@ -809,6 +809,9 @@ export default function Sidebar() {
                 <NavLink to="/deliveries/drivers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Dispatch Drivers</span>
                 </NavLink>
+                <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Cash on Delivery (COD)</span>
+                </NavLink>
               </>
             )}
 
@@ -937,6 +940,9 @@ export default function Sidebar() {
               <>
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>
+                </NavLink>
+                <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Payment &amp; COD Settings</span>
                 </NavLink>
                 {is('superadmin', 'admin') && (
                   <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
