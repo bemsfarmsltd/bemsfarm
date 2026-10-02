@@ -19,22 +19,30 @@ const NAVBAR_CSS = `
 .bf-navbar-links { display: none !important; }
 .bf-navbar-burger { display: flex; }
 .bf-navbar-user-name { display: none; }
-.bf-navbar-logo { height: 32px; }
-.bf-navbar-inner { padding: 0 16px; height: 56px; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; }
+.bf-navbar-logo { height: 28px; width: auto; max-width: 120px; object-fit: contain; display: block; }
+.bf-navbar-logo-wrap { flex-shrink: 0; display: flex; align-items: center; margin-right: 6px; min-width: 0; }
+.bf-navbar-inner { padding: 0 10px; height: 56px; display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; }
 .bf-search-full { display: none; }
 .bf-navbar-guest-join { display: none; }
 
+@media (min-width: 420px) {
+  .bf-navbar-inner { padding: 0 14px; }
+  .bf-navbar-logo { height: 31px; max-width: 135px; }
+  .bf-navbar-logo-wrap { margin-right: 10px; }
+}
+
 @media (min-width: 640px) {
-  .bf-navbar-logo { height: 36px; }
+  .bf-navbar-logo { height: 36px; max-width: 160px; }
   .bf-navbar-inner { padding: 0 24px; height: 60px; }
   .bf-navbar-guest-join { display: block; }
+  .bf-navbar-logo-wrap { margin-right: 16px; }
 }
 
 @media (min-width: 768px) {
   .bf-navbar-links { display: flex !important; }
   .bf-navbar-burger { display: none !important; }
   .bf-navbar-user-name { display: block; }
-  .bf-navbar-logo { height: 40px; }
+  .bf-navbar-logo { height: 40px; max-width: 180px; }
   .bf-navbar-inner { padding: 0 32px; height: 68px; }
   .bf-search-full { display: flex; }
 }
@@ -536,14 +544,7 @@ export default function Navbar() {
         }}
       >
         {/* LOGO (Left Aligned) */}
-        <div
-          style={{
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            marginRight: "16px",
-          }}
-        >
+        <div className="bf-navbar-logo-wrap">
           <Link
             to={user ? "/home" : "/"}
             style={{
@@ -556,12 +557,6 @@ export default function Navbar() {
               src={logo}
               alt="BemsFarms"
               className="bf-navbar-logo"
-              style={{
-                width: "auto",
-                objectFit: "contain",
-                display: "block",
-                maxWidth: "140px",
-              }}
             />
           </Link>
         </div>
@@ -777,7 +772,7 @@ export default function Navbar() {
                   >
                     {user?.name?.split(" ")[0]}
                   </span>
-                  <span style={{ fontSize: "9px", color: "#9CA3AF" }}>▼</span>
+                  <span className="hidden sm:inline" style={{ fontSize: "9px", color: "#9CA3AF" }}>▼</span>
                 </button>
 
                 <AnimatePresence>

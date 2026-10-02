@@ -1103,23 +1103,30 @@ export default function CheckoutPage() {
                       ))}
                     </div>
                     <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#6B7280" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "#6B7280" }}>
                         <span>Subtotal</span>
-                        <span>₦{cartSubtotal.toLocaleString()}</span>
+                        <span style={{ whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600 }}>₦{cartSubtotal.toLocaleString()}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#6B7280" }}>
-                        <span>Delivery ({selectedZone?.zone_name || "Standard"})</span>
-                        <span>₦{DELIVERY.toLocaleString()}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", color: "#6B7280" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px", minWidth: 0, flex: 1 }}>
+                          <span>Delivery</span>
+                          {selectedZone?.zone_name && (
+                            <span style={{ fontSize: "10px", fontWeight: 700, padding: "1px 6px", borderRadius: "4px", backgroundColor: "#E8F5E9", color: "#1B5E20", wordBreak: "break-word" }}>
+                              {selectedZone.zone_name}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ whiteSpace: "nowrap", flexShrink: 0, fontWeight: 600, marginLeft: "8px" }}>₦{DELIVERY.toLocaleString()}</span>
                       </div>
                       {discount > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", color: "#143c2d", fontWeight: 700 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "#143c2d", fontWeight: 700 }}>
                           <span>Discount ({appliedCoupon?.code})</span>
-                          <span>-₦{discount.toLocaleString()}</span>
+                          <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>-₦{discount.toLocaleString()}</span>
                         </div>
                       )}
-                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#111827", fontSize: "14px", borderTop: "1px dashed #E5E7EB", paddingTop: "8px", marginTop: "4px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 800, color: "#111827", fontSize: "14px", borderTop: "1px dashed #E5E7EB", paddingTop: "8px", marginTop: "4px" }}>
                         <span>Total Due</span>
-                        <span style={{ color: "#143c2d" }}>₦{total.toLocaleString()}</span>
+                        <span style={{ color: "#143c2d", whiteSpace: "nowrap", flexShrink: 0 }}>₦{total.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -1859,7 +1866,7 @@ export default function CheckoutPage() {
                           padding: "10px 12px",
                           border: "1px solid #D1D5DB",
                           borderRadius: "10px",
-                          fontSize: "13px",
+                          fontSize: "16px",
                           fontFamily: "var(--body-font)",
                           outline: "none",
                           textTransform: "uppercase",
@@ -1903,36 +1910,49 @@ export default function CheckoutPage() {
                     gap: "10px",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "13px", color: "#6B7280" }}>Farm Produce Subtotal</span>
-                    <span style={{ fontSize: "14px", color: "#111827", fontWeight: 700 }}>
+                    <span style={{ fontSize: "14px", color: "#111827", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
                       ₦{cartSubtotal.toLocaleString()}
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>Doorstep Delivery</span>
-                        <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: "6px", backgroundColor: "#E8F5E9", color: "#1B5E20" }}>
-                          {selectedZone?.zone_name || "Standard Zone"}
-                        </span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1, gap: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                        <span style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600, whiteSpace: "nowrap" }}>Doorstep Delivery</span>
+                        {selectedZone?.zone_name && (
+                          <span style={{
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            padding: "2px 7px",
+                            borderRadius: "6px",
+                            backgroundColor: "#E8F5E9",
+                            color: "#1B5E20",
+                            lineHeight: "1.3",
+                            display: "inline-block",
+                            maxWidth: "100%",
+                            wordBreak: "break-word",
+                          }}>
+                            {selectedZone.zone_name}
+                          </span>
+                        )}
                       </div>
                       {selectedZone?.estimated_eta && (
                         <span style={{ fontSize: "11px", color: "#9CA3AF" }}>Est. ETA: {selectedZone.estimated_eta}</span>
                       )}
                     </div>
-                    <span style={{ fontSize: "14px", color: "#111827", fontWeight: 700 }}>
+                    <span style={{ fontSize: "14px", color: "#111827", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0, textAlign: "right", marginLeft: "8px" }}>
                       ₦{DELIVERY.toLocaleString()}
                     </span>
                   </div>
 
                   {discount > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
                       <span style={{ fontSize: "13px", color: "#143c2d", fontWeight: 700 }}>
                         Discount Savings ({appliedCoupon?.code})
                       </span>
-                      <span style={{ fontSize: "14px", color: "#143c2d", fontWeight: 800 }}>
+                      <span style={{ fontSize: "14px", color: "#143c2d", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
                         -₦{discount.toLocaleString()}
                       </span>
                     </div>
@@ -1943,6 +1963,7 @@ export default function CheckoutPage() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
+                      gap: "10px",
                       paddingTop: "14px",
                       marginTop: "4px",
                       borderTop: "2px dashed #E5E7EB",
@@ -1954,7 +1975,7 @@ export default function CheckoutPage() {
                       </span>
                       <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#9CA3AF" }}>Including VAT & standard delivery</p>
                     </div>
-                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#143c2d", fontFamily: "var(--heading-font)" }}>
+                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#143c2d", fontFamily: "var(--heading-font)", whiteSpace: "nowrap", flexShrink: 0 }}>
                       ₦{total.toLocaleString()}
                     </span>
                   </div>

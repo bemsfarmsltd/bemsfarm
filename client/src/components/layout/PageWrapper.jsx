@@ -15,17 +15,20 @@ import MobileBottomNav from "./MobileBottomNav";
 */
 
 // Routes where floating widgets/chatbots should NOT appear (to prevent blocking checkout inputs & actions)
-const HIDE_CHATBOT_ON = ["/chef-chat", "/checkout", "/order-confirmed", "/payment-recovery"];
-const HIDE_SUPPORT_CHAT_ON = ["/checkout", "/order-confirmed"];
-const HIDE_BROADCAST_ON = ["/checkout", "/order-confirmed"];
+const HIDE_CHATBOT_ON = ["/chef-chat", "/checkout", "/order-confirmed", "/payment-recovery", "/cart"];
+const HIDE_SUPPORT_CHAT_ON = ["/checkout", "/order-confirmed", "/cart", "/payment-recovery"];
+const HIDE_BROADCAST_ON = ["/checkout", "/order-confirmed", "/cart", "/payment-recovery"];
 const NO_BOTTOM_NAV_ON = ["/cart", "/checkout", "/order-confirmed"];
+
+const matchesRoute = (currentPath, routes) =>
+  routes.some((r) => currentPath === r || currentPath.startsWith(r + "/") || currentPath.startsWith(r + "?"));
 
 export default function PageWrapper({ children, noFooter = false }) {
   const location = useLocation();
-  const showChatbot = !HIDE_CHATBOT_ON.includes(location.pathname);
-  const showSupportChat = !HIDE_SUPPORT_CHAT_ON.includes(location.pathname);
-  const showBroadcast = !HIDE_BROADCAST_ON.includes(location.pathname);
-  const showBottomNav = !NO_BOTTOM_NAV_ON.includes(location.pathname);
+  const showChatbot = !matchesRoute(location.pathname, HIDE_CHATBOT_ON);
+  const showSupportChat = !matchesRoute(location.pathname, HIDE_SUPPORT_CHAT_ON);
+  const showBroadcast = !matchesRoute(location.pathname, HIDE_BROADCAST_ON);
+  const showBottomNav = !matchesRoute(location.pathname, NO_BOTTOM_NAV_ON);
 
   return (
     <div
