@@ -23,24 +23,23 @@ const SHOP_CSS = `
 
 .bf-categories-scroll {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
+  padding-top: 2px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .bf-categories-scroll::-webkit-scrollbar {
-  height: 4px;
-}
-.bf-categories-scroll::-webkit-scrollbar-thumb {
-  background-color: #DFD6C2;
-  border-radius: 10px;
+  display: none;
 }
 
 .bf-product-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 @media (min-width: 640px) {
   .bf-product-grid {
@@ -134,6 +133,8 @@ export default function ProductsPage() {
   const [search, setSearch] = useState(params.get("search") || "");
   const [activeCat, setActiveCat] = useState(params.get("category") || "All");
   const [sort, setSort] = useState("featured");
+  const [onlyInStock, setOnlyInStock] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [restockProduct, setRestockProduct] = useState(null);
   const [toast, setToast] = useState(null);
@@ -288,6 +289,12 @@ export default function ProductsPage() {
 
     return products
       .filter((p) => {
+        if (onlyInStock) {
+          const stock = Math.max(Number(p.stock_quantity || 0), Number(p.stock || 0));
+          if (stock <= 0 || p.available_for_sale === false || p.status === "out_of_stock") {
+            return false;
+          }
+        }
         const matchCat = isProductInCategory(p, activeCat);
         if (!matchCat) return false;
         if (!cleanSearch) return true;
@@ -508,17 +515,37 @@ export default function ProductsPage() {
                 </form>
               </div>
 
-              {/* Status Count & Sort Controls */}
-              <div className="flex flex-wrap items-center justify-between md:justify-end gap-3">
+              {/* Status Count & Sort Controls + Mobile Filter trigger */}
+              <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3">
                 <div className="flex items-center gap-2">
+                  {/* Mobile Filters Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setMobileFilterOpen(true)}
+                    className="md:hidden inline-flex items-center gap-1.5 rounded-full border border-[#DFD6C2] bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs active:scale-95 transition cursor-pointer"
+                  >
+                    <svg className="h-3.5 w-3.5 text-[#143c2d]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                    </svg>
+                    <span>Filters</span>
+                    {(activeCat !== "All" || sort !== "featured" || onlyInStock) && (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#143c2d] text-[10px] font-black text-white">
+                        {(activeCat !== "All" ? 1 : 0) + (sort !== "featured" ? 1 : 0) + (onlyInStock ? 1 : 0)}
+                      </span>
+                    )}
+                  </button>
+
                   <span className="text-xs sm:text-sm font-bold text-slate-700 whitespace-nowrap">
-                    {loading ? "Loading items…" : `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"} Found`}
+                    {loading ? "Loading items…" : `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`}
                   </span>
-                  {(search || activeCat !== "All") && (
+                  {(search || activeCat !== "All" || onlyInStock) && (
                     <button
                       type="button"
-                      onClick={handleClearFilters}
-                      className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2.5 py-1 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-300 transition cursor-pointer"
+                      onClick={() => {
+                        handleClearFilters();
+                        setOnlyInStock(false);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-300 transition cursor-pointer"
                     >
                       <span>Reset</span>
                       <span>×</span>
@@ -526,8 +553,8 @@ export default function ProductsPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Sort by:</span>
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500">Sort by:</span>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value)}
@@ -724,12 +751,12 @@ export default function ProductsPage() {
                                   e.stopPropagation();
                                   updateQuantity(product.id, cartQty - 1);
                                 }}
-                                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition cursor-pointer"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition active:scale-90 cursor-pointer"
                                 aria-label={`Decrease ${product.name} quantity`}
                               >
                                 -
                               </button>
-                              <span className="w-4 sm:w-6 text-center text-xs font-black text-[#143c2d]">
+                              <span className="w-5 text-center text-xs font-black text-[#143c2d]">
                                 {cartQty}
                               </span>
                               <button
@@ -739,17 +766,25 @@ export default function ProductsPage() {
                                   e.stopPropagation();
                                   updateQuantity(product.id, cartQty + 1);
                                 }}
-                                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40 cursor-pointer"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40 active:scale-90 cursor-pointer"
                                 aria-label={`Increase ${product.name} quantity`}
                               >
                                 +
                               </button>
                             </div>
+                          ) : isOutOfStock ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleAdd(product, e)}
+                              className="inline-flex h-8 items-center justify-center rounded-full bg-amber-500/15 border border-amber-600/30 px-2.5 sm:px-3 text-[10px] sm:text-xs font-extrabold text-amber-800 shadow-2xs hover:bg-amber-500/25 transition active:scale-95 cursor-pointer"
+                            >
+                              Waitlist
+                            </button>
                           ) : (
                             <button
                               type="button"
                               onClick={(e) => handleAdd(product, e)}
-                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-[#143c2d] px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold text-white shadow-xs transition-all duration-200 hover:bg-[#1a4e3b] hover:shadow-md active:scale-95 cursor-pointer"
+                              className="inline-flex h-8 items-center justify-center rounded-full bg-[#143c2d] px-3.5 text-xs font-extrabold text-white shadow-xs transition-all duration-200 hover:bg-[#1a4e3b] hover:shadow-md active:scale-95 cursor-pointer"
                               aria-label={`Add ${product.name} to basket`}
                             >
                               + Add
@@ -779,6 +814,138 @@ export default function ProductsPage() {
         />
 
         <Toast toast={toast} onClose={() => setToast(null)} />
+
+        {/* Mobile Filter Bottom Sheet Modal */}
+        <AnimatePresence>
+          {mobileFilterOpen && (
+            <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileFilterOpen(false)}
+                className="absolute inset-0 bg-black/50 backdrop-blur-xs"
+              />
+
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                className="relative z-10 w-full max-h-[85vh] flex flex-col rounded-t-[28px] bg-white shadow-2xl overflow-hidden"
+                style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+              >
+                {/* Header */}
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-base font-black text-[#143c2d]">Filter &amp; Sort Produce</h3>
+                    <span className="text-xs text-slate-500 font-medium">({filteredProducts.length} items)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileFilterOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Filter Body */}
+                <div className="p-4 overflow-y-auto space-y-5">
+                  {/* Sort By */}
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Sort By</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price: Low to High" },
+                        { value: "price-desc", label: "Price: High to Low" },
+                        { value: "name", label: "Name (A–Z)" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setSort(opt.value)}
+                          className={`px-3 py-2.5 rounded-xl text-xs font-bold text-left border transition cursor-pointer ${
+                            sort === opt.value
+                              ? "border-[#143c2d] bg-[#143c2d]/5 text-[#143c2d]"
+                              : "border-slate-200 text-slate-700 bg-white"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Categories */}
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Categories</p>
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto py-1">
+                      {cats.map((cat) => {
+                        const isSelected = activeCat === cat;
+                        const count = categoryCounts[cat] ?? 0;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => handleCategoryChange(cat)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                              isSelected
+                                ? "border-[#143c2d] bg-[#143c2d] text-white"
+                                : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                            }`}
+                          >
+                            <span>{cat}</span>
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* In Stock Only */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">In Stock Produce Only</p>
+                      <p className="text-[11px] text-slate-500">Hide items waiting for harvest restock</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={onlyInStock}
+                      onChange={(e) => setOnlyInStock(e.target.checked)}
+                      className="h-5 w-5 accent-[#143c2d] rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer CTAs */}
+                <div className="p-4 border-t border-slate-100 flex items-center gap-3 bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClearFilters();
+                      setOnlyInStock(false);
+                      setSort("featured");
+                    }}
+                    className="flex-1 py-3 rounded-full border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 bg-white cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileFilterOpen(false)}
+                    className="flex-1 py-3 rounded-full bg-[#143c2d] text-xs font-black uppercase tracking-wider text-white shadow-md active:scale-95 cursor-pointer"
+                  >
+                    Apply ({filteredProducts.length})
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </PageWrapper>
   );

@@ -197,6 +197,25 @@ const CHECKOUT_CSS = `
       grid-column: span 1;
     }
   }
+
+  @media (max-width: 640px) {
+    .bf-checkout-wrap input,
+    .bf-checkout-wrap select,
+    .bf-checkout-wrap textarea {
+      font-size: 16px !important; /* Critical: stops Safari iOS from auto-zooming and shifting layout */
+    }
+    .bf-checkout-card {
+      padding: 16px 14px;
+      border-radius: 16px;
+    }
+    .bf-location-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .bf-postcode-col {
+      grid-column: span 1;
+    }
+  }
 `;
 
 export default function CheckoutPage() {
@@ -251,6 +270,7 @@ export default function CheckoutPage() {
   const [deliveryMode, setDeliveryMode] = useState("custom"); // "saved" | "custom"
   const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
@@ -1026,6 +1046,87 @@ export default function CheckoutPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Mobile Order Summary Collapsible (Available at top of mobile checkout for convenience) */}
+          <div className="md:hidden mb-4">
+            <button
+              type="button"
+              onClick={() => setShowMobileSummary((prev) => !prev)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: "#FFFFFF",
+                border: "1px solid rgba(20, 60, 45, 0.12)",
+                borderRadius: "14px",
+                padding: "12px 14px",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <svg width="18" height="18" fill="none" stroke="#143c2d" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#143c2d" }}>
+                  {showMobileSummary ? "Hide Order Summary" : "Show Order Summary"} ({cartItems.length} {cartItems.length === 1 ? "item" : "items"})
+                </span>
+                <span style={{ fontSize: "11px", color: "#6B7280" }}>{showMobileSummary ? "▲" : "▼"}</span>
+              </div>
+              <span style={{ fontSize: "16px", fontWeight: 900, color: "#143c2d" }}>
+                ₦{total.toLocaleString()}
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {showMobileSummary && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div style={{ marginTop: "8px", backgroundColor: "#FFFFFF", border: "1px solid rgba(20, 60, 45, 0.08)", borderRadius: "14px", padding: "14px" }}>
+                    {/* Quick list of items */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "200px", overflowY: "auto", marginBottom: "12px" }}>
+                      {cartItems.map(({ product, quantity }) => (
+                        <div key={product.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", fontSize: "12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
+                            <span style={{ fontWeight: 800, color: "#143c2d", backgroundColor: "#F3F4F6", padding: "2px 6px", borderRadius: "6px", flexShrink: 0 }}>{quantity}x</span>
+                            <span style={{ color: "#374151", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.name}</span>
+                          </div>
+                          <span style={{ fontWeight: 700, color: "#111827", flexShrink: 0 }}>
+                            ₦{(getNairaPrice(product.price) * quantity).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: "10px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#6B7280" }}>
+                        <span>Subtotal</span>
+                        <span>₦{cartSubtotal.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "#6B7280" }}>
+                        <span>Delivery ({selectedZone?.zone_name || "Standard"})</span>
+                        <span>₦{DELIVERY.toLocaleString()}</span>
+                      </div>
+                      {discount > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#143c2d", fontWeight: 700 }}>
+                          <span>Discount ({appliedCoupon?.code})</span>
+                          <span>-₦{discount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#111827", fontSize: "14px", borderTop: "1px dashed #E5E7EB", paddingTop: "8px", marginTop: "4px" }}>
+                        <span>Total Due</span>
+                        <span style={{ color: "#143c2d" }}>₦{total.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="bf-checkout-grid">
             {/* Left Column: Form & Steps */}

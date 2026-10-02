@@ -15,18 +15,18 @@ const CSS = `
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.05'/%3E%3C/svg%3E");
     background-repeat:repeat; background-size:36px 36px;
   }
-  .bf-basket-inner { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:28px 20px 60px; }
+  .bf-basket-inner { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:20px 14px 120px; }
   @media(min-width:900px){ .bf-basket-inner{padding:40px 32px 80px;} }
-  .bf-basket-grid { display:grid; gap:28px; }
+  .bf-basket-grid { display:grid; gap:24px; }
   @media(min-width:900px){ .bf-basket-grid{grid-template-columns:1fr 380px; align-items:flex-start;} }
   .bf-item-card {
-    background:rgba(255,255,255,0.92); border:1px solid rgba(20,60,45,0.09); border-radius:20px;
-    padding:18px; margin-bottom:14px; display:grid; grid-template-columns:80px 1fr; gap:16px;
+    background:rgba(255,255,255,0.92); border:1px solid rgba(20,60,45,0.09); border-radius:18px;
+    padding:14px; margin-bottom:12px; display:grid; grid-template-columns:74px 1fr; gap:12px;
     align-items:center; backdrop-filter:blur(6px);
   }
-  @media(min-width:540px){ .bf-item-card{grid-template-columns:96px 1fr;} }
-  .bf-item-img { width:80px; height:80px; border-radius:14px; object-fit:cover; background:#e8f4ed; flex-shrink:0; display:block; }
-  @media(min-width:540px){ .bf-item-img{width:96px;height:96px;} }
+  @media(min-width:540px){ .bf-item-card{grid-template-columns:96px 1fr; padding:18px; gap:16px; margin-bottom:14px; border-radius:20px;} }
+  .bf-item-img { width:74px; height:74px; border-radius:12px; object-fit:cover; background:#e8f4ed; flex-shrink:0; display:block; }
+  @media(min-width:540px){ .bf-item-img{width:96px;height:96px; border-radius:14px;} }
   .bf-item-body { display:flex; flex-direction:column; gap:10px; min-width:0; }
   .bf-item-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
   .bf-item-bottom { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
@@ -173,7 +173,7 @@ export default function CartPage() {
                       <div className="bf-item-body">
                         <div className="bf-item-top">
                           <div style={{ minWidth:0 }}>
-                            <p style={{ fontWeight:800, fontSize:15, color:"#111827", margin:"0 0 2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"calc(100vw - 220px)" }}>{product.name}</p>
+                            <p style={{ fontWeight:800, fontSize:15, color:"#111827", margin:"0 0 2px", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{product.name}</p>
                             <p style={{ fontSize:12, color:"#9ca3af", margin:0 }}>{product.unit}</p>
                           </div>
                           <motion.button whileTap={{ scale:0.85 }} onClick={() => handleRemove(product.id)} aria-label={`Remove ${product.name}`}
@@ -272,6 +272,43 @@ export default function CartPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Sticky Mobile Checkout Bar */}
+        <div
+          className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 backdrop-blur-xl border-t border-[#DFD6C2]/80 px-4 py-2.5 shadow-[0_-4px_24px_rgba(20,60,45,0.08)] flex items-center justify-between gap-3"
+          style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+        >
+          <div className="min-w-0">
+            <p style={{ margin: 0, fontSize: "10px", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Total ({totalQty} {totalQty === 1 ? "item" : "items"})
+            </p>
+            <p style={{ margin: 0, fontSize: "18px", fontWeight: 900, color: "#17352a" }}>
+              ₦{total.toLocaleString()}
+            </p>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={() => navigate("/checkout")}
+            style={{
+              background: "linear-gradient(135deg,#d86d20,#f57c00)",
+              color: "white",
+              border: "none",
+              borderRadius: 999,
+              padding: "12px 22px",
+              fontSize: "14px",
+              fontWeight: 900,
+              cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(213,109,32,0.35)",
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <span>Checkout</span>
+            <span>→</span>
+          </motion.button>
         </div>
       </div>
     </PageWrapper>

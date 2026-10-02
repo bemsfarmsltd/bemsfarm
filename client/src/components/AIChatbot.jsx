@@ -279,8 +279,8 @@ export default function AIChatbot() {
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
             style={{
               position: "fixed",
-              bottom: 24,
-              right: 24,
+              bottom: typeof window !== "undefined" && window.innerWidth < 768 ? 76 : 24,
+              right: typeof window !== "undefined" && window.innerWidth < 768 ? 16 : 24,
               zIndex: 9999,
               touchAction: "none",
             }}
@@ -351,11 +351,11 @@ export default function AIChatbot() {
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             style={{
               position: "fixed",
-              bottom: 24,
-              right: 24,
+              bottom: typeof window !== "undefined" && window.innerWidth < 768 ? 76 : 24,
+              right: typeof window !== "undefined" && window.innerWidth < 768 ? 12 : 24,
               zIndex: 9999,
-              width: "min(420px, calc(100vw - 32px))",
-              height: "min(620px, calc(100vh - 48px))",
+              width: "min(420px, calc(100vw - 24px))",
+              height: typeof window !== "undefined" && window.innerWidth < 768 ? "min(560px, calc(100dvh - 110px))" : "min(620px, calc(100vh - 48px))",
             }}
             className="flex flex-col overflow-hidden rounded-[1.75rem] border border-[#DFD6C2] bg-white shadow-2xl"
           >

@@ -102,14 +102,14 @@ export default function CustomerSupportChat() {
   return (
     <>
       {error && <div role="alert" className="fixed bottom-24 left-6 z-50 bg-red-50 text-red-800 p-3 rounded">{error}</div>}
-      {/* Floating Trigger Button pinned to bottom left */}
-      <div className="fixed bottom-6 left-6 z-40 flex flex-col items-start gap-2">
+      {/* Floating Trigger Button pinned to bottom left, lifted above mobile bottom nav */}
+      <div className="fixed bottom-20 left-4 sm:bottom-6 sm:left-6 z-40 flex flex-col items-start gap-2">
         {!isOpen && (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="flex items-center gap-2.5 px-4 py-3 rounded-full text-white bg-[#17352a] hover:bg-[#204a3a] shadow-xl border-2 border-white/20 transition-all font-semibold text-sm"
+            className="flex items-center gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3 rounded-full text-white bg-[#17352a] hover:bg-[#204a3a] shadow-xl border-2 border-white/20 transition-all font-semibold text-xs sm:text-sm"
             aria-label="Open support chat"
           >
             <div className="relative flex items-center justify-center">
@@ -140,7 +140,7 @@ export default function CustomerSupportChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="fixed bottom-6 left-4 sm:left-6 z-50 w-[92vw] sm:w-[380px] h-[520px] max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+            className="fixed bottom-20 sm:bottom-6 left-3 sm:left-6 z-50 w-[calc(100vw-24px)] sm:w-[380px] h-[520px] max-h-[75vh] sm:max-h-[85vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
             {/* Header */}

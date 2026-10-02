@@ -174,7 +174,7 @@ export default function ProductDetail() {
         style={{
           maxWidth: "1100px",
           margin: "0 auto",
-          padding: isMobile ? "20px 16px" : "32px 24px",
+          padding: isMobile ? "20px 16px 100px" : "32px 24px",
         }}
       >
         {/* Breadcrumb */}
@@ -1120,6 +1120,58 @@ export default function ProductDetail() {
           isOpen={restockOpen}
           onClose={() => setRestockOpen(false)}
         />
+      </div>
+
+      {/* Sticky Mobile Add-to-Cart Action Bar */}
+      <div
+        className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200 px-4 py-2.5 shadow-[0_-4px_24px_rgba(0,0,0,0.10)] flex items-center justify-between gap-3"
+        style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+      >
+        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shrink-0">
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            className="w-9 h-10 flex items-center justify-center font-bold text-slate-600 bg-white hover:bg-slate-100 active:scale-95 cursor-pointer"
+            aria-label="Decrease quantity"
+          >
+            −
+          </button>
+          <span className="w-8 text-center text-sm font-black text-slate-800">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => (effectiveStock ? Math.min(q + 1, effectiveStock) : q + 1))}
+            disabled={!!effectiveStock && quantity >= effectiveStock}
+            className="w-9 h-10 flex items-center justify-center font-bold text-white bg-[#143c2d] hover:bg-[#1a4e3b] disabled:opacity-40 active:scale-95 cursor-pointer"
+            aria-label="Increase quantity"
+          >
+            +
+          </button>
+        </div>
+
+        {isOutOfStock ? (
+          <button
+            type="button"
+            onClick={() => {
+              recordOutOfStockDemand(product, "product_detail_notify", user);
+              setRestockOpen(true);
+            }}
+            className="flex-1 h-10 flex items-center justify-center rounded-xl bg-amber-600 text-white font-extrabold text-xs shadow-md active:scale-95 cursor-pointer"
+          >
+            Notify Restock
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex-1 h-10 flex items-center justify-center gap-1.5 rounded-xl bg-[#143c2d] text-white font-extrabold text-xs shadow-md active:scale-95 cursor-pointer"
+          >
+            <span>{added ? "✓ Added" : "Add to Basket"}</span>
+            <span>·</span>
+            <span>₦{(getNairaPrice(product.price) * quantity).toLocaleString()}</span>
+          </button>
+        )}
       </div>
     </PageWrapper>
   );

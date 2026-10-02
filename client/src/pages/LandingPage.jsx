@@ -10,6 +10,8 @@ import { recordOutOfStockDemand } from "../utils/demandTracker";
 import logo from "../assets/bemsfarms_logo_compact.png";
 import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
+import CartDrawer from "../components/ui/CartDrawer";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 
 
 
@@ -1008,7 +1010,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F8F5EE] text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-[#F8F5EE] text-slate-900 pb-20 md:pb-0">
       <style>{`
         @keyframes driftPattern {
           0% { background-position: 0px 0px; }
@@ -1934,6 +1936,12 @@ export default function LandingPage() {
 
       {/* Toast Notification for Basket Actions */}
       <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {/* Cart Drawer for Quick Access */}
+      <CartDrawer />
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav />
     </div>
   );
 }

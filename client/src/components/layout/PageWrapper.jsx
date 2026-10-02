@@ -5,6 +5,7 @@ import AIChatbot from "../AIChatbot";
 import CartDrawer from "../ui/CartDrawer";
 import BroadcastPopup from "../ui/BroadcastPopup";
 import CustomerSupportChat from "../ui/CustomerSupportChat";
+import MobileBottomNav from "./MobileBottomNav";
 
 /*
   FIX: AIChatbot floating icon now hidden on /chef-chat.
@@ -17,12 +18,14 @@ import CustomerSupportChat from "../ui/CustomerSupportChat";
 const HIDE_CHATBOT_ON = ["/chef-chat", "/checkout", "/order-confirmed", "/payment-recovery"];
 const HIDE_SUPPORT_CHAT_ON = ["/checkout", "/order-confirmed"];
 const HIDE_BROADCAST_ON = ["/checkout", "/order-confirmed"];
+const NO_BOTTOM_NAV_ON = ["/cart", "/checkout", "/order-confirmed"];
 
 export default function PageWrapper({ children, noFooter = false }) {
   const location = useLocation();
   const showChatbot = !HIDE_CHATBOT_ON.includes(location.pathname);
   const showSupportChat = !HIDE_SUPPORT_CHAT_ON.includes(location.pathname);
   const showBroadcast = !HIDE_BROADCAST_ON.includes(location.pathname);
+  const showBottomNav = !NO_BOTTOM_NAV_ON.includes(location.pathname);
 
   return (
     <div
@@ -33,6 +36,7 @@ export default function PageWrapper({ children, noFooter = false }) {
         flexDirection: "column",
         overflow: noFooter ? "hidden" : undefined,
       }}
+      className={showBottomNav ? "pb-[68px] md:pb-0" : ""}
     >
       <Navbar />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: noFooter ? "hidden" : undefined }}>
@@ -43,6 +47,7 @@ export default function PageWrapper({ children, noFooter = false }) {
       {showSupportChat && <CustomerSupportChat />}
       {showBroadcast && <BroadcastPopup />}
       <CartDrawer />
+      {showBottomNav && <MobileBottomNav />}
     </div>
   );
 }
