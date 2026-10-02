@@ -191,7 +191,6 @@ export default function ProductsPage() {
       message: `Added ${product.name} to basket`,
       type: "success",
     });
-    openCartDrawer();
     setTimeout(() => setToast(null), 2500);
   };
 

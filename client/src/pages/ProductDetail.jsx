@@ -123,8 +123,7 @@ export default function ProductDetail() {
   const handleAdd = () => {
     addToCart(product, quantity);
     setAdded(true);
-    openCartDrawer();
-    setTimeout(() => setAdded(false), 1000);
+    setTimeout(() => setAdded(false), 1200);
   };
 
   if (loading)

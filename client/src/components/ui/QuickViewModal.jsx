@@ -64,7 +64,6 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
     setAdded(true);
     setTimeout(() => {
       onClose();
-      openCartDrawer();
     }, 450);
   };
 

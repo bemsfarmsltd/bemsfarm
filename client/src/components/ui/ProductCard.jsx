@@ -109,7 +109,6 @@ export default function ProductCard({ product, index = 0 }) {
     }
     addToCart(product);
     setAdded(true);
-    openCartDrawer();
     setTimeout(() => setAdded(false), 800);
   };
 
