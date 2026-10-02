@@ -14,21 +14,32 @@ const DRIVER_STATUS_COLOR = {
 }
 
 const HUB_PRESETS = [
-  { name: 'Umuahia Hub (Home Base)', lat: 5.5245, lng: 7.4912, radius: 25, areas: 'World Bank Housing, Ossah Road, Bende Road, BCA Area, Isi Gate, Umudike', color: '#1B4332' },
-  { name: 'Aba Commercial Hub', lat: 5.1065, lng: 7.3667, radius: 35, areas: 'Ariaria International, Faulks Road, Aba Owerri Road, Ogbor Hill, Osisioma, Eziukwu', color: '#059669' },
-  { name: 'Port Harcourt Hub', lat: 4.8156, lng: 7.0498, radius: 40, areas: 'GRA Phase 2, Peter Odili Road, Trans-Amadi, Rumuokoro, Woji, Ada George', color: '#2563EB' },
-  { name: 'Owerri Hub', lat: 5.4836, lng: 7.0332, radius: 30, areas: 'Ikenegbu, Aladinma, New Owerri, World Bank Owerri, Works Layout, Douglas', color: '#7C3AED' },
-  { name: 'Enugu Hub', lat: 6.4584, lng: 7.5464, radius: 35, areas: 'Independence Layout, New Haven, GRA Enugu, Ogui Road, Abakpa, Trans-Ekulu', color: '#D97706' },
-  { name: 'Lagos State Hub', lat: 6.5244, lng: 3.3792, radius: 80, areas: 'Ikeja, Victoria Island, Lekki Phase 1, Ikoyi, Surulere, Yaba, Maryland', color: '#DC2626' },
-  { name: 'Abuja FCT Hub', lat: 9.0765, lng: 7.3986, radius: 60, areas: 'Wuse 2, Maitama, Garki, Gwarinpa, Jabi, Utako, Asokoro, Central Area', color: '#0891B2' },
-]
+  { name: 'Umuahia Hub (Home Base)', lat: 5.5245, lng: 7.4912, radius: 25, fee: 1200, base_fee: 600, base_distance_km: 3, per_km_rate: 80, min_fee: 800, max_fee: 2200, free_delivery_threshold: 40000, areas: 'World Bank Housing, Ossah Road, Bende Road, BCA Area, Isi Gate, Umudike', color: '#1B4332' },
+  { name: 'Aba Commercial Hub', lat: 5.1065, lng: 7.3667, radius: 35, fee: 2500, base_fee: 1800, base_distance_km: 5, per_km_rate: 90, min_fee: 2000, max_fee: 4500, free_delivery_threshold: 50000, areas: 'Ariaria International, Faulks Road, Aba Owerri Road, Ogbor Hill, Osisioma, Eziukwu', color: '#059669' },
+  { name: 'Port Harcourt Hub', lat: 4.8156, lng: 7.0498, radius: 40, fee: 3500, base_fee: 2500, base_distance_km: 10, per_km_rate: 70, min_fee: 3000, max_fee: 6500, free_delivery_threshold: 75000, areas: 'GRA Phase 2, Peter Odili Road, Trans-Amadi, Rumuokoro, Woji, Ada George', color: '#2563EB' },
+  { name: 'Owerri Hub', lat: 5.4836, lng: 7.0332, radius: 30, fee: 3000, base_fee: 2000, base_distance_km: 8, per_km_rate: 75, min_fee: 2500, max_fee: 5500, free_delivery_threshold: 60000, areas: 'Ikenegbu, Aladinma, New Owerri, World Bank Owerri, Works Layout, Douglas', color: '#7C3AED' },
+  { name: 'Enugu Hub', lat: 6.4584, lng: 7.5464, radius: 35, fee: 3500, base_fee: 2500, base_distance_km: 10, per_km_rate: 70, min_fee: 3000, max_fee: 6500, free_delivery_threshold: 75000, areas: 'Independence Layout, New Haven, GRA Enugu, Ogui Road, Abakpa, Trans-Ekulu', color: '#D97706' },
+  { name: 'Lagos State Hub', lat: 6.5244, lng: 3.3792, radius: 80, fee: 5000, base_fee: 3500, base_distance_km: 20, per_km_rate: 50, min_fee: 4500, max_fee: 12000, free_delivery_threshold: 120000, areas: 'Ikeja, Victoria Island, Lekki Phase 1, Ikoyi, Surulere, Yaba, Maryland', color: '#DC2626' },
+  { name: 'Abuja FCT Hub', lat: 9.0765, lng: 7.3986, radius: 60, fee: 5000, base_fee: 3500, base_distance_km: 20, per_km_rate: 50, min_fee: 4500, max_fee: 12000, free_delivery_threshold: 120000, areas: 'Wuse 2, Maitama, Garki, Gwarinpa, Jabi, Utako, Asokoro, Central Area', color: '#0891B2' },
+];
 
 const BLANK_FORM = {
   name: '', eta: ETA_OPTIONS[1], fee: '', minOrder: '', active: true,
   driverIds: [], areas: '', notes: '',
+  pricing_type: 'hybrid',
+  base_fee: '',
+  base_distance_km: 3,
+  per_km_rate: 80,
+  min_fee: '',
+  max_fee: '',
+  surge_multiplier: 1.0,
+  free_delivery_threshold: '',
+  weight_surcharge_per_5kg: 250,
+  max_batch_orders: 3,
+  batch_radius_km: 3.5,
   driver_earning_fee: '', driver_commission_percent: 70,
   center_lat: 5.5245, center_lng: 7.4912, radius_km: 25, color_hex: '#1B4332',
-}
+};
 
 export default function DeliveryZones() {
   const [zones, setZones] = useState([])
@@ -71,6 +82,17 @@ export default function DeliveryZones() {
           eta: z.estimated_eta || ETA_OPTIONS[1],
           fee: Number(z.delivery_fee || 0),
           minOrder: Number(z.min_order_amount || 0),
+          pricing_type: z.pricing_type || 'hybrid',
+          base_fee: z.base_fee !== null && z.base_fee !== undefined ? Number(z.base_fee) : Number(z.delivery_fee || 0),
+          base_distance_km: z.base_distance_km !== null && z.base_distance_km !== undefined ? Number(z.base_distance_km) : 0,
+          per_km_rate: z.per_km_rate !== null && z.per_km_rate !== undefined ? Number(z.per_km_rate) : 0,
+          min_fee: z.min_fee !== null && z.min_fee !== undefined ? Number(z.min_fee) : Number(z.delivery_fee || 0),
+          max_fee: z.max_fee !== null && z.max_fee !== undefined ? Number(z.max_fee) : '',
+          surge_multiplier: z.surge_multiplier !== null && z.surge_multiplier !== undefined ? Number(z.surge_multiplier) : 1.0,
+          free_delivery_threshold: z.free_delivery_threshold !== null && z.free_delivery_threshold !== undefined ? Number(z.free_delivery_threshold) : '',
+          weight_surcharge_per_5kg: z.weight_surcharge_per_5kg !== null && z.weight_surcharge_per_5kg !== undefined ? Number(z.weight_surcharge_per_5kg) : 250,
+          max_batch_orders: z.max_batch_orders !== null && z.max_batch_orders !== undefined ? Number(z.max_batch_orders) : 3,
+          batch_radius_km: z.batch_radius_km !== null && z.batch_radius_km !== undefined ? Number(z.batch_radius_km) : 3.5,
           driver_earning_fee: Number(z.driver_earning_fee || Math.round(Number(z.delivery_fee || 0) * 0.70)),
           driver_commission_percent: Number(z.driver_commission_percent || 70),
           active: !!z.is_active,
@@ -185,6 +207,13 @@ export default function DeliveryZones() {
       center_lng: preset.lng,
       radius_km: preset.radius,
       color_hex: preset.color,
+      fee: preset.fee || p.fee,
+      base_fee: preset.base_fee !== undefined ? preset.base_fee : p.base_fee,
+      base_distance_km: preset.base_distance_km !== undefined ? preset.base_distance_km : p.base_distance_km,
+      per_km_rate: preset.per_km_rate !== undefined ? preset.per_km_rate : p.per_km_rate,
+      min_fee: preset.min_fee !== undefined ? preset.min_fee : p.min_fee,
+      max_fee: preset.max_fee !== undefined ? preset.max_fee : p.max_fee,
+      free_delivery_threshold: preset.free_delivery_threshold !== undefined ? preset.free_delivery_threshold : p.free_delivery_threshold,
     }))
     setAreasInput(preset.areas)
     toast.success(`Applied ${preset.name} (${preset.radius} km radius)`)
@@ -215,7 +244,18 @@ export default function DeliveryZones() {
       const payload = {
         zone_name: form.name,
         delivery_fee: Number(form.fee),
-        min_order_amount: Number(form.minOrder),
+        min_order_amount: Number(form.minOrder || 0),
+        pricing_type: form.pricing_type || 'hybrid',
+        base_fee: form.base_fee !== '' && form.base_fee !== null && form.base_fee !== undefined ? Number(form.base_fee) : Number(form.fee),
+        base_distance_km: form.base_distance_km !== '' && form.base_distance_km !== null && form.base_distance_km !== undefined ? Number(form.base_distance_km) : 0,
+        per_km_rate: form.per_km_rate !== '' && form.per_km_rate !== null && form.per_km_rate !== undefined ? Number(form.per_km_rate) : 0,
+        min_fee: form.min_fee !== '' && form.min_fee !== null && form.min_fee !== undefined ? Number(form.min_fee) : Number(form.fee),
+        max_fee: form.max_fee !== '' && form.max_fee !== null && form.max_fee !== undefined ? Number(form.max_fee) : null,
+        surge_multiplier: form.surge_multiplier !== '' && form.surge_multiplier !== null && form.surge_multiplier !== undefined ? Number(form.surge_multiplier) : 1.0,
+        free_delivery_threshold: form.free_delivery_threshold !== '' && form.free_delivery_threshold !== null && form.free_delivery_threshold !== undefined ? Number(form.free_delivery_threshold) : null,
+        weight_surcharge_per_5kg: form.weight_surcharge_per_5kg !== '' && form.weight_surcharge_per_5kg !== null && form.weight_surcharge_per_5kg !== undefined ? Number(form.weight_surcharge_per_5kg) : 250,
+        max_batch_orders: form.max_batch_orders !== '' && form.max_batch_orders !== null ? Number(form.max_batch_orders) : 3,
+        batch_radius_km: form.batch_radius_km !== '' && form.batch_radius_km !== null ? Number(form.batch_radius_km) : 3.5,
         driver_earning_fee: Number(form.driver_earning_fee || Math.round(Number(form.fee || 0) * 0.70)),
         driver_commission_percent: Number(form.driver_commission_percent || 70),
         estimated_eta: form.eta,
@@ -464,11 +504,37 @@ export default function DeliveryZones() {
                     </span>
                   </div>
 
+                  {/* Dynamic Pricing Engine Badge */}
+                  <div className="mb-3 p-2 rounded-2" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="badge bg-success text-white" style={{ fontSize: 10, fontWeight: 700 }}>
+                        {zone.pricing_type === 'flat' ? 'Flat Rate Pricing' : '⚡ Dynamic Model 1A'}
+                      </span>
+                      {Number(zone.surge_multiplier) > 1.0 && (
+                        <span className="badge bg-danger text-white" style={{ fontSize: 9 }}>
+                          🔥 {zone.surge_multiplier}x Surge
+                        </span>
+                      )}
+                    </div>
+                    <div className="small fw-bold text-dark" style={{ fontSize: 11 }}>
+                      {zone.pricing_type === 'flat'
+                        ? `Fixed ${fmt(zone.fee)} flat fee across zone`
+                        : `${fmt(zone.base_fee || zone.fee)} base (${zone.base_distance_km || 0}km) + ${fmt(zone.per_km_rate)}/km`
+                      }
+                    </div>
+                    {zone.pricing_type !== 'flat' && (
+                      <div className="text-muted d-flex justify-content-between mt-1" style={{ fontSize: 10 }}>
+                        <span>Cap: {fmt(zone.min_fee || zone.fee)} – {zone.max_fee ? fmt(zone.max_fee) : 'No limit'}</span>
+                        {zone.free_delivery_threshold ? <span className="text-success fw-bold">Free @ {fmt(zone.free_delivery_threshold)}</span> : null}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Fee / Min Order / Deliveries */}
                   <div className="d-flex gap-2 mb-3">
                     <div className="border rounded p-2 flex-fill text-center bg-light">
                       <div className="fw-bold fs-15 text-primary">{fmt(zone.fee)}</div>
-                      <div className="text-muted" style={{ fontSize: 10 }}>Delivery Fee</div>
+                      <div className="text-muted" style={{ fontSize: 10 }}>Default Fee</div>
                     </div>
                     <div className="border rounded p-2 flex-fill text-center bg-light">
                       <div className="fw-bold fs-15">{fmt(zone.minOrder)}</div>
@@ -602,6 +668,50 @@ export default function DeliveryZones() {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Dynamic Distance Pricing Rules Box */}
+                  <div className="p-3 rounded-3 mb-4" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold small text-success">
+                        <i className="ri-scales-3-line me-1" />
+                        Dynamic Logistics Pricing Rules (Model 1A)
+                      </span>
+                      <span className="badge bg-success">
+                        {selected.pricing_type === 'flat' ? 'Flat Rate' : 'Base + Per-KM Rate'}
+                      </span>
+                    </div>
+
+                    <div className="row g-2 text-dark small" style={{ fontSize: 12 }}>
+                      <div className="col-6">
+                        <span className="text-muted">Base Rate: </span>
+                        <strong>{fmt(selected.base_fee || selected.fee)}</strong> (first {selected.base_distance_km || 0} km)
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Per-KM Rate: </span>
+                        <strong>{fmt(selected.per_km_rate)} / km</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Price Floor: </span>
+                        <strong>{fmt(selected.min_fee || selected.fee)}</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Price Ceiling: </span>
+                        <strong>{selected.max_fee ? fmt(selected.max_fee) : 'No Cap'}</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Surge Multiplier: </span>
+                        <strong>{selected.surge_multiplier || 1.0}x</strong> {Number(selected.surge_multiplier) > 1.0 && <span className="text-danger fw-bold">(Active)</span>}
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted">Free Delivery: </span>
+                        <strong>{selected.free_delivery_threshold ? `Orders $\ge$ ${fmt(selected.free_delivery_threshold)}` : 'None'}</strong>
+                      </div>
+                      <div className="col-12 mt-1 pt-1 border-top">
+                        <span className="text-muted">Weight Surcharge: </span>
+                        <strong>{fmt(selected.weight_surcharge_per_5kg || 250)}</strong> per 5kg over 10kg
+                      </div>
+                    </div>
                   </div>
 
                   {/* Areas */}
@@ -850,6 +960,209 @@ export default function DeliveryZones() {
                       Used as secondary fallback for keyword matching when coordinates are outside the primary GPS radius.
                     </div>
                   </div>
+                </div>
+
+                {/* 5. DYNAMIC PRICING ENGINE & DISTANCE CONTROLS (MODEL 1A) */}
+                <div className="p-3 rounded-3 mb-4 mt-3" style={{ background: '#f8faf9', border: '1px solid #e5e7eb' }}>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span className="fw-bold small text-dark">
+                      <i className="ri-scales-3-line me-1 text-success" />
+                      5. Dynamic Pricing Engine &amp; Routing Rules (Model 1A)
+                    </span>
+                    <div className="btn-group btn-group-sm">
+                      <button
+                        type="button"
+                        className={`btn ${form.pricing_type !== 'flat' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                        onClick={() => setField('pricing_type', 'hybrid')}
+                        style={{ fontSize: 11 }}
+                      >
+                        ⚡ Dynamic (Base + KM)
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${form.pricing_type === 'flat' ? 'btn-success text-white' : 'btn-outline-secondary'}`}
+                        onClick={() => setField('pricing_type', 'flat')}
+                        style={{ fontSize: 11 }}
+                      >
+                        🏷️ Flat Rate
+                      </button>
+                    </div>
+                  </div>
+
+                  {form.pricing_type === 'flat' ? (
+                    <div className="p-2.5 rounded-2 bg-white border text-muted small" style={{ fontSize: 11 }}>
+                      <i className="ri-information-line text-primary me-1" />
+                      This zone uses a flat delivery fee of <strong>₦{Number(form.fee || 0).toLocaleString()}</strong> regardless of trip distance or road curvature (ideal for fixed regional air cargo and long-distance dispatch).
+                    </div>
+                  ) : (
+                    <>
+                      <div className="row g-2 mb-3">
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Base Start Fee (₦) *</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 600"
+                            value={form.base_fee ?? ''}
+                            onChange={e => setField('base_fee', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Initial flag-drop charge</div>
+                        </div>
+
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Base Distance (KM)</label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 3"
+                            value={form.base_distance_km ?? ''}
+                            onChange={e => setField('base_distance_km', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Covered by base fee</div>
+                        </div>
+
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Rate Per KM (₦/km) *</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 80"
+                            value={form.per_km_rate ?? ''}
+                            onChange={e => setField('per_km_rate', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>After base distance</div>
+                        </div>
+                      </div>
+
+                      <div className="row g-2 mb-3">
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Min Price Floor (₦)</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 800"
+                            value={form.min_fee ?? ''}
+                            onChange={e => setField('min_fee', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Minimum trip fee</div>
+                        </div>
+
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Max Price Cap (₦)</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 2200 (optional)"
+                            value={form.max_fee ?? ''}
+                            onChange={e => setField('max_fee', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Ceiling price cap</div>
+                        </div>
+
+                        <div className="col-4">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Surge Multiplier</label>
+                          <select
+                            className="form-select form-select-sm bg-white"
+                            value={form.surge_multiplier || 1.0}
+                            onChange={e => setField('surge_multiplier', parseFloat(e.target.value))}
+                          >
+                            <option value="1.0">1.0x (Normal Weather/Traffic)</option>
+                            <option value="1.15">1.15x (+15% Peak Demand)</option>
+                            <option value="1.25">1.25x (+25% Heavy Rain / Traffic)</option>
+                            <option value="1.5">1.50x (+50% Storm / Flood Alert)</option>
+                            <option value="2.0">2.0x (+100% Emergency Rush)</option>
+                          </select>
+                          <div className="text-muted" style={{ fontSize: 9 }}>Weather/Rush pricing</div>
+                        </div>
+                      </div>
+
+                      <div className="row g-2 mb-2">
+                        <div className="col-6">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Free Delivery Cart Value (₦)</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 40000"
+                            value={form.free_delivery_threshold ?? ''}
+                            onChange={e => setField('free_delivery_threshold', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>100% free delivery above this subtotal</div>
+                        </div>
+
+                        <div className="col-6">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Bulk Weight Surcharge (₦/5kg)</label>
+                          <input
+                            type="number"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 250"
+                            value={form.weight_surcharge_per_5kg ?? 250}
+                            onChange={e => setField('weight_surcharge_per_5kg', e.target.value)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Per 5kg over 10kg bulk farm produce</div>
+                        </div>
+                      </div>
+
+                      <div className="row g-2 mb-2">
+                        <div className="col-6">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Max Orders Per Driver Batch</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="8"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 3"
+                            value={form.max_batch_orders ?? 3}
+                            onChange={e => setField('max_batch_orders', parseInt(e.target.value, 10) || 1)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Max combined deliveries on same route</div>
+                        </div>
+
+                        <div className="col-6">
+                          <label className="form-label small text-muted mb-1" style={{ fontSize: 11 }}>Route Batching Radius (KM)</label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            className="form-control form-control-sm bg-white"
+                            placeholder="e.g. 3.5"
+                            value={form.batch_radius_km ?? 3.5}
+                            onChange={e => setField('batch_radius_km', parseFloat(e.target.value) || 1)}
+                          />
+                          <div className="text-muted" style={{ fontSize: 9 }}>Max distance between combined drop-offs</div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Formula Preview Simulation */}
+                      {(() => {
+                        const simDist = 10;
+                        const bFee = Number(form.base_fee || form.fee || 600);
+                        const bDist = Number(form.base_distance_km || 0);
+                        const pRate = Number(form.per_km_rate || 0);
+                        const billable = Math.max(0, simDist - bDist);
+                        let total = bFee + Math.round(billable * pRate);
+                        if (form.min_fee && total < Number(form.min_fee)) total = Number(form.min_fee);
+                        if (form.max_fee && total > Number(form.max_fee)) total = Number(form.max_fee);
+                        const surge = Number(form.surge_multiplier || 1.0);
+                        if (surge > 1.0) total = Math.round(total * surge);
+                        return (
+                          <div className="p-2.5 rounded-2 bg-white border mt-2 d-flex align-items-center justify-content-between">
+                            <div className="small" style={{ fontSize: 11 }}>
+                              <span className="text-muted">Live Simulator: </span>
+                              <strong className="text-success">
+                                {simDist} km trip = ₦{bFee.toLocaleString()} + ({billable}km × ₦{pRate}) {surge > 1.0 ? `× ${surge}x surge ` : ''}= ₦{total.toLocaleString()}
+                              </strong>
+                            </div>
+                            <span className="badge bg-light text-dark border" style={{ fontSize: 10 }}>
+                              Driver payout: ~₦{Math.round(total * (Number(form.driver_commission_percent || 70) / 100)).toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
+
+                <div className="row g-3">
 
                   <div className="col-12">
                     <label className="form-label fw-medium small">Assign Fleet Drivers</label>

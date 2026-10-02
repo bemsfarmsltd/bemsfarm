@@ -59,6 +59,19 @@ const createZone = z.object({
   center_lng: z.coerce.number().nullable().optional(),
   radius_km: z.coerce.number().min(0.5).max(5000).nullable().optional(),
   color_hex: z.string().trim().max(20).optional(),
+  pricing_type: z.enum(["hybrid", "flat"]).default("hybrid").optional(),
+  base_fee: z.coerce.number().min(0).nullable().optional(),
+  base_distance_km: z.coerce.number().min(0).nullable().optional(),
+  per_km_rate: z.coerce.number().min(0).nullable().optional(),
+  min_fee: z.coerce.number().min(0).nullable().optional(),
+  max_fee: z.coerce.number().min(0).nullable().optional(),
+  surge_multiplier: z.coerce.number().min(0.5).max(10).nullable().optional(),
+  free_delivery_threshold: z.coerce.number().min(0).nullable().optional(),
+  weight_surcharge_per_5kg: z.coerce.number().min(0).nullable().optional(),
+  driver_earning_fee: z.coerce.number().min(0).nullable().optional(),
+  driver_commission_percent: z.coerce.number().min(0).max(100).nullable().optional(),
+  max_batch_orders: z.coerce.number().int().min(1).max(10).default(3).optional(),
+  batch_radius_km: z.coerce.number().min(0.5).max(50).default(3.5).optional(),
 });
 
 const updateZone = z.object({
@@ -74,6 +87,19 @@ const updateZone = z.object({
   center_lng: z.coerce.number().nullable().optional(),
   radius_km: z.coerce.number().min(0.5).max(5000).nullable().optional(),
   color_hex: z.string().trim().max(20).optional(),
+  pricing_type: z.enum(["hybrid", "flat"]).optional(),
+  base_fee: z.coerce.number().min(0).nullable().optional(),
+  base_distance_km: z.coerce.number().min(0).nullable().optional(),
+  per_km_rate: z.coerce.number().min(0).nullable().optional(),
+  min_fee: z.coerce.number().min(0).nullable().optional(),
+  max_fee: z.coerce.number().min(0).nullable().optional(),
+  surge_multiplier: z.coerce.number().min(0.5).max(10).nullable().optional(),
+  free_delivery_threshold: z.coerce.number().min(0).nullable().optional(),
+  weight_surcharge_per_5kg: z.coerce.number().min(0).nullable().optional(),
+  driver_earning_fee: z.coerce.number().min(0).nullable().optional(),
+  driver_commission_percent: z.coerce.number().min(0).max(100).nullable().optional(),
+  max_batch_orders: z.coerce.number().int().min(1).max(10).nullable().optional(),
+  batch_radius_km: z.coerce.number().min(0.5).max(50).nullable().optional(),
 });
 
 module.exports = { updateStatus, reassign, attempt, createDriver, updateDriver, createZone, updateZone };

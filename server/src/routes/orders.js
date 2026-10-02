@@ -748,6 +748,10 @@ router.get("/:id", protect, async (req, res, next) => {
          delivery.assigned_at,
          delivery.dispatched_at,
          delivery.arrived_at AS delivery_arrived_at,
+         delivery.proof_photo,
+         delivery.proof_photos,
+         delivery.item_proofs,
+         delivery.proof_note,
          dr.id AS driver_id,
          dr.name AS driver_name,
          dr.phone AS driver_phone,
@@ -792,7 +796,11 @@ router.get("/:id", protect, async (req, res, next) => {
            d.assigned_at,
            d.dispatched_at,
            d.accepted_at,
-           d.zone_id
+           d.zone_id,
+           COALESCE(d.proof_photo, o.proof_photo) AS proof_photo,
+           COALESCE(d.proof_photos, o.proof_photos, '[]'::jsonb) AS proof_photos,
+           COALESCE(d.item_proofs, o.item_proofs, '[]'::jsonb) AS item_proofs,
+           COALESCE(d.proof_note, o.proof_note) AS proof_note
          FROM deliveries d
          WHERE d.order_id = o.id
          ORDER BY d.created_at DESC
@@ -831,6 +839,7 @@ router.get("/:id", protect, async (req, res, next) => {
        GROUP BY 
          o.id, o.latitude, o.longitude, delivery.delivery_id, delivery.delivery_ref, delivery.delivery_status,
          delivery.delivered_at, delivery.arrived_at, delivery.eta_minutes, delivery.assigned_at, delivery.dispatched_at,
+         delivery.proof_photo, delivery.proof_photos, delivery.item_proofs, delivery.proof_note,
          dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.rating,
          loc.latitude, loc.longitude, loc.heading, loc.speed, loc.recorded_at, dz.zone_name,
          ret.return_id, ret.return_status, ret.return_reason, ret.return_bank_name, ret.return_account_number, ret.return_account_name, ret.return_created_at`,
@@ -842,6 +851,65 @@ router.get("/:id", protect, async (req, res, next) => {
     }
 
     res.json({ order: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/orders/:id/pod (Proof of Delivery for Customer / App) ──
+router.get("/:id/pod", protect, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `
+      SELECT 
+        o.id AS order_id,
+        o.order_ref,
+        COALESCE(d.proof_photo, o.proof_photo, '') AS proof_photo,
+        COALESCE(d.proof_photos, o.proof_photos, '[]'::jsonb) AS proof_photos,
+        COALESCE(d.item_proofs, o.item_proofs, '[]'::jsonb) AS item_proofs,
+        COALESCE(d.proof_note, o.proof_note, '') AS proof_note,
+        d.id AS delivery_id,
+        d.status AS delivery_status,
+        d.delivered_at
+      FROM orders o
+      LEFT JOIN deliveries d ON d.order_id = o.id
+      WHERE (UPPER(o.id) = UPPER($1) OR UPPER(COALESCE(o.order_ref, '')) = UPPER($1) OR CAST(d.id AS TEXT) = $1)
+        AND (o.user_id = $2 OR o.customer_id = $2 OR $3 IN ('admin', 'superadmin', 'manager', 'delivery_manager', 'staff'))
+      ORDER BY d.created_at DESC
+      LIMIT 1
+      `,
+      [id, req.user.id, req.user.role || 'user']
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "Proof of Delivery not found" });
+    }
+
+    const row = result.rows[0];
+    const proofPhoto = String(row.proof_photo || "");
+    const proofPhotos = Array.isArray(row.proof_photos) ? row.proof_photos : [];
+
+    res.json({
+      success: true,
+      order_id: row.order_id,
+      proof_photo: proofPhoto,
+      photo_url: proofPhoto,
+      url: proofPhoto,
+      proof_photos: proofPhotos,
+      item_proofs: row.item_proofs,
+      proof_note: row.proof_note,
+      delivered_at: row.delivered_at,
+      data: {
+        proof_photo: proofPhoto,
+        photo_url: proofPhoto,
+        url: proofPhoto,
+        proof_photos: proofPhotos,
+        item_proofs: row.item_proofs,
+        proof_note: row.proof_note,
+        delivered_at: row.delivered_at
+      }
+    });
   } catch (err) {
     next(err);
   }

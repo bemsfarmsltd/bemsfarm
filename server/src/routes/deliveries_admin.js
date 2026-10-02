@@ -1469,9 +1469,22 @@ router.post(
         center_lng,
         radius_km,
         color_hex,
+        pricing_type = "hybrid",
+        base_fee,
+        base_distance_km,
+        per_km_rate,
+        min_fee,
+        max_fee,
+        surge_multiplier = 1.0,
+        free_delivery_threshold,
+        weight_surcharge_per_5kg,
+        driver_earning_fee,
+        driver_commission_percent = 70,
+        max_batch_orders = 3,
+        batch_radius_km = 3.5,
       } = req.body;
 
-      if (!zone_name || !delivery_fee)
+      if (!zone_name || delivery_fee === undefined || delivery_fee === null)
         return res.status(400).json({ message: "Zone name and fee required" });
 
       const client = await pool.connect();
@@ -1483,8 +1496,11 @@ router.post(
           `
         INSERT INTO delivery_zones
           (zone_id, zone_name, delivery_fee, min_order_value, estimated_delivery_time,
-           coverage_areas, notes, status, center_lat, center_lng, radius_km, color_hex, created_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+           coverage_areas, notes, status, center_lat, center_lng, radius_km, color_hex,
+           pricing_type, base_fee, base_distance_km, per_km_rate, min_fee, max_fee,
+           surge_multiplier, free_delivery_threshold, weight_surcharge_per_5kg,
+           driver_earning_fee, driver_commission_percent, max_batch_orders, batch_radius_km, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
         RETURNING *, zone_id AS id, min_order_value AS min_order_amount,
                   estimated_delivery_time AS estimated_eta, (status = 'active') AS is_active
       `,
@@ -1501,6 +1517,19 @@ router.post(
             center_lng !== undefined && center_lng !== null ? parseFloat(center_lng) : null,
             radius_km !== undefined && radius_km !== null ? parseFloat(radius_km) : 25,
             color_hex || '#1B4332',
+            pricing_type || 'hybrid',
+            base_fee !== undefined && base_fee !== null ? parseFloat(base_fee) : parseFloat(delivery_fee),
+            base_distance_km !== undefined && base_distance_km !== null ? parseFloat(base_distance_km) : 0,
+            per_km_rate !== undefined && per_km_rate !== null ? parseFloat(per_km_rate) : 0,
+            min_fee !== undefined && min_fee !== null ? parseFloat(min_fee) : parseFloat(delivery_fee),
+            max_fee !== undefined && max_fee !== null ? parseFloat(max_fee) : null,
+            surge_multiplier !== undefined && surge_multiplier !== null ? parseFloat(surge_multiplier) : 1.0,
+            free_delivery_threshold !== undefined && free_delivery_threshold !== null ? parseFloat(free_delivery_threshold) : null,
+            weight_surcharge_per_5kg !== undefined && weight_surcharge_per_5kg !== null ? parseFloat(weight_surcharge_per_5kg) : 250,
+            driver_earning_fee !== undefined && driver_earning_fee !== null ? parseFloat(driver_earning_fee) : null,
+            driver_commission_percent !== undefined && driver_commission_percent !== null ? parseFloat(driver_commission_percent) : 70,
+            max_batch_orders !== undefined && max_batch_orders !== null ? parseInt(max_batch_orders, 10) : 3,
+            batch_radius_km !== undefined && batch_radius_km !== null ? parseFloat(batch_radius_km) : 3.5,
           ],
         );
         await client.query("COMMIT");
@@ -1550,39 +1579,127 @@ router.patch(
         center_lng,
         radius_km,
         color_hex,
+        pricing_type,
+        base_fee,
+        base_distance_km,
+        per_km_rate,
+        min_fee,
+        max_fee,
+        surge_multiplier,
+        free_delivery_threshold,
+        weight_surcharge_per_5kg,
+        driver_earning_fee,
+        driver_commission_percent,
+        max_batch_orders,
+        batch_radius_km,
       } = req.body;
 
-      await client.query(
-        `
-      UPDATE delivery_zones SET
-        zone_name             = COALESCE($1, zone_name),
-        delivery_fee          = COALESCE($2, delivery_fee),
-        min_order_value       = COALESCE($3, min_order_value),
-        estimated_delivery_time = COALESCE($4, estimated_delivery_time),
-        coverage_areas        = COALESCE($5, coverage_areas),
-        notes                 = COALESCE($6, notes),
-        status                = COALESCE($7, status),
-        center_lat            = COALESCE($8, center_lat),
-        center_lng            = COALESCE($9, center_lng),
-        radius_km             = COALESCE($10, radius_km),
-        color_hex             = COALESCE($11, color_hex)
-      WHERE zone_id = $12
-    `,
-        [
-          zone_name || null,
-          delivery_fee ? parseFloat(delivery_fee) : null,
-          min_order_amount ? parseFloat(min_order_amount) : null,
-          estimated_eta || null,
-          coverage_areas ? JSON.stringify(coverage_areas) : null,
-          notes || null,
-          is_active !== undefined ? (is_active ? 'active' : 'inactive') : null,
-          center_lat !== undefined ? (center_lat !== null ? parseFloat(center_lat) : null) : null,
-          center_lng !== undefined ? (center_lng !== null ? parseFloat(center_lng) : null) : null,
-          radius_km !== undefined ? (radius_km !== null ? parseFloat(radius_km) : null) : null,
-          color_hex || null,
-          req.params.id,
-        ],
-      );
+      const setClauses = [];
+      const values = [];
+      let idx = 1;
+
+      if (zone_name !== undefined) {
+        setClauses.push(`zone_name = $${idx++}`);
+        values.push(zone_name);
+      }
+      if (delivery_fee !== undefined) {
+        setClauses.push(`delivery_fee = $${idx++}`);
+        values.push(delivery_fee !== null ? parseFloat(delivery_fee) : null);
+      }
+      if (min_order_amount !== undefined) {
+        setClauses.push(`min_order_value = $${idx++}`);
+        values.push(min_order_amount !== null ? parseFloat(min_order_amount) : 0);
+      }
+      if (estimated_eta !== undefined) {
+        setClauses.push(`estimated_delivery_time = $${idx++}`);
+        values.push(estimated_eta || null);
+      }
+      if (coverage_areas !== undefined) {
+        setClauses.push(`coverage_areas = $${idx++}`);
+        values.push(coverage_areas ? JSON.stringify(coverage_areas) : null);
+      }
+      if (notes !== undefined) {
+        setClauses.push(`notes = $${idx++}`);
+        values.push(notes || null);
+      }
+      if (is_active !== undefined) {
+        setClauses.push(`status = $${idx++}`);
+        values.push(is_active ? 'active' : 'inactive');
+      }
+      if (center_lat !== undefined) {
+        setClauses.push(`center_lat = $${idx++}`);
+        values.push(center_lat !== null ? parseFloat(center_lat) : null);
+      }
+      if (center_lng !== undefined) {
+        setClauses.push(`center_lng = $${idx++}`);
+        values.push(center_lng !== null ? parseFloat(center_lng) : null);
+      }
+      if (radius_km !== undefined) {
+        setClauses.push(`radius_km = $${idx++}`);
+        values.push(radius_km !== null ? parseFloat(radius_km) : null);
+      }
+      if (color_hex !== undefined) {
+        setClauses.push(`color_hex = $${idx++}`);
+        values.push(color_hex || null);
+      }
+      if (pricing_type !== undefined) {
+        setClauses.push(`pricing_type = $${idx++}`);
+        values.push(pricing_type);
+      }
+      if (base_fee !== undefined) {
+        setClauses.push(`base_fee = $${idx++}`);
+        values.push(base_fee !== null ? parseFloat(base_fee) : null);
+      }
+      if (base_distance_km !== undefined) {
+        setClauses.push(`base_distance_km = $${idx++}`);
+        values.push(base_distance_km !== null ? parseFloat(base_distance_km) : null);
+      }
+      if (per_km_rate !== undefined) {
+        setClauses.push(`per_km_rate = $${idx++}`);
+        values.push(per_km_rate !== null ? parseFloat(per_km_rate) : null);
+      }
+      if (min_fee !== undefined) {
+        setClauses.push(`min_fee = $${idx++}`);
+        values.push(min_fee !== null ? parseFloat(min_fee) : null);
+      }
+      if (max_fee !== undefined) {
+        setClauses.push(`max_fee = $${idx++}`);
+        values.push(max_fee !== null ? parseFloat(max_fee) : null);
+      }
+      if (surge_multiplier !== undefined) {
+        setClauses.push(`surge_multiplier = $${idx++}`);
+        values.push(surge_multiplier !== null ? parseFloat(surge_multiplier) : 1.0);
+      }
+      if (free_delivery_threshold !== undefined) {
+        setClauses.push(`free_delivery_threshold = $${idx++}`);
+        values.push(free_delivery_threshold !== null ? parseFloat(free_delivery_threshold) : null);
+      }
+      if (weight_surcharge_per_5kg !== undefined) {
+        setClauses.push(`weight_surcharge_per_5kg = $${idx++}`);
+        values.push(weight_surcharge_per_5kg !== null ? parseFloat(weight_surcharge_per_5kg) : null);
+      }
+      if (driver_earning_fee !== undefined) {
+        setClauses.push(`driver_earning_fee = $${idx++}`);
+        values.push(driver_earning_fee !== null ? parseFloat(driver_earning_fee) : null);
+      }
+      if (driver_commission_percent !== undefined) {
+        setClauses.push(`driver_commission_percent = $${idx++}`);
+        values.push(driver_commission_percent !== null ? parseFloat(driver_commission_percent) : 70);
+      }
+      if (max_batch_orders !== undefined) {
+        setClauses.push(`max_batch_orders = $${idx++}`);
+        values.push(max_batch_orders !== null ? parseInt(max_batch_orders, 10) : 3);
+      }
+      if (batch_radius_km !== undefined) {
+        setClauses.push(`batch_radius_km = $${idx++}`);
+        values.push(batch_radius_km !== null ? parseFloat(batch_radius_km) : 3.5);
+      }
+
+      if (setClauses.length > 0) {
+        values.push(req.params.id);
+        const query = `UPDATE delivery_zones SET ${setClauses.join(', ')} WHERE zone_id = $${idx}`;
+        await client.query(query, values);
+      }
 
       // Reassign drivers if provided
       if (driver_ids !== undefined) {

@@ -6,6 +6,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const https = require("https");
+const { calculateRoadRoute, optimizeMultiStopRoute, calculateHaversineDistanceKm } = require("../services/routingService");
+const { calculateDeliveryPricing } = require("../services/pricingService");
 
 // Utility to make HTTPS request with User-Agent required by Nominatim
 function fetchJson(url) {
@@ -121,7 +123,7 @@ function resolvePostalCode(stateName, cityName, postcodeHint = "", addressText =
 }
 
 // Match location (text + coords) dynamically against delivery_zones table
-async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
+async function matchDeliveryZone(lat, lng, addressText, cityName, stateName, options = {}) {
   try {
     const zonesResult = await pool.query(
       "SELECT * FROM delivery_zones WHERE status = 'active' ORDER BY CAST(delivery_fee AS NUMERIC) ASC"
@@ -133,6 +135,31 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
     const hasCoords = !isNaN(latNum) && !isNaN(lngNum) && (latNum !== 0 || lngNum !== 0);
+
+    // Dynamic pricing helper (1A)
+    function formatZoneWithPricing(zone, matchType, extra = {}) {
+      if (!zone) return null;
+      const distance = extra.distanceKm !== undefined ? extra.distanceKm : (parseFloat(zone.radius_km) || 5);
+      const pricing = calculateDeliveryPricing({
+        zone,
+        distanceKm: distance,
+        orderTotal: parseFloat(options.orderTotal || options.order_total || 0),
+        weightKg: parseFloat(options.weightKg || options.weight_kg || 0),
+        surgeMultiplier: parseFloat(options.surgeMultiplier || options.surge_multiplier || 1.0),
+      });
+
+      return {
+        ...zone,
+        delivery_fee: pricing.delivery_fee,
+        original_delivery_fee: pricing.original_delivery_fee,
+        discount_amount: pricing.discount_amount,
+        subsidy_note: pricing.subsidy_note,
+        driver_earning: pricing.driver_earning,
+        pricing_breakdown: pricing.breakdown,
+        matchType,
+        ...extra,
+      };
+    }
 
     // 1. First priority: Dynamic Geodesic Distance / Closest Zone within Radius
     if (hasCoords) {
@@ -152,8 +179,18 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
           };
         });
 
+      const otherSeSsStates = ["cross river", "rivers", "akwa ibom", "imo", "enugu", "ebonyi", "anambra", "delta", "bayelsa", "edo"];
+      const hasOtherState = otherSeSsStates.some(st => fullSearchText.includes(st));
+
       // Filter zones where the user's GPS is inside the zone's operational radius
-      const matchingRadialZones = zonesWithDistances.filter(z => z.isWithinRadius);
+      const matchingRadialZones = zonesWithDistances.filter(z => {
+        if (!z.isWithinRadius) return false;
+        // ZONE003 is strictly for Abia State Regional towns. If the customer is explicitly in another state, don't misclassify them as Abia Regional
+        if (z.zone_id === "ZONE003" && hasOtherState && !fullSearchText.includes("abia")) {
+          return false;
+        }
+        return true;
+      });
 
       if (matchingRadialZones.length > 0) {
         // Sort by closest distance to zone center, giving preference to more specific/smaller radius
@@ -163,11 +200,7 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
         });
 
         const bestZone = matchingRadialZones[0];
-        return {
-          ...bestZone,
-          matchType: "closest_gps_zone",
-          distanceKm: bestZone.distanceKm,
-        };
+        return formatZoneWithPricing(bestZone, "closest_gps_zone", { distanceKm: bestZone.distanceKm });
       }
 
       // If outside all configured specific radii, check if close to any local hub
@@ -175,16 +208,39 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
         zonesWithDistances.sort((a, b) => a.distanceKm - b.distanceKm);
         const closestHub = zonesWithDistances[0];
         if (closestHub.distanceKm <= (closestHub.radiusKm * 1.5)) {
-          return {
-            ...closestHub,
-            matchType: "nearest_hub_proximity",
-            distanceKm: closestHub.distanceKm,
-          };
+          return formatZoneWithPricing(closestHub, "nearest_hub_proximity", { distanceKm: closestHub.distanceKm });
+        } else if (closestHub.distanceKm > 1500) {
+          // If the user's GPS is > 1,500 km away from all Nigerian hubs, this is international destination
+          const intlZone = zones.find(z => z.zone_id === "ZONE006" || String(z.zone_name).toLowerCase().includes("international") || String(z.zone_name).toLowerCase().includes("worldwide"));
+          if (intlZone) {
+            return formatZoneWithPricing(intlZone, "international_gps_detected", { distanceKm: closestHub.distanceKm });
+          }
         }
       }
     }
 
-    // 2. Second priority: Keyword match against coverage_areas in database
+    // 2. Second priority: Explicit check for international destination keywords
+    const internationalKeywords = ["united kingdom", "uk", "london", "united states", "usa", "canada", "europe", "dubai", "uae", "ghana", "worldwide", "international", "germany", "france", "australia"];
+    const isInternational = internationalKeywords.some(kw => fullSearchText.includes(kw));
+    if (isInternational) {
+      const intlZone = zones.find(z => z.zone_id === "ZONE006" || String(z.zone_name).toLowerCase().includes("international") || String(z.zone_name).toLowerCase().includes("worldwide"));
+      if (intlZone) {
+        return formatZoneWithPricing(intlZone, "international_keyword_match");
+      }
+    }
+
+    // 2b. State-level rule: 11 Southeast & South-South States
+    // If not in Abia (handled locally by Umuahia, Aba, or Abia Regional), check other 10 SE/SS states
+    const seSsStates = ["imo", "rivers", "anambra", "enugu", "ebonyi", "akwa ibom", "cross river", "bayelsa", "delta", "edo"];
+    const matchedSeSs = seSsStates.find(st => fullSearchText.includes(st));
+    if (matchedSeSs && !fullSearchText.includes("abia")) {
+      const seSsZone = zones.find(z => z.zone_id === "ZONE004" || String(z.zone_name).toLowerCase().includes("southeast"));
+      if (seSsZone) {
+        return formatZoneWithPricing(seSsZone, "state_region_match", { matchedState: matchedSeSs });
+      }
+    }
+
+    // 3. Third priority: Keyword match against coverage_areas in database
     for (const zone of zones) {
       const areas = Array.isArray(zone.coverage_areas)
         ? zone.coverage_areas
@@ -193,19 +249,19 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName) {
       for (const area of areas) {
         const cleanArea = String(area).trim().toLowerCase();
         if (cleanArea.length >= 3 && fullSearchText.includes(cleanArea)) {
-          return { ...zone, matchType: "keyword_match", matchedArea: String(area).trim() };
+          return formatZoneWithPricing(zone, "keyword_match", { matchedArea: String(area).trim() });
         }
       }
     }
 
-    // 3. Fallback: If nationwide zone configured, return it
+    // 4. Fallback: If nationwide zone configured, return it
     const nationwideZone = zones.find(z => z.zone_id === "ZONE005" || String(z.zone_name).toLowerCase().includes("nationwide"));
     if (nationwideZone) {
-      return { ...nationwideZone, matchType: "nationwide_fallback" };
+      return formatZoneWithPricing(nationwideZone, "nationwide_fallback");
     }
 
-    // 4. Default to first active zone
-    return zones[0] || null;
+    // 5. Default to first active zone
+    return zones[0] ? formatZoneWithPricing(zones[0], "default_zone") : null;
   } catch (err) {
     console.error("matchDeliveryZone error:", err.message);
     return null;
@@ -484,6 +540,144 @@ router.post("/verify", async (req, res, next) => {
   }
 });
 
+// ── POST /api/locations/route ─────────────────────────────────────────
+// Calculates real driving road route between two points using OSRM with intelligent curvature fallback
+router.post("/route", async (req, res, next) => {
+  try {
+    const { origin, destination } = req.body;
+    if (!origin || !destination || origin.lat === undefined || destination.lat === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Origin and Destination coordinates ({ lat, lng }) are required",
+      });
+    }
+
+    const routeData = await calculateRoadRoute(origin, destination);
+    res.json({
+      success: true,
+      route: routeData,
+      data: routeData,
+    });
+  } catch (err) {
+    console.error("Calculate route error:", err.message);
+    next(err);
+  }
+});
+
+// ── POST /api/locations/optimize-route ────────────────────────────────
+// Multi-stop delivery route optimization (TSP / VRP solver for driver dispatch)
+router.post("/optimize-route", async (req, res, next) => {
+  try {
+    const { origin, stops } = req.body;
+    if (!origin || !Array.isArray(stops)) {
+      return res.status(400).json({
+        success: false,
+        message: "Origin { lat, lng } and stops array are required",
+      });
+    }
+
+    const optimized = await optimizeMultiStopRoute(origin, stops);
+    res.json({
+      success: true,
+      optimization: optimized,
+      data: optimized,
+    });
+  } catch (err) {
+    console.error("Optimize route error:", err.message);
+    next(err);
+  }
+});
+
+// ── POST /api/locations/quote-delivery ────────────────────────────────
+// Real-time dynamic delivery fee calculation with road routing (1A)
+router.post("/quote-delivery", async (req, res, next) => {
+  try {
+    const {
+      origin,
+      destination,
+      address,
+      city,
+      state,
+      order_total = 0,
+      weight_kg = 0,
+      surge_multiplier = 1.0,
+    } = req.body;
+
+    const destLat = destination ? destination.lat : req.body.lat;
+    const destLng = destination ? destination.lng : req.body.lng;
+
+    // 1. Match Delivery Zone
+    const matchedZone = await matchDeliveryZone(
+      destLat,
+      destLng,
+      address,
+      city,
+      state,
+      { order_total, weight_kg, surge_multiplier }
+    );
+
+    if (!matchedZone) {
+      return res.status(404).json({
+        success: false,
+        message: "No delivery zone coverage found for this location",
+      });
+    }
+
+    // 2. Real Road Routing if destination coordinates exist
+    let routeInfo = null;
+    const originCoords = origin && origin.lat ? origin : {
+      lat: matchedZone.center_lat || 5.5245,
+      lng: matchedZone.center_lng || 7.4912,
+    };
+
+    if (destLat && destLng) {
+      try {
+        routeInfo = await calculateRoadRoute(originCoords, { lat: destLat, lng: destLng });
+      } catch (rErr) {
+        // fallback to radius
+      }
+    }
+
+    const effectiveDistanceKm = routeInfo ? routeInfo.distance_km : (matchedZone.distanceKm || parseFloat(matchedZone.radius_km) || 5);
+
+    // 3. Dynamic Pricing Calculation (Base + Per-KM)
+    const pricing = calculateDeliveryPricing({
+      zone: matchedZone,
+      distanceKm: effectiveDistanceKm,
+      orderTotal: order_total,
+      weightKg: weight_kg,
+      surgeMultiplier: surge_multiplier,
+    });
+
+    res.json({
+      success: true,
+      zone_id: matchedZone.zone_id,
+      zone_name: matchedZone.zone_name,
+      delivery_fee: pricing.delivery_fee,
+      original_delivery_fee: pricing.original_delivery_fee,
+      discount_amount: pricing.discount_amount,
+      subsidy_note: pricing.subsidy_note,
+      driver_earning: pricing.driver_earning,
+      estimated_delivery_time: routeInfo ? `${routeInfo.duration_mins} mins` : matchedZone.estimated_delivery_time,
+      eta_minutes: routeInfo ? routeInfo.duration_mins : 45,
+      distance_km: effectiveDistanceKm,
+      pricing: pricing.breakdown,
+      route: routeInfo,
+      navigation: routeInfo ? {
+        google_maps_url: routeInfo.google_maps_url,
+        waze_url: routeInfo.waze_url,
+        apple_maps_url: routeInfo.apple_maps_url,
+      } : null,
+    });
+  } catch (err) {
+    console.error("Quote delivery error:", err.message);
+    next(err);
+  }
+});
+
 router.matchDeliveryZone = matchDeliveryZone;
 router.resolvePostalCode = resolvePostalCode;
+router.calculateRoadRoute = calculateRoadRoute;
+router.optimizeMultiStopRoute = optimizeMultiStopRoute;
+router.calculateDeliveryPricing = calculateDeliveryPricing;
 module.exports = router;

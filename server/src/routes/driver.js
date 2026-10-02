@@ -110,7 +110,12 @@ router.get("/deliveries/summary", driverProtect, driverDeliveryController.getDel
 router.get("/deliveries/payouts", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
 router.get("/deliveries/earned-payouts", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
 router.get("/deliveries", driverProtect, driverDeliveryController.getActiveDeliveries);
+router.get("/deliveries/routes/optimized", driverProtect, driverDeliveryController.getOptimizedDeliveriesRoute);
+router.post("/deliveries/routes/optimize", driverProtect, driverDeliveryController.getOptimizedDeliveriesRoute);
 router.get("/deliveries/:orderId", driverProtect, driverDeliveryController.getDeliveryDetails);
+router.get("/deliveries/:orderId/navigation", driverProtect, driverDeliveryController.getDeliveryNavigation);
+router.get("/deliveries/:orderId/route", driverProtect, driverDeliveryController.getDeliveryNavigation);
+router.get("/deliveries/:orderId/directions", driverProtect, driverDeliveryController.getDeliveryNavigation);
 router.post("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
 router.patch("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
 router.put("/deliveries/:orderId/accept", driverProtect, driverDeliveryController.acceptDelivery);
@@ -130,8 +135,13 @@ router.put("/deliveries/:orderId", driverProtect, driverDeliveryController.updat
 router.post("/deliveries/:orderId/request-return", driverProtect, driverDeliveryController.requestReturnByDriver);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 
-// ── 3. Proof of Delivery (POD) Image Upload (accepts 'photo', 'image', 'file', etc.) ──
+// ── 3. Proof of Delivery (POD) Image Upload & Retrieval ─────────────────
 router.post("/upload/proof", driverProtect, driverUploadController.proofUploadMiddleware, driverUploadController.uploadProofPhoto);
+router.get("/deliveries/:orderId/pod", driverProtect, driverDeliveryController.getProofOfDelivery);
+router.get("/deliveries/:orderId/proof", driverProtect, driverDeliveryController.getProofOfDelivery);
+router.get("/orders/:orderId/pod", driverProtect, driverDeliveryController.getProofOfDelivery);
+router.get("/orders/:orderId/proof", driverProtect, driverDeliveryController.getProofOfDelivery);
+router.get("/pod/:orderId", driverProtect, driverDeliveryController.getProofOfDelivery);
 
 // ── 4. Location Telemetry & Heartbeat Ping ────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);

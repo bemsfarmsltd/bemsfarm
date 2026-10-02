@@ -434,6 +434,115 @@ Updates the status of an active delivery. Automatically updates order state, cus
 
 ---
 
+### 3.3.1 Proof of Delivery (POD) Retrieval
+Retrieves the Proof of Delivery (POD) image(s), notes, and handover confirmation previously uploaded for an order. Used by the driver mobile app when tapping "POD" or "View Proof" on an order.
+
+* **Method:** `GET`
+* **Path:** `/api/driver/deliveries/:orderId/pod` *(Aliases: `/api/driver/deliveries/:orderId/proof`, `/api/driver/orders/:orderId/pod`)*
+* **Auth Required:** Yes (`Bearer <driver_token>`)
+* **URL Params:** `orderId` (accepts order ID integer, order ref `ORD-...`, or delivery ID)
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "status": "success",
+  "order_id": 105,
+  "delivery_id": 42,
+  "order_ref": "ORD-2026-0105",
+  "delivery_ref": "DEL-2026-0042",
+  "delivery_status": "delivered",
+  "proof_photo": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+  "photo_url": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+  "url": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+  "proof_photos": [
+    "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg"
+  ],
+  "item_proofs": [],
+  "proof_note": "Handed directly to customer at apartment door",
+  "note": "Handed directly to customer at apartment door",
+  "delivered_at": "2026-09-20T11:05:00.000Z",
+  "customer_name": "Mrs. Chioma Eze",
+  "delivery_address": "Flat 3B, Plot 14 Government Layout, Umuahia",
+  "data": {
+    "proof_photo": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+    "photo_url": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+    "url": "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg",
+    "proof_photos": [
+      "https://api.bemsfarms.com/uploads/proofs/POD_1727856000_abcd1234.jpg"
+    ],
+    "item_proofs": [],
+    "proof_note": "Handed directly to customer at apartment door",
+    "delivered_at": "2026-09-20T11:05:00.000Z"
+  }
+}
+```
+
+---
+
+### 3.3.2 Driver Turn-by-Turn Road Navigation
+Provides real road driving distance, live ETA, turn-by-turn guidance, and 1-tap navigation deep-links (Google Maps, Waze, Apple Maps) from the driver's current position to the customer's delivery destination.
+
+* **Method:** `GET`
+* **Path:** `/api/driver/deliveries/:orderId/navigation` *(Aliases: `/api/driver/deliveries/:orderId/route`, `/api/driver/deliveries/:orderId/directions`)*
+* **Auth Required:** Yes (`Bearer <driver_token>`)
+* **Optional Query Params:** `lat`, `lng` (driver's live coordinates; defaults to latest streamed location or store hub)
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "order_id": 105,
+  "delivery_id": 42,
+  "customer_name": "Mrs. Chioma Eze",
+  "customer_phone": "08031234567",
+  "delivery_address": "Plot 14 Government Layout, Umuahia",
+  "origin": { "lat": 5.5245, "lng": 7.4912, "label": "Driver Location" },
+  "destination": { "lat": 5.518, "lng": 7.485, "label": "Plot 14 Government Layout" },
+  "road_distance_km": 3.8,
+  "eta_minutes": 11,
+  "geometry": [[7.4912, 5.5245], [7.4895, 5.521], [7.485, 5.518]],
+  "steps": [
+    { "instruction": "turn-right onto Ossah Road", "distance_m": 850, "duration_s": 120 },
+    { "instruction": "continue onto Bank Road", "distance_m": 1200, "duration_s": 240 }
+  ],
+  "navigation": {
+    "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=5.5245,7.4912&destination=5.518,7.485&travelmode=driving",
+    "waze_url": "https://waze.com/ul?ll=5.518,7.485&navigate=yes",
+    "apple_maps_url": "https://maps.apple.com/?saddr=5.5245,7.4912&daddr=5.518,7.485&dirflg=d"
+  }
+}
+```
+
+---
+
+### 3.3.3 Multi-Stop Batch Route Optimization (VRP / Multi-Drop)
+Optimizes all active deliveries assigned to this driver into the fastest, most fuel-efficient single drop-off sequence (TSP solver).
+
+* **Method:** `GET` or `POST`
+* **Path:** `/api/driver/deliveries/routes/optimized` (or `POST /api/driver/deliveries/routes/optimize`)
+* **Auth Required:** Yes (`Bearer <driver_token>`)
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "total_stops": 3,
+  "total_distance_km": 14.2,
+  "total_duration_mins": 38,
+  "saved_distance_km": 8.6,
+  "efficiency_gain": "38% fuel/time saved via sequenced drops",
+  "optimized_sequence": [
+    { "sequence": 1, "order_id": 103, "customer_name": "Ngozi", "address": "BCA Housing", "leg_distance_km": 2.1, "leg_duration_mins": 7 },
+    { "sequence": 2, "order_id": 105, "customer_name": "Chioma", "address": "World Bank", "leg_distance_km": 3.4, "leg_duration_mins": 10 },
+    { "sequence": 3, "order_id": 108, "customer_name": "Victor", "address": "Ubakala", "leg_distance_km": 8.7, "leg_duration_mins": 21 }
+  ],
+  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=5.5245,7.4912&destination=5.48,7.45&travelmode=driving&waypoints=5.535%2C7.502%7C5.518%2C7.485"
+}
+```
+
+---
+
 ### 3.4 Delivery History & Summary Metrics
 Paginated history of all completed and past deliveries made by this driver.
 

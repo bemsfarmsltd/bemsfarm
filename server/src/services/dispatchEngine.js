@@ -143,11 +143,22 @@ async function autoAssignClosestDriver(
     const originLat = parseFloat(order.latitude) || storeCoords.lat;
     const originLng = parseFloat(order.longitude) || storeCoords.lng;
 
-    // Filter available drivers:
-    // 1. Status not suspended, inactive, off_duty, on_delivery, in_transit
-    // 2. driver_availability.is_available = true and is_on_delivery = false
-    // 3. No open deliveries currently in progress (assigned, awaiting_pickup, en_route, arrived)
-    // 4. Not in excludedDriverIds (e.g. drivers who timed out or declined this specific order)
+    // 0. Fetch Zone Configuration for Route Batching Limits
+    let maxBatchOrders = 3;
+    let batchRadiusKm = 3.5;
+    if (order.zone_id) {
+      try {
+        const zRes = await client.query(
+          "SELECT max_batch_orders, batch_radius_km FROM delivery_zones WHERE zone_id = $1",
+          [order.zone_id]
+        );
+        if (zRes.rows.length > 0) {
+          if (zRes.rows[0].max_batch_orders) maxBatchOrders = parseInt(zRes.rows[0].max_batch_orders, 10);
+          if (zRes.rows[0].batch_radius_km) batchRadiusKm = parseFloat(zRes.rows[0].batch_radius_km);
+        }
+      } catch (_) {}
+    }
+
     const params = [order.id];
     let excludedCondition = "";
     if (Array.isArray(excludedDriverIds) && excludedDriverIds.length > 0) {
@@ -158,84 +169,163 @@ async function autoAssignClosestDriver(
       }
     }
 
-    const driversRes = await client.query(
-      `
-      SELECT 
-        d.id, d.name, d.phone, d.vehicle_type, d.vehicle_plate, d.rating,
-        COALESCE(da.is_available, d.is_available, true) AS is_available,
-        COALESCE(da.is_on_delivery, false) AS is_on_delivery,
-        dl.latitude, dl.longitude, dl.recorded_at
-      FROM drivers d
-      LEFT JOIN driver_availability da ON d.id = da.driver_id
-      LEFT JOIN LATERAL (
-        SELECT latitude, longitude, recorded_at
-        FROM driver_locations
-        WHERE driver_id = d.id
-        ORDER BY recorded_at DESC
-        LIMIT 1
-      ) dl ON true
-      WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
-        AND COALESCE(da.is_available, d.is_available, true) = true
-        AND COALESCE(da.is_on_delivery, false) = false
-        AND NOT EXISTS (
-          SELECT 1 FROM deliveries del 
-          WHERE del.driver_id = d.id 
-            AND del.order_id != $1
-            AND (
-              del.status IN ('accepted', 'picked_up', 'en_route', 'arrived')
-              OR (
-                del.status IN ('assigned', 'awaiting_pickup')
-                AND del.assigned_at >= NOW() - INTERVAL '5 minutes'
-              )
-            )
-        )
-        ${excludedCondition}
-      `,
-      params
-    );
+    let bestDriver = null;
+    let isBundledRoute = false;
 
-    if (driversRes.rows.length === 0) {
-      // Sections 26 & 27: No driver available / No driver accepts -> Status AWAITING_DRIVER_CONFIRMATION
-      if (['packed', 'packed_ready', 'awaiting_driver_confirmation'].includes(order.status)) {
-        await client.query(
-          `UPDATE orders
-           SET status = 'awaiting_driver_confirmation',
-               tracking_status = 'awaiting_driver_confirmation',
-               driver_id = NULL,
-               updated_at = NOW()
-           WHERE id = $1`,
-          [order.id]
-        );
+    // ── PRIORITY 1: AUTO-BUNDLE WITH ACTIVE DRIVERS ON SAME CORRIDOR / ZONE ──
+    try {
+      const bundleCandidatesRes = await client.query(
+        `
+        SELECT 
+          d.id, d.name, d.phone, d.vehicle_type, d.vehicle_plate, d.rating,
+          dl.latitude, dl.longitude,
+          JSON_AGG(JSON_BUILD_OBJECT(
+            'delivery_id', del.id,
+            'order_id', del.order_id,
+            'zone_id', del.zone_id,
+            'status', del.status,
+            'lat', o2.latitude,
+            'lng', o2.longitude
+          )) AS active_deliveries
+        FROM drivers d
+        JOIN deliveries del ON del.driver_id = d.id 
+          AND del.order_id != $1
+          AND del.status IN ('assigned', 'accepted', 'awaiting_pickup', 'picked_up')
+        LEFT JOIN orders o2 ON (o2.id::text = del.order_id OR o2.order_ref = del.order_id)
+        LEFT JOIN driver_availability da ON d.id = da.driver_id
+        LEFT JOIN LATERAL (
+          SELECT latitude, longitude FROM driver_locations WHERE driver_id = d.id ORDER BY recorded_at DESC LIMIT 1
+        ) dl ON true
+        WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty')
+          AND COALESCE(da.is_available, d.is_available, true) = true
+          ${excludedCondition}
+        GROUP BY d.id, d.name, d.phone, d.vehicle_type, d.vehicle_plate, d.rating, dl.latitude, dl.longitude
+        HAVING COUNT(del.id) < ${maxBatchOrders}
+        `,
+        params
+      );
 
-        await insertDispatchAlert({
-          order_id: order.id,
-          order_ref: order.order_ref,
-          delivery_id: order.delivery_id,
-          message: `No available driver found for order #${order.order_ref || order.id}. Action required in Driver Availability Modal.`,
-        }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+      if (bundleCandidatesRes.rows.length > 0) {
+        const eligibleBundles = [];
+        for (const cand of bundleCandidatesRes.rows) {
+          let matchesRoute = false;
+          let minDetour = 999;
+
+          for (const ad of (cand.active_deliveries || [])) {
+            // Match A: Exact same delivery zone
+            if (order.zone_id && ad.zone_id && order.zone_id === ad.zone_id) {
+              matchesRoute = true;
+            }
+            // Match B: Customer coordinate proximity within batchRadiusKm
+            if (ad.lat && ad.lng && originLat && originLng) {
+              const dKm = calculateDistanceKm(originLat, originLng, parseFloat(ad.lat), parseFloat(ad.lng));
+              if (dKm <= batchRadiusKm) {
+                matchesRoute = true;
+                if (dKm < minDetour) minDetour = dKm;
+              }
+            }
+          }
+
+          if (matchesRoute) {
+            eligibleBundles.push({
+              ...cand,
+              distanceKm: minDetour < 999 ? minDetour : 1.0,
+            });
+          }
+        }
+
+        if (eligibleBundles.length > 0) {
+          eligibleBundles.sort((a, b) => a.distanceKm - b.distanceKm);
+          bestDriver = eligibleBundles[0];
+          isBundledRoute = true;
+          console.log(`⚡ [Automap Batching] Order #${order.order_ref || order.id} auto-bundled to Driver ${bestDriver.name} on same corridor (detour proximity: ${bestDriver.distanceKm.toFixed(1)} km)`);
+        }
       }
-
-      await client.query("COMMIT");
-      return {
-        success: false,
-        status: "awaiting_driver_confirmation",
-        message: "No available online drivers found at this moment. Order placed in AWAITING_DRIVER_CONFIRMATION.",
-      };
+    } catch (e) {
+      console.warn('[dispatch-engine] Route bundling check warning:', e.message);
     }
 
-    // Rank drivers by distance to origin/store
-    const driversWithDistance = driversRes.rows.map((drv) => {
-      const driverLat = drv.latitude ? parseFloat(drv.latitude) : storeCoords.lat;
-      const driverLng = drv.longitude ? parseFloat(drv.longitude) : storeCoords.lng;
-      const distanceKm = calculateDistanceKm(originLat, originLng, driverLat, driverLng);
-      return {
-        ...drv,
-        distanceKm,
-      };
-    });
+    // ── PRIORITY 2: IDLE DRIVERS (Fallback if no active same-route driver available) ──
+    if (!bestDriver) {
+      const driversRes = await client.query(
+        `
+        SELECT 
+          d.id, d.name, d.phone, d.vehicle_type, d.vehicle_plate, d.rating,
+          COALESCE(da.is_available, d.is_available, true) AS is_available,
+          COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+          dl.latitude, dl.longitude, dl.recorded_at
+        FROM drivers d
+        LEFT JOIN driver_availability da ON d.id = da.driver_id
+        LEFT JOIN LATERAL (
+          SELECT latitude, longitude, recorded_at
+          FROM driver_locations
+          WHERE driver_id = d.id
+          ORDER BY recorded_at DESC
+          LIMIT 1
+        ) dl ON true
+        WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
+          AND COALESCE(da.is_available, d.is_available, true) = true
+          AND COALESCE(da.is_on_delivery, false) = false
+          AND NOT EXISTS (
+            SELECT 1 FROM deliveries del 
+            WHERE del.driver_id = d.id 
+              AND del.order_id != $1
+              AND (
+                del.status IN ('accepted', 'picked_up', 'en_route', 'arrived')
+                OR (
+                  del.status IN ('assigned', 'awaiting_pickup')
+                  AND del.assigned_at >= NOW() - INTERVAL '5 minutes'
+                )
+              )
+          )
+          ${excludedCondition}
+        `,
+        params
+      );
 
-    driversWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
-    const bestDriver = driversWithDistance[0];
+      if (driversRes.rows.length === 0) {
+        // Sections 26 & 27: No driver available / No driver accepts -> Status AWAITING_DRIVER_CONFIRMATION
+        if (['packed', 'packed_ready', 'awaiting_driver_confirmation'].includes(order.status)) {
+          await client.query(
+            `UPDATE orders
+             SET status = 'awaiting_driver_confirmation',
+                 tracking_status = 'awaiting_driver_confirmation',
+                 driver_id = NULL,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          await insertDispatchAlert({
+            order_id: order.id,
+            order_ref: order.order_ref,
+            delivery_id: order.delivery_id,
+            message: `No available driver found for order #${order.order_ref || order.id}. Action required in Driver Availability Modal.`,
+          }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+        }
+
+        await client.query("COMMIT");
+        return {
+          success: false,
+          status: "awaiting_driver_confirmation",
+          message: "No available online drivers found at this moment. Order placed in AWAITING_DRIVER_CONFIRMATION.",
+        };
+      }
+
+      // Rank drivers by distance to origin/store
+      const driversWithDistance = driversRes.rows.map((drv) => {
+        const driverLat = drv.latitude ? parseFloat(drv.latitude) : storeCoords.lat;
+        const driverLng = drv.longitude ? parseFloat(drv.longitude) : storeCoords.lng;
+        const distanceKm = calculateDistanceKm(originLat, originLng, driverLat, driverLng);
+        return {
+          ...drv,
+          distanceKm,
+        };
+      });
+
+      driversWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+      bestDriver = driversWithDistance[0];
+    }
 
     // Ensure delivery record exists
     let deliveryId = order.delivery_id;

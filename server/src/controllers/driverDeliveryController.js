@@ -2,6 +2,7 @@ const pool = require("../db/pool");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 const { logOrderAudit } = require("../utils/workflowAudit");
 const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+const { calculateRoadRoute, optimizeMultiStopRoute } = require("../services/routingService");
 
 // Normalize driver status string input
 function normalizeStatus(status) {
@@ -596,17 +597,17 @@ const getDeliveryDetails = async (req, res, next) => {
         d.eta_minutes,
         d.attempts,
         COALESCE(d.delivery_address, o.address) AS delivery_address,
-        d.proof_note,
-        d.proof_photo,
-        d.proof_photos,
-        d.item_proofs,
+        COALESCE(d.proof_note, o.proof_note, '') AS proof_note,
+        COALESCE(d.proof_photo, o.proof_photo, '') AS proof_photo,
+        COALESCE(d.proof_photos, o.proof_photos, '[]'::jsonb) AS proof_photos,
+        COALESCE(d.item_proofs, o.item_proofs, '[]'::jsonb) AS item_proofs,
         d.arrived_at,
         d.failure_reason,
         COALESCE(d.customer_confirmed, o.customer_confirmed, false) AS customer_confirmed,
         COALESCE(d.customer_confirmed_at, o.customer_confirmed_at) AS customer_confirmed_at,
         COALESCE(o.driver_confirmed, false) AS driver_confirmed,
         o.driver_confirmed_at,
-        (COALESCE(d.customer_confirmed, o.customer_confirmed, false) = true OR d.proof_photo IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
+        (COALESCE(d.customer_confirmed, o.customer_confirmed, false) = true OR COALESCE(d.proof_photo, o.proof_photo) IS NOT NULL OR d.status = 'delivered') AS can_complete_delivery,
         o.id AS order_id,
         o.order_ref,
         o.status AS order_status,
@@ -652,7 +653,7 @@ const getDeliveryDetails = async (req, res, next) => {
       LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
       LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       WHERE (d.driver_id = $1 OR d.driver_id IS NULL)
-        AND (d.order_id = $2 OR d.id::text = $2 OR d.delivery_ref = $2 OR o.order_ref = $2)
+        AND (d.order_id::text = $2 OR d.id::text = $2 OR d.delivery_ref = $2 OR o.order_ref = $2)
       LIMIT 1
       `,
       [driverId, orderId]
@@ -672,6 +673,274 @@ const getDeliveryDetails = async (req, res, next) => {
     });
   } catch (err) {
     console.error("Driver getDeliveryDetails error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/deliveries/:orderId/pod & /proof ───────────────────
+// Dedicated endpoint for mobile driver to view uploaded Proof of Delivery
+const getProofOfDelivery = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT 
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.status AS delivery_status,
+        d.delivered_at,
+        COALESCE(d.proof_photo, o.proof_photo, '') AS proof_photo,
+        COALESCE(d.proof_photos, o.proof_photos, '[]'::jsonb) AS proof_photos,
+        COALESCE(d.item_proofs, o.item_proofs, '[]'::jsonb) AS item_proofs,
+        COALESCE(d.proof_note, o.proof_note, '') AS proof_note,
+        o.id AS order_id,
+        o.order_ref,
+        o.status AS order_status,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(d.delivery_address, o.address) AS delivery_address
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      WHERE (d.driver_id = $1 OR d.driver_id IS NULL)
+        AND (
+          d.order_id::text = $2 
+          OR d.id::text = $2 
+          OR d.delivery_ref = $2 
+          OR o.order_ref = $2
+        )
+      LIMIT 1
+      `,
+      [driverId, String(orderId || "").trim()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Delivery or Proof of Delivery not found for this order",
+      });
+    }
+
+    const row = result.rows[0];
+    const proofPhoto = String(row.proof_photo || "");
+    const proofPhotos = Array.isArray(row.proof_photos) ? row.proof_photos : [];
+    const itemProofs = Array.isArray(row.item_proofs) ? row.item_proofs : [];
+
+    return res.json({
+      success: true,
+      status: "success",
+      order_id: row.order_id,
+      delivery_id: row.delivery_id,
+      order_ref: row.order_ref,
+      delivery_ref: row.delivery_ref,
+      delivery_status: row.delivery_status,
+      proof_photo: proofPhoto,
+      photo_url: proofPhoto,
+      photoUrl: proofPhoto,
+      url: proofPhoto,
+      proof_photos: proofPhotos,
+      item_proofs: itemProofs,
+      proof_note: row.proof_note,
+      note: row.proof_note,
+      delivered_at: row.delivered_at,
+      customer_name: row.customer_name,
+      delivery_address: row.delivery_address,
+      data: {
+        proof_photo: proofPhoto,
+        photo_url: proofPhoto,
+        url: proofPhoto,
+        proof_photos: proofPhotos,
+        item_proofs: itemProofs,
+        proof_note: row.proof_note,
+        delivered_at: row.delivered_at
+      }
+    });
+  } catch (err) {
+    console.error("Driver getProofOfDelivery error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/deliveries/:orderId/navigation ────────────────────
+// Real-time turn-by-turn road route, road distance, live ETA, and 1-tap navigation deep-links
+const getDeliveryNavigation = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+
+    // 1. Fetch delivery details, customer coordinates, and store coordinates
+    const delRes = await pool.query(
+      `
+      SELECT 
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.status AS delivery_status,
+        d.delivery_address,
+        o.id AS order_id,
+        o.order_ref,
+        o.latitude AS customer_lat,
+        o.longitude AS customer_lng,
+        o.address AS order_address,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        dz.center_lat AS store_lat,
+        dz.center_lng AS store_lng,
+        dz.zone_name
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
+      WHERE (d.driver_id = $1 OR d.driver_id IS NULL)
+        AND (
+          d.order_id::text = $2 
+          OR d.id::text = $2 
+          OR d.delivery_ref = $2 
+          OR o.order_ref = $2
+        )
+      LIMIT 1
+      `,
+      [driverId, String(orderId || "").trim()]
+    );
+
+    if (delRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Delivery not found or not assigned to you" });
+    }
+
+    const del = delRes.rows[0];
+
+    // 2. Query driver's latest live GPS location
+    const locRes = await pool.query(
+      `SELECT latitude, longitude, recorded_at FROM driver_locations WHERE driver_id = $1 ORDER BY recorded_at DESC LIMIT 1`,
+      [driverId]
+    );
+
+    let driverLat = locRes.rows[0]?.latitude;
+    let driverLng = locRes.rows[0]?.longitude;
+
+    // Fallback: If driver hasn't streamed location yet, use query params or zone hub
+    if (req.query.lat && req.query.lng) {
+      driverLat = parseFloat(req.query.lat);
+      driverLng = parseFloat(req.query.lng);
+    } else if (!driverLat || !driverLng) {
+      driverLat = del.store_lat || 5.5245;
+      driverLng = del.store_lng || 7.4912;
+    }
+
+    const customerLat = parseFloat(del.customer_lat);
+    const customerLng = parseFloat(del.customer_lng);
+
+    if (isNaN(customerLat) || isNaN(customerLng)) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer delivery coordinates are not set for this order",
+        address: del.delivery_address || del.order_address,
+      });
+    }
+
+    const routeData = await calculateRoadRoute(
+      { lat: driverLat, lng: driverLng },
+      { lat: customerLat, lng: customerLng }
+    );
+
+    res.json({
+      success: true,
+      order_id: del.order_id,
+      delivery_id: del.delivery_id,
+      order_ref: del.order_ref,
+      delivery_ref: del.delivery_ref,
+      customer_name: del.customer_name,
+      customer_phone: del.customer_phone,
+      delivery_address: del.delivery_address || del.order_address,
+      origin: { lat: driverLat, lng: driverLng, label: "Driver Location" },
+      destination: { lat: customerLat, lng: customerLng, label: del.delivery_address },
+      road_distance_km: routeData.distance_km,
+      eta_minutes: routeData.duration_mins,
+      geometry: routeData.geometry,
+      steps: routeData.steps,
+      navigation: {
+        google_maps_url: routeData.google_maps_url,
+        waze_url: routeData.waze_url,
+        apple_maps_url: routeData.apple_maps_url,
+      },
+    });
+  } catch (err) {
+    console.error("Driver getDeliveryNavigation error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/deliveries/routes/optimized ───────────────────────
+// Multi-drop route optimization for driver's active orders (VRP / TSP loop)
+const getOptimizedDeliveriesRoute = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+
+    // 1. Fetch all active orders for this driver with coordinates
+    const result = await pool.query(
+      `
+      SELECT 
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.status AS delivery_status,
+        COALESCE(d.delivery_address, o.address) AS delivery_address,
+        o.id AS order_id,
+        o.order_ref,
+        o.latitude AS customer_lat,
+        o.longitude AS customer_lng,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone
+      FROM deliveries d
+      JOIN orders o ON d.order_id = o.id
+      LEFT JOIN users u ON o.customer_id = u.id OR o.user_id = u.id
+      WHERE d.driver_id = $1
+        AND d.status IN ('assigned', 'accepted', 'picked_up', 'en_route', 'arrived')
+        AND o.latitude IS NOT NULL
+        AND o.longitude IS NOT NULL
+      ORDER BY d.assigned_at ASC
+      `,
+      [driverId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: "No active deliveries to optimize",
+        total_stops: 0,
+        optimized_sequence: [],
+      });
+    }
+
+    // 2. Get driver starting point
+    const locRes = await pool.query(
+      `SELECT latitude, longitude FROM driver_locations WHERE driver_id = $1 ORDER BY recorded_at DESC LIMIT 1`,
+      [driverId]
+    );
+
+    let startLat = locRes.rows[0]?.latitude || (req.query.lat ? parseFloat(req.query.lat) : 5.5245);
+    let startLng = locRes.rows[0]?.longitude || (req.query.lng ? parseFloat(req.query.lng) : 7.4912);
+
+    const stops = result.rows.map(r => ({
+      delivery_id: r.delivery_id,
+      order_id: r.order_id,
+      order_ref: r.order_ref,
+      customer_name: r.customer_name,
+      customer_phone: r.customer_phone,
+      address: r.delivery_address,
+      lat: parseFloat(r.customer_lat),
+      lng: parseFloat(r.customer_lng),
+    }));
+
+    const optimization = await optimizeMultiStopRoute({ lat: startLat, lng: startLng }, stops);
+
+    res.json({
+      success: true,
+      driver_id: driverId,
+      origin: { lat: startLat, lng: startLng },
+      ...optimization,
+    });
+  } catch (err) {
+    console.error("Driver getOptimizedDeliveriesRoute error:", err.message);
     next(err);
   }
 };
@@ -2039,6 +2308,9 @@ module.exports = {
   getAvailableDeliveries,
   getDeliveryHistory,
   getDeliveryDetails,
+  getProofOfDelivery,
+  getDeliveryNavigation,
+  getOptimizedDeliveriesRoute,
   getDeliveriesPayoutSummary,
   updateDeliveryStatus,
   acceptDelivery,
