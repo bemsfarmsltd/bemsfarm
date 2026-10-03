@@ -261,8 +261,7 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="container-fluid">
-      <SettingsTabs />
+    <div className="container-fluid py-2">
 
       {/* Header & Save Action */}
       <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">

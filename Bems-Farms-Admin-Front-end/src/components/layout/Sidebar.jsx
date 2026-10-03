@@ -788,6 +788,11 @@ export default function Sidebar() {
                     <span>Refunds &amp; Returns</span>
                   </NavLink>
                 )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Discounts &amp; Coupons</span>
+                  </NavLink>
+                )}
               </>
             )}
 
@@ -929,6 +934,11 @@ export default function Sidebar() {
                 >
                   <span>Roles &amp; Permissions</span>
                 </Link>
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Admin System Access</span>
+                  </NavLink>
+                )}
               </>
             )}
 
@@ -936,44 +946,19 @@ export default function Sidebar() {
             {activeTab === 'settings' && (
               <>
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>General Store Info</span>
+                  <span>Store Profile</span>
                 </NavLink>
                 <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Payment &amp; COD Settings</span>
+                  <span>Payment &amp; Tax</span>
                 </NavLink>
                 {is('superadmin', 'admin') && (
                   <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>POS Terminal Config</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Discounts &amp; Coupons</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/tax" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Tax &amp; VAT</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/currencies" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Currencies</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Invoice Templates</span>
+                    <span>Receipts &amp; Invoices</span>
                   </NavLink>
                 )}
                 <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Notifications</span>
                 </NavLink>
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Manager Permissions</span>
-                  </NavLink>
-                )}
               </>
             )}
 

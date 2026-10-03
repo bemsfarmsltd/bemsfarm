@@ -298,8 +298,8 @@ function App() {
                 <Route path="/settings/payment"       element={<PaymentSettings />} />
                 <Route path="/settings/coupons"       element={<CouponSettings />} />
                 <Route path="/settings/pos"           element={<POSSettings />} />
-                <Route path="/settings/tax"           element={<TaxSettings />} />
-                <Route path="/settings/currencies"    element={<CurrencySettings />} />
+                <Route path="/settings/tax"           element={<Navigate to="/settings/payment" replace />} />
+                <Route path="/settings/currencies"    element={<Navigate to="/settings/general" replace />} />
                 <Route path="/settings/invoices"      element={<InvoiceSettings />} />
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
               </Route>

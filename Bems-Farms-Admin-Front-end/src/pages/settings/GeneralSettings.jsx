@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
-import SettingsTabs from './SettingsTabs'
 
 const CURRENCIES = [
   { code: 'NGN', label: 'Nigerian Naira (₦)', symbol: '₦' },
@@ -45,7 +44,7 @@ export default function GeneralSettings() {
   useEffect(() => {
     api.get('/admin/settings/general')
       .then(res => setForm(f => ({ ...f, ...res.data.settings })))
-      .catch(() => toast.error('Failed to load general settings'))
+      .catch(() => toast.error('Failed to load store settings'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -57,7 +56,7 @@ export default function GeneralSettings() {
     try {
       const res = await api.post('/admin/settings/general', form)
       setForm(f => ({ ...f, ...res.data.settings }))
-      toast.success('General store settings saved successfully!')
+      toast.success('Store profile updated successfully!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save settings')
     } finally {
@@ -65,22 +64,31 @@ export default function GeneralSettings() {
     }
   }
 
-  if (loading) return <div className="container-fluid py-5 text-center text-muted">Loading store settings…</div>
+  if (loading) {
+    return (
+      <div className="container-fluid py-5 text-center text-muted">
+        <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+        Loading store settings…
+      </div>
+    )
+  }
 
   return (
-    <div className="container-fluid">
-      <SettingsTabs />
-
-      {/* Header & Save Action */}
-      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
+    <div className="container-fluid py-2">
+      {/* Sleek Master Header */}
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4 pb-2 border-bottom">
         <div>
-          <h5 className="mb-1 fw-bold">General Store Profile</h5>
+          <h4 className="mb-1 fw-bold text-dark font-display">Store Profile &amp; Identity</h4>
           <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-            Manage core identity, branding, official contacts, and store operating defaults.
+            Manage business credentials, official contacts, currency, and operating hours.
           </p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm" disabled={saving} onClick={handleSave}>
-          <i className="ri-save-line"></i>
+        <button
+          className="btn btn-primary d-flex align-items-center gap-2 px-4 py-2 shadow-sm fw-medium"
+          disabled={saving}
+          onClick={handleSave}
+        >
+          <i className="ri-save-3-line fs-16"></i>
           {saving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
@@ -88,15 +96,15 @@ export default function GeneralSettings() {
       <div className="row g-4">
         {/* Left Column: Business & Contact Info */}
         <div className="col-lg-7">
-          {/* Business Identity */}
+          {/* Card 1: Business Identity & Legal */}
           <div className="card shadow-sm border mb-4">
-            <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-building-line text-primary"></i>
-                Business Identity &amp; Branding
+            <div className="card-header bg-white py-3 border-bottom">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-building-line text-primary fs-17"></i>
+                Business Identity &amp; Legal
               </h6>
             </div>
-            <div className="card-body">
+            <div className="card-body p-4">
               <div className="row g-3">
                 <div className="col-md-7">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Store / Company Name</label>
@@ -113,21 +121,21 @@ export default function GeneralSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="RC 1234567"
+                    placeholder="RC 7291044"
                     value={form.store_registration_number || ''}
                     onChange={e => fld('store_registration_number', e.target.value)}
                   />
                 </div>
                 <div className="col-12">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Slogan / Brand Tagline</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Brand Tagline / Slogan</label>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Fresh food. Trusted quality."
+                    placeholder="Fresh farm produce and groceries delivered with trusted quality"
                     value={form.store_tagline || ''}
                     onChange={e => fld('store_tagline', e.target.value)}
                   />
-                  <div className="form-text" style={{ fontSize: 11 }}>Appears on customer invoices, receipts, and order confirmation emails.</div>
+                  <div className="form-text" style={{ fontSize: 11 }}>Printed on receipts, order confirmations, and invoice headers.</div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Tax ID / TIN</label>
@@ -140,7 +148,7 @@ export default function GeneralSettings() {
                   />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Business Logo URL</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Logo Image Path / URL</label>
                   <input
                     type="text"
                     className="form-control"
@@ -153,20 +161,20 @@ export default function GeneralSettings() {
             </div>
           </div>
 
-          {/* Contact & Location */}
+          {/* Card 2: Contact & Headquarters Location */}
           <div className="card shadow-sm border mb-4">
-            <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-map-pin-line text-primary"></i>
+            <div className="card-header bg-white py-3 border-bottom">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-map-pin-2-line text-primary fs-17"></i>
                 Official Contact &amp; Physical Address
               </h6>
             </div>
-            <div className="card-body">
+            <div className="card-body p-4">
               <div className="row g-3">
                 <div className="col-md-6">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Customer Support Phone</label>
                   <div className="input-group">
-                    <span className="input-group-text bg-white"><i className="ri-phone-line text-muted"></i></span>
+                    <span className="input-group-text bg-light text-muted"><i className="ri-phone-line"></i></span>
                     <input
                       type="text"
                       className="form-control"
@@ -177,9 +185,9 @@ export default function GeneralSettings() {
                   </div>
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Official Support Email</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Support Email</label>
                   <div className="input-group">
-                    <span className="input-group-text bg-white"><i className="ri-mail-line text-muted"></i></span>
+                    <span className="input-group-text bg-light text-muted"><i className="ri-mail-line"></i></span>
                     <input
                       type="email"
                       className="form-control"
@@ -191,10 +199,10 @@ export default function GeneralSettings() {
                 </div>
                 <div className="col-12">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Headquarters / Dispatch Address</label>
-                  <textarea
+                  <input
+                    type="text"
                     className="form-control"
-                    rows={2}
-                    placeholder="Physical farm or store location..."
+                    placeholder="Bems Farms Central Hub, Abia State"
                     value={form.store_address || ''}
                     onChange={e => fld('store_address', e.target.value)}
                   />
@@ -204,7 +212,7 @@ export default function GeneralSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Umuahia / Aba, Abia State"
+                    placeholder="Umuahia / Aba"
                     value={form.store_city || ''}
                     onChange={e => fld('store_city', e.target.value)}
                   />
@@ -224,20 +232,20 @@ export default function GeneralSettings() {
           </div>
         </div>
 
-        {/* Right Column: Localization & Defaults */}
+        {/* Right Column: Localization, Currency & Store Rules */}
         <div className="col-lg-5">
-          {/* Localization & Currency */}
+          {/* Card 3: Localization & Currency */}
           <div className="card shadow-sm border mb-4">
-            <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-global-line text-primary"></i>
+            <div className="card-header bg-white py-3 border-bottom">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-global-line text-primary fs-17"></i>
                 Localization &amp; Currency
               </h6>
             </div>
-            <div className="card-body">
+            <div className="card-body p-4">
               <div className="row g-3">
                 <div className="col-12">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Default Base Currency</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Store Base Currency</label>
                   <select
                     className="form-select"
                     value={form.store_currency || 'NGN'}
@@ -247,6 +255,7 @@ export default function GeneralSettings() {
                       <option key={c.code} value={c.code}>{c.label}</option>
                     ))}
                   </select>
+                  <div className="form-text" style={{ fontSize: 11 }}>Used for product prices, order settlements, and accounting reports.</div>
                 </div>
                 <div className="col-12">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>System Timezone</label>
@@ -261,30 +270,33 @@ export default function GeneralSettings() {
                   </select>
                 </div>
                 <div className="col-12">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Store Opening Hours</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Mon - Sat: 8:00 AM - 7:00 PM"
-                    value={form.store_opening_hours || ''}
-                    onChange={e => fld('store_opening_hours', e.target.value)}
-                  />
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Operating Hours</label>
+                  <div className="input-group">
+                    <span className="input-group-text bg-light text-muted"><i className="ri-time-line"></i></span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Mon - Sat: 8:00 AM - 7:00 PM"
+                      value={form.store_opening_hours || ''}
+                      onChange={e => fld('store_opening_hours', e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Store Defaults */}
+          {/* Card 4: Store Operations & Inventory Defaults */}
           <div className="card shadow-sm border mb-4">
-            <div className="card-header bg-light-subtle py-3">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-shield-check-line text-primary"></i>
-                Inventory &amp; Order Rules
+            <div className="card-header bg-white py-3 border-bottom">
+              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-dark">
+                <i className="ri-settings-4-line text-primary fs-17"></i>
+                Store Operations &amp; Inventory Rules
               </h6>
             </div>
-            <div className="card-body">
+            <div className="card-body p-4">
               <div className="mb-3">
-                <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Default Low Stock Alert Threshold</label>
+                <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Low Stock Alert Threshold</label>
                 <div className="input-group">
                   <input
                     type="number"
@@ -296,36 +308,28 @@ export default function GeneralSettings() {
                   />
                   <span className="input-group-text bg-light text-muted">units</span>
                 </div>
-                <div className="form-text" style={{ fontSize: 11 }}>Triggers alert banners when catalog item count falls below this number.</div>
+                <div className="form-text" style={{ fontSize: 11 }}>Triggers alert notifications when inventory dips below this count.</div>
               </div>
 
-              <div className="form-check form-switch pt-2">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="order_auto_confirm"
-                  checked={form.order_auto_confirm !== 'false'}
-                  onChange={e => fld('order_auto_confirm', e.target.checked ? 'true' : 'false')}
-                />
-                <label className="form-check-label text-dark fw-medium" style={{ fontSize: 13 }} htmlFor="order_auto_confirm">
-                  Auto-confirm paid online orders
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Summary Card */}
-          <div className="card bg-primary-subtle border-primary-subtle shadow-sm">
-            <div className="card-body">
-              <div className="d-flex align-items-center gap-3">
-                <div className="avatar-md rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44 }}>
-                  <i className="ri-shield-flash-line fs-20"></i>
-                </div>
-                <div>
-                  <h6 className="mb-0.5 fw-bold text-primary">Live Enterprise Security</h6>
-                  <p className="mb-0 text-muted" style={{ fontSize: 12 }}>
-                    All changes are immediately reflected across storefront, POS stations, and mobile dispatch.
-                  </p>
+              <div className="pt-2 border-top">
+                <div className="form-check form-switch d-flex align-items-center justify-content-between p-0 m-0">
+                  <div>
+                    <label className="form-check-label text-dark fw-medium d-block" style={{ fontSize: 13 }} htmlFor="order_auto_confirm">
+                      Auto-Confirm Paid Online Orders
+                    </label>
+                    <span className="text-muted d-block" style={{ fontSize: 11 }}>
+                      Instantly moves successfully paid card/transfer orders to processing.
+                    </span>
+                  </div>
+                  <input
+                    className="form-check-input ms-2"
+                    type="checkbox"
+                    role="switch"
+                    id="order_auto_confirm"
+                    style={{ width: 44, height: 22, cursor: 'pointer' }}
+                    checked={form.order_auto_confirm !== 'false'}
+                    onChange={e => fld('order_auto_confirm', e.target.checked ? 'true' : 'false')}
+                  />
                 </div>
               </div>
             </div>

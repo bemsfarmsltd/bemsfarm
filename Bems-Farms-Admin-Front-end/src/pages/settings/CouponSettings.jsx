@@ -99,18 +99,25 @@ export default function CouponSettings() {
   }
 
   return (
-    <div className="container-fluid">
-      <SettingsTabs />
+    <div className="container-fluid py-2">
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4 pb-2 border-bottom">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark font-display">Discounts &amp; Promotional Coupons</h4>
+          <p className="text-muted mb-0" style={{ fontSize: 13 }}>
+            Create and manage promotional discount codes for customer checkout.
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary d-flex align-items-center gap-2 px-3.5 py-2 shadow-sm" onClick={openAdd}>
+          <i className="ri-add-line fs-16"></i> Create Coupon
+        </button>
+      </div>
 
-      <div className="card">
-        <div className="card-header d-flex flex-wrap gap-4 align-items-center justify-content-between">
-          <h5 className="card-title mb-1">Coupon List</h5>
-          <div className="d-flex flex-wrap gap-2 align-items-center">
-            <div className="position-relative">
-              <input type="text" className="form-control ps-10" placeholder="Search coupon..." value={search} onChange={e => setSearch(e.target.value)} />
-              <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
-            </div>
-            <button type="button" className="btn btn-primary" onClick={openAdd}><i className="ri-add-line me-1"></i>Add Coupon</button>
+      <div className="card shadow-sm border">
+        <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap gap-3 align-items-center justify-content-between">
+          <h6 className="mb-0 fw-bold text-dark">Active Coupon Codes</h6>
+          <div className="position-relative" style={{ minWidth: 240 }}>
+            <input type="text" className="form-control ps-5" placeholder="Search coupons..." value={search} onChange={e => setSearch(e.target.value)} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
         </div>
         <div className="card-body pt-0">

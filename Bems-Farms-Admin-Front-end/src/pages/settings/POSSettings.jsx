@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
@@ -215,8 +216,22 @@ export default function POSSettings() {
   ]
 
   return (
-    <div className="container-fluid pb-5">
-      <SettingsTabs />
+    <div className="container-fluid py-2 pb-5">
+      {/* Receipts & Documents Segment Switcher */}
+      <div className="d-flex align-items-center gap-2 mb-4">
+        <Link
+          to="/settings/pos"
+          className="btn btn-sm px-3.5 py-2 fw-semibold rounded-pill btn-primary shadow-sm"
+        >
+          <i className="ri-printer-line me-1.5"></i> POS Thermal Receipts
+        </Link>
+        <Link
+          to="/settings/invoices"
+          className="btn btn-sm px-3.5 py-2 fw-medium rounded-pill btn-light border text-muted"
+        >
+          <i className="ri-file-text-line me-1.5"></i> Official Invoices &amp; Billing
+        </Link>
+      </div>
 
       {/* Modern Compact Action Header */}
       <div className="card shadow-sm border-0 mb-4 bg-white rounded-3 overflow-hidden">

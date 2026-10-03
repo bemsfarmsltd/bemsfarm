@@ -85,16 +85,22 @@ export default function ManagerSettings() {
   }
 
   return (
-    <div className="container-fluid">
-      <SettingsTabs />
+    <div className="container-fluid py-2">
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4 pb-2 border-bottom">
+        <div>
+          <h4 className="mb-1 fw-bold text-dark font-display">Admin System Access Accounts</h4>
+          <p className="text-muted mb-0" style={{ fontSize: 13 }}>
+            Manage administrative credentials, assigned store branches, and staff login permissions.
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary d-flex align-items-center gap-2 px-3.5 py-2 shadow-sm" onClick={openAdd}>
+          <i className="ri-user-add-line fs-16"></i> Add Admin User
+        </button>
+      </div>
 
-      <div className="card">
-        <div className="card-header d-flex flex-wrap gap-4 align-items-center justify-content-between">
-          <div>
-            <h5 className="card-title mb-1">Admin & Staff Accounts</h5>
-            <p className="text-muted mb-0" style={{ fontSize: 12 }}>Manage who can sign in to this admin panel and what they can do.</p>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={openAdd}><i className="ri-add-line me-1"></i>Add User</button>
+      <div className="card shadow-sm border">
+        <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap gap-4 align-items-center justify-content-between">
+          <h6 className="mb-0 fw-bold text-dark">Authorized Administrative Users</h6>
         </div>
         <div className="card-body pt-0">
           <div className="table-card table-responsive">

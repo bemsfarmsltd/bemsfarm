@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
@@ -85,8 +86,22 @@ export default function InvoiceSettings() {
   if (loading) return <div className="container-fluid py-5 text-center text-muted">Loading invoice configuration…</div>
 
   return (
-    <div className="container-fluid">
-      <SettingsTabs />
+    <div className="container-fluid py-2">
+      {/* Receipts & Documents Segment Switcher */}
+      <div className="d-flex align-items-center gap-2 mb-4">
+        <Link
+          to="/settings/pos"
+          className="btn btn-sm px-3.5 py-2 fw-medium rounded-pill btn-light border text-muted"
+        >
+          <i className="ri-printer-line me-1.5"></i> POS Thermal Receipts
+        </Link>
+        <Link
+          to="/settings/invoices"
+          className="btn btn-sm px-3.5 py-2 fw-semibold rounded-pill btn-primary shadow-sm"
+        >
+          <i className="ri-file-text-line me-1.5"></i> Official Invoices &amp; Billing
+        </Link>
+      </div>
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
