@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -156,121 +155,158 @@ export default function Profile() {
   }
 
   const roleMeta = user?.role ? ROLE_META[user.role] : null
-  const initials = (fields.name?.[0] || 'A').toUpperCase()
+  const initials = (fields.name?.[0] || user?.name?.[0] || 'A').toUpperCase()
 
   if (loading) {
     return (
-      <div className="container-fluid py-5 text-center">
-        <div className="spinner-border text-primary" role="status"></div>
-        <div className="text-muted mt-2">Loading your profile...</div>
+      <div className="container-fluid py-5 text-center text-muted">
+        <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+        Loading your profile…
       </div>
     )
   }
 
   return (
-    <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex align-items-md-center justify-content-between">
+    <div className="container-fluid py-2">
+      {/* Page Header */}
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4 pb-2 border-bottom">
         <div>
-          <h6 className="flex-grow-1 mb-0 fw-bold">My Profile</h6>
-          <ul className="breadcrumb flex-shrink-0 mb-0">
-            <li className="breadcrumb-item"><Link to="/settings">Settings</Link></li>
-            <li className="breadcrumb-item active">My Profile</li>
-          </ul>
+          <h4 className="mb-1 fw-bold text-dark font-display">My Profile &amp; Security</h4>
+          <p className="text-muted mb-0" style={{ fontSize: 13 }}>
+            Manage your personal administrator identity, photo, contact information, and password security.
+          </p>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          {roleMeta && (
+            <span className="badge px-3 py-2 fs-12 fw-medium border" style={{ background: roleMeta.bg || '#f1f5f9', color: roleMeta.color || '#334155' }}>
+              <i className={`${roleMeta.icon || 'ri-shield-user-line'} me-1.5`}></i>
+              {roleMeta.label || user?.role}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Profile Banner */}
-      <div className="card shadow-sm border-0 mb-3">
-        <div className="card-body d-flex align-items-center gap-3 flex-wrap">
-          <div className="position-relative flex-shrink-0">
-            <div
-              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold overflow-hidden shadow-sm"
-              style={{ width: 72, height: 72, fontSize: 24, background: 'linear-gradient(135deg, #143C2D, #0B281B)' }}
-            >
-              {uploadingAvatar ? (
-                <div className="spinner-border spinner-border-sm text-white" role="status"></div>
-              ) : avatar ? (
-                <img src={avatar} alt="Profile" className="w-100 h-100 object-fit-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
+      {/* Profile Master Card */}
+      <div className="card shadow-sm border mb-4" style={{ borderRadius: 14 }}>
+        <div className="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-4">
+          <div className="d-flex align-items-center gap-3.5">
+            <div className="position-relative flex-shrink-0">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold overflow-hidden shadow-sm border border-2 border-white"
+                style={{ width: 76, height: 76, fontSize: 26, background: 'linear-gradient(135deg, #143C2D, #0B281B)' }}
+              >
+                {uploadingAvatar ? (
+                  <div className="spinner-border spinner-border-sm text-white" role="status"></div>
+                ) : avatar ? (
+                  <img src={avatar} alt="Profile" className="w-100 h-100 object-fit-cover" />
+                ) : (
+                  <span>{initials}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary rounded-circle position-absolute d-flex align-items-center justify-content-center p-0 shadow-sm"
+                style={{ width: 28, height: 28, bottom: -2, right: -2 }}
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload photo"
+              >
+                <i className="ri-camera-line" style={{ fontSize: 13 }}></i>
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="d-none" onChange={handleAvatarPick} />
             </div>
+
+            <div>
+              <h5 className="fw-bold text-dark mb-1 font-display">{fields.name || user?.name || 'Administrator'}</h5>
+              <div className="d-flex align-items-center gap-2 text-muted mb-1" style={{ fontSize: 13 }}>
+                <i className="ri-mail-line"></i>
+                <span>{fields.email || user?.email}</span>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fs-11 fw-medium">
+                  ● Active Session
+                </span>
+                {fields.phone && (
+                  <span className="text-muted" style={{ fontSize: 12 }}>
+                    • {fields.phone}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
             <button
               type="button"
-              className="btn btn-sm btn-success rounded-circle position-absolute d-flex align-items-center justify-content-center p-0"
-              style={{ width: 26, height: 26, bottom: -2, right: -2 }}
+              className="btn btn-sm btn-outline-secondary px-3 py-2 fw-medium"
               onClick={() => fileInputRef.current?.click()}
-              title="Upload photo"
+              disabled={uploadingAvatar}
             >
-              <i className="ri-camera-line" style={{ fontSize: 13 }}></i>
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="d-none" onChange={handleAvatarPick} />
-          </div>
-
-          <div className="flex-grow-1">
-            <h5 className="fw-bold mb-0">{fields.name || 'Admin User'}</h5>
-            <p className="text-muted mb-1 fs-sm">{fields.email}</p>
-            {roleMeta && (
-              <span className="badge" style={{ background: roleMeta.bg, color: roleMeta.color }}>
-                <i className={`${roleMeta.icon} me-1`}></i>{roleMeta.label}
-              </span>
-            )}
-          </div>
-
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar}>
-              {avatar ? 'Change Photo' : 'Upload Photo'}
+              <i className="ri-upload-2-line me-1"></i> {avatar ? 'Change Photo' : 'Upload Photo'}
             </button>
             {avatar && (
-              <button type="button" className="btn btn-sm btn-outline-danger" onClick={handleRemoveAvatar} disabled={uploadingAvatar}>
-                Remove
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger px-3 py-2 fw-medium"
+                onClick={handleRemoveAvatar}
+                disabled={uploadingAvatar}
+              >
+                <i className="ri-delete-bin-line me-1"></i> Remove
               </button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="card shadow-sm border-0">
-        <div className="card-header bg-transparent border-bottom-0 pt-3">
-          <ul className="nav nav-underline">
-            <li className="nav-item">
-              <button type="button" className={`nav-link ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>
-                <i className="ri-user-line me-1"></i>Profile & Contact
-              </button>
-            </li>
-            <li className="nav-item">
-              <button type="button" className={`nav-link ${tab === 'security' ? 'active' : ''}`} onClick={() => setTab('security')}>
-                <i className="ri-shield-keyhole-line me-1"></i>Security & Password
-              </button>
-            </li>
-          </ul>
+      {/* Main Tabs Container */}
+      <div className="card shadow-sm border mb-4" style={{ borderRadius: 14 }}>
+        <div className="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className={`btn btn-sm px-3.5 py-2 rounded-pill fw-semibold transition-all ${tab === 'profile' ? 'btn-primary shadow-sm' : 'btn-light border text-muted'}`}
+              style={{ fontSize: 13 }}
+              onClick={() => setTab('profile')}
+            >
+              <i className="ri-user-settings-line me-1.5"></i> Personal Details &amp; Contact
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm px-3.5 py-2 rounded-pill fw-semibold transition-all ${tab === 'security' ? 'btn-primary shadow-sm' : 'btn-light border text-muted'}`}
+              style={{ fontSize: 13 }}
+              onClick={() => setTab('security')}
+            >
+              <i className="ri-shield-keyhole-line me-1.5"></i> Password &amp; Security
+            </button>
+          </div>
         </div>
 
-        <div className="card-body">
+        <div className="card-body p-4">
           {tab === 'profile' && (
             <form onSubmit={handleSaveProfile}>
-              <div className="row g-3">
+              <div className="row g-4">
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">Full Name <span className="text-danger">*</span></label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Full Name <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control"
+                    placeholder="e.g. Henry Adeleke"
                     value={fields.name}
                     onChange={(e) => setFields({ ...fields, name: e.target.value })}
                     required
                   />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">Email Address</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Email Address</label>
                   <input
                     type="email"
                     className="form-control"
+                    placeholder="henry@bemsfarms.com"
                     value={fields.email}
                     onChange={(e) => setFields({ ...fields, email: e.target.value })}
                   />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">Phone Number</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Phone Number</label>
                   <input
                     type="tel"
                     className="form-control"
@@ -280,7 +316,7 @@ export default function Profile() {
                   />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold">Gender</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Gender</label>
                   <select
                     className="form-select"
                     value={fields.gender}
@@ -293,68 +329,43 @@ export default function Profile() {
                   </select>
                 </div>
                 <div className="col-12">
-                  <label className="form-label fw-semibold">Address</label>
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Address / Location</label>
                   <textarea
                     className="form-control"
                     rows="2"
+                    placeholder="City, State, Country"
                     value={fields.address}
                     onChange={(e) => setFields({ ...fields, address: e.target.value })}
                   ></textarea>
                 </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">ID Number</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. National ID / NIN"
-                    value={fields.id_number}
-                    onChange={(e) => setFields({ ...fields, id_number: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">Tax ID</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={fields.tax_id}
-                    onChange={(e) => setFields({ ...fields, tax_id: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold">Tax Country</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. Nigeria"
-                    value={fields.tax_country}
-                    onChange={(e) => setFields({ ...fields, tax_country: e.target.value })}
-                  />
-                </div>
               </div>
 
-              <div className="mt-4">
-                <button type="submit" className="btn btn-primary" disabled={savingProfile}>
-                  {savingProfile ? 'Saving...' : 'Save Changes'}
+              <div className="mt-4 pt-3 border-top d-flex justify-content-end">
+                <button type="submit" className="btn btn-primary px-4 py-2 fw-medium shadow-sm" disabled={savingProfile}>
+                  <i className="ri-save-3-line me-1.5"></i>
+                  {savingProfile ? 'Saving Changes…' : 'Save Profile Changes'}
                 </button>
               </div>
             </form>
           )}
 
           {tab === 'security' && (
-            <form onSubmit={handleChangePassword} style={{ maxWidth: 420 }}>
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Current Password</label>
+            <form onSubmit={handleChangePassword} style={{ maxWidth: 520 }}>
+              <div className="mb-3.5">
+                <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Current Password</label>
                 <input
                   type="password"
                   className="form-control"
                   autoComplete="current-password"
+                  placeholder="Enter current password"
                   value={passwordForm.current}
                   onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
                   required
                 />
               </div>
-              <div className="mb-3">
-                <label className="form-label fw-semibold">New Password</label>
+
+              <div className="mb-3.5">
+                <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>New Password</label>
                 <input
                   type="password"
                   className="form-control"
@@ -365,23 +376,29 @@ export default function Profile() {
                   required
                 />
               </div>
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Confirm New Password</label>
+
+              <div className="mb-4">
+                <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Confirm New Password</label>
                 <input
                   type="password"
                   className="form-control"
                   autoComplete="new-password"
+                  placeholder="Re-type new password"
                   value={passwordForm.confirm}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
                   required
                 />
               </div>
-              <button type="submit" className="btn btn-primary" disabled={savingPassword}>
-                {savingPassword ? 'Updating...' : 'Update Password'}
+
+              <div className="p-3 bg-light rounded-3 border mb-4 text-muted" style={{ fontSize: 12 }}>
+                <i className="ri-shield-keyhole-line text-primary me-1.5"></i>
+                Changing your password will immediately sign you out of all other active browser sessions for security.
+              </div>
+
+              <button type="submit" className="btn btn-primary px-4 py-2 fw-medium shadow-sm" disabled={savingPassword}>
+                <i className="ri-lock-password-line me-1.5"></i>
+                {savingPassword ? 'Updating Password…' : 'Update Password'}
               </button>
-              <p className="text-muted fs-xs mt-3 mb-0">
-                Changing your password will sign you out of all other active sessions.
-              </p>
             </form>
           )}
         </div>

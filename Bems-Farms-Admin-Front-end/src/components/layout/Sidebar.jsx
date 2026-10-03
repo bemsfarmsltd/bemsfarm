@@ -945,6 +945,9 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
+                <NavLink to="/settings/profile" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>My Profile &amp; Security</span>
+                </NavLink>
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Store Profile</span>
                 </NavLink>
