@@ -809,9 +809,6 @@ export default function Sidebar() {
                 <NavLink to="/deliveries/drivers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Dispatch Drivers</span>
                 </NavLink>
-                <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Cash on Delivery (COD)</span>
-                </NavLink>
               </>
             )}
 
