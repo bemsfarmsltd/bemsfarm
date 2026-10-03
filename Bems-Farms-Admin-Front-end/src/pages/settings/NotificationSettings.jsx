@@ -1,120 +1,122 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
-import SettingsTabs from './SettingsTabs'
 import { useRealtime } from '../../context/RealtimeContext'
 
 const EVENT_CATEGORIES = [
   {
-    title: 'Customer & Authentication',
-    icon: 'ri-user-star-line',
-    badge: 'Accounts',
-    badgeCls: 'bg-primary-subtle text-primary',
-    events: [
-      {
-        id: 'customer_register',
-        name: 'New Customer Registered',
-        desc: 'Alert when a new shopper registers with verified delivery coordinates.',
-        icon: 'ri-user-add-line',
-      },
-      {
-        id: 'security_event',
-        name: 'Password & Security Changes',
-        desc: 'Trigger alerts on password resets, credential updates, or suspicious login attempts.',
-        icon: 'ri-shield-keyhole-line',
-      },
-    ]
-  },
-  {
-    title: 'Sales, POS & Orders',
-    icon: 'ri-shopping-cart-2-line',
+    id: 'orders',
+    title: 'Orders, Sales & POS',
+    icon: 'ri-shopping-bag-3-line',
     badge: 'Revenue',
-    badgeCls: 'bg-success-subtle text-success',
+    color: '#10b981',
+    bg: '#ecfdf5',
     events: [
       {
         id: 'order_placed',
-        name: 'New Online Orders',
-        desc: 'Instant alert whenever a customer checks out an order on web or mobile.',
-        icon: 'ri-shopping-bag-3-line',
+        name: 'New Online Order Placed',
+        desc: 'Instant chime and popup when a customer completes checkout on web or mobile.',
+        icon: 'ri-shopping-cart-2-line',
       },
       {
         id: 'pos_sale',
-        name: 'Point-of-Sale Counter Sales',
-        desc: 'Alerts when in-store counter checkout is completed by cashiers.',
-        icon: 'ri-bank-card-line',
+        name: 'POS Register Sale Completed',
+        desc: 'Notification when an in-store walk-in counter sale is tendered by a cashier.',
+        icon: 'ri-computer-line',
       },
       {
         id: 'refund_request',
-        name: 'Refund & Return Requests',
-        desc: 'Alert when a return ticket or refund request is submitted for review.',
+        name: 'Refund & Return Ticket',
+        desc: 'Alert when a customer or manager files a return or refund ticket.',
         icon: 'ri-refund-2-line',
       },
     ]
   },
   {
-    title: 'Logistics & Deliveries',
+    id: 'logistics',
+    title: 'Dispatch & Logistics',
     icon: 'ri-e-bike-2-line',
-    badge: 'Dispatch',
-    badgeCls: 'bg-info-subtle text-info',
+    badge: 'Fulfillment',
+    color: '#0ea5e9',
+    bg: '#f0f9ff',
     events: [
       {
         id: 'order_delivery',
-        name: 'Delivery Transit & Driver Status',
-        desc: 'Alert when drivers accept orders, begin road transit, or mark items delivered.',
-        icon: 'ri-road-map-line',
+        name: 'Driver & Delivery Transit',
+        desc: 'Alerts when orders are dispatched, accepted by riders, or delivered.',
+        icon: 'ri-map-pin-user-line',
       },
     ]
   },
   {
-    title: 'Customer Support & AI Intelligence',
-    icon: 'ri-customer-service-2-line',
-    badge: 'Conversations',
-    badgeCls: 'bg-warning-subtle text-warning',
-    events: [
-      {
-        id: 'support_message',
-        name: 'Live Support Messages',
-        desc: 'Instant alert when a customer sends a message in live support chat.',
-        icon: 'ri-chat-smile-2-line',
-      },
-      {
-        id: 'ai_chat',
-        name: 'Chef Bems AI Conversations',
-        desc: 'Real-time alert when customers interact with Chef Bems AI for meal planning or recipe advice.',
-        icon: 'ri-robot-2-line',
-      },
-    ]
-  },
-  {
-    title: 'Inventory, Stock & Expiry',
+    id: 'inventory',
+    title: 'Inventory & Stock Alerts',
     icon: 'ri-archive-line',
     badge: 'Warehouse',
-    badgeCls: 'bg-secondary-subtle text-secondary',
+    color: '#f59e0b',
+    bg: '#fffbeb',
     events: [
       {
         id: 'low_stock',
-        name: 'Low Stock & Depletion Thresholds',
-        desc: 'Warn store managers when inventory falls below minimum reorder thresholds.',
+        name: 'Low Stock Depletion Warning',
+        desc: 'Alerts when item inventory count drops below the specified reorder threshold.',
         icon: 'ri-alert-line',
       },
       {
         id: 'batch_expiry',
-        name: 'Batch Expiry Approaching (7-Day)',
-        desc: 'Proactive alerts 7 days before produce lots reach their stated expiry date.',
+        name: 'Produce Batch Expiry (7-Day Notice)',
+        desc: 'Warning sent 7 days before perishable farm produce lots reach expiry.',
         icon: 'ri-time-line',
       },
     ]
   },
   {
-    title: 'System Health & Resilience',
-    icon: 'ri-heart-pulse-line',
-    badge: 'DevOps',
-    badgeCls: 'bg-danger-subtle text-danger',
+    id: 'customers',
+    title: 'Customers & Live Chat',
+    icon: 'ri-customer-service-2-line',
+    badge: 'Engagement',
+    color: '#8b5cf6',
+    bg: '#f5f3ff',
     events: [
       {
+        id: 'customer_register',
+        name: 'New Customer Registered',
+        desc: 'Alert when a new shopper registers with verified delivery address.',
+        icon: 'ri-user-add-line',
+      },
+      {
+        id: 'support_message',
+        name: 'Live Customer Support Message',
+        desc: 'Instant alert when a shopper initiates or replies in live support chat.',
+        icon: 'ri-chat-smile-2-line',
+      },
+      {
+        id: 'ai_chat',
+        name: 'Chef Bems AI Conversations',
+        desc: 'Activity alert when shoppers interact with Chef Bems AI for meal planning.',
+        icon: 'ri-robot-2-line',
+      },
+    ]
+  },
+  {
+    id: 'security',
+    title: 'Security & System Health',
+    icon: 'ri-shield-keyhole-line',
+    badge: 'Security',
+    color: '#ef4444',
+    bg: '#fef2f2',
+    events: [
+      {
+        id: 'security_event',
+        name: 'Staff Password & Security Changes',
+        desc: 'Immediate warning on password resets, profile edits, or unauthorized logins.',
+        icon: 'ri-lock-password-line',
+      },
+      {
         id: 'system_error',
-        name: 'Critical Server Errors & Slowdowns',
-        desc: 'Instant alerts on 500 internal errors, database query timeouts, or API slowdowns.',
+        name: 'System Exceptions & Server Errors',
+        desc: 'Instant alert on unhandled 500 API errors, webhook drops, or server issues.',
         icon: 'ri-error-warning-line',
       },
     ]
@@ -124,9 +126,8 @@ const EVENT_CATEGORIES = [
 export default function NotificationSettings() {
   const [settings, setSettings] = useState({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [savingKey, setSavingKey] = useState(null)
-  const [lastSaved, setLastSaved] = useState(null)
+  const [activeCategory, setActiveCategory] = useState('all')
   const [testing, setTesting] = useState(false)
   const [testType, setTestType] = useState('order_placed')
 
@@ -141,15 +142,14 @@ export default function NotificationSettings() {
 
   const isChecked = (key) => settings[key] !== 'false'
 
-  // Persist a single key immediately for zero-lag instant saving
+  // Persist a single key immediately
   const persistSetting = async (key, val, label) => {
     setSavingKey(key)
     const updated = { ...settings, [key]: val }
     setSettings(updated)
     try {
       await api.post('/admin/settings/notifications', { [key]: val })
-      setLastSaved(new Date())
-      toast.success(label, { id: `notif-${key}`, duration: 2500 })
+      toast.success(label, { id: `notif-${key}`, duration: 2000 })
     } catch (err) {
       setSettings(settings)
       toast.error(err.response?.data?.message || `Failed to update ${label}`)
@@ -171,7 +171,7 @@ export default function NotificationSettings() {
     await persistSetting(
       'notif_push_enabled',
       next,
-      next === 'true' ? '🔔 In-App & Push Alerts enabled globally' : '🔕 In-App & Push Alerts paused globally'
+      next === 'true' ? 'In-App & Bell Alerts enabled' : 'In-App & Bell Alerts paused'
     )
   }
 
@@ -180,7 +180,7 @@ export default function NotificationSettings() {
     await persistSetting(
       'notif_email_enabled',
       next,
-      next === 'true' ? '✉️ Email Alerts enabled globally' : '📧 Email Alerts paused globally'
+      next === 'true' ? 'Email notifications enabled' : 'Email notifications paused'
     )
   }
 
@@ -190,7 +190,7 @@ export default function NotificationSettings() {
     await persistSetting(
       'notif_sound_enabled',
       next,
-      next === 'true' ? '🔊 Audio Chimes enabled' : '🔇 Audio Chimes muted'
+      next === 'true' ? 'Audio chime sound enabled' : 'Audio chime muted'
     )
   }
 
@@ -200,40 +200,24 @@ export default function NotificationSettings() {
     await persistSetting(key, next, `${eventName}: ${channelType} ${action}`)
   }
 
-  async function handleSaveAll(e) {
-    if (e) e.preventDefault()
-    setSaving(true)
-    try {
-      const res = await api.post('/admin/settings/notifications', settings)
-      setSettings(res.data.settings || {})
-      setLastSaved(new Date())
-      toast.success('All notification preferences saved successfully!')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function triggerTest() {
     setTesting(true)
     try {
       const res = await api.post('/admin/notifications/test', { type: testType })
-      toast.success(res.data.message || 'Test notification dispatched successfully!')
+      toast.success(res.data.message || 'Test notification dispatched!')
 
-      // Pop immediate in-app banner for instant visual/audio feedback
       if (showNotificationPopup) {
         const testLabels = {
-          order_placed: { title: '🛍️ New Online Order #ORD-8821', msg: 'Order #ORD-8821 placed by Chinedu Okafor totaling ₦28,500 with 4 items.' },
-          customer_register: { title: '🎉 New Customer Registered', msg: 'Amara Kalu created a new account in Umuahia with verified GPS coordinates.' },
-          pos_sale: { title: '💳 Walk-in POS Sale Completed', msg: 'Walk-in sale of ₦14,200 completed on POS Terminal 1.' },
-          order_delivery: { title: '🛵 Driver Dispatched for Order #ORD-8821', msg: 'Courier Emeka has picked up the package and is en route.' },
-          support_message: { title: '💬 Live Customer Support Message', msg: 'Ngozi sent a message: "Hello, please is fresh catfish available today?"' },
-          ai_chat: { title: '🤖 Chef Bems AI Recommendation', msg: 'Customer requested a 4-person goat meat peppersoup recipe.' },
-          low_stock: { title: '⚠️ Low Stock Alert: Fresh Farm Eggs', msg: 'Fresh Farm Eggs inventory has dropped to 4 crates (threshold: 10).' },
-          batch_expiry: { title: '⏰ Produce Lot Expiring: Batch #LOT-2026-081', msg: 'Batch #LOT-2026-081 (Organic Bell Peppers) will expire in 4 days.' },
-          refund_request: { title: '↩️ Return Request Submitted', msg: 'Refund request of ₦6,500 submitted for Order #ORD-8750.' },
-          system_error: { title: '🔴 Critical System Error Captured', msg: 'Payment gateway timeout during webhook verification [HTTP 504]. Auto-recovered.' },
+          order_placed: { title: '🛍️ New Online Order #ORD-8821', msg: 'Order placed by Chinedu Okafor totaling ₦28,500 with 4 items.' },
+          customer_register: { title: '🎉 New Customer Registered', msg: 'Amara Kalu registered from Umuahia with verified coordinates.' },
+          pos_sale: { title: '💳 Walk-in POS Sale Completed', msg: 'Sale of ₦14,200 completed on POS Register 1.' },
+          order_delivery: { title: '🛵 Courier Picked Up Order', msg: 'Driver Emeka has picked up the package and is in transit.' },
+          support_message: { title: '💬 Live Customer Message', msg: 'Ngozi asks: "Is fresh catfish available for delivery today?"' },
+          ai_chat: { title: '🤖 Chef Bems AI Interaction', msg: 'Customer requested recipe ideas for organic palm oil.' },
+          low_stock: { title: '⚠️ Low Stock Alert: Fresh Farm Eggs', msg: 'Inventory has dropped to 4 crates (threshold: 10).' },
+          batch_expiry: { title: '⏰ Batch Expiry Notice', msg: 'Batch #LOT-2026-081 (Bell Peppers) will expire in 4 days.' },
+          refund_request: { title: '↩️ Return Ticket Submitted', msg: 'Refund request of ₦6,500 submitted for Order #ORD-8750.' },
+          system_error: { title: '🔴 Critical System Alert', msg: 'Payment gateway connection retry handled [HTTP 504].' },
         }
         const item = testLabels[testType] || testLabels.order_placed
         showNotificationPopup({
@@ -245,7 +229,7 @@ export default function NotificationSettings() {
         })
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send test notification')
+      toast.error(err.response?.data?.message || 'Failed to dispatch test notification')
     } finally {
       setTesting(false)
     }
@@ -254,307 +238,319 @@ export default function NotificationSettings() {
   if (loading) {
     return (
       <div className="container-fluid py-5 text-center text-muted">
-        <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-        Loading notification matrix…
+        <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+        Loading notification preferences…
       </div>
     )
   }
 
+  const filteredCategories = activeCategory === 'all'
+    ? EVENT_CATEGORIES
+    : EVENT_CATEGORIES.filter(c => c.id === activeCategory)
+
+  const totalEventsCount = EVENT_CATEGORIES.reduce((acc, c) => acc + c.events.length, 0)
+
   return (
     <div className="container-fluid py-2">
-
-      {/* Header & Save Action */}
-      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
+      {/* Clean Page Header */}
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4 pb-2 border-bottom">
         <div>
-          <h5 className="mb-1 fw-bold">Notification &amp; Alert Preferences</h5>
+          <h4 className="mb-1 fw-bold text-dark font-display">Notification &amp; Alert Preferences</h4>
           <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-            Configure real-time in-app push banners, topbar bell alerts, and email notifications for every event on Bems Farms.
+            Manage in-app popups, audio chimes, and automatic email notifications across all store operations.
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {lastSaved && (
-            <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fs-12 fw-medium d-inline-flex align-items-center gap-1.5">
-              <i className="ri-check-double-line"></i> Auto-saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          )}
-          <button className="btn btn-primary d-flex align-items-center gap-2 px-4 shadow-sm" disabled={saving} onClick={handleSaveAll}>
-            <i className="ri-save-line"></i>
-            {saving ? 'Saving…' : 'Save All Preferences'}
-          </button>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-light text-dark border px-3 py-2 fs-12 fw-medium">
+            <span className="badge-dot bg-success me-1.5"></span>
+            Instant Auto-Save Active
+          </span>
         </div>
       </div>
 
-      {/* Master Channels Bar */}
-      <div className="card shadow-sm border-0 rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', color: '#fff' }}>
-        <div className="card-body p-4">
-          <div className="row align-items-center g-3">
-            <div className="col-12 col-lg-5">
+      {/* Global Master Channels Bar - Executive White Bento Cards */}
+      <div className="row g-3 mb-4">
+        {/* Channel 1: In-App / Push */}
+        <div className="col-12 col-md-4">
+          <div
+            className={`card shadow-sm border transition-all h-100 ${pushMasterOn ? 'border-primary-subtle bg-white' : 'bg-light-subtle'}`}
+            style={{ borderRadius: 14 }}
+          >
+            <div className="card-body p-3.5 d-flex align-items-center justify-content-between gap-3">
               <div className="d-flex align-items-center gap-3">
-                <div className="avatar size-12 rounded-3 bg-white bg-opacity-10 d-flex align-items-center justify-content-center text-warning flex-shrink-0" style={{ fontSize: 24 }}>
-                  <i className="ri-broadcast-fill"></i>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 44, height: 44, background: pushMasterOn ? '#eff6ff' : '#f1f5f9', color: pushMasterOn ? '#2563eb' : '#94a3b8' }}
+                >
+                  <i className="ri-notification-3-line fs-20"></i>
                 </div>
                 <div>
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <h6 className="mb-0 fw-bold text-white">Global Dispatch Channels</h6>
-                    <span className="badge bg-success bg-opacity-25 text-success-subtle border border-success border-opacity-25 fs-10 px-2 py-0.5 rounded-pill">
-                      Instant Auto-Save
-                    </span>
-                  </div>
-                  <p className="text-white text-opacity-75 fs-12 mb-0">Master switches to enable or pause alert delivery across the entire system.</p>
+                  <h6 className="mb-0 fw-bold text-dark fs-14">In-App &amp; Bell Alerts</h6>
+                  <p className="text-muted mb-0" style={{ fontSize: 12 }}>Topbar bell &amp; floating toasts</p>
                 </div>
               </div>
+              <div className="form-check form-switch m-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  style={{ width: 42, height: 22, cursor: 'pointer' }}
+                  checked={pushMasterOn}
+                  onChange={handleTogglePushMaster}
+                  disabled={savingKey === 'notif_push_enabled'}
+                />
+              </div>
             </div>
-            <div className="col-12 col-lg-7">
-              <div className="d-flex flex-wrap align-items-center justify-content-lg-end gap-3 gap-md-4">
-                {/* Push Master Switch */}
-                <div
-                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
-                    pushMasterOn ? 'bg-white bg-opacity-15 border-warning border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
-                  }`}
-                  onClick={handleTogglePushMaster}
-                  style={{ minWidth: 160 }}
-                  title="Click to toggle In-App & Push alerts globally"
-                >
-                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
-                    <input
-                      className="form-check-input cursor-pointer"
-                      type="checkbox"
-                      role="switch"
-                      id="notif_push_enabled"
-                      checked={pushMasterOn}
-                      onChange={handleTogglePushMaster}
-                      disabled={savingKey === 'notif_push_enabled'}
-                    />
-                  </div>
-                  <label htmlFor="notif_push_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
-                    <span className="d-flex align-items-center gap-1">
-                      <i className={`ri-notification-3-line ${pushMasterOn ? 'text-warning' : 'text-white text-opacity-50'}`}></i>
-                      <span>In-App / Push</span>
-                    </span>
-                    <span className={`fs-10 fw-medium ${pushMasterOn ? 'text-warning' : 'text-white text-opacity-50'}`}>
-                      {savingKey === 'notif_push_enabled' ? 'Saving…' : pushMasterOn ? 'Active (Live)' : 'Paused'}
-                    </span>
-                  </label>
-                </div>
+          </div>
+        </div>
 
-                {/* Email Master Switch */}
+        {/* Channel 2: Email Alerts */}
+        <div className="col-12 col-md-4">
+          <div
+            className={`card shadow-sm border transition-all h-100 ${emailMasterOn ? 'border-info-subtle bg-white' : 'bg-light-subtle'}`}
+            style={{ borderRadius: 14 }}
+          >
+            <div className="card-body p-3.5 d-flex align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
                 <div
-                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
-                    emailMasterOn ? 'bg-white bg-opacity-15 border-info border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
-                  }`}
-                  onClick={handleToggleEmailMaster}
-                  style={{ minWidth: 160 }}
-                  title="Click to toggle Email alerts globally"
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 44, height: 44, background: emailMasterOn ? '#f0f9ff' : '#f1f5f9', color: emailMasterOn ? '#0284c7' : '#94a3b8' }}
                 >
-                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
-                    <input
-                      className="form-check-input cursor-pointer"
-                      type="checkbox"
-                      role="switch"
-                      id="notif_email_enabled"
-                      checked={emailMasterOn}
-                      onChange={handleToggleEmailMaster}
-                      disabled={savingKey === 'notif_email_enabled'}
-                    />
-                  </div>
-                  <label htmlFor="notif_email_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
-                    <span className="d-flex align-items-center gap-1">
-                      <i className={`ri-mail-line ${emailMasterOn ? 'text-info' : 'text-white text-opacity-50'}`}></i>
-                      <span>Email Alerts</span>
-                    </span>
-                    <span className={`fs-10 fw-medium ${emailMasterOn ? 'text-info' : 'text-white text-opacity-50'}`}>
-                      {savingKey === 'notif_email_enabled' ? 'Saving…' : emailMasterOn ? 'Active (Live)' : 'Paused'}
-                    </span>
-                  </label>
+                  <i className="ri-mail-line fs-20"></i>
                 </div>
+                <div>
+                  <h6 className="mb-0 fw-bold text-dark fs-14">Email Dispatch</h6>
+                  <p className="text-muted mb-0" style={{ fontSize: 12 }}>Sent to corporate mailbox</p>
+                </div>
+              </div>
+              <div className="form-check form-switch m-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  style={{ width: 42, height: 22, cursor: 'pointer' }}
+                  checked={emailMasterOn}
+                  onChange={handleToggleEmailMaster}
+                  disabled={savingKey === 'notif_email_enabled'}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
-                {/* Sound Chime Switch */}
+        {/* Channel 3: Audio Chimes */}
+        <div className="col-12 col-md-4">
+          <div
+            className={`card shadow-sm border transition-all h-100 ${soundMasterOn ? 'border-success-subtle bg-white' : 'bg-light-subtle'}`}
+            style={{ borderRadius: 14 }}
+          >
+            <div className="card-body p-3.5 d-flex align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
                 <div
-                  className={`d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 border transition-all cursor-pointer ${
-                    soundMasterOn ? 'bg-white bg-opacity-15 border-success border-opacity-50 shadow-sm' : 'bg-white bg-opacity-5 border-white border-opacity-10'
-                  }`}
-                  onClick={handleToggleSoundMaster}
-                  style={{ minWidth: 160 }}
-                  title="Click to toggle Real-time Audio Chimes"
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 44, height: 44, background: soundMasterOn ? '#ecfdf5' : '#f1f5f9', color: soundMasterOn ? '#059669' : '#94a3b8' }}
                 >
-                  <div className="form-check form-switch m-0" onClick={e => e.stopPropagation()}>
-                    <input
-                      className="form-check-input cursor-pointer"
-                      type="checkbox"
-                      role="switch"
-                      id="notif_sound_enabled"
-                      checked={soundMasterOn}
-                      onChange={handleToggleSoundMaster}
-                      disabled={savingKey === 'notif_sound_enabled'}
-                    />
-                  </div>
-                  <label htmlFor="notif_sound_enabled" className="cursor-pointer text-white fw-semibold fs-12 mb-0 d-flex flex-column" onClick={e => e.stopPropagation()}>
-                    <span className="d-flex align-items-center gap-1">
-                      <i className={`ri-volume-up-line ${soundMasterOn ? 'text-success' : 'text-white text-opacity-50'}`}></i>
-                      <span>Audio Chime</span>
-                    </span>
-                    <span className={`fs-10 fw-medium ${soundMasterOn ? 'text-success' : 'text-white text-opacity-50'}`}>
-                      {savingKey === 'notif_sound_enabled' ? 'Saving…' : soundMasterOn ? 'Sound On' : 'Muted'}
-                    </span>
-                  </label>
+                  <i className={`fs-20 ${soundMasterOn ? 'ri-volume-up-line' : 'ri-volume-mute-line'}`}></i>
                 </div>
+                <div>
+                  <h6 className="mb-0 fw-bold text-dark fs-14">Audio Chime Sound</h6>
+                  <p className="text-muted mb-0" style={{ fontSize: 12 }}>Plays chime on new events</p>
+                </div>
+              </div>
+              <div className="form-check form-switch m-0">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  style={{ width: 42, height: 22, cursor: 'pointer' }}
+                  checked={soundMasterOn}
+                  onChange={handleToggleSoundMaster}
+                  disabled={savingKey === 'notif_sound_enabled'}
+                />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Toggle Matrix + Side Helpers */}
       <div className="row g-4">
+        {/* Left Column: Notification Events Matrix */}
         <div className="col-12 col-xl-8">
-          {EVENT_CATEGORIES.map(category => (
-            <div className="card shadow-sm border-0 rounded-4 mb-4 overflow-hidden" key={category.title}>
-              <div className="card-header bg-light py-3 d-flex align-items-center justify-content-between border-bottom">
-                <div className="d-flex align-items-center gap-2">
-                  <i className={`${category.icon} text-primary fs-18`}></i>
-                  <h6 className="mb-0 fw-bold">{category.title}</h6>
-                </div>
-                <span className={`badge ${category.badgeCls} px-2.5 py-1 rounded-pill fs-11 fw-bold`}>
-                  {category.badge}
+          <div className="card shadow-sm border mb-4" style={{ borderRadius: 14 }}>
+            {/* Filter Pills Header */}
+            <div className="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  className={`btn btn-sm px-3 py-1.5 rounded-pill fw-semibold transition-all ${activeCategory === 'all' ? 'btn-primary' : 'btn-light border text-muted'}`}
+                  style={{ fontSize: 12 }}
+                  onClick={() => setActiveCategory('all')}
+                >
+                  All ({totalEventsCount})
+                </button>
+                {EVENT_CATEGORIES.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`btn btn-sm px-3 py-1.5 rounded-pill fw-semibold transition-all ${activeCategory === c.id ? 'btn-primary' : 'btn-light border text-muted'}`}
+                    style={{ fontSize: 12 }}
+                    onClick={() => setActiveCategory(c.id)}
+                  >
+                    <i className={`${c.icon} me-1`}></i>
+                    {c.title.split('&')[0].trim()}
+                  </button>
+                ))}
+              </div>
+
+              {/* Legend */}
+              <div className="d-flex align-items-center gap-3 d-none d-md-flex">
+                <span className="text-muted d-flex align-items-center gap-1" style={{ fontSize: 12 }}>
+                  <i className="ri-notification-3-line text-primary"></i> In-App
+                </span>
+                <span className="text-muted d-flex align-items-center gap-1" style={{ fontSize: 12 }}>
+                  <i className="ri-mail-line text-info"></i> Email
                 </span>
               </div>
-
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
-                    <thead>
-                      <tr className="bg-light-subtle text-muted text-uppercase fs-11 fw-bolder">
-                        <th style={{ width: '56%', padding: '10px 16px' }}>Event Action</th>
-                        <th className="text-center" style={{ width: '22%', padding: '10px 12px' }}>
-                          <span className="d-inline-flex align-items-center gap-1">
-                            <i className="ri-notification-3-line text-primary"></i> In-App / Push
-                            {!pushMasterOn && (
-                              <span className="badge bg-warning-subtle text-warning border border-warning-subtle fs-10 px-1 py-0.5 rounded">
-                                Muted
-                              </span>
-                            )}
-                          </span>
-                        </th>
-                        <th className="text-center" style={{ width: '22%', padding: '10px 12px' }}>
-                          <span className="d-inline-flex align-items-center gap-1">
-                            <i className="ri-mail-line text-info"></i> Email Alert
-                            {!emailMasterOn && (
-                              <span className="badge bg-warning-subtle text-warning border border-warning-subtle fs-10 px-1 py-0.5 rounded">
-                                Muted
-                              </span>
-                            )}
-                          </span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {category.events.map(ev => {
-                        const pushKey  = `push_notif_${ev.id}`
-                        const emailKey = `email_notif_${ev.id}`
-                        const pushOn  = isChecked(pushKey)
-                        const emailOn = isChecked(emailKey)
-
-                        return (
-                          <tr key={ev.id} className="border-bottom">
-                            <td className="p-3">
-                              <div className="d-flex align-items-start gap-3">
-                                <div className="avatar size-8 rounded-circle bg-light d-flex align-items-center justify-content-center text-dark flex-shrink-0 mt-0.5">
-                                  <i className={`${ev.icon} fs-15 text-primary`}></i>
-                                </div>
-                                <div>
-                                  <div className="fw-bold text-dark mb-0.5">{ev.name}</div>
-                                  <div className="text-muted fs-12 leading-relaxed">{ev.desc}</div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Push Switch */}
-                            <td className="text-center p-3">
-                              <div className="d-flex flex-column align-items-center gap-1">
-                                <div className="form-check form-switch m-0">
-                                  <input
-                                    className="form-check-input cursor-pointer"
-                                    type="checkbox"
-                                    role="switch"
-                                    id={pushKey}
-                                    checked={pushOn}
-                                    onChange={() => handleToggleEvent(pushKey, ev.name, 'Push')}
-                                    disabled={savingKey === pushKey}
-                                  />
-                                </div>
-                                <span className={`fs-11 fw-semibold ${!pushMasterOn ? 'text-muted text-opacity-50 text-decoration-line-through' : pushOn ? 'text-success' : 'text-muted'}`}>
-                                  {savingKey === pushKey ? 'Saving…' : pushOn ? (!pushMasterOn ? 'Active (Muted)' : 'Active') : 'Off'}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Email Switch */}
-                            <td className="text-center p-3">
-                              <div className="d-flex flex-column align-items-center gap-1">
-                                <div className="form-check form-switch m-0">
-                                  <input
-                                    className="form-check-input cursor-pointer"
-                                    type="checkbox"
-                                    role="switch"
-                                    id={emailKey}
-                                    checked={emailOn}
-                                    onChange={() => handleToggleEvent(emailKey, ev.name, 'Email')}
-                                    disabled={savingKey === emailKey}
-                                  />
-                                </div>
-                                <span className={`fs-11 fw-semibold ${!emailMasterOn ? 'text-muted text-opacity-50 text-decoration-line-through' : emailOn ? 'text-info' : 'text-muted'}`}>
-                                  {savingKey === emailKey ? 'Saving…' : emailOn ? (!emailMasterOn ? 'Active (Muted)' : 'Active') : 'Off'}
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
-          ))}
+
+            {/* Event List */}
+            <div className="card-body p-0">
+              {filteredCategories.map((cat, idx) => (
+                <div key={cat.id}>
+                  {/* Category Subheader */}
+                  <div className="px-4 py-2.5 bg-light-subtle border-bottom d-flex align-items-center justify-content-between">
+                    <span className="fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: 13 }}>
+                      <i className={`${cat.icon}`} style={{ color: cat.color }}></i>
+                      {cat.title}
+                    </span>
+                    <span className="badge bg-white text-muted border px-2 py-0.5" style={{ fontSize: 11 }}>
+                      {cat.events.length} Events
+                    </span>
+                  </div>
+
+                  {/* Category Events */}
+                  <div className="list-group list-group-flush">
+                    {cat.events.map(ev => {
+                      const pushKey = `push_notif_${ev.id}`
+                      const emailKey = `email_notif_${ev.id}`
+                      const pushOn = isChecked(pushKey)
+                      const emailOn = isChecked(emailKey)
+
+                      return (
+                        <div
+                          key={ev.id}
+                          className="list-group-item p-3.5 d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom transition-all hover-bg-light"
+                        >
+                          {/* Event Title & Description */}
+                          <div className="d-flex align-items-start gap-3" style={{ maxWidth: '65%' }}>
+                            <div
+                              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5"
+                              style={{ width: 38, height: 38, background: cat.bg, color: cat.color }}
+                            >
+                              <i className={`${ev.icon} fs-18`}></i>
+                            </div>
+                            <div>
+                              <h6 className="mb-0.5 fw-bold text-dark fs-13.5">{ev.name}</h6>
+                              <p className="text-muted mb-0" style={{ fontSize: 12 }}>{ev.desc}</p>
+                            </div>
+                          </div>
+
+                          {/* Action Switchers */}
+                          <div className="d-flex align-items-center gap-3 ms-auto">
+                            {/* In-App Toggle */}
+                            <div
+                              className={`d-flex align-items-center gap-2 px-2.5 py-1.5 rounded-pill border ${pushOn && pushMasterOn ? 'bg-primary-subtle border-primary-subtle' : 'bg-light border'}`}
+                              title={!pushMasterOn ? 'Global In-App alerts are currently paused' : undefined}
+                            >
+                              <i className={`ri-notification-3-line ${pushOn && pushMasterOn ? 'text-primary' : 'text-muted'}`} style={{ fontSize: 13 }}></i>
+                              <span className="fw-semibold" style={{ fontSize: 11, color: pushOn && pushMasterOn ? '#1d4ed8' : '#64748b' }}>
+                                App
+                              </span>
+                              <div className="form-check form-switch m-0 ms-1 p-0">
+                                <input
+                                  className="form-check-input ms-0"
+                                  type="checkbox"
+                                  role="switch"
+                                  style={{ width: 32, height: 16, cursor: 'pointer' }}
+                                  checked={pushOn}
+                                  onChange={() => handleToggleEvent(pushKey, ev.name, 'Push')}
+                                  disabled={savingKey === pushKey}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Email Toggle */}
+                            <div
+                              className={`d-flex align-items-center gap-2 px-2.5 py-1.5 rounded-pill border ${emailOn && emailMasterOn ? 'bg-info-subtle border-info-subtle' : 'bg-light border'}`}
+                              title={!emailMasterOn ? 'Global email dispatch is currently paused' : undefined}
+                            >
+                              <i className={`ri-mail-line ${emailOn && emailMasterOn ? 'text-info' : 'text-muted'}`} style={{ fontSize: 13 }}></i>
+                              <span className="fw-semibold" style={{ fontSize: 11, color: emailOn && emailMasterOn ? '#0369a1' : '#64748b' }}>
+                                Mail
+                              </span>
+                              <div className="form-check form-switch m-0 ms-1 p-0">
+                                <input
+                                  className="form-check-input ms-0"
+                                  type="checkbox"
+                                  role="switch"
+                                  style={{ width: 32, height: 16, cursor: 'pointer' }}
+                                  checked={emailOn}
+                                  onChange={() => handleToggleEvent(emailKey, ev.name, 'Email')}
+                                  disabled={savingKey === emailKey}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Sidebar Cards: Test Trigger & Delivery Info */}
+        {/* Right Column: Live Testing Studio & Mailbox Destination */}
         <div className="col-12 col-xl-4">
-          {/* Test Notification Tool */}
-          <div className="card shadow-sm border-0 rounded-4 mb-4">
-            <div className="card-header bg-light py-3 border-bottom">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-flashlight-line text-warning"></i>
-                Instant Test Notification
-              </h6>
+          {/* Card 1: Interactive Test Studio */}
+          <div className="card shadow-sm border mb-4" style={{ borderRadius: 14 }}>
+            <div className="card-header bg-white py-3 border-bottom d-flex align-items-center gap-2">
+              <div className="avatar-xs rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                <i className="ri-flashlight-line fs-15"></i>
+              </div>
+              <h6 className="mb-0 fw-bold text-dark fs-14">Test Alert Dispatcher</h6>
             </div>
-            <div className="card-body p-3.5">
-              <p className="text-muted fs-12 mb-3">
-                Send a live test event to verify in-app Topbar bell popup and Resend email dispatch immediately:
+            <div className="card-body p-4">
+              <p className="text-muted mb-3" style={{ fontSize: 12.5 }}>
+                Simulate a live platform event to verify audio chimes, topbar bell notifications, and mailbox delivery.
               </p>
+
               <div className="mb-3">
-                <label className="form-label fs-11 fw-bold text-uppercase text-muted">Select Event Type to Test</label>
+                <label className="form-label fw-medium text-dark" style={{ fontSize: 12.5 }}>Event Scenario</label>
                 <select
-                  className="form-select form-select-sm"
+                  className="form-select form-select-sm py-2"
                   value={testType}
                   onChange={e => setTestType(e.target.value)}
+                  style={{ fontSize: 13 }}
                 >
-                  <option value="order_placed">🛍️ New Online Order (#ORD-8821)</option>
-                  <option value="customer_register">👤 Customer Registration</option>
-                  <option value="pos_sale">💳 POS Walk-in Counter Sale</option>
-                  <option value="order_delivery">🛵 Courier Dispatch Update</option>
-                  <option value="support_message">💬 Live Support Message</option>
-                  <option value="ai_chat">🤖 Chef Bems AI Conversation</option>
-                  <option value="low_stock">⚠️ Low Stock Warning</option>
-                  <option value="batch_expiry">⏰ Batch Expiry Notice</option>
-                  <option value="refund_request">↩️ Refund / Return Ticket</option>
-                  <option value="system_error">🔴 Server Exception (500)</option>
+                  <option value="order_placed">🛍️ Online Checkout (#ORD-8821)</option>
+                  <option value="pos_sale">💳 In-Store POS Sale Complete</option>
+                  <option value="order_delivery">🛵 Driver En Route to Customer</option>
+                  <option value="customer_register">👤 New Customer Registered</option>
+                  <option value="support_message">💬 Live Chat Inquiry</option>
+                  <option value="ai_chat">🤖 Chef Bems AI Suggestion</option>
+                  <option value="low_stock">⚠️ Inventory Threshold Reached</option>
+                  <option value="batch_expiry">⏰ Batch Expiry in 4 Days</option>
+                  <option value="refund_request">↩️ Customer Return Ticket</option>
+                  <option value="system_error">🔴 API Error / Warning (500)</option>
                 </select>
               </div>
 
               <button
                 type="button"
-                className="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center gap-2 fw-semibold shadow-2xs"
+                className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 py-2.5 fw-medium shadow-sm"
+                style={{ fontSize: 13 }}
                 disabled={testing}
                 onClick={triggerTest}
               >
@@ -565,7 +561,7 @@ export default function NotificationSettings() {
                   </>
                 ) : (
                   <>
-                    <i className="ri-send-plane-fill text-primary"></i>
+                    <i className="ri-send-plane-2-line fs-15"></i>
                     <span>Send Test Notification</span>
                   </>
                 )}
@@ -573,38 +569,44 @@ export default function NotificationSettings() {
             </div>
           </div>
 
-          {/* Destination Recipient */}
-          <div className="card shadow-sm border-0 rounded-4 mb-4">
-            <div className="card-header bg-light py-3 border-bottom">
-              <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                <i className="ri-mail-send-line text-primary"></i>
-                Email Delivery Destination
+          {/* Card 2: Email Destination */}
+          <div className="card shadow-sm border mb-4" style={{ borderRadius: 14 }}>
+            <div className="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+              <h6 className="mb-0 fw-bold text-dark fs-14 d-flex align-items-center gap-2">
+                <i className="ri-mail-send-line text-primary fs-16"></i>
+                Delivery Destination
               </h6>
+              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fs-11">
+                Verified
+              </span>
             </div>
-            <div className="card-body p-3.5">
-              <p className="text-muted fs-12 mb-2">
-                All administrative email notifications are delivered to the primary store email:
+            <div className="card-body p-4">
+              <p className="text-muted mb-2" style={{ fontSize: 12 }}>
+                Administrative alert emails are routed to your primary corporate mailbox:
               </p>
-              <div className="p-2.5 bg-light rounded-3 border text-dark font-monospace fs-12 fw-bold mb-3 d-flex align-items-center justify-content-between">
-                <span>{settings['store_email'] || 'info@bemsfarms.com'}</span>
-                <span className="badge bg-success-subtle text-success">Active</span>
+              <div className="p-2.5 bg-light rounded-3 border text-dark font-monospace fw-semibold d-flex align-items-center justify-content-between mb-3" style={{ fontSize: 12.5 }}>
+                <span>{settings['store_email'] || 'support@bemsfarms.com'}</span>
+                <i className="ri-shield-check-line text-success fs-16"></i>
               </div>
-              <div className="alert alert-info py-2 px-3 fs-12 mb-0 d-flex align-items-center gap-2 rounded-3 border-0">
-                <i className="ri-information-line fs-16 flex-shrink-0"></i>
-                <span>You can edit this address anytime under <strong>General Store Info</strong>.</span>
-              </div>
+              <Link
+                to="/settings/general"
+                className="btn btn-sm btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1.5"
+                style={{ fontSize: 12 }}
+              >
+                <i className="ri-edit-line"></i> Change Email in Store Profile
+              </Link>
             </div>
           </div>
 
-          {/* God Eye Integration Info */}
-          <div className="card shadow-sm border-0 rounded-4" style={{ background: '#f8fafc' }}>
+          {/* Card 3: Audit Integration */}
+          <div className="card bg-light-subtle border shadow-sm" style={{ borderRadius: 14 }}>
             <div className="card-body p-3.5">
-              <div className="d-flex align-items-center gap-2 mb-2 text-dark fw-bold fs-13">
-                <i className="ri-eye-line text-purple"></i>
-                <span>God Eye Synced</span>
+              <div className="d-flex align-items-center gap-2 mb-1.5 text-dark fw-bold" style={{ fontSize: 13 }}>
+                <i className="ri-eye-line text-primary fs-16"></i>
+                <span>Audit &amp; Telemetry Synced</span>
               </div>
-              <p className="text-muted fs-12 mb-0 leading-relaxed">
-                Every dispatched alert is automatically mirrored into <strong>God Eye Audit Hub</strong> with actor attribution, duration telemetry, and full plain-English narrative records.
+              <p className="text-muted mb-0" style={{ fontSize: 12 }}>
+                All generated notifications and alert deliveries are automatically recorded in the central audit hub for compliance and tracking.
               </p>
             </div>
           </div>
