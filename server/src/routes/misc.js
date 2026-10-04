@@ -284,10 +284,11 @@ router.post(
       const paymentMethod = eventData.paymentMethod || null;
       const terminalId = metadata?.pos_terminal_id || null;
 
+      const merchantRef = event?.eventData?.paymentReference || null;
       // 3. Find matching order in Bems Farms database
       const orderSearch = await pool.query(
-        "SELECT id, total FROM orders WHERE payment_ref = $1 OR id::text = $2",
-        [reference, String(metadata?.order_id || "")]
+        "SELECT id, total FROM orders WHERE payment_ref = $1 OR (payment_ref = $2 AND $2 IS NOT NULL) OR id::text = $3",
+        [reference, merchantRef, String(metadata?.order_id || "")]
       );
       
       const linkedOrder = orderSearch.rows[0];
