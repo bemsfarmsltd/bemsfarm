@@ -77,6 +77,79 @@ function generateSecurityCode(ref, amount) {
 }
 
 /**
+ * Formats pack specifications cleanly with accurate quantities and units
+ * e.g. "Super Gold Tomato Paste 2200g (Tin)" -> "2200g Tin"
+ *      "Sonia Tomato Mix (Carton of 50)"    -> "Carton of 50"
+ *      "Fresh Tomatoes" with unit "kg"      -> "1 kg"
+ */
+export function formatPackSpec(it) {
+  if (!it) return '1 Unit'
+  const explicitPack = (it.pack_size || it.pack || '').toString().trim()
+  const name = (it.name || it.title || it.description || '').trim()
+  const unit = (it.unit || '').toString().trim()
+
+  // If explicitPack has numbers or isn't just a generic single unit word
+  if (explicitPack && !['kg', 'unit', 'piece', 'item', 'units', 'pcs'].includes(explicitPack.toLowerCase())) {
+    return explicitPack
+  }
+
+  // 1. Check for "Carton of X" or "(Carton of X)" in name
+  const cartonMatch = name.match(/Carton\s+of\s+\d+/i)
+  if (cartonMatch) {
+    return cartonMatch[0]
+  }
+
+  // 2. Check for weight + container type like "2200g (Tin)", "400g (Tin)", "25kg (Bag)", "50kg (Bag)"
+  const weightContainerMatch = name.match(/(\d+(?:\.\d+)?\s*(?:g|kg|ml|cl|ltr|l|oz|lb)?)\s*\((Tin|Bag|Basket|Crate|Box|Bottle|Jar|Pack|Carton|Sachet)\)/i)
+  if (weightContainerMatch) {
+    return `${weightContainerMatch[1].trim()} ${weightContainerMatch[2].trim()}`
+  }
+
+  // 3. Check for parentheses e.g. "(Tin)", "(50 pcs)", "(25kg)"
+  const parenMatch = name.match(/\(([^)]+)\)/)
+  if (parenMatch) {
+    const inside = parenMatch[1].trim()
+    const preWeightMatch = name.slice(0, parenMatch.index).match(/(\d+(?:\.\d+)?\s*(?:g|kg|ml|cl|ltr|l))\s*$/i)
+    if (preWeightMatch) {
+      return `${preWeightMatch[1].trim()} ${inside}`
+    }
+    if (inside.toLowerCase() !== 'tin' && inside.toLowerCase() !== 'bag') {
+      return inside
+    }
+  }
+
+  // 4. Check for weight specification like "2200g", "400g", "25kg", "50kg" in name
+  const weightOnlyMatch = name.match(/(\d+(?:\.\d+)?\s*(?:kg|g|ltr|ml|cl))\b/i)
+  if (weightOnlyMatch) {
+    const containerWord = name.match(/\b(Tin|Bag|Basket|Crate|Box|Bottle|Jar|Pack|Carton|Sachet)\b/i)
+    if (containerWord) {
+      return `${weightOnlyMatch[1]} ${containerWord[1]}`
+    }
+    return weightOnlyMatch[1]
+  }
+
+  // 5. If item has weight or size property
+  if (it.weight && !isNaN(Number(it.weight))) {
+    return `${it.weight} ${unit || 'kg'}`
+  }
+
+  // 6. If unit exists (like kg, pcs, bags)
+  if (unit) {
+    const cleanUnit = unit.toLowerCase()
+    if (cleanUnit === 'kg') return '1 kg'
+    if (cleanUnit === 'bag' || cleanUnit === 'bags') return '1 Bag'
+    if (cleanUnit === 'basket' || cleanUnit === 'baskets') return '1 Basket'
+    if (cleanUnit === 'carton' || cleanUnit === 'cartons') return '1 Carton'
+    if (cleanUnit === 'crate' || cleanUnit === 'crates') return '1 Crate'
+    if (cleanUnit === 'tin' || cleanUnit === 'tins') return '1 Tin'
+    if (cleanUnit === 'pcs' || cleanUnit === 'piece' || cleanUnit === 'pieces') return '1 Pc'
+    return `1 ${unit}`
+  }
+
+  return '1 Unit'
+}
+
+/**
  * BemsOfficialDocument
  * Pixel-perfect implementation of the official Bems Farms Offline Sales Invoice and Receipt
  */
@@ -138,7 +211,9 @@ export default function BemsOfficialDocument({
   // Totals
   const subtotal = data.subtotal || items.reduce((acc, it) => acc + Number(it.total || (it.qty * it.price) || 0), 0)
   const discount = Number(data.discount || 0)
-  const total = Number(data.amount || (subtotal - discount))
+  const deliveryFee = Number(data.deliveryFee || data.delivery_fee || data.shipping_fee || data.shippingFee || 0)
+  const total = Number(data.amount || (subtotal - discount + deliveryFee))
+  const inferredDeliveryFee = deliveryFee > 0 ? deliveryFee : Math.max(0, total - (subtotal - discount))
   const isPaid = isReceipt || data.status === 'paid'
   const amountPaid = isPaid ? total : Number(data.amountPaid || 0)
   const balanceDue = Math.max(0, total - amountPaid)
@@ -146,17 +221,21 @@ export default function BemsOfficialDocument({
   // Words
   const amountInWords = numberToWords(isReceipt ? amountPaid : total)
 
-  // Status label
+  // Status label and badge
   let statusText = 'Awaiting payment'
+  let statusClass = 'awaiting'
   let statusColor = '#f0dc97'
   if (isPaid) {
     statusText = 'Confirmed'
+    statusClass = 'confirmed'
     statusColor = '#9fe0b3'
   } else if (data.status === 'overdue') {
     statusText = 'Past Due'
+    statusClass = 'overdue'
     statusColor = '#fca5a5'
   } else if (data.status === 'cancelled') {
     statusText = 'Cancelled'
+    statusClass = 'cancelled'
     statusColor = '#cbd5e1'
   }
 
@@ -322,7 +401,10 @@ export default function BemsOfficialDocument({
                   </div>
                   <div>
                     <div className="cap">Status</div>
-                    <p style={{ color: statusColor }}>{statusText}</p>
+                    <div className={`bems-doc-status-badge ${statusClass}`}>
+                      <span className="dot" />
+                      <span>{statusText}</span>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -341,7 +423,10 @@ export default function BemsOfficialDocument({
                   </div>
                   <div>
                     <div className="cap">Status</div>
-                    <p style={{ color: statusColor }}>{statusText}</p>
+                    <div className={`bems-doc-status-badge ${statusClass}`}>
+                      <span className="dot" />
+                      <span>{statusText}</span>
+                    </div>
                   </div>
                 </>
               )}
@@ -376,7 +461,11 @@ export default function BemsOfficialDocument({
               <div className="cap">Questions about this order?</div>
               <div className="nm">We're here to help</div>
               <p>
-                <b>Call</b> {companyPhone}<br />
+                {companyPhone ? (
+                  <><b>Call</b> {companyPhone}<br /></>
+                ) : (
+                  <><b>Call / WhatsApp</b> +234 813 652 6794<br /></>
+                )}
                 <b>Email</b> {companyEmail}<br />
                 Quote {isReceipt ? 'receipt' : 'invoice'} no. <span className="mono">{docNumber}</span>
               </p>
@@ -389,7 +478,7 @@ export default function BemsOfficialDocument({
               <tr>
                 <th style={{ width: '6%' }}>#</th>
                 <th>Description</th>
-                <th className="c" style={{ width: '15%' }}>Pack</th>
+                <th className="c" style={{ width: '16%' }}>Pack Size</th>
                 <th className="c" style={{ width: '8%' }}>Qty</th>
                 <th className="r" style={{ width: '18%' }}>Unit price (₦)</th>
                 <th className="r" style={{ width: '18%' }}>Amount (₦)</th>
@@ -400,7 +489,7 @@ export default function BemsOfficialDocument({
                 const itemQty = Number(it.qty || it.quantity || 1)
                 const itemPrice = Number(it.price || it.unit_price || 0)
                 const itemTotal = Number(it.total || it.amount || (itemQty * itemPrice))
-                const pack = it.pack || it.pack_size || it.unit || 'Unit'
+                const pack = formatPackSpec(it)
                 const tag = it.tag || it.grade || (it.category ? it.category : null)
 
                 return (
@@ -410,7 +499,7 @@ export default function BemsOfficialDocument({
                       <b>{it.name || it.title || it.description || 'Farm Produce'}</b>
                       {tag && <span className="bems-doc-tag">{tag}</span>}
                     </td>
-                    <td className="c">{pack}</td>
+                    <td className="c fw-medium">{pack}</td>
                     <td className="c mono">{itemQty.toLocaleString()}</td>
                     <td className="r mono">{itemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="r mono">{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -497,8 +586,18 @@ export default function BemsOfficialDocument({
               
               {isReceipt ? (
                 <>
-                  <dt>Discount</dt>
-                  <dd className="mono">₦{discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                  {discount > 0 && (
+                    <>
+                      <dt>Discount</dt>
+                      <dd className="mono">₦{discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
+                  {inferredDeliveryFee > 0 && (
+                    <>
+                      <dt>Delivery fee</dt>
+                      <dd className="mono">₦{inferredDeliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
                   <dt className="grand">Total paid</dt>
                   <dd className="grand"><span className="naira" style={{ fontSize: 15 }}>₦</span>{amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
                   <dt>Balance due</dt>
@@ -506,6 +605,18 @@ export default function BemsOfficialDocument({
                 </>
               ) : (
                 <>
+                  {discount > 0 && (
+                    <>
+                      <dt>Discount</dt>
+                      <dd className="mono">₦{discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
+                  {inferredDeliveryFee > 0 && (
+                    <>
+                      <dt>Delivery fee</dt>
+                      <dd className="mono">₦{inferredDeliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
                   <dt>VAT (exempt)</dt>
                   <dd className="mono">₦0.00</dd>
                   <dt>Amount paid</dt>
