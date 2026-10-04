@@ -188,18 +188,49 @@ async function validateMonnifyBankAccount(accountNumber, bankCode) {
  * 6. Verify Transaction API
  * GET /api/v2/transactions/{transactionReference}
  */
-async function verifyMonnifyTransaction(transactionReference) {
+async function verifyMonnifyTransaction(reference) {
   const token = await getMonnifyToken();
-  const { data } = await axios.get(
-    `${MONNIFY_BASE_URL}/api/v2/transactions/${encodeURIComponent(transactionReference)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  const cleanRef = String(reference || "").trim();
 
-  if (!data?.requestSuccessful || !data?.responseBody) {
-    throw new Error("Monnify verification failed: " + (data?.responseMessage || "unknown error"));
+  // If reference looks like Monnify transaction reference (starts with MNFY or contains |)
+  if (cleanRef.startsWith("MNFY") || cleanRef.includes("|")) {
+    try {
+      const { data } = await axios.get(
+        `${MONNIFY_BASE_URL}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data?.requestSuccessful && data?.responseBody) {
+        return data.responseBody;
+      }
+    } catch (err) {
+      if (err.response?.status !== 404) throw err;
+    }
   }
 
-  return data.responseBody;
+  // Otherwise (or as fallback), query by merchant paymentReference (e.g. BF-...)
+  try {
+    const { data } = await axios.get(
+      `${MONNIFY_BASE_URL}/api/v1/merchant/transactions/query?paymentReference=${encodeURIComponent(cleanRef)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (data?.requestSuccessful && data?.responseBody) {
+      return data.responseBody;
+    }
+  } catch (err) {
+    // If querying by paymentReference also 404s, try v2 transactions endpoint before giving up
+    if (!cleanRef.startsWith("MNFY") && !cleanRef.includes("|")) {
+      const { data } = await axios.get(
+        `${MONNIFY_BASE_URL}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data?.requestSuccessful && data?.responseBody) {
+        return data.responseBody;
+      }
+    }
+    throw err;
+  }
+
+  throw new Error("Monnify verification failed: transaction not found");
 }
 
 /**
