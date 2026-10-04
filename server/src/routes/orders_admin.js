@@ -140,6 +140,9 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         c.id AS customer_id,
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate,
+        dl.latitude AS driver_lat, dl.longitude AS driver_lng,
+        dl.heading AS driver_heading, dl.speed AS driver_speed,
+        dl.recorded_at AS driver_last_ping,
         d.id AS delivery_id, d.status AS delivery_status,
         d.accepted_at AS driver_accepted_at,
         da.driver_response,
@@ -188,6 +191,13 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         LIMIT 1
       ) ua ON true
       LEFT JOIN drivers dr ON o.driver_id = dr.id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading, speed, recorded_at 
+        FROM driver_locations 
+        WHERE driver_id = dr.id 
+        ORDER BY recorded_at DESC 
+        LIMIT 1
+      ) dl ON true
       LEFT JOIN deliveries d ON d.order_id = o.id
       LEFT JOIN LATERAL (
         SELECT driver_response, created_at, response_at
@@ -1009,6 +1019,9 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         c.email AS customer_email,
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate, dr.vehicle_type,
+        dl.latitude AS driver_lat, dl.longitude AS driver_lng,
+        dl.heading AS driver_heading, dl.speed AS driver_speed,
+        dl.recorded_at AS driver_last_ping,
         d.id AS delivery_id, d.status AS delivery_status,
         d.accepted_at AS driver_accepted_at,
         da.driver_response,
@@ -1022,6 +1035,13 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       FROM orders o
       LEFT JOIN users c ON o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading, speed, recorded_at 
+        FROM driver_locations 
+        WHERE driver_id = dr.id 
+        ORDER BY recorded_at DESC 
+        LIMIT 1
+      ) dl ON true
       LEFT JOIN deliveries d ON d.order_id = o.id
       LEFT JOIN LATERAL (
         SELECT driver_response, created_at, response_at
