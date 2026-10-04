@@ -638,31 +638,37 @@ export default function BemsOfficialDocument({
           {/* ── SIGN-OFF & TERMS ── */}
           <section className="bems-doc-sign">
             {isReceipt ? (
-              <div className="bems-doc-keep">
-                <div>
-                  <b>Keep this receipt.</b> It is your proof of payment to {companyName} for the goods listed and can be used for your accounting, reimbursement or audit records.
+              <div className="bems-doc-notice-card">
+                <div className="bems-doc-notice-section">
+                  <span className="bems-doc-notice-title">Proof of Payment</span>
+                  <p className="bems-doc-notice-body">
+                    Official payment confirmation to <b>{companyName}</b> for goods listed. Retain for accounting, reimbursement, or audit records.
+                  </p>
                 </div>
-                <div className="bems-doc-support-enquiries">
-                  <b>Support & Enquiries:</b>
-                  <span>Call / WhatsApp {companyPhone || '+234 813 652 6794'}</span>
-                  <span>·</span>
-                  <span>{companyEmail}</span>
-                  <span>·</span>
-                  <span>Ref: <span className="mono">{docNumber}</span></span>
+                <div className="bems-doc-notice-section support">
+                  <span className="bems-doc-notice-title">Support & Enquiries</span>
+                  <div className="bems-doc-notice-contact">
+                    <span><b>Call / WhatsApp:</b> {companyPhone || '+234 813 652 6794'}</span>
+                    <span className="sep">·</span>
+                    <span><b>Email:</b> {companyEmail}</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="bems-doc-keep terms">
-                <div>
-                  <b>Payment terms.</b> {paymentTerms}
+              <div className="bems-doc-notice-card">
+                <div className="bems-doc-notice-section">
+                  <span className="bems-doc-notice-title">Payment Terms</span>
+                  <p className="bems-doc-notice-body">
+                    {paymentTerms}
+                  </p>
                 </div>
-                <div className="bems-doc-support-enquiries">
-                  <b>Support & Enquiries:</b>
-                  <span>Call / WhatsApp {companyPhone || '+234 813 652 6794'}</span>
-                  <span>·</span>
-                  <span>{companyEmail}</span>
-                  <span>·</span>
-                  <span>Ref: <span className="mono">{docNumber}</span></span>
+                <div className="bems-doc-notice-section support">
+                  <span className="bems-doc-notice-title">Support & Enquiries</span>
+                  <div className="bems-doc-notice-contact">
+                    <span><b>Call / WhatsApp:</b> {companyPhone || '+234 813 652 6794'}</span>
+                    <span className="sep">·</span>
+                    <span><b>Email:</b> {companyEmail}</span>
+                  </div>
                 </div>
               </div>
             )}
