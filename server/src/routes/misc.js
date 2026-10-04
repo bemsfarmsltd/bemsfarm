@@ -223,11 +223,11 @@ router.post(
     }
 
     const isVerified = verifyMonnifyWebhookSignature(rawPayload, signature);
-    // transactionReference is what we store as orders.payment_ref (see
-    // orders.js / CheckoutPage.jsx); paymentReference is our own
-    // client-generated tracking reference, kept only for the audit log.
-    const reference = event?.eventData?.transactionReference || null;
-    const eventType = event?.eventType || null;
+    const eventType = String(event?.eventType || "").toUpperCase();
+    const eventData = event?.eventData || {};
+
+    // transactionReference is what we store as orders.payment_ref (see orders.js / CheckoutPage.jsx)
+    const reference = eventData.transactionReference || eventData.paymentReference || eventData.reference || null;
 
     if (!isVerified) {
       console.warn("⚠️ Webhook signature mismatch!");
@@ -245,6 +245,91 @@ router.post(
     }
 
     try {
+      // ─────────────────────────────────────────────────────────────
+      // A. Handle Merchant Settlement Webhooks (Batch payouts to store bank)
+      // ─────────────────────────────────────────────────────────────
+      if (eventType === "SETTLEMENT") {
+        const settlementRef = eventData.settlementReference || eventData.reference || `SETTLE-${Date.now()}`;
+        console.log(`🏦 Monnify SETTLEMENT received: Ref ${settlementRef}, Destination: ${eventData.destinationAccountNumber}, Total: ₦${eventData.amount || 0}`);
+
+        if (Array.isArray(eventData.transactions) && eventData.transactions.length > 0) {
+          for (const tx of eventData.transactions) {
+            const txRef = tx.transactionReference || tx.paymentReference;
+            if (txRef) {
+              await pool.query(
+                `UPDATE payments 
+                 SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{settlement}', $1::jsonb, true),
+                     updated_at = NOW()
+                 WHERE payment_ref = $2 OR payment_ref = $3`,
+                [
+                  JSON.stringify({
+                    settlementReference: settlementRef,
+                    settlementAmount: tx.settlementAmount,
+                    settlementTime: eventData.settlementTime,
+                    destinationAccountNumber: eventData.destinationAccountNumber
+                  }),
+                  txRef,
+                  tx.paymentReference
+                ]
+              ).catch(e => console.warn(`[settlement-update] Could not tag payment ${txRef}:`, e.message));
+            }
+          }
+        }
+
+        await pool.query(
+          `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status)
+           VALUES ($1, $2, $3, true, 'processed')`,
+          [eventType, settlementRef, event]
+        );
+
+        return res.status(200).json({ success: true, message: "Settlement webhook processed successfully" });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // B. Handle Account Activity / Wallet Credit Notifications
+      // ─────────────────────────────────────────────────────────────
+      if (eventType === "ACCOUNT_ACTIVITY") {
+        const activityRef = eventData.reference || `ACT-${Date.now()}`;
+        console.log(`💳 Monnify ACCOUNT_ACTIVITY received: Ref ${activityRef}, Type: ${eventData.activityType}, Amount: ₦${eventData.amount || 0}`);
+
+        await pool.query(
+          `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status)
+           VALUES ($1, $2, $3, true, 'processed')`,
+          [eventType, activityRef, event]
+        );
+
+        return res.status(200).json({ success: true, message: "Account activity recorded successfully" });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // C. Handle Payout / Disbursement Notifications
+      // ─────────────────────────────────────────────────────────────
+      if (eventType.includes("DISBURSEMENT") || eventType.includes("TRANSFER")) {
+        const disbRef = eventData.reference || eventData.batchReference || `DISB-${Date.now()}`;
+        console.log(`💸 Monnify DISBURSEMENT received: Ref ${disbRef}, Status: ${eventData.status}`);
+
+        await pool.query(
+          `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status)
+           VALUES ($1, $2, $3, true, 'processed')`,
+          [eventType, disbRef, event]
+        );
+
+        return res.status(200).json({ success: true, message: "Disbursement webhook recorded successfully" });
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // D. Handle Customer Checkout Payments (SUCCESSFUL_TRANSACTION, etc.)
+      // ─────────────────────────────────────────────────────────────
+      if (!reference) {
+        console.warn(`⚠️ Monnify webhook event '${eventType}' has no transactionReference or paymentReference. Ignoring checkout recording.`);
+        await pool.query(
+          `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status, error_message)
+           VALUES ($1, $2, $3, true, 'ignored', 'No valid transaction reference found in event payload')`,
+          [eventType, null, event]
+        );
+        return res.status(200).json({ success: true, message: "Webhook acknowledged; non-transaction event ignored" });
+      }
+
       // 1. Idempotency Check: Do we already have this payment reconciled?
       const existingPay = await pool.query(
         "SELECT id, status FROM payments WHERE payment_ref = $1",
@@ -266,7 +351,6 @@ router.post(
       }
 
       // 2. Process Successful, Failed, or Reversed transaction
-      const eventData = event?.eventData || {};
       let status = "pending";
       if (eventType === "SUCCESSFUL_TRANSACTION" || eventData.paymentStatus === "PAID") {
         status = "successful";
@@ -284,7 +368,7 @@ router.post(
       const paymentMethod = eventData.paymentMethod || null;
       const terminalId = metadata?.pos_terminal_id || null;
 
-      const merchantRef = event?.eventData?.paymentReference || null;
+      const merchantRef = eventData.paymentReference || null;
       // 3. Find matching order in Bems Farms database
       const orderSearch = await pool.query(
         "SELECT id, total FROM orders WHERE payment_ref = $1 OR (payment_ref = $2 AND $2 IS NOT NULL) OR id::text = $3",
@@ -425,7 +509,7 @@ router.post(
       } catch (dbErr) {
         console.error("Failed to write audit log:", dbErr.message);
       }
-      next(err);
+      return res.status(200).json({ success: false, message: "Webhook received with internal warning", error: err.message });
     }
   }
 );
