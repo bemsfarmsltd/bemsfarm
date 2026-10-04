@@ -2204,23 +2204,7 @@ export default function POS() {
         {/* ─── LEFT: CATALOG & ACTIONS ─────────────────────────────────── */}
         <div className="pos-catalog-column">
 
-          {/* Category Filter Pills */}
-          <div className="pos-category-dock">
-            {CATEGORY_DEFINITIONS.map(cat => {
-              const active = activeCategory === cat.id
-              const count = categoryCounts[cat.id] || 0
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`pos-dock-pill ${active ? 'active' : ''}`}>
-                  <span className="pos-dock-emoji">{cat.emoji}</span>
-                  <span className="pos-dock-label">{cat.label}</span>
-                  <span className="pos-dock-count">{count}</span>
-                </button>
-              )
-            })}
-          </div>
+
 
           {/* Product Grid Area */}
           <div className="pos-inventory-scroll">
