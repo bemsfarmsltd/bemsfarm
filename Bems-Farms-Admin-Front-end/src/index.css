@@ -4,7 +4,7 @@
    Golden Amber Accents (#F59E0B), and Modern High-Contrast Typography.
    ───────────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 :root {
   --bf-green-deep: #071F14;
@@ -914,50 +914,75 @@ a.link-custom-primary {
   .premium-modal__footer .btn { width:100%; }
 }
 
-/* Thermal receipt — designed for 80 mm rolls and safely compresses to 58 mm with minimal paper waste. */
+/* Thermal receipt — redesigned to match modern executive ticket/sales slip layout with circular seal, pill code, and left QR verification */
 .thermal-receipt-preview { padding:14px; background:#eef2ef; }
 .thermal-receipt-preview--pos { max-height:48vh; overflow-y:auto; border:1px solid #dfe8e3; border-radius:14px; margin-bottom:12px; }
 .thermal-receipt {
-  width:78mm; max-width:100%; margin:0 auto; padding:3mm 2.5mm 5mm;
-  color:#000; background:#fff; font-family:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size:12px; font-variant-numeric:tabular-nums; line-height:1.3;
+  width:78mm; max-width:100%; margin:0 auto; padding:4mm 3mm 6mm;
+  color:#000; background:#fff; font-family:"Space Mono", "Courier Prime", "SF Mono", Consolas, "Courier New", monospace;
+  font-size:11.5px; font-variant-numeric:tabular-nums; line-height:1.35;
   box-shadow:0 10px 30px rgba(17,42,32,.1);
 }
-.thermal-receipt__brand { text-align:center; margin-bottom:6px; }
-.thermal-receipt__brand h1 { margin:2px 0 1px; font:800 18px/1.1 "Inter", sans-serif; letter-spacing:0.1px; }
-.thermal-receipt__brand p { margin:0 0 2px; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.85; }
-.thermal-receipt__brand address { margin:0; font-style:normal; font-size:10.5px; color:#111; line-height:1.25; }
-.thermal-receipt__logo { display:block; width:auto; max-width:44mm; height:13.5mm; margin:0 auto 4px; object-fit:contain; filter:grayscale(1) contrast(1.25); }
-.thermal-receipt__title { margin:6px 0 5px; text-align:center; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; font-size:12px; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3.5px 0; }
-.thermal-receipt__title small { display:none; }
-.thermal-receipt__meta, .thermal-receipt__payment { padding-bottom:5px; }
-.thermal-receipt__row { display:flex; justify-content:space-between; gap:8px; padding:2px 0; font-size:11.5px; }
-.thermal-receipt__row > :last-child { max-width:65%; text-align:right; overflow-wrap:anywhere; }
+.thermal-receipt__seal-wrap { text-align:center; margin-bottom:6px; }
+.thermal-receipt__seal-ring {
+  width:48px; height:48px; border-radius:50%; border:1.5px solid #000;
+  margin:0 auto; padding:3px; display:flex; align-items:center; justify-content:center; background:#fff;
+}
+.thermal-receipt__seal-img {
+  width:100%; height:100%; object-fit:contain; border-radius:50%; filter:grayscale(1) contrast(1.3);
+}
+.thermal-receipt__main-title {
+  font-size:14.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; text-align:center;
+  margin:6px 0 2px; color:#000; font-family:inherit;
+}
+.thermal-receipt__datetime {
+  font-size:10.5px; font-weight:700; text-align:center; margin:0 0 6px; color:#111; letter-spacing:0.4px;
+}
+.thermal-receipt__pill-wrap { text-align:center; margin:4px 0 8px; }
+.thermal-receipt__code-pill {
+  display:inline-block; background:#1e2229; color:#ffffff; border-radius:9999px;
+  padding:3px 16px; font-size:12px; font-weight:700; letter-spacing:0.4px; font-family:inherit;
+}
+.thermal-receipt__divider {
+  border:none; border-top:1px dashed #222; margin:9px 0; width:100%;
+}
+.thermal-receipt__block { padding:1px 0; }
+.thermal-receipt__row {
+  display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:2px 0; font-size:11.5px; line-height:1.35;
+}
+.thermal-receipt__label { font-weight:600; color:#000; white-space:nowrap; min-width:120px; }
+.thermal-receipt__val { font-weight:700; color:#000; text-align:right; flex:1; word-break:break-word; }
 .thermal-receipt__row--strong { font-weight:800; }
-.thermal-receipt__items { border-top:1px dashed #000; margin-top:3px; }
-.thermal-receipt__items-head { display:flex; justify-content:space-between; padding:4px 0 3px; font-weight:800; border-bottom:1px solid #000; font-size:11px; letter-spacing:0.5px; }
-.thermal-receipt__item { padding:3.5px 0; border-bottom:1px dotted #ccc; }
+.thermal-receipt__row--large { font-size:13.5px; font-weight:900; margin:2px 0; }
+.thermal-receipt__items { padding:2px 0; }
+.thermal-receipt__items-head {
+  display:flex; justify-content:space-between; font-weight:800; font-size:10.5px; letter-spacing:0.4px;
+  padding-bottom:3px; border-bottom:1px solid #000; margin-bottom:4px;
+}
+.thermal-receipt__item { padding:3px 0; border-bottom:1px dotted #ccc; }
 .thermal-receipt__item:last-child { border-bottom:none; }
-.thermal-receipt__item-name { font-weight:800; font-size:12px; overflow-wrap:anywhere; margin-bottom:1.5px; line-height:1.2; }
-.thermal-receipt__item-line { display:flex; justify-content:space-between; align-items:baseline; gap:6px; font-size:11px; }
-.thermal-receipt__item-line span { color:#222; font-size:11px; font-weight:500; }
-.thermal-receipt__item-line strong { font-size:12px; font-weight:800; white-space:nowrap; }
-.thermal-receipt__item small { display:block; margin-top:1px; color:#555; font-size:9.5px; }
-.thermal-receipt__empty { padding:8px 0; text-align:center; font-style:italic; color:#555; font-size:11px; }
-.thermal-receipt__totals { padding:4px 0; border-top:1px solid #000; border-bottom:1px solid #000; margin:4px 0; }
-.thermal-receipt__totals .thermal-receipt__row { padding:2px 0; }
-.thermal-receipt__totals .thermal-receipt__row--strong { margin-top:3px; padding-top:4px; border-top:1px dashed #000; font-size:14.5px; font-weight:900; }
-.thermal-receipt__payment { padding-top:3px; border-bottom:1px dashed #000; }
-.thermal-receipt__note { margin:4px 0; padding:4px 8px; border-radius:4px; background:#f5f5f5; font-size:10px; overflow-wrap:anywhere; font-style:italic; text-align:center; }
-.thermal-receipt__footer { padding-top:5px; border-top:1px dashed #000; text-align:center; display:flex; flex-direction:column; align-items:center; }
-.thermal-receipt__footer strong { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; font-weight:800; margin-bottom:1px; }
-.thermal-receipt__footer p { display:none; }
-.thermal-receipt__footer small { font-size:9.5px; color:#444; font-family:monospace; margin-top:2px; }
-.thermal-receipt__barcode { width:70%; height:20px; margin:2px auto 2px; background:repeating-linear-gradient(90deg,#000 0 1.5px,transparent 1.5px 3.5px,#000 3.5px 6px,transparent 6px 8px,#000 8px 9.5px,transparent 9.5px 13px); opacity:0.9; }
+.thermal-receipt__item-name { font-weight:800; font-size:11.5px; line-height:1.25; margin-bottom:1px; }
+.thermal-receipt__item-line { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; }
+.thermal-receipt__item-line span { font-weight:500; color:#333; }
+.thermal-receipt__item-line strong { font-weight:800; color:#000; }
+.thermal-receipt__verify-box {
+  display:flex; align-items:center; gap:12px; padding:4px 0;
+}
+.thermal-receipt__verify-qr { flex-shrink:0; width:76px; height:76px; }
+.thermal-receipt__qr-img { width:76px; height:76px; display:block; image-rendering:pixelated; }
+.thermal-receipt__verify-info { flex:1; text-align:left; }
+.thermal-receipt__verify-thanks { font-size:11px; font-weight:600; color:#000; line-height:1.25; }
+.thermal-receipt__verify-brand { font-size:12px; font-weight:800; color:#000; margin:1px 0 4px; }
+.thermal-receipt__verify-policy { font-size:8.5px; font-weight:700; letter-spacing:0.3px; color:#333; text-transform:uppercase; line-height:1.3; }
+.thermal-receipt__footer { text-align:center; padding-top:2px; }
+.thermal-receipt__footer-url { font-size:10px; font-weight:700; color:#000; margin-bottom:2px; }
+.thermal-receipt__footer-tagline { font-size:9px; font-weight:600; color:#333; line-height:1.25; }
 .pos-success-hero-card--receipt { width:min(400px,calc(100vw - 24px)); max-height:94vh; overflow-y:auto; }
 .thermal-receipt--58 { width:58mm; padding:3mm 2mm; font-size:9.5px; }
-.thermal-receipt--58 .thermal-receipt__logo { max-width:30mm; height:10mm; }
-.thermal-receipt--58 .thermal-receipt__brand h1 { font-size:14px; }
+.thermal-receipt--58 .thermal-receipt__seal-ring { width:38px; height:38px; }
+.thermal-receipt--58 .thermal-receipt__main-title { font-size:12px; }
+.thermal-receipt--58 .thermal-receipt__verify-qr { width:60px; height:60px; }
+.thermal-receipt--58 .thermal-receipt__qr-img { width:60px; height:60px; }
 
 .pos-thermal-print-container { display:block; }
 @media screen {

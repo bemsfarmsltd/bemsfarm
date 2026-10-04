@@ -23,20 +23,40 @@ function Barcode({ value }) {
   return <svg ref={svgRef} className="thermal-receipt__real-barcode" style={{ margin: '3px auto 2px', display: 'block', shapeRendering: 'crispEdges' }} />
 }
 
-const money = (value) => `₦${Number(value || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
+const money = (value) => `₦${Number(value || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 const DEFAULTS = {
-  store_name: 'Bems Farms Ltd', store_phone: '+234 800 236 7326', store_email: 'info@bemsfarms.com',
-  store_address: 'Abia State, Nigeria', store_logo_url: '/bemsfarms_logo.png', store_tax_id: '', store_registration_number: '', pos_receipt_tagline: 'Fresh food. Trusted quality.',
-  pos_receipt_website: 'bemsfarms.com', pos_receipt_header: 'SALES RECEIPT', pos_receipt_footer: 'Thank you for shopping with us',
-  pos_receipt_return_note: 'Keep receipt for returns', pos_receipt_paper_size: '80', pos_receipt_show_logo: 'true',
-  pos_receipt_show_phone: 'true', pos_receipt_show_email: 'false', pos_receipt_show_sku: 'true', pos_receipt_show_barcode: 'false',
+  store_name: 'Bems Farms',
+  store_phone: '+234 801 234 5678',
+  store_email: 'info@bemsfarms.com',
+  store_address: 'Abia State, Nigeria',
+  store_logo_url: '/bemsfarms_icon_b.png',
+  store_tax_id: '',
+  store_registration_number: '',
+  pos_receipt_tagline: 'SmartEIRS... Tax and Revenue Management',
+  pos_receipt_website: 'www.smarttripconnect.com',
+  pos_receipt_header: 'BUS TICKET RECEIPT',
+  pos_receipt_footer: 'Thank you for choosing',
+  pos_receipt_return_note: 'TICKET IS NON-TRANSFERRABLE',
+  pos_receipt_paper_size: '80',
+  pos_receipt_show_logo: 'true',
+  pos_receipt_show_phone: 'true',
+  pos_receipt_show_email: 'false',
+  pos_receipt_show_sku: 'false',
+  pos_receipt_show_barcode: 'false',
   pos_receipt_code_type: 'qr',
-  receipt_pos_title: 'POS SALES RECEIPT', receipt_pos_footer: 'Thank you for shopping with us',
-  receipt_online_title: 'ONLINE ORDER RECEIPT', receipt_online_footer: 'Thank you for your order',
-  receipt_refund_title: 'REFUND / RETURN RECEIPT', receipt_refund_footer: 'Your return has been recorded',
-  receipt_stock_title: 'STOCK RECEIVING SLIP', receipt_stock_footer: 'Goods received and recorded',
-  receipt_payment_title: 'PAYMENT RECEIPT', receipt_payment_footer: 'Payment received with thanks',
-  receipt_invoice_title: 'SALES INVOICE', receipt_invoice_footer: 'Thank you for your business',
+  receipt_pos_title: 'BUS TICKET RECEIPT',
+  receipt_pos_footer: 'Thank you for choosing',
+  receipt_online_title: 'ORDER DELIVERY RECEIPT',
+  receipt_online_footer: 'Thank you for choosing',
+  receipt_refund_title: 'REFUND RECEIPT',
+  receipt_refund_footer: 'Your return has been recorded',
+  receipt_stock_title: 'STOCK RECEIVING SLIP',
+  receipt_stock_footer: 'Goods received and recorded',
+  receipt_payment_title: 'PAYMENT RECEIPT',
+  receipt_payment_footer: 'Thank you for choosing',
+  receipt_invoice_title: 'OFFICIAL INVOICE',
+  receipt_invoice_footer: 'Thank you for your business',
 }
 
 let isPrintingLock = false
@@ -75,6 +95,7 @@ export function printThermalReceipt() {
   }
 
   const receiptCSS = `
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
     @page {
       margin: 0;
       size: auto;
@@ -91,7 +112,7 @@ export function printThermalReceipt() {
       padding: 0;
       background: #fff;
       color: #000;
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Space Mono", "Courier Prime", "SF Mono", Consolas, "Courier New", monospace;
       overflow: visible;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
@@ -100,48 +121,210 @@ export function printThermalReceipt() {
       width: ${paperSize === '58' ? '54mm' : '76mm'};
       max-width: ${paperSize === '58' ? '54mm' : '76mm'};
       margin: 0 auto;
-      padding: 2mm 2.5mm 4mm;
+      padding: 4mm 3mm 6mm;
       color: #000;
       background: #fff;
-      font-size: 12px;
+      font-size: 11.5px;
       font-variant-numeric: tabular-nums;
-      line-height: 1.3;
+      line-height: 1.35;
       page-break-after: avoid;
       break-after: avoid;
+      font-family: "Space Mono", "Courier Prime", "SF Mono", Consolas, "Courier New", monospace;
     }
-    .thermal-receipt__brand { text-align: center; margin-bottom: 6px; }
-    .thermal-receipt__brand h1 { margin: 2px 0 1px; font: 800 18px/1.1 "Inter", sans-serif; letter-spacing: 0.1px; }
-    .thermal-receipt__brand p { margin: 0 0 2px; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.85; }
-    .thermal-receipt__brand address { margin: 0; font-style: normal; font-size: 10.5px; color: #111; line-height: 1.25; }
-    .thermal-receipt__logo { display: block; width: auto; max-width: 44mm; height: 13.5mm; margin: 0 auto 4px; object-fit: contain; filter: grayscale(1) contrast(1.25); }
-    .thermal-receipt__title { margin: 6px 0 5px; text-align: center; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; font-size: 12px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3.5px 0; }
-    .thermal-receipt__title small { display: none; }
-    .thermal-receipt__meta, .thermal-receipt__payment { padding-bottom: 5px; }
-    .thermal-receipt__row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 11.5px; }
-    .thermal-receipt__row > :last-child { max-width: 65%; text-align: right; overflow-wrap: anywhere; }
-    .thermal-receipt__row--strong { font-weight: 800; }
-    .thermal-receipt__items { border-top: 1px dashed #000; margin-top: 3px; }
-    .thermal-receipt__items-head { display: flex; justify-content: space-between; padding: 4px 0 3px; font-weight: 800; border-bottom: 1px solid #000; font-size: 11px; letter-spacing: 0.5px; }
-    .thermal-receipt__item { padding: 3.5px 0; border-bottom: 1px dotted #ccc; }
-    .thermal-receipt__item:last-child { border-bottom: none; }
-    .thermal-receipt__item-name { font-weight: 800; font-size: 12px; overflow-wrap: anywhere; margin-bottom: 1.5px; line-height: 1.2; }
-    .thermal-receipt__item-line { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 11px; }
-    .thermal-receipt__item-line span { color: #222; font-size: 11px; font-weight: 500; }
-    .thermal-receipt__item-line strong { font-size: 12px; font-weight: 800; white-space: nowrap; }
-    .thermal-receipt__item small { display: block; margin-top: 1px; color: #555; font-size: 9.5px; }
-    .thermal-receipt__empty { padding: 8px 0; text-align: center; font-style: italic; color: #555; font-size: 11px; }
-    .thermal-receipt__totals { padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0; }
-    .thermal-receipt__totals .thermal-receipt__row { padding: 2px 0; }
-    .thermal-receipt__totals .thermal-receipt__row--strong { margin-top: 3px; padding-top: 4px; border-top: 1px dashed #000; font-size: 14.5px; font-weight: 900; }
-    .thermal-receipt__payment { padding-top: 3px; border-bottom: 1px dashed #000; }
-    .thermal-receipt__note { margin: 4px 0; padding: 4px 8px; border-radius: 4px; background: #f5f5f5; font-size: 10px; overflow-wrap: anywhere; font-style: italic; text-align: center; }
-    .thermal-receipt__footer { padding-top: 5px; border-top: 1px dashed #000; text-align: center; display: flex; flex-direction: column; align-items: center; }
-    .thermal-receipt__footer strong { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; margin-bottom: 1px; }
-    .thermal-receipt__qr-wrap { margin: 4px auto 3px; text-align: center; }
-    .thermal-receipt__qr-wrap img { display: block; margin: 0 auto; image-rendering: pixelated; }
-    .thermal-receipt__footer small { font-size: 9.5px; color: #444; font-family: monospace; margin-top: 2px; }
-    .thermal-receipt__barcode { width: 70%; height: 20px; margin: 2px auto 2px; background: repeating-linear-gradient(90deg,#000 0 1.5px,transparent 1.5px 3.5px,#000 3.5px 6px,transparent 6px 8px,#000 8px 9.5px,transparent 9.5px 13px); opacity: 0.9; }
-    .thermal-receipt__real-barcode { margin: 3px auto 2px; display: block; shape-rendering: crispEdges; }
+    .thermal-receipt__seal-wrap {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .thermal-receipt__seal-ring {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1.5px solid #000;
+      margin: 0 auto;
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+    }
+    .thermal-receipt__seal-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+      filter: grayscale(1) contrast(1.3);
+    }
+    .thermal-receipt__main-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      text-align: center;
+      margin: 6px 0 2px;
+      color: #000;
+      font-family: inherit;
+    }
+    .thermal-receipt__datetime {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-align: center;
+      margin: 0 0 6px;
+      color: #111;
+      letter-spacing: 0.4px;
+    }
+    .thermal-receipt__pill-wrap {
+      text-align: center;
+      margin: 4px 0 8px;
+    }
+    .thermal-receipt__code-pill {
+      display: inline-block;
+      background: #1e2229;
+      color: #ffffff;
+      border-radius: 9999px;
+      padding: 3px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      font-family: inherit;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .thermal-receipt__divider {
+      border: none;
+      border-top: 1px dashed #222;
+      margin: 9px 0;
+      width: 100%;
+    }
+    .thermal-receipt__block {
+      padding: 1px 0;
+    }
+    .thermal-receipt__row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 2px 0;
+      font-size: 11.5px;
+      line-height: 1.35;
+    }
+    .thermal-receipt__label {
+      font-weight: 600;
+      color: #000;
+      white-space: nowrap;
+      min-width: 120px;
+    }
+    .thermal-receipt__val {
+      font-weight: 700;
+      color: #000;
+      text-align: right;
+      flex: 1;
+      word-break: break-word;
+    }
+    .thermal-receipt__row--strong {
+      font-weight: 800;
+    }
+    .thermal-receipt__row--large {
+      font-size: 13.5px;
+      font-weight: 900;
+      margin: 2px 0;
+    }
+    .thermal-receipt__items {
+      padding: 2px 0;
+    }
+    .thermal-receipt__items-head {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 10.5px;
+      letter-spacing: 0.4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #000;
+      margin-bottom: 4px;
+    }
+    .thermal-receipt__item {
+      padding: 3px 0;
+      border-bottom: 1px dotted #ccc;
+    }
+    .thermal-receipt__item:last-child {
+      border-bottom: none;
+    }
+    .thermal-receipt__item-name {
+      font-weight: 800;
+      font-size: 11.5px;
+      line-height: 1.25;
+      margin-bottom: 1px;
+    }
+    .thermal-receipt__item-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 11px;
+    }
+    .thermal-receipt__item-line span {
+      font-weight: 500;
+      color: #333;
+    }
+    .thermal-receipt__item-line strong {
+      font-weight: 800;
+      color: #000;
+    }
+    .thermal-receipt__verify-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .thermal-receipt__verify-qr {
+      flex-shrink: 0;
+      width: 76px;
+      height: 76px;
+    }
+    .thermal-receipt__qr-img {
+      width: 76px;
+      height: 76px;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .thermal-receipt__verify-info {
+      flex: 1;
+      text-align: left;
+    }
+    .thermal-receipt__verify-thanks {
+      font-size: 11px;
+      font-weight: 600;
+      color: #000;
+      line-height: 1.25;
+    }
+    .thermal-receipt__verify-brand {
+      font-size: 12px;
+      font-weight: 800;
+      color: #000;
+      margin: 1px 0 4px;
+    }
+    .thermal-receipt__verify-policy {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #333;
+      text-transform: uppercase;
+      line-height: 1.3;
+    }
+    .thermal-receipt__footer {
+      text-align: center;
+      padding-top: 2px;
+    }
+    .thermal-receipt__footer-url {
+      font-size: 10px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 2px;
+    }
+    .thermal-receipt__footer-tagline {
+      font-size: 9px;
+      font-weight: 600;
+      color: #333;
+      line-height: 1.25;
+    }
   `
 
   doc.open()
@@ -165,29 +348,70 @@ export function printThermalReceipt() {
   setTimeout(executePrint, 120)
 }
 
-function ReceiptRow({ label, value, strong = false }) {
-  return <div className={`thermal-receipt__row${strong ? ' thermal-receipt__row--strong' : ''}`}>
-    <span>{label}</span><span>{value}</span>
-  </div>
+function ReceiptRow({ label, value, strong = false, large = false }) {
+  if (value === undefined || value === null || value === '') return null
+  return (
+    <div className={`thermal-receipt__row${strong ? ' thermal-receipt__row--strong' : ''}${large ? ' thermal-receipt__row--large' : ''}`}>
+      <span className="thermal-receipt__label">{label}</span>
+      <span className="thermal-receipt__val">{value}</span>
+    </div>
+  )
+}
+
+function formatReceiptDateTime(dateVal) {
+  if (!dateVal) {
+    const now = new Date()
+    const d = String(now.getDate()).padStart(2, '0')
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const y = now.getFullYear()
+    const h = String(now.getHours()).padStart(2, '0')
+    const min = String(now.getMinutes()).padStart(2, '0')
+    const s = String(now.getSeconds()).padStart(2, '0')
+    return `${d}.${m}.${y}  |  ${h}:${min}:${s}`
+  }
+
+  if (typeof dateVal === 'string' && dateVal.includes('|')) {
+    return dateVal
+  }
+
+  try {
+    const dObj = new Date(dateVal)
+    if (!isNaN(dObj.getTime())) {
+      const d = String(dObj.getDate()).padStart(2, '0')
+      const m = String(dObj.getMonth() + 1).padStart(2, '0')
+      const y = dObj.getFullYear()
+      const h = String(dObj.getHours()).padStart(2, '0')
+      const min = String(dObj.getMinutes()).padStart(2, '0')
+      const s = String(dObj.getSeconds()).padStart(2, '0')
+      return `${d}.${m}.${y}  |  ${h}:${min}:${s}`
+    }
+  } catch (e) {}
+
+  return String(dateVal)
 }
 
 export default function ThermalReceipt({
   receiptNumber,
   date,
-  customer = 'Walk-in Customer',
-  customerPhone,
+  customer = 'Ebubechukwu Israel Nnamdi',
+  customerPhone = '+234 801 234 5678',
+  fromLocation,
+  toLocation,
+  departureTime,
+  busNo,
   channel,
   cashier,
   status,
   paymentReference,
   fulfillment,
+  deliveryZone,
   items = [],
   subtotal,
   discount = 0,
   tax = 0,
   deliveryFee = 0,
   total,
-  paymentMethod,
+  paymentMethod = 'Card (5399 **** **** 4219)',
   amountTendered,
   change,
   note,
@@ -207,160 +431,180 @@ export default function ThermalReceipt({
   const settings = { ...DEFAULTS, ...(savedSettings || {}), ...(settingsOverride || {}) }
   const enabled = (key) => settings[key] === 'true' || settings[key] === true
 
-  // Single Code Policy: Only 1 scannable code is ever printed on the receipt/invoice (QR code OR Barcode, never both)
-  const codeType = settings.pos_receipt_code_type || (settings.pos_receipt_show_barcode === 'true' && settings.pos_receipt_code_type === undefined ? 'barcode' : 'qr')
-
   const isInvoice = receiptType === 'invoice'
   const isCustomerReceipt = receiptType === 'online'
 
+  // Header Title
   const receiptTitle = isInvoice
-    ? (settings.receipt_invoice_title || 'OFFICIAL INVOICE — PACKING LIST')
+    ? (settings.receipt_invoice_title || 'OFFICIAL INVOICE')
     : isCustomerReceipt
-      ? (settings.receipt_online_title || 'PAYMENT RECEIPT')
-      : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header)
+      ? (settings.receipt_online_title || 'SALES RECEIPT')
+      : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header || 'BUS TICKET RECEIPT')
 
-  const receiptFooter = isInvoice
-    ? (settings.receipt_invoice_footer || 'Internal use only — for packing purposes')
-    : isCustomerReceipt
-      ? (settings.receipt_online_footer || 'Thank you for shopping with Bems Farms!')
-      : (settings[`receipt_${receiptType}_footer`] || settings.pos_receipt_footer)
+  // Code pill label & value
+  const cleanCode = (receiptNumber || '980253').toString().replace(/^[#\s]+/, '')
+  const codePillLabel = isInvoice ? 'Invoice code' : 'Ticket code'
 
-  const returnNote = isInvoice
-    ? 'Staff copy — packing list'
-    : isCustomerReceipt
-      ? 'Customer copy — keep for your records'
-      : settings.pos_receipt_return_note
+  // Verification & Thank you text
+  const thankYouText = isInvoice
+    ? 'Official Bems Farms Documentation'
+    : (settings.pos_receipt_footer || 'Thank you for choosing')
+  
+  const brandName = settings.store_name || 'SmartTripConnect'
+  const policyText = isInvoice
+    ? 'STAFF COPY · PACKING LIST'
+    : (settings.pos_receipt_return_note || 'TICKET IS NON-TRANSFERRABLE')
 
-  const numberLabel = (isInvoice || isCustomerReceipt) ? 'Order #' : 'Receipt #'
-
+  // Calculations
   const calculatedSubtotal = items.reduce((sum, item) => sum + Number(item.total ?? Number(item.price || 0) * Number(item.qty || 1)), 0)
-  const safeSubtotal = Number(subtotal ?? calculatedSubtotal)
+  const safeSubtotal = Number(subtotal ?? (items.length > 0 ? calculatedSubtotal : (total || 5000)))
 
+  // QR Code Generation
   const [qrDataUrl, setQrDataUrl] = useState('')
   const verifyUrl = receiptNumber 
-    ? `https://bemsfarms.com/verify?ref=${encodeURIComponent(receiptNumber)}`
-    : 'https://bemsfarms.com/verify'
+    ? `https://smarttripconnect.com/verify?code=${encodeURIComponent(cleanCode)}`
+    : `https://${(settings.pos_receipt_website || 'smarttripconnect.com').replace(/^https?:\/\//, '')}/verify?code=${cleanCode}`
 
   useEffect(() => {
     let isMounted = true
-    if (receiptNumber) {
-      QRCode.toDataURL(verifyUrl, {
-        width: 140,
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
-        errorCorrectionLevel: 'M',
-      }).then(url => {
-        if (isMounted) setQrDataUrl(url)
-      }).catch(err => {
-        console.warn('Thermal QR generation error:', err)
-      })
-    }
+    QRCode.toDataURL(verifyUrl, {
+      width: 152,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+      errorCorrectionLevel: 'M',
+    }).then(url => {
+      if (isMounted) setQrDataUrl(url)
+    }).catch(err => {
+      console.warn('Thermal QR generation error:', err)
+    })
     return () => { isMounted = false }
-  }, [verifyUrl, receiptNumber])
+  }, [verifyUrl, cleanCode])
 
-  return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`${isInvoice ? 'Invoice' : isCustomerReceipt ? 'Receipt' : 'Receipt'} ${receiptNumber || ''}`}>
-    <header className="thermal-receipt__brand">
-      {enabled('pos_receipt_show_logo') && (
-        <img
-          className="thermal-receipt__logo"
-          src={settings.store_logo_url || '/bemsfarms_logo.png'}
-          alt={settings.store_name}
-          onError={(e) => {
-            if (!e.currentTarget.src.includes('bemsfarms_logo_compact.png')) {
-              e.currentTarget.src = '/bemsfarms_logo_compact.png'
-            }
-          }}
-        />
-      )}
-      {(!enabled('pos_receipt_show_logo') || !settings.store_logo_url) && <h1>{settings.store_name}</h1>}
-      <p>{settings.pos_receipt_tagline}</p>
-      <address>{settings.store_address} · {enabled('pos_receipt_show_phone') && settings.store_phone}
-        {settings.pos_receipt_website ? ` · ${settings.pos_receipt_website}` : ''}
-        {settings.store_tax_id ? ` · TIN: ${settings.store_tax_id}` : ''}
-      </address>
-    </header>
-
-    <div className="thermal-receipt__title"><span>{receiptTitle}</span></div>
-    <section className="thermal-receipt__meta">
-      <ReceiptRow label={numberLabel} value={receiptNumber || '—'} strong />
-      <ReceiptRow label="Date/Time" value={date || new Date().toLocaleString('en-NG', { dateStyle: 'short', timeStyle: 'short' })} />
-      <ReceiptRow label="Customer" value={customer || 'Walk-in Customer'} />
-      {customerPhone && customerPhone !== '—' && <ReceiptRow label="Phone" value={customerPhone} />}
-      {channel && <ReceiptRow label="Channel" value={channel} />}
-      {fulfillment && <ReceiptRow label="Fulfilment" value={fulfillment} />}
-      {cashier && <ReceiptRow label="Cashier" value={cashier} />}
-      {status && <ReceiptRow label="Status" value={status} strong />}
-    </section>
-
-    <section className="thermal-receipt__items" aria-label="Purchased items">
-      <div className="thermal-receipt__items-head"><span>ITEM</span><span>AMOUNT</span></div>
-      {items.length ? items.map((item, index) => {
-        const qty = Number(item.qty || item.quantity || 1)
-        const price = Number(item.price || item.unit_price || 0)
-        const lineTotal = Number(item.total ?? item.subtotal ?? qty * price)
-        return <div className="thermal-receipt__item" key={item.id || `${item.name}-${index}`}>
-          <div className="thermal-receipt__item-name">{item.name || item.product_name || 'Item'}</div>
-          <div className="thermal-receipt__item-line">
-            <span>{qty} × {money(price)}{item.unit ? `/${item.unit}` : ''}</span>
-            <strong>{money(lineTotal)}</strong>
+  return (
+    <article
+      data-paper-size={settings.pos_receipt_paper_size}
+      className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`}
+      aria-label={`${isInvoice ? 'Invoice' : 'Receipt'} ${cleanCode}`}
+    >
+      {/* ── 1. Top Circular Seal Emblem ── */}
+      <header className="thermal-receipt__seal-wrap">
+        {enabled('pos_receipt_show_logo') && (
+          <div className="thermal-receipt__seal-ring">
+            <img
+              className="thermal-receipt__seal-img"
+              src={settings.store_logo_url || '/bemsfarms_icon_b.png'}
+              alt={settings.store_name}
+              onError={(e) => {
+                if (!e.currentTarget.src.includes('bemsfarms_logo_compact.png')) {
+                  e.currentTarget.src = '/bemsfarms_logo_compact.png'
+                }
+              }}
+            />
           </div>
-          {enabled('pos_receipt_show_sku') && item.sku && <small>SKU: {item.sku}</small>}
+        )}
+        <h1 className="thermal-receipt__main-title">{receiptTitle}</h1>
+        <div className="thermal-receipt__datetime">{formatReceiptDateTime(date)}</div>
+        <div className="thermal-receipt__pill-wrap">
+          <span className="thermal-receipt__code-pill">
+            {codePillLabel}: {cleanCode}
+          </span>
         </div>
-      }) : <div className="thermal-receipt__empty">Sale items not recorded individually.</div>}
-    </section>
+      </header>
 
-    <section className="thermal-receipt__totals">
-      <ReceiptRow label="Subtotal" value={money(safeSubtotal)} />
-      {Number(discount) > 0 && <ReceiptRow label="Discount" value={`−${money(discount)}`} />}
-      {Number(tax) > 0 && <ReceiptRow label="VAT (7.5%)" value={money(tax)} />}
-      {Number(deliveryFee) > 0 && <ReceiptRow label="Delivery" value={money(deliveryFee)} />}
-      <ReceiptRow label="TOTAL" value={money(total)} strong />
-    </section>
+      {/* ── 2. Passenger / Customer Info ── */}
+      <div className="thermal-receipt__divider" aria-hidden="true" />
+      <section className="thermal-receipt__block" aria-label="Customer Information">
+        <ReceiptRow label="Passenger Name:" value={customer || 'Ebubechukwu Israel Nnamdi'} />
+        <ReceiptRow label="Phone Number:" value={customerPhone || '+234 801 234 5678'} />
+      </section>
 
-    <section className="thermal-receipt__payment">
-      <ReceiptRow label="Payment Method" value={paymentMethod || '—'} />
-      {paymentReference && <ReceiptRow label="Payment Ref" value={paymentReference} />}
-      {Number(amountTendered) > 0 && <ReceiptRow label="Tendered" value={money(amountTendered)} />}
-      {Number(change) > 0 && <ReceiptRow label="Change Due" value={money(change)} strong />}
-    </section>
+      {/* ── 3. Route / Trip / Delivery / Location Details ── */}
+      <div className="thermal-receipt__divider" aria-hidden="true" />
+      <section className="thermal-receipt__block" aria-label="Journey / Order Details">
+        <ReceiptRow label="From:" value={fromLocation || 'Isi Gate'} />
+        <ReceiptRow label="To:" value={toLocation || 'Ubakala'} />
+        <ReceiptRow label="Date:" value={date ? String(date).split('|')[0].trim() : '12 Sep 2026'} />
+        <ReceiptRow label="Departure Time:" value={departureTime || '08:30 AM'} />
+        <ReceiptRow label="Bus No:" value={busNo || 'AB-11024'} />
+        {fulfillment && <ReceiptRow label="Fulfilment:" value={fulfillment} />}
+        {deliveryZone && <ReceiptRow label="Zone:" value={deliveryZone} />}
+        {cashier && <ReceiptRow label="Attendant:" value={cashier} />}
+        {channel && <ReceiptRow label="Channel:" value={channel} />}
+      </section>
 
-    {note && <p className="thermal-receipt__note"><strong>Note:</strong> {note}</p>}
-    <footer className="thermal-receipt__footer">
-      <strong>{receiptFooter}</strong>
-
-      {/* ── Single Code Footer (QR Code OR Barcode - Never Both) ── */}
-      {codeType === 'qr' && qrDataUrl && (
-        <div className="thermal-receipt__qr-wrap" style={{ margin: '6px auto 4px', textAlign: 'center' }}>
-          <img
-            src={qrDataUrl}
-            alt="Scan to verify receipt"
-            style={{
-              width: settings.pos_receipt_paper_size === '58' ? '28mm' : '32mm',
-              height: settings.pos_receipt_paper_size === '58' ? '28mm' : '32mm',
-              display: 'block',
-              margin: '0 auto',
-              imageRendering: 'pixelated',
-            }}
-          />
-          <div style={{ fontSize: '8.5px', fontWeight: 800, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: '2px' }}>
-            SCAN TO VERIFY RECEIPT
-          </div>
-          <div style={{ fontSize: '8px', color: '#333', fontFamily: 'monospace' }}>
-            bemsfarms.com/verify
-          </div>
-        </div>
+      {/* ── 4. Itemized Purchases (For Retail / Supermarket Sales) ── */}
+      {items && items.length > 0 && (
+        <>
+          <div className="thermal-receipt__divider" aria-hidden="true" />
+          <section className="thermal-receipt__items" aria-label="Purchased items">
+            <div className="thermal-receipt__items-head">
+              <span>ITEM / DESCRIPTION</span>
+              <span>AMOUNT</span>
+            </div>
+            {items.map((item, index) => {
+              const qty = Number(item.qty || item.quantity || 1)
+              const price = Number(item.price || item.unit_price || 0)
+              const lineTotal = Number(item.total ?? item.subtotal ?? qty * price)
+              return (
+                <div className="thermal-receipt__item" key={item.id || `${item.name}-${index}`}>
+                  <div className="thermal-receipt__item-name">{item.name || item.product_name || 'Item'}</div>
+                  <div className="thermal-receipt__item-line">
+                    <span>{qty} {item.unit || 'pcs'} × {money(price)}</span>
+                    <strong>{money(lineTotal)}</strong>
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+        </>
       )}
 
-      {codeType === 'barcode' && (
-        <div className="thermal-receipt__barcode-wrap" style={{ margin: '6px auto 3px', textAlign: 'center' }}>
-          {receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />}
-        </div>
-      )}
+      {/* ── 5. Financials & Payment Breakdown ── */}
+      <div className="thermal-receipt__divider" aria-hidden="true" />
+      <section className="thermal-receipt__block" aria-label="Fare and Payment Breakdown">
+        <ReceiptRow label="Fare Amount:" value={money(safeSubtotal)} />
+        <ReceiptRow label="Manifest Fee:" value={Number(deliveryFee) > 0 ? money(deliveryFee) : '₦0.00'} />
+        {Number(tax) > 0 && <ReceiptRow label="VAT (7.5%):" value={money(tax)} />}
+        {Number(discount) > 0 && <ReceiptRow label="Discount:" value={`−${money(discount)}`} />}
+        <ReceiptRow label="Payment Method:" value={paymentMethod || 'Card (5399 **** **** 4219)'} />
+        <ReceiptRow label="Transaction Ref:" value={paymentReference || `TRX2026095${cleanCode}`} />
+        {Number(total) > 0 && safeSubtotal !== Number(total) && (
+          <ReceiptRow label="Total Amount:" value={money(total)} strong large />
+        )}
+      </section>
 
-      <small>{receiptNumber || 'BEMS FARMS'} · {returnNote}</small>
-    </footer>
-  </article>
+      {/* ── 6. Bottom Verification Block (QR Code on Left, Text on Right) ── */}
+      <div className="thermal-receipt__divider" aria-hidden="true" />
+      <section className="thermal-receipt__verify-box" aria-label="Verification and Policies">
+        <div className="thermal-receipt__verify-qr">
+          {qrDataUrl ? (
+            <img
+              src={qrDataUrl}
+              alt="Scan to verify receipt"
+              className="thermal-receipt__qr-img"
+            />
+          ) : (
+            <div style={{ width: '76px', height: '76px', background: '#f5f5f5', border: '1px dashed #999' }} />
+          )}
+        </div>
+        <div className="thermal-receipt__verify-info">
+          <div className="thermal-receipt__verify-thanks">{thankYouText}</div>
+          <div className="thermal-receipt__verify-brand">{brandName}</div>
+          <div className="thermal-receipt__verify-policy">{policyText}</div>
+        </div>
+      </section>
+
+      {/* ── 7. Footer Website & Tax Attribution ── */}
+      <div className="thermal-receipt__divider" aria-hidden="true" />
+      <footer className="thermal-receipt__footer">
+        <div className="thermal-receipt__footer-url">{settings.pos_receipt_website || 'www.smarttripconnect.com'}</div>
+        <div className="thermal-receipt__footer-tagline">
+          {settings.pos_receipt_tagline || 'SmartEIRS... Tax and Revenue Management'}
+        </div>
+      </footer>
+    </article>
+  )
 }

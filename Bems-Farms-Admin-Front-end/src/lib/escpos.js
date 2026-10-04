@@ -493,74 +493,89 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
         ? 'Customer copy — keep for your records'
         : 'Freshness you can trust, every day.')
 
+  // Format date and time with pipe
+  const formatDateTime = (dStr) => {
+    if (dStr && typeof dStr === 'string' && dStr.includes('|')) return dStr
+    const now = new Date()
+    const d = String(now.getDate()).padStart(2, '0')
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const y = now.getFullYear()
+    const h = String(now.getHours()).padStart(2, '0')
+    const min = String(now.getMinutes()).padStart(2, '0')
+    const s = String(now.getSeconds()).padStart(2, '0')
+    return `${d}.${m}.${y} | ${h}:${min}:${s}`
+  }
+
+  const cleanCode = (receiptNumber || '980253').toString().replace(/^[#\s]+/, '')
+
   // 1. Header & Store Branding
   builder.align('center')
-    .bold(true).size('double').textLn(storeName).size('normal').bold(false)
-    .textLn(storeTagline)
-    .textLn(storeAddress)
-    .textLn('Tel: ' + storePhone)
-    .dashedLine()
-    .bold(true).textLn(docTitle).bold(false)
+    .bold(true).size('double').textLn(docTitle).size('normal').bold(false)
+    .textLn(formatDateTime(date))
+    .emptyLine(1)
+    .bold(true).textLn(`[ Ticket code: ${cleanCode} ]`).bold(false)
+    .emptyLine(1)
     .dashedLine()
 
-  // 2. Metadata
+  // 2. Passenger / Customer Info
   builder.align('left')
-    .twoColumnRow(docNumberLabel, receiptNumber, true)
-    .twoColumnRow('Date/Time:', date)
-    .twoColumnRow('Customer:', customer)
-    .twoColumnRow('Cashier:', cashier)
+    .twoColumnRow('Passenger Name:', customer)
+    .twoColumnRow('Phone Number:', receiptData.customerPhone || storePhone)
     .dashedLine()
 
-  // 3. Items Table Header
-  builder.bold(true).threeColumnRow('ITEM', 'QTY x PRICE', 'TOTAL').bold(false)
+  // 3. Journey / Fulfilment Details
+  if (receiptData.fromLocation || receiptData.toLocation) {
+    builder.twoColumnRow('From:', receiptData.fromLocation || 'Isi Gate')
+    builder.twoColumnRow('To:', receiptData.toLocation || 'Ubakala')
+    builder.twoColumnRow('Date:', String(date).split('|')[0].trim())
+    builder.twoColumnRow('Departure Time:', receiptData.departureTime || '08:30 AM')
+    builder.twoColumnRow('Bus No:', receiptData.busNo || 'AB-11024')
+    builder.dashedLine()
+  } else if (receiptData.fulfillment || receiptData.cashier) {
+    if (receiptData.fulfillment) builder.twoColumnRow('Fulfilment:', receiptData.fulfillment)
+    if (receiptData.cashier) builder.twoColumnRow('Cashier:', receiptData.cashier)
+    builder.dashedLine()
+  }
+
+  // 4. Items List (If items exist)
+  if (items && items.length > 0) {
+    builder.bold(true).threeColumnRow('ITEM', 'QTY x PRICE', 'TOTAL').bold(false)
+    builder.dashedLine()
+    items.forEach(it => {
+      const name = String(it.name || it.product_name || 'Item')
+      const qty = Number(it.qty || it.quantity || 1)
+      const price = Number(it.price || it.unit_price || 0)
+      const lineTotal = Number(it.total ?? (qty * price))
+      builder.textLn(name)
+      builder.twoColumnRow(`  ${qty} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
+    })
+    builder.dashedLine()
+  }
+
+  // 5. Financials
+  builder.twoColumnRow('Fare Amount:', `N${Math.round(subtotal || total).toLocaleString()}`)
+  builder.twoColumnRow('Manifest Fee:', `N${Math.round(receiptData.deliveryFee || 0).toLocaleString()}`)
+  if (tax > 0) builder.twoColumnRow('VAT (7.5%):', `N${Math.round(tax).toLocaleString()}`)
+  if (discount > 0) builder.twoColumnRow('Discount:', `-N${Math.round(discount).toLocaleString()}`)
+  builder.twoColumnRow('Payment Method:', method || 'Card')
+  builder.twoColumnRow('Transaction Ref:', receiptData.paymentReference || `TRX2026095${cleanCode}`)
   builder.dashedLine()
 
-  // 4. Items List
-  items.forEach(it => {
-    const name = String(it.name || it.product_name || 'Item')
-    const qty = Number(it.qty || it.quantity || 1)
-    const price = Number(it.price || it.unit_price || 0)
-    const lineTotal = Number(it.total ?? (qty * price))
-    
-    builder.textLn(name)
-    builder.twoColumnRow(`  ${qty} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
-  })
-
-  builder.dashedLine()
-
-  // 5. Totals
-  builder.twoColumnRow('Subtotal:', `N${Math.round(subtotal).toLocaleString()}`)
-  if (discount > 0) {
-    builder.twoColumnRow('Discount:', `-N${Math.round(discount).toLocaleString()}`)
-  }
-  if (tax > 0) {
-    builder.twoColumnRow('VAT (7.5%):', `N${Math.round(tax).toLocaleString()}`)
-  }
-  builder.doubleLine()
-  builder.bold(true).size('tall')
-    .twoColumnRow('TOTAL:', `N${Math.round(total).toLocaleString()}`, true)
-    .size('normal').bold(false)
-  builder.doubleLine()
-
-  // 6. Tender Details
-  builder.twoColumnRow('Payment Method:', method)
-  if (method === 'Cash' && cashReceived > 0) {
-    builder.twoColumnRow('Amount Tendered:', `N${Math.round(cashReceived).toLocaleString()}`)
-    builder.bold(true).twoColumnRow('Change Due:', `N${Math.round(change).toLocaleString()}`, true).bold(false)
-  }
-
-  if (note) {
-    builder.dashedLine().textLn('Note: ' + note)
-  }
-
-  // 7. Footer & Barcode
-  builder.emptyLine(1)
+  // 6. Thank You & Verification Policy
   builder.align('center')
-    .bold(true).textLn(docFooter).bold(false)
+    .emptyLine(1)
+    .textLn('Thank you for choosing')
+    .bold(true).size('tall').textLn(storeName).size('normal').bold(false)
+    .emptyLine(1)
     .textLn(docNote)
     .emptyLine(1)
-    .barcode(receiptNumber, 36)
-    .textLn(receiptNumber)
+    .dashedLine()
+
+  // 7. Footer
+  builder.align('center')
+    .textLn('www.smarttripconnect.com')
+    .textLn('SmartEIRS... Tax and Revenue Management')
+    .emptyLine(2)
     .cut(true)
 
   const bytes = builder.getBytes()
