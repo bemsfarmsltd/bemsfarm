@@ -161,6 +161,31 @@ async function matchDeliveryZone(lat, lng, addressText, cityName, stateName, opt
       };
     }
 
+    // 0. Top priority: Test Zone (Free Delivery - ₦0)
+    const testKeywords = ["test", "testing", "test zone", "testzone", "free delivery", "qa testing", "demo zone"];
+    const isTestLocation = testKeywords.some(kw => 
+      (addressText && String(addressText).toLowerCase().includes(kw)) ||
+      (cityName && String(cityName).toLowerCase().includes(kw)) ||
+      (stateName && String(stateName).toLowerCase().includes(kw)) ||
+      fullSearchText.includes(kw)
+    );
+
+    if (isTestLocation) {
+      const testZone = zones.find(z => z.zone_id === "ZONE_TEST" || String(z.zone_name).toLowerCase().includes("test zone"));
+      if (testZone) {
+        return {
+          ...testZone,
+          delivery_fee: 0,
+          original_delivery_fee: 0,
+          discount_amount: 0,
+          subsidy_note: "QA Test Zone: ₦0 Free Delivery Active",
+          driver_earning: 0,
+          pricing_breakdown: { total_fee: 0, base_fee: 0, per_km_rate: 0, distance_fee: 0 },
+          matchType: "test_zone_override",
+        };
+      }
+    }
+
     // 1. First priority: Dynamic Geodesic Distance / Closest Zone within Radius
     if (hasCoords) {
       // Find all zones that have center coordinates configured
@@ -528,7 +553,7 @@ router.post("/verify", async (req, res, next) => {
       zone: matchedZone ? {
         zone_id: matchedZone.zone_id,
         zone_name: matchedZone.zone_name,
-        delivery_fee: parseFloat(matchedZone.delivery_fee) || 1000,
+        delivery_fee: (matchedZone.delivery_fee !== null && matchedZone.delivery_fee !== undefined && !isNaN(Number(matchedZone.delivery_fee))) ? Number(matchedZone.delivery_fee) : 1000,
         estimated_delivery_time: matchedZone.estimated_delivery_time || "1–2 hours",
         match_type: matchedZone.matchType,
       } : null,

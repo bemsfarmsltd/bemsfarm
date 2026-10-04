@@ -38,12 +38,17 @@ export const NIGERIAN_STATES = [
   "Taraba",
   "Yobe",
   "Zamfara",
+  "Test Zone (Free Delivery - ₦0)",
 ];
 
 export function normalizeNigerianState(input) {
   if (!input) return "Abia";
   const raw = String(input).trim();
   const clean = raw.toLowerCase().replace(/state/gi, "").trim();
+
+  if (clean.includes("test")) {
+    return "Test Zone (Free Delivery - ₦0)";
+  }
 
   if (
     clean.includes("abuja") ||

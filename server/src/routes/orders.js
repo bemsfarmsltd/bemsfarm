@@ -66,6 +66,24 @@ async function ensureOrdersZonalColumns() {
 ensureOrdersZonalColumns();
 
 async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address, city, state }) {
+  // 0. Top Priority: Test Zone & Free Delivery Override
+  const isTest = (zone_id === 'ZONE_TEST') ||
+    (address && String(address).toLowerCase().includes("test")) ||
+    (city && String(city).toLowerCase().includes("test")) ||
+    (state && String(state).toLowerCase().includes("test"));
+
+  if (isTest) {
+    const tzRes = await client.query("SELECT * FROM delivery_zones WHERE zone_id = 'ZONE_TEST' LIMIT 1");
+    const tz = tzRes.rows[0] || { zone_id: 'ZONE_TEST', zone_name: 'Test Zone (Free Delivery - ₦0)', delivery_fee: 0 };
+    return {
+      zone_id: tz.zone_id,
+      zone_name: tz.zone_name,
+      delivery_fee: 0,
+      distance_km: 0,
+      driver_earning: 0,
+    };
+  }
+
   let matchedZone = null;
   
   // 1. If explicit zone_id provided, look it up in delivery_zones

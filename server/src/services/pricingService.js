@@ -5,6 +5,7 @@
  */
 
 const ZONE_PRICING_DEFAULTS = {
+  ZONE_TEST: { base_fee: 0, per_km_rate: 0 },
   ZONE001: { base_fee: 600, per_km_rate: 80 },
   ZONE002: { base_fee: 1800, per_km_rate: 90 },
   ZONE003: { base_fee: 2500, per_km_rate: 60 },
@@ -26,10 +27,32 @@ function calculateDeliveryPricing({
   const zoneId = zone.zone_id || 'ZONE001';
   const defaults = ZONE_PRICING_DEFAULTS[zoneId] || { base_fee: 600, per_km_rate: 80 };
 
+  // Explicit check for test zone or 0 delivery fee
+  if (zoneId === 'ZONE_TEST' || zone.delivery_fee === 0 || zone.base_fee === 0 && zone.pricing_type === 'flat') {
+    return {
+      delivery_fee: 0,
+      original_delivery_fee: 0,
+      driver_earning: 0,
+      pricing_model: 'flat',
+      breakdown: {
+        zone_id: zoneId,
+        zone_name: zone.zone_name || 'Test Zone (Free Delivery - ₦0)',
+        base_fee: 0,
+        distance_km: 0,
+        per_km_rate: 0,
+        distance_fee: 0,
+        total_fee: 0,
+        driver_payout: 0,
+      }
+    };
+  }
+
   // 1. Base delivery fee for the zone
   const basePrice = zone.base_fee !== null && zone.base_fee !== undefined && !isNaN(Number(zone.base_fee))
     ? parseFloat(zone.base_fee)
-    : (parseFloat(zone.delivery_fee) || defaults.base_fee);
+    : (zone.delivery_fee !== null && zone.delivery_fee !== undefined && !isNaN(Number(zone.delivery_fee))
+        ? parseFloat(zone.delivery_fee)
+        : defaults.base_fee);
 
   // 2. Per-KM rate
   const isFlat = zone.pricing_type === 'flat' || zoneId === 'ZONE006';
