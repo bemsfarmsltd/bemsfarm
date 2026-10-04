@@ -53,6 +53,8 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         d.id, d.delivery_ref, d.status, d.attempts,
         d.eta_minutes, d.assigned_at, d.dispatched_at, d.accepted_at, o.driver_accepted_at, o.driver_response,
         COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), '—') AS delivery_address,
+        COALESCE(o.latitude, ua.latitude) AS customer_lat,
+        COALESCE(o.longitude, ua.longitude) AS customer_lng,
         o.id AS order_id, o.total AS order_total, o.notes, o.source AS order_source,
         o.payment_method, o.payment_status, o.delivery_fee, o.created_at AS order_created_at,
         COALESCE(
@@ -82,6 +84,13 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       FROM deliveries d
       JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
       LEFT JOIN users c ON (c.id = o.user_id OR c.id = o.customer_id)
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude 
+        FROM user_addresses 
+        WHERE user_id = c.id 
+        ORDER BY is_default DESC, created_at DESC 
+        LIMIT 1
+      ) ua ON true
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
