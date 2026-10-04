@@ -234,29 +234,27 @@ export default function LiveOrderMap({
     };
   }, [orderId, driverId]);
 
-  // Destination coordinates
+  // Destination coordinates (only real geocoded coordinates)
   const destCoords = useMemo(() => {
     const lat = parseFloat(customerLat);
     const lng = parseFloat(customerLng);
     if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
       return [lat, lng];
     }
-    // Fallback around Umuahia delivery zone
-    return [5.529, 7.499];
+    return null;
   }, [customerLat, customerLng]);
 
-  // Live or fallback driver coordinates
+  // Live driver coordinates (only if broadcasting fresh GPS telemetry)
   const driverCoords = useMemo(() => {
     const lat = parseFloat(liveDriverLat);
     const lng = parseFloat(liveDriverLng);
     if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
       return [lat, lng];
     }
-    // If not yet broadcasting GPS, place near Central Hub
-    return [5.524, 7.493];
+    return null;
   }, [liveDriverLat, liveDriverLng]);
 
-  const hasLiveDriverGps = Number.isFinite(parseFloat(liveDriverLat)) && Number.isFinite(parseFloat(liveDriverLng));
+  const hasLiveDriverGps = Boolean(driverCoords);
   const isEnRoute = ["shipped", "en_route", "out_for_delivery", "arrived"].includes(String(orderStatus).toLowerCase());
 
   const driverMarkerIcon = useMemo(
@@ -265,21 +263,22 @@ export default function LiveOrderMap({
   );
 
   const mapPoints = useMemo(() => {
-    const pts = [destCoords];
-    if (isEnRoute || hasLiveDriverGps) {
+    const pts = [DEFAULT_HUB_COORDS];
+    if (destCoords) {
+      pts.push(destCoords);
+    }
+    if (driverCoords) {
       pts.push(driverCoords);
-    } else {
-      pts.push(DEFAULT_HUB_COORDS);
     }
     return pts;
-  }, [destCoords, driverCoords, isEnRoute, hasLiveDriverGps]);
+  }, [destCoords, driverCoords]);
 
   const originCoords = useMemo(() => {
-    if (isEnRoute || hasLiveDriverGps) {
+    if (driverCoords) {
       return driverCoords;
     }
     return DEFAULT_HUB_COORDS;
-  }, [driverCoords, isEnRoute, hasLiveDriverGps]);
+  }, [driverCoords]);
 
   const [roadPolyline, setRoadPolyline] = useState([]);
   const [roadDistanceKm, setRoadDistanceKm] = useState(null);
@@ -316,6 +315,7 @@ export default function LiveOrderMap({
 
   // Dual-layered Polyline route (follows actual road curves)
   const polylinePositions = useMemo(() => {
+    if (!destCoords || !originCoords) return [];
     if (roadPolyline && roadPolyline.length > 0) {
       return roadPolyline;
     }
@@ -323,8 +323,12 @@ export default function LiveOrderMap({
   }, [roadPolyline, originCoords, destCoords]);
 
   // External Navigation links
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${driverCoords[0]},${driverCoords[1]}&destination=${destCoords[0]},${destCoords[1]}&travelmode=driving`;
-  const appleMapsUrl = `https://maps.apple.com/?saddr=${driverCoords[0]},${driverCoords[1]}&daddr=${destCoords[0]},${destCoords[1]}`;
+  const googleMapsUrl = driverCoords && destCoords
+    ? `https://www.google.com/maps/dir/?api=1&origin=${driverCoords[0]},${driverCoords[1]}&destination=${destCoords[0]},${destCoords[1]}&travelmode=driving`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(deliveryAddress || 'Umuahia')}`;
+  const appleMapsUrl = driverCoords && destCoords
+    ? `https://maps.apple.com/?saddr=${driverCoords[0]},${driverCoords[1]}&daddr=${destCoords[0]},${destCoords[1]}`
+    : `https://maps.apple.com/?q=${encodeURIComponent(deliveryAddress || 'Umuahia')}`;
 
   const currentTile = TILE_LAYERS[mapStyle] || TILE_LAYERS.streets;
 
@@ -412,8 +416,8 @@ export default function LiveOrderMap({
 
       {/* ── MAP CONTAINER ── */}
       <MapContainer
-        center={destCoords}
-        zoom={14}
+        center={destCoords || DEFAULT_HUB_COORDS}
+        zoom={13}
         scrollWheelZoom={false}
         zoomControl={false}
         style={{ width: "100%", height: "100%", background: "#e2e8f0" }}
@@ -442,22 +446,24 @@ export default function LiveOrderMap({
           </Popup>
         </Marker>
 
-        {/* Customer Destination Marker */}
-        <Marker position={destCoords} icon={destinationIcon}>
-          <Popup>
-            <div className="p-1 text-xs">
-              <strong className="text-emerald-900 block font-bold">
-                📍 Delivery Destination
-              </strong>
-              <span className="text-slate-600">
-                {deliveryAddress || "Customer Delivery Address"}
-              </span>
-            </div>
-          </Popup>
-        </Marker>
+        {/* Customer Destination Marker (Only when real coordinates exist) */}
+        {destCoords && (
+          <Marker position={destCoords} icon={destinationIcon}>
+            <Popup>
+              <div className="p-1 text-xs">
+                <strong className="text-emerald-900 block font-bold">
+                  📍 Delivery Destination
+                </strong>
+                <span className="text-slate-600">
+                  {deliveryAddress || "Customer Delivery Address"}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        )}
 
-        {/* Live Driver Marker */}
-        {(isEnRoute || hasLiveDriverGps) && (
+        {/* Live Driver Marker (Only when real fresh GPS exists) */}
+        {hasLiveDriverGps && driverCoords && (
           <Marker position={driverCoords} icon={driverMarkerIcon}>
             <Popup>
               <div className="p-1 text-xs">
@@ -483,25 +489,29 @@ export default function LiveOrderMap({
           </Marker>
         )}
 
-        {/* High-End Glowing Navigation Route (Underlay Glow + Dashed Line) */}
-        <Polyline
-          positions={polylinePositions}
-          pathOptions={{
-            color: "#065f46",
-            weight: 6,
-            opacity: 0.85,
-            lineCap: "round",
-          }}
-        />
-        <Polyline
-          positions={polylinePositions}
-          pathOptions={{
-            color: "#34d399",
-            weight: 3.5,
-            dashArray: "8, 12",
-            opacity: 0.95,
-          }}
-        />
+        {/* High-End Glowing Navigation Route (Only when real destination exists) */}
+        {destCoords && polylinePositions.length > 0 && (
+          <>
+            <Polyline
+              positions={polylinePositions}
+              pathOptions={{
+                color: "#065f46",
+                weight: 6,
+                opacity: 0.85,
+                lineCap: "round",
+              }}
+            />
+            <Polyline
+              positions={polylinePositions}
+              pathOptions={{
+                color: "#34d399",
+                weight: 3.5,
+                dashArray: "8, 12",
+                opacity: 0.95,
+              }}
+            />
+          </>
+        )}
       </MapContainer>
 
       {/* ── FLOATING BOTTOM DRIVER / NAVIGATION BAR ── */}
