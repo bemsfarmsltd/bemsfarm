@@ -92,7 +92,7 @@ async function createMonnifyReservedAccount({
  * 3. Fetch Master Merchant Wallet Balance API
  */
 async function getMonnifyWalletBalance(accountNumber) {
-  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT;
+  const acct = accountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8066038256";
   if (!acct) {
     throw new Error("Monnify wallet account number is not configured");
   }

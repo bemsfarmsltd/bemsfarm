@@ -681,10 +681,11 @@ router.get("/gateway/overview", async (req, res, next) => {
     const estGatewayFee = gross * 0.015; // standard Monnify 1.5% fee
     const netReceived = gross - estGatewayFee;
 
+    const walletAcct = process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8066038256";
     let liveBalance = { availableBalance: 0.00, ledgerBalance: 0.00 };
-    if (process.env.MONNIFY_WALLET_ACCOUNT_NUMBER) {
+    if (walletAcct) {
       try {
-        const monnifyBal = await getMonnifyWalletBalance();
+        const monnifyBal = await getMonnifyWalletBalance(walletAcct);
         if (monnifyBal?.availableBalance !== undefined && monnifyBal?.availableBalance !== null) {
           liveBalance = monnifyBal;
         }
@@ -699,7 +700,7 @@ router.get("/gateway/overview", async (req, res, next) => {
       gateway: {
         provider: "Monnify Payment Gateway",
         environment: isLive ? "Production / Live Mode" : "Sandbox / Test Mode",
-        merchant_account_number: process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || null,
+        merchant_account_number: walletAcct,
         merchant_bank: "Wema Bank / Monnify",
         contract_code: process.env.MONNIFY_CONTRACT_CODE || null,
         api_key: process.env.MONNIFY_API_KEY ? process.env.MONNIFY_API_KEY.replace(/(.{7}).+(.{4})/, "$1••••••••$2") : null,
