@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
-import BemsOfficialDocument from '../../components/documents/BemsOfficialDocument'
+import BemsOfficialDocument, { formatPackSpec } from '../../components/documents/BemsOfficialDocument'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1514,7 +1514,36 @@ export default function Invoices() {
           {/* ── DELIVERY WAYBILL MODAL ────────────────── */}
           {activeModal === 'waybill' && selected && (
             <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 760, maxHeight: '92vh', overflowY: 'auto' }}>
-              <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-light">
+              <style>{`
+                @media print {
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  .bems-waybill-print-target, .bems-waybill-print-target * {
+                    visibility: visible !important;
+                  }
+                  .bems-waybill-print-target {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0 !important;
+                    padding: 8mm 12mm !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    background: #ffffff !important;
+                  }
+                  .no-print, .no-print * {
+                    display: none !important;
+                  }
+                  @page {
+                    size: A4 portrait;
+                    margin: 6mm;
+                  }
+                }
+              `}</style>
+              <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-light no-print">
                 <div className="d-flex align-items-center gap-2">
                   <i className="ri-file-paper-2-fill fs-20 text-primary"/>
                   <h6 className="mb-0 fw-bold">Official Delivery Note & Waybill</h6>
@@ -1527,19 +1556,23 @@ export default function Invoices() {
                 </div>
               </div>
               
-              <div className="p-4" style={{ color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+              <div className="bems-waybill-print-target p-4" style={{ color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                 {/* Waybill Document Header */}
                 <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
                   <div>
-                    <h4 className="fw-bolder mb-1 text-success">BEMS FARMS GLOBAL LTD</h4>
+                    <h4 className="fw-bolder mb-1 text-success" style={{ letterSpacing: '0.02em' }}>
+                      {bankSettings?.invoice_company_name || bankSettings?.company_name || 'BEMS FARMS GLOBAL LTD'}
+                    </h4>
                     <div className="small text-muted">Premium Farm Produce, Fish & Poultry · Wholesale & B2B Division</div>
-                    <div className="small text-muted">Km 5, Farm Settlement Road, Umuahia, Abia State · Tel: +234 800 000 2367</div>
+                    <div className="small text-muted">
+                      {bankSettings?.invoice_company_address || bankSettings?.company_address || 'Central Farm Settlement Hub, Umuahia, Abia State'} · Tel: {bankSettings?.invoice_phone || bankSettings?.phone || '+234 813 652 6794'}
+                    </div>
                   </div>
                   <div className="text-end">
-                    <div className="badge bg-dark text-white fs-12 px-3 py-1 text-uppercase tracking-wider">DELIVERY NOTE / WAYBILL</div>
+                    <div className="badge bg-dark text-white fs-12 px-3 py-1.5 text-uppercase tracking-wider">DELIVERY NOTE / WAYBILL</div>
                     <div className="fw-bold fs-16 mt-2">WB-{selected.id.replace('INV-', '')}</div>
                     <div className="small text-muted">Ref Inv: {selected.id}</div>
-                    <div className="small text-muted">Date: {new Date().toLocaleDateString('en-GB')}</div>
+                    <div className="small text-muted">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                   </div>
                 </div>
 
@@ -1556,30 +1589,30 @@ export default function Invoices() {
                     <div className="small"><strong>Dispatch Status:</strong> {selected.fulfillmentStatus === 'fulfilled' ? 'Stock Dispatched' : 'Pending Dispatch'}</div>
                     <div className="small"><strong>Dispatch Date:</strong> {selected.fulfilledAt || '—'}</div>
                     <div className="small"><strong>Channel:</strong> {selected.channel?.toUpperCase() || 'DIRECT B2B'}</div>
-                    <div className="small"><strong>Payment Terms:</strong> {selected.paymentMethod} ({selected.status?.toUpperCase()})</div>
-                    {selected.notes && <div className="small text-muted mt-1"><strong>Instructions:</strong> {selected.notes}</div>}
+                    <div className="small"><strong>Payment Terms:</strong> {selected.paymentMethod || 'Bank Transfer'} ({selected.status?.toUpperCase() || 'PENDING'})</div>
+                    <div className="small text-muted mt-1"><strong>Instructions:</strong> {selected.notes || `Payment is due within 7 days of invoice date. Kindly use invoice reference ${selected.id} for payment identification. Thank you for your business.`}</div>
                   </div>
                 </div>
 
                 {/* Items Table */}
-                <table className="table table-bordered mb-4">
+                <table className="table table-bordered mb-4 align-middle">
                   <thead className="table-light">
                     <tr style={{ fontSize: 12 }}>
                       <th style={{ width: 40 }} className="text-center">#</th>
                       <th>Item Description</th>
-                      <th className="text-center" style={{ width: 120 }}>Qty Ordered</th>
-                      <th className="text-center" style={{ width: 140 }}>Qty Delivered</th>
-                      <th style={{ width: 120 }} className="text-center">Packaging / Unit</th>
+                      <th className="text-center" style={{ width: 110 }}>Qty Ordered</th>
+                      <th className="text-center" style={{ width: 110 }}>Qty Delivered</th>
+                      <th style={{ width: 140 }} className="text-center">Pack Size</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selected.items.map((it, idx) => (
                       <tr key={idx} style={{ fontSize: 13 }}>
-                        <td className="text-center text-muted">{idx + 1}</td>
-                        <td className="fw-medium">{it.name}</td>
-                        <td className="text-center">{it.qty}</td>
-                        <td className="text-center fw-bold">{it.qty}</td>
-                        <td className="text-center text-muted">{it.unit || 'kg'}</td>
+                        <td className="text-center text-muted font-monospace">{String(idx + 1).padStart(2, '0')}</td>
+                        <td className="fw-medium text-dark">{it.name}</td>
+                        <td className="text-center font-monospace">{it.qty}</td>
+                        <td className="text-center font-monospace fw-bold">{it.qty}</td>
+                        <td className="text-center fw-semibold text-dark">{formatPackSpec(it)}</td>
                       </tr>
                     ))}
                   </tbody>
