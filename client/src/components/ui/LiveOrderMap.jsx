@@ -274,13 +274,53 @@ export default function LiveOrderMap({
     return pts;
   }, [destCoords, driverCoords, isEnRoute, hasLiveDriverGps]);
 
-  // Dual-layered Polyline route
-  const polylinePositions = useMemo(() => {
+  const originCoords = useMemo(() => {
     if (isEnRoute || hasLiveDriverGps) {
-      return [driverCoords, destCoords];
+      return driverCoords;
     }
-    return [DEFAULT_HUB_COORDS, destCoords];
-  }, [driverCoords, destCoords, isEnRoute, hasLiveDriverGps]);
+    return DEFAULT_HUB_COORDS;
+  }, [driverCoords, isEnRoute, hasLiveDriverGps]);
+
+  const [roadPolyline, setRoadPolyline] = useState([]);
+  const [roadDistanceKm, setRoadDistanceKm] = useState(null);
+  const [roadDurationMins, setRoadDurationMins] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const [startLat, startLng] = originCoords;
+    const [endLat, endLng] = destCoords;
+    if (!startLat || !startLng || !endLat || !endLng) return;
+
+    // Fetch turn-by-turn road geometry along actual highway network
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.routes && data.routes[0]) {
+          const r = data.routes[0];
+          // OSRM returns [longitude, latitude], Leaflet expects [latitude, longitude]
+          const latLngs = r.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          setRoadPolyline(latLngs);
+          setRoadDistanceKm(Math.round(r.distance / 100) / 10);
+          setRoadDurationMins(Math.round(r.duration / 60));
+        }
+      })
+      .catch(() => {
+        // Graceful fallback to direct points
+      });
+
+    return () => { cancelled = true; };
+  }, [originCoords[0], originCoords[1], destCoords[0], destCoords[1]]);
+
+  // Dual-layered Polyline route (follows actual road curves)
+  const polylinePositions = useMemo(() => {
+    if (roadPolyline && roadPolyline.length > 0) {
+      return roadPolyline;
+    }
+    return [originCoords, destCoords];
+  }, [roadPolyline, originCoords, destCoords]);
 
   // External Navigation links
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${driverCoords[0]},${driverCoords[1]}&destination=${destCoords[0]},${destCoords[1]}&travelmode=driving`;
@@ -317,13 +357,18 @@ export default function LiveOrderMap({
             )}
           </div>
 
-          {/* ETA Badge */}
-          {formatEtaDisplay(etaMinutes) && (
+          {/* Real Highway Road Distance & ETA Badge */}
+          {roadDistanceKm !== null ? (
+            <div className="bg-amber-400 text-emerald-950 px-3 py-1.5 rounded-xl shadow-lg font-black text-xs flex items-center gap-1.5 border border-amber-300">
+              <span>🛣️</span>
+              <span>{roadDistanceKm} km · {roadDurationMins ? `~${roadDurationMins} mins` : formatEtaDisplay(etaMinutes)}</span>
+            </div>
+          ) : formatEtaDisplay(etaMinutes) ? (
             <div className="bg-amber-400 text-emerald-950 px-3 py-1.5 rounded-xl shadow-lg font-black text-xs flex items-center gap-1.5 border border-amber-300">
               <span>⏱️</span>
               <span>ETA: {formatEtaDisplay(etaMinutes)}</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Map Style Toggle & Google Maps button */}
