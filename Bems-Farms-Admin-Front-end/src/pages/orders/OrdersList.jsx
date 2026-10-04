@@ -1736,6 +1736,9 @@ export default function OrdersList() {
                   channel={getChannelCfg(selected.channel).label}
                   cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
                   fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
+                  deliveryAddress={selected.deliveryAddress || selected.shipping_address || selected.customer?.address}
+                  deliveryZone={selected.deliveryZone || selected.zone_name}
+                  driverName={selected.driver?.name || selected.driver_name}
                   status={getStatusCfg(selected.status).label}
                   items={selected.items}
                   subtotal={calcSub(selected.items) || selected.total}
@@ -1775,6 +1778,9 @@ export default function OrdersList() {
                   channel={getChannelCfg(selected.channel).label}
                   cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
                   fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
+                  deliveryAddress={selected.deliveryAddress || selected.shipping_address || selected.customer?.address}
+                  deliveryZone={selected.deliveryZone || selected.zone_name}
+                  driverName={selected.driver?.name || selected.driver_name}
                   status={getStatusCfg(selected.status).label}
                   items={selected.items}
                   subtotal={calcSub(selected.items) || selected.total}

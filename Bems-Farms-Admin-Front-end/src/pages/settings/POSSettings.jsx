@@ -17,18 +17,18 @@ import {
 } from '../../lib/escpos'
 
 const BLANK = {
-  store_name: 'Bems Farms Ltd',
+  store_name: 'Bems Farms Global Ltd',
   store_phone: '+234 800 236 7326',
   store_email: 'info@bemsfarms.com',
-  store_address: 'Abia State, Nigeria',
+  store_address: 'Abia State. Head Office',
   store_logo_url: '/bemsfarms_logo.png',
   store_tax_id: '',
   store_registration_number: '',
   pos_receipt_tagline: 'Fresh food. Trusted quality.',
   pos_receipt_website: 'bemsfarms.com',
-  pos_receipt_header: 'SALES RECEIPT',
+  pos_receipt_header: 'POS SALES RECEIPT',
   pos_receipt_footer: 'Thank you for shopping with us',
-  pos_receipt_return_note: 'Keep this receipt for returns',
+  pos_receipt_return_note: 'GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE',
   pos_receipt_paper_size: '80',
   pos_receipt_code_type: 'qr',
   pos_receipt_show_logo: 'true',
@@ -380,7 +380,7 @@ export default function POSSettings() {
                       <input
                         type="text"
                         className="form-control border-start-0 ps-0"
-                        placeholder="Bems Farms Ltd"
+                        placeholder="Bems Farms Global Ltd"
                         value={form.store_name || ''}
                         onChange={(e) => fld('store_name', e.target.value)}
                       />
@@ -478,7 +478,7 @@ export default function POSSettings() {
                       <input
                         type="text"
                         className="form-control border-start-0 ps-0"
-                        placeholder="Central Farm Settlement Hub, Umuahia, Abia State"
+                        placeholder="Abia State. Head Office"
                         value={form.store_address || ''}
                         onChange={(e) => fld('store_address', e.target.value)}
                       />
@@ -492,7 +492,7 @@ export default function POSSettings() {
                       <input
                         type="text"
                         className="form-control border-start-0 ps-0"
-                        placeholder="Keep this receipt for returns within 7 days. Fresh perishables checked on delivery."
+                        placeholder="GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE"
                         value={form.pos_receipt_return_note || ''}
                         onChange={(e) => fld('pos_receipt_return_note', e.target.value)}
                       />

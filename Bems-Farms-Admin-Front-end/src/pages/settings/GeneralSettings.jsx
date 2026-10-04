@@ -19,17 +19,17 @@ const TIMEZONES = [
 ]
 
 const BLANK = {
-  store_name: 'Bems Farms Ltd',
+  store_name: 'Bems Farms Global Ltd',
   store_tagline: 'Fresh farm produce and groceries delivered with trusted quality',
   store_phone: '+234 800 236 7326',
   store_email: 'support@bemsfarms.com',
   store_currency: 'NGN',
-  store_address: 'Bems Farms Headquarters, Abia State, Nigeria',
+  store_address: 'Abia State. Head Office',
   store_city: 'Umuahia / Aba',
   store_country: 'Nigeria',
   store_timezone: 'Africa/Lagos',
   store_tax_id: '',
-  store_registration_number: 'RC 7291044',
+  store_registration_number: '',
   store_logo_url: '/bemsfarms_logo.png',
   store_opening_hours: 'Mon - Sat: 8:00 AM - 7:00 PM',
   order_auto_confirm: 'true',
@@ -111,7 +111,7 @@ export default function GeneralSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Bems Farms Ltd"
+                    placeholder="Bems Farms Global Ltd"
                     value={form.store_name || ''}
                     onChange={e => fld('store_name', e.target.value)}
                   />
@@ -121,7 +121,7 @@ export default function GeneralSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="RC 7291044"
+                    placeholder="Optional"
                     value={form.store_registration_number || ''}
                     onChange={e => fld('store_registration_number', e.target.value)}
                   />

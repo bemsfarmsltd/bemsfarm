@@ -4360,7 +4360,7 @@ export default function POS() {
                 <div className="p-3 rounded mb-3 border pos-split-item-row">
                   <div className="d-flex justify-content-between mb-2">
                     <div>
-                      <div className="fs-18 fw-bolder text-emerald">🌾 BEMS FARMS LTD</div>
+                      <div className="fs-18 fw-bolder text-emerald">🌾 BEMS FARMS GLOBAL LTD</div>
                       <div className="text-muted fs-11">Fresh Grocery & Agricultural Retail</div>
                     </div>
                     <div className="text-end fs-11 text-muted">
@@ -4410,6 +4410,11 @@ export default function POS() {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+
+                <div className="text-center text-muted fs-11 mt-2 mb-3">
+                  <div className="fw-semibold text-danger">GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE</div>
+                  <div className="mt-1 fw-bold">Abia State. Head Office</div>
                 </div>
 
                 <div className="d-flex gap-2">

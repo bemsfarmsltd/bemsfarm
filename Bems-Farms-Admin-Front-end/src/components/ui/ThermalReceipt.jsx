@@ -26,18 +26,18 @@ function Barcode({ value }) {
 const money = (value) => `₦${Number(value || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const DEFAULTS = {
-  store_name: 'Bems Farms',
-  store_phone: '+234 801 234 5678',
-  store_email: 'info@bemsfarms.com',
+  store_name: 'Bems Farms Global Ltd',
+  store_phone: '+234 800 236 7326',
+  store_email: 'support@bemsfarms.com',
   store_address: 'Abia State, Nigeria',
   store_logo_url: '/bemsfarms_icon_b.png',
   store_tax_id: '',
   store_registration_number: '',
-  pos_receipt_tagline: 'SmartEIRS... Tax and Revenue Management',
-  pos_receipt_website: 'www.smarttripconnect.com',
-  pos_receipt_header: 'BUS TICKET RECEIPT',
-  pos_receipt_footer: 'Thank you for choosing',
-  pos_receipt_return_note: 'TICKET IS NON-TRANSFERRABLE',
+  pos_receipt_tagline: 'Fresh Food. Farm Produce. Quality Groceries.',
+  pos_receipt_website: 'www.bemsfarms.com',
+  pos_receipt_header: 'OFFICIAL SALES RECEIPT',
+  pos_receipt_footer: 'Thank you for choosing Bems Farms',
+  pos_receipt_return_note: 'GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE',
   pos_receipt_paper_size: '80',
   pos_receipt_show_logo: 'true',
   pos_receipt_show_phone: 'true',
@@ -45,17 +45,17 @@ const DEFAULTS = {
   pos_receipt_show_sku: 'false',
   pos_receipt_show_barcode: 'false',
   pos_receipt_code_type: 'qr',
-  receipt_pos_title: 'BUS TICKET RECEIPT',
-  receipt_pos_footer: 'Thank you for choosing',
+  receipt_pos_title: 'OFFICIAL SALES RECEIPT',
+  receipt_pos_footer: 'Thank you for shopping with us',
   receipt_online_title: 'ORDER DELIVERY RECEIPT',
-  receipt_online_footer: 'Thank you for choosing',
+  receipt_online_footer: 'Thank you for shopping with Bems Farms!',
   receipt_refund_title: 'REFUND RECEIPT',
   receipt_refund_footer: 'Your return has been recorded',
   receipt_stock_title: 'STOCK RECEIVING SLIP',
   receipt_stock_footer: 'Goods received and recorded',
   receipt_payment_title: 'PAYMENT RECEIPT',
-  receipt_payment_footer: 'Thank you for choosing',
-  receipt_invoice_title: 'OFFICIAL INVOICE',
+  receipt_payment_footer: 'Payment received with thanks',
+  receipt_invoice_title: 'SALES INVOICE',
   receipt_invoice_footer: 'Thank you for your business',
 }
 
@@ -154,13 +154,22 @@ export function printThermalReceipt() {
       border-radius: 50%;
       filter: grayscale(1) contrast(1.3);
     }
+    .thermal-receipt__brand-name {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-align: center;
+      color: #222;
+      margin-top: 5px;
+    }
     .thermal-receipt__main-title {
       font-size: 14.5px;
       font-weight: 800;
       letter-spacing: 0.6px;
       text-transform: uppercase;
       text-align: center;
-      margin: 6px 0 2px;
+      margin: 4px 0 2px;
       color: #000;
       font-family: inherit;
     }
@@ -181,7 +190,7 @@ export function printThermalReceipt() {
       background: #1e2229;
       color: #ffffff;
       border-radius: 9999px;
-      padding: 3px 16px;
+      padding: 3px 18px;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.4px;
@@ -227,6 +236,13 @@ export function printThermalReceipt() {
       font-size: 13.5px;
       font-weight: 900;
       margin: 2px 0;
+    }
+    .thermal-receipt__row--total {
+      font-size: 13.5px;
+      font-weight: 900;
+      margin: 3px 0;
+      padding-top: 4px;
+      border-top: 1px dashed #000;
     }
     .thermal-receipt__items {
       padding: 2px 0;
@@ -325,6 +341,14 @@ export function printThermalReceipt() {
       color: #333;
       line-height: 1.25;
     }
+    .thermal-receipt__footer-location {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #222;
+      margin-top: 3px;
+    }
   `
 
   doc.open()
@@ -393,25 +417,24 @@ function formatReceiptDateTime(dateVal) {
 export default function ThermalReceipt({
   receiptNumber,
   date,
-  customer = 'Ebubechukwu Israel Nnamdi',
-  customerPhone = '+234 801 234 5678',
-  fromLocation,
-  toLocation,
-  departureTime,
-  busNo,
-  channel,
-  cashier,
-  status,
+  customer = 'Walk-in Customer',
+  customerPhone,
+  branch = 'Aba Central Store',
+  channel = 'In-Store POS',
+  cashier = 'Chinedu K.',
+  status = 'Paid',
   paymentReference,
-  fulfillment,
+  fulfillment = 'Store Counter Pickup',
   deliveryZone,
+  driverName,
+  deliveryAddress,
   items = [],
   subtotal,
   discount = 0,
   tax = 0,
   deliveryFee = 0,
   total,
-  paymentMethod = 'Card (5399 **** **** 4219)',
+  paymentMethod = 'POS Card',
   amountTendered,
   change,
   note,
@@ -436,34 +459,43 @@ export default function ThermalReceipt({
 
   // Header Title
   const receiptTitle = isInvoice
-    ? (settings.receipt_invoice_title || 'OFFICIAL INVOICE')
+    ? (settings.receipt_invoice_title || 'COMMERCIAL SALES INVOICE')
     : isCustomerReceipt
-      ? (settings.receipt_online_title || 'SALES RECEIPT')
-      : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header || 'BUS TICKET RECEIPT')
+      ? (settings.receipt_online_title || 'ONLINE PAYMENT RECEIPT')
+      : (settings[`receipt_${receiptType}_title`] || settings.pos_receipt_header || 'POS SALES RECEIPT')
 
   // Code pill label & value
-  const cleanCode = (receiptNumber || '980253').toString().replace(/^[#\s]+/, '')
-  const codePillLabel = isInvoice ? 'Invoice code' : 'Ticket code'
+  const cleanCode = (receiptNumber || 'BF-980253').toString().replace(/^[#\s]+/, '')
+  const codePillLabel = isInvoice ? 'Invoice No' : isCustomerReceipt ? 'Order Code' : 'Receipt'
 
   // Verification & Thank you text
   const thankYouText = isInvoice
-    ? 'Official Bems Farms Documentation'
-    : (settings.pos_receipt_footer || 'Thank you for choosing')
+    ? 'Dispatched by'
+    : isCustomerReceipt
+      ? 'Thank you for ordering with'
+      : (settings.pos_receipt_footer || 'Thank you for shopping at')
   
-  const brandName = settings.store_name || 'SmartTripConnect'
+  const brandName = settings.store_name || 'BEMS FARMS GLOBAL LTD'
   const policyText = isInvoice
-    ? 'STAFF COPY · PACKING LIST'
-    : (settings.pos_receipt_return_note || 'TICKET IS NON-TRANSFERRABLE')
+    ? 'OFFICIAL DISPATCH INVOICE • GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE'
+    : isCustomerReceipt
+      ? 'ELECTRONIC PAYMENT RECEIPT • GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE'
+      : (settings.pos_receipt_return_note || 'GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE')
+
+  // Tagline per document type
+  const tagline = isInvoice
+    ? 'Fresh Food. Farm Produce. Commercial Dispatch.'
+    : isCustomerReceipt
+      ? 'Fresh Food. Farm Produce. Quality Groceries Delivered Daily.'
+      : (settings.pos_receipt_tagline || 'Fresh Food. Farm Produce. Quality Groceries.')
 
   // Calculations
   const calculatedSubtotal = items.reduce((sum, item) => sum + Number(item.total ?? Number(item.price || 0) * Number(item.qty || 1)), 0)
-  const safeSubtotal = Number(subtotal ?? (items.length > 0 ? calculatedSubtotal : (total || 5000)))
+  const safeSubtotal = Number(subtotal ?? (items.length > 0 ? calculatedSubtotal : (total || 0)))
 
   // QR Code Generation
   const [qrDataUrl, setQrDataUrl] = useState('')
-  const verifyUrl = receiptNumber 
-    ? `https://smarttripconnect.com/verify?code=${encodeURIComponent(cleanCode)}`
-    : `https://${(settings.pos_receipt_website || 'smarttripconnect.com').replace(/^https?:\/\//, '')}/verify?code=${cleanCode}`
+  const verifyUrl = `https://${(settings.pos_receipt_website || 'bemsfarms.com').replace(/^https?:\/\//, '')}/verify?order=${encodeURIComponent(cleanCode)}`
 
   useEffect(() => {
     let isMounted = true
@@ -505,43 +537,73 @@ export default function ThermalReceipt({
             />
           </div>
         )}
+        <div className="thermal-receipt__brand-name">{brandName}</div>
         <h1 className="thermal-receipt__main-title">{receiptTitle}</h1>
         <div className="thermal-receipt__datetime">{formatReceiptDateTime(date)}</div>
         <div className="thermal-receipt__pill-wrap">
           <span className="thermal-receipt__code-pill">
-            {codePillLabel}: {cleanCode}
+            {codePillLabel}: #{cleanCode}
           </span>
         </div>
       </header>
 
-      {/* ── 2. Passenger / Customer Info ── */}
+      {/* ── 2. Primary Recipient / Identity Block ── */}
       <div className="thermal-receipt__divider" aria-hidden="true" />
       <section className="thermal-receipt__block" aria-label="Customer Information">
-        <ReceiptRow label="Passenger Name:" value={customer || 'Ebubechukwu Israel Nnamdi'} />
-        <ReceiptRow label="Phone Number:" value={customerPhone || '+234 801 234 5678'} />
+        {isInvoice ? (
+          <>
+            <ReceiptRow label="Billed To:" value={customer || 'Valued Customer'} />
+            {customerPhone && <ReceiptRow label="Customer Phone:" value={customerPhone} />}
+            {deliveryAddress && <ReceiptRow label="Delivery Address:" value={deliveryAddress} />}
+            {deliveryZone && <ReceiptRow label="Delivery Zone:" value={deliveryZone} />}
+          </>
+        ) : isCustomerReceipt ? (
+          <>
+            <ReceiptRow label="Customer Name:" value={customer || 'Valued Customer'} />
+            {customerPhone && <ReceiptRow label="Customer Phone:" value={customerPhone} />}
+            <ReceiptRow label="Sales Channel:" value={channel || 'Bems Farms Web Store'} />
+            {deliveryAddress && <ReceiptRow label="Delivery Address:" value={deliveryAddress} />}
+          </>
+        ) : (
+          <>
+            <ReceiptRow label="Customer:" value={customer || 'Walk-in Customer'} />
+            <ReceiptRow label="Store Branch:" value={branch || 'Aba Central Hub (Terminal #01)'} />
+            <ReceiptRow label="Cashier / Staff:" value={cashier || 'Cashier'} />
+            <ReceiptRow label="Fulfilment:" value={fulfillment || 'In-Store Counter Checkout'} />
+          </>
+        )}
       </section>
 
-      {/* ── 3. Route / Trip / Delivery / Location Details ── */}
-      <div className="thermal-receipt__divider" aria-hidden="true" />
-      <section className="thermal-receipt__block" aria-label="Journey / Order Details">
-        <ReceiptRow label="From:" value={fromLocation || 'Isi Gate'} />
-        <ReceiptRow label="To:" value={toLocation || 'Ubakala'} />
-        <ReceiptRow label="Date:" value={date ? String(date).split('|')[0].trim() : '12 Sep 2026'} />
-        <ReceiptRow label="Departure Time:" value={departureTime || '08:30 AM'} />
-        <ReceiptRow label="Bus No:" value={busNo || 'AB-11024'} />
-        {fulfillment && <ReceiptRow label="Fulfilment:" value={fulfillment} />}
-        {deliveryZone && <ReceiptRow label="Zone:" value={deliveryZone} />}
-        {cashier && <ReceiptRow label="Attendant:" value={cashier} />}
-        {channel && <ReceiptRow label="Channel:" value={channel} />}
-      </section>
+      {/* ── 3. Logistics / Fulfilment / Dispatch Block ── */}
+      {isInvoice ? (
+        <>
+          <div className="thermal-receipt__divider" aria-hidden="true" />
+          <section className="thermal-receipt__block" aria-label="Dispatch Logistics">
+            <ReceiptRow label="Order Reference:" value={`#${cleanCode}`} />
+            <ReceiptRow label="Fulfilment Mode:" value={fulfillment || 'Doorstep Express Delivery'} />
+            {driverName && <ReceiptRow label="Assigned Driver:" value={driverName} />}
+            <ReceiptRow label="Dispatch Status:" value={status || 'PACKED • OUT FOR DELIVERY'} />
+          </section>
+        </>
+      ) : isCustomerReceipt ? (
+        <>
+          <div className="thermal-receipt__divider" aria-hidden="true" />
+          <section className="thermal-receipt__block" aria-label="Delivery Tracking">
+            <ReceiptRow label="Fulfilment:" value={fulfillment || 'Doorstep Delivery'} />
+            {deliveryZone && <ReceiptRow label="Delivery Zone:" value={deliveryZone} />}
+            {driverName && <ReceiptRow label="Delivered By:" value={`Driver ${driverName}`} />}
+            <ReceiptRow label="Fulfilment Status:" value={status || 'ORDER COMPLETED • DELIVERED'} />
+          </section>
+        </>
+      ) : null}
 
-      {/* ── 4. Itemized Purchases (For Retail / Supermarket Sales) ── */}
+      {/* ── 4. Itemized Purchases (Farm Produce & Groceries) ── */}
       {items && items.length > 0 && (
         <>
           <div className="thermal-receipt__divider" aria-hidden="true" />
           <section className="thermal-receipt__items" aria-label="Purchased items">
             <div className="thermal-receipt__items-head">
-              <span>ITEM / DESCRIPTION</span>
+              <span>{isInvoice ? 'ITEM / PACKING SPEC' : 'ITEM / DESCRIPTION'}</span>
               <span>AMOUNT</span>
             </div>
             {items.map((item, index) => {
@@ -564,15 +626,40 @@ export default function ThermalReceipt({
 
       {/* ── 5. Financials & Payment Breakdown ── */}
       <div className="thermal-receipt__divider" aria-hidden="true" />
-      <section className="thermal-receipt__block" aria-label="Fare and Payment Breakdown">
-        <ReceiptRow label="Fare Amount:" value={money(safeSubtotal)} />
-        <ReceiptRow label="Manifest Fee:" value={Number(deliveryFee) > 0 ? money(deliveryFee) : '₦0.00'} />
-        {Number(tax) > 0 && <ReceiptRow label="VAT (7.5%):" value={money(tax)} />}
-        {Number(discount) > 0 && <ReceiptRow label="Discount:" value={`−${money(discount)}`} />}
-        <ReceiptRow label="Payment Method:" value={paymentMethod || 'Card (5399 **** **** 4219)'} />
-        <ReceiptRow label="Transaction Ref:" value={paymentReference || `TRX2026095${cleanCode}`} />
-        {Number(total) > 0 && safeSubtotal !== Number(total) && (
-          <ReceiptRow label="Total Amount:" value={money(total)} strong large />
+      <section className="thermal-receipt__block" aria-label="Financials Breakdown">
+        <ReceiptRow label="Items Subtotal:" value={money(safeSubtotal)} />
+        {Number(deliveryFee) > 0 && <ReceiptRow label={isInvoice ? 'Zone Delivery Fee:' : 'Delivery Fee:'} value={money(deliveryFee)} />}
+        {Number(tax) > 0 && <ReceiptRow label="Statutory VAT (7.5%):" value={money(tax)} />}
+        {Number(discount) > 0 && <ReceiptRow label={isCustomerReceipt ? 'Coupon Discount:' : 'Discount:'} value={`−${money(discount)}`} />}
+        
+        <div className="thermal-receipt__row thermal-receipt__row--total">
+          <span className="thermal-receipt__label">
+            {isInvoice ? 'TOTAL INVOICE:' : isCustomerReceipt ? 'TOTAL AMOUNT PAID:' : 'TOTAL PAID:'}
+          </span>
+          <span className="thermal-receipt__val">
+            {money(total || safeSubtotal + Number(tax || 0) + Number(deliveryFee || 0) - Number(discount || 0))}
+          </span>
+        </div>
+
+        {isInvoice ? (
+          <>
+            <ReceiptRow label="Payment Terms:" value={paymentMethod ? `${paymentMethod} (COD)` : 'Cash / POS on Delivery (COD)'} />
+            <ReceiptRow label="Payment Status:" value={status || 'PENDING DOORSTEP PAYMENT'} />
+          </>
+        ) : isCustomerReceipt ? (
+          <>
+            <ReceiptRow label="Payment Method:" value={paymentMethod ? `${paymentMethod} (Verified)` : 'Online Card (Paystack Verified)'} />
+            {paymentReference && <ReceiptRow label="Gateway Ref:" value={paymentReference} />}
+            <ReceiptRow label="Payment Status:" value={status || 'SUCCESSFUL • SETTLED'} />
+          </>
+        ) : (
+          <>
+            <ReceiptRow label="Payment Method:" value={paymentMethod || 'POS Card'} />
+            {paymentReference && <ReceiptRow label="POS Terminal Ref:" value={paymentReference} />}
+            <ReceiptRow label="Sale Status:" value={status || 'COMPLETED • PAID'} />
+            {Number(amountTendered) > 0 && <ReceiptRow label="Amount Tendered:" value={money(amountTendered)} />}
+            {Number(change) > 0 && <ReceiptRow label="Change Due:" value={money(change)} />}
+          </>
         )}
       </section>
 
@@ -597,12 +684,13 @@ export default function ThermalReceipt({
         </div>
       </section>
 
-      {/* ── 7. Footer Website & Tax Attribution ── */}
+      {/* ── 7. Footer Website & Registration ── */}
       <div className="thermal-receipt__divider" aria-hidden="true" />
       <footer className="thermal-receipt__footer">
-        <div className="thermal-receipt__footer-url">{settings.pos_receipt_website || 'www.smarttripconnect.com'}</div>
-        <div className="thermal-receipt__footer-tagline">
-          {settings.pos_receipt_tagline || 'SmartEIRS... Tax and Revenue Management'}
+        <div className="thermal-receipt__footer-url">{settings.pos_receipt_website || 'www.bemsfarms.com'} · {settings.store_email || 'support@bemsfarms.com'}</div>
+        <div className="thermal-receipt__footer-tagline">{tagline}</div>
+        <div className="thermal-receipt__footer-location">
+          {settings.store_address || 'Abia State. Head Office'}
         </div>
       </footer>
     </article>

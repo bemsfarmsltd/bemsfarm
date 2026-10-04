@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bems Farms Global Ltd - 3 Receipt Types</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #eef2ef;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 16px 60px;
+    }
+    .preview-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .preview-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #071f14;
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+    .preview-header p {
+      font-size: 14px;
+      color: #3b5346;
+      font-weight: 500;
+    }
+
+    /* ── Switcher Navigation ── */
+    .tab-nav {
+      display: flex;
+      background: #dce5df;
+      padding: 4px;
+      border-radius: 9999px;
+      gap: 4px;
+      margin-bottom: 28px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      border: none;
+      background: transparent;
+      padding: 9px 20px;
+      border-radius: 9999px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334e40;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: #071f14;
+    }
+    .tab-btn.active {
+      background: #071f14;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(7, 31, 20, 0.15);
+    }
+
+    /* ── Receipt Cards Grid / Single View ── */
+    .receipts-wrapper {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    .receipt-panel {
+      display: none;
+    }
+    .receipt-panel.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── The Physical Thermal Slip ── */
+    .receipt-slip {
+      background: #ffffff;
+      width: 400px;
+      max-width: 100%;
+      padding: 32px 28px 24px;
+      border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(7, 31, 20, 0.09), 0 2px 6px rgba(0, 0, 0, 0.04);
+      font-family: "Space Mono", monospace;
+      color: #000000;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.35;
+    }
+
+    /* Seal */
+    .seal-wrap {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .seal-ring {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 1.8px solid #000;
+      margin: 0 auto;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+    }
+    .seal-ring img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+      filter: grayscale(1) contrast(1.3);
+    }
+
+    /* Titles */
+    .store-brand {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      text-align: center;
+      color: #222;
+      margin-top: 6px;
+    }
+    .main-title {
+      font-size: 15.5px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      text-align: center;
+      margin: 4px 0 2px;
+      color: #000;
+      font-family: inherit;
+    }
+    .datetime {
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      margin: 0 0 8px;
+      color: #111;
+      letter-spacing: 0.5px;
+    }
+
+    /* Pill Code */
+    .pill-wrap {
+      text-align: center;
+      margin: 4px 0 10px;
+    }
+    .code-pill {
+      display: inline-block;
+      background: #1e2229;
+      color: #ffffff;
+      border-radius: 9999px;
+      padding: 4px 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      font-family: inherit;
+    }
+
+    /* Dashed Dividers */
+    .divider {
+      border: none;
+      border-top: 1px dashed #222222;
+      margin: 11px 0;
+      width: 100%;
+    }
+
+    /* Key Value Rows */
+    .block {
+      padding: 2px 0;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 2.5px 0;
+      font-size: 11.5px;
+      line-height: 1.4;
+    }
+    .label {
+      font-weight: 600;
+      color: #000;
+      white-space: nowrap;
+      min-width: 130px;
+    }
+    .val {
+      font-weight: 700;
+      color: #000;
+      text-align: right;
+      flex: 1;
+      word-break: break-word;
+    }
+    .row--strong .label,
+    .row--strong .val {
+      font-weight: 800;
+    }
+    .row--total {
+      font-size: 13.5px;
+      font-weight: 900;
+      margin: 3px 0;
+      padding-top: 4px;
+      border-top: 1px dashed #000;
+    }
+
+    /* Items Section */
+    .items-head {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 10.5px;
+      letter-spacing: 0.4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #000;
+      margin-bottom: 5px;
+    }
+    .item-row {
+      padding: 3.5px 0;
+      border-bottom: 1px dotted #ccc;
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+    .item-name {
+      font-weight: 800;
+      font-size: 11.5px;
+      line-height: 1.25;
+      margin-bottom: 1px;
+    }
+    .item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 11px;
+    }
+    .item-meta span {
+      font-weight: 500;
+      color: #333;
+    }
+    .item-meta strong {
+      font-weight: 800;
+      color: #000;
+    }
+
+    /* Verification Box (QR Code on Left, Text on Right) */
+    .verify-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 6px 0;
+    }
+    .verify-qr {
+      flex-shrink: 0;
+      width: 82px;
+      height: 82px;
+      border: 1px solid #111;
+      padding: 2px;
+      background: #fff;
+    }
+    .verify-qr img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .verify-info {
+      flex: 1;
+      text-align: left;
+    }
+    .verify-thanks {
+      font-size: 11px;
+      font-weight: 600;
+      color: #000;
+      line-height: 1.3;
+    }
+    .verify-brand {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #000;
+      margin: 2px 0 4px;
+      letter-spacing: 0.2px;
+    }
+    .verify-policy {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: #222;
+      text-transform: uppercase;
+      line-height: 1.35;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding-top: 4px;
+    }
+    .footer-url {
+      font-size: 10px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 2px;
+    }
+    .footer-tagline {
+      font-size: 8.5px;
+      font-weight: 600;
+      color: #444;
+      line-height: 1.3;
+    }
+    .footer-location {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #333;
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="preview-header">
+    <h1>Bems Farms Global Ltd</h1>
+    <p>3 Distinct Document Structures Tailored to Your Specific Business Flows</p>
+  </div>
+
+  <!-- 3-Way Switcher -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showReceipt('pos')">1. POS Sales Receipt (Walk-In)</button>
+    <button class="tab-btn" onclick="showReceipt('invoice')">2. Invoice for Online Order</button>
+    <button class="tab-btn" onclick="showReceipt('online')">3. Receipt of Online Order</button>
+  </div>
+
+  <div class="receipts-wrapper">
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- 1. POS SALES RECEIPT (WALK-IN CUSTOMER)                    -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="panel-pos" class="receipt-panel active">
+      <div class="receipt-slip">
+
+        <div class="seal-wrap">
+          <div class="seal-ring">
+            <img src="/bemsfarms_icon_b.png" alt="Bems Farms Seal" onerror="this.src='/bemsfarms_logo_compact.png'">
+          </div>
+          <div class="store-brand">BEMS FARMS GLOBAL LTD</div>
+        </div>
+
+        <h1 class="main-title">POS SALES RECEIPT</h1>
+        <div class="datetime">04.10.2026 &nbsp;|&nbsp; 09:30:15</div>
+
+        <div class="pill-wrap">
+          <span class="code-pill">Receipt: #POS-892104</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Walk-In Customer & POS Counter Info -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Customer:</span>
+            <span class="val">Walk-in Customer</span>
+          </div>
+          <div class="row">
+            <span class="label">Store Branch:</span>
+            <span class="val">Aba Central Hub (Terminal #01)</span>
+          </div>
+          <div class="row">
+            <span class="label">Cashier / Staff:</span>
+            <span class="val">Chinedu K.</span>
+          </div>
+          <div class="row">
+            <span class="label">Fulfilment:</span>
+            <span class="val">In-Store Counter Checkout</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Purchased Groceries / Produce -->
+        <div class="block">
+          <div class="items-head">
+            <span>ITEM / DESCRIPTION</span>
+            <span>AMOUNT</span>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Crown Premium Spaghetti 500g</div>
+            <div class="item-meta">
+              <span>2 pcs &times; &#8358;3,120.00</span>
+              <strong>&#8358;6,240.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Bems Pure Palm Oil 2L (Bottle)</div>
+            <div class="item-meta">
+              <span>1 pc &times; &#8358;6,960.00</span>
+              <strong>&#8358;6,960.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Checkers Custard 1.5kg</div>
+            <div class="item-meta">
+              <span>1 pc &times; &#8358;3,120.00</span>
+              <strong>&#8358;3,120.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Financials & Cash / POS Tender -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Items Subtotal:</span>
+            <span class="val">&#8358;16,320.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Statutory VAT (7.5%):</span>
+            <span class="val">&#8358;1,224.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Discount:</span>
+            <span class="val">&#8358;0.00</span>
+          </div>
+          <div class="row row--total">
+            <span class="label">TOTAL PAID:</span>
+            <span class="val">&#8358;17,544.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Method:</span>
+            <span class="val">POS Card (5399 &bull;&bull;&bull;&bull; 4219)</span>
+          </div>
+          <div class="row">
+            <span class="label">POS Terminal Ref:</span>
+            <span class="val">STANBIC-POS-78219</span>
+          </div>
+          <div class="row">
+            <span class="label">Sale Status:</span>
+            <span class="val">COMPLETED &bull; PAID</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Verification & Policy -->
+        <div class="verify-box">
+          <div class="verify-qr">
+            <img src="data:image/png;base64,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" alt="Verification QR Code">
+          </div>
+          <div class="verify-info">
+            <div class="verify-thanks">Thank you for shopping at</div>
+            <div class="verify-brand">BEMS FARMS GLOBAL LTD</div>
+            <div class="verify-policy">GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="footer">
+          <div class="footer-url">www.bemsfarms.com &bull; support@bemsfarms.com</div>
+          <div class="footer-tagline">Fresh Food. Farm Produce. Quality Groceries.</div>
+          <div class="footer-location">Abia State. Head Office</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- 2. INVOICE FOR ONLINE ORDER (PACKING / DISPATCH / WAYBILL) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="panel-invoice" class="receipt-panel">
+      <div class="receipt-slip">
+
+        <div class="seal-wrap">
+          <div class="seal-ring">
+            <img src="/bemsfarms_icon_b.png" alt="Bems Farms Seal" onerror="this.src='/bemsfarms_logo_compact.png'">
+          </div>
+          <div class="store-brand">BEMS FARMS GLOBAL LTD</div>
+        </div>
+
+        <h1 class="main-title">COMMERCIAL SALES INVOICE</h1>
+        <div class="datetime">04.10.2026 &nbsp;|&nbsp; 08:45:00</div>
+
+        <div class="pill-wrap">
+          <span class="code-pill">Invoice No: #INV-2026-0049</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Customer & Delivery Billing Info -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Billed To:</span>
+            <span class="val">Amaka Chioma Obi</span>
+          </div>
+          <div class="row">
+            <span class="label">Customer Phone:</span>
+            <span class="val">+234 802 345 6789</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery Address:</span>
+            <span class="val">14 Faulks Road, Aba</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery Zone:</span>
+            <span class="val">ZONE002 (Aba Metropolis)</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Dispatch & Fulfilment Tracking -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Order Reference:</span>
+            <span class="val">#BF-ORD-980253</span>
+          </div>
+          <div class="row">
+            <span class="label">Fulfilment Mode:</span>
+            <span class="val">Doorstep Express Delivery</span>
+          </div>
+          <div class="row">
+            <span class="label">Assigned Driver:</span>
+            <span class="val">Emeka Chukwu (AB-904-ABA)</span>
+          </div>
+          <div class="row">
+            <span class="label">Dispatch Status:</span>
+            <span class="val">PACKED &bull; OUT FOR DELIVERY</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Items Packing List -->
+        <div class="block">
+          <div class="items-head">
+            <span>ITEM / PACKING SPEC</span>
+            <span>AMOUNT</span>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Bems Pure Palm Oil 5L (Sealed Keg)</div>
+            <div class="item-meta">
+              <span>1 keg &times; &#8358;16,200.00</span>
+              <strong>&#8358;16,200.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Honey Beans (1 Painter)</div>
+            <div class="item-meta">
+              <span>2 painters &times; &#8358;4,200.00</span>
+              <strong>&#8358;8,400.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Golden Terra Oil 1L</div>
+            <div class="item-meta">
+              <span>2 bottles &times; &#8358;3,600.00</span>
+              <strong>&#8358;7,200.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Invoice Breakdown & Terms -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Items Subtotal:</span>
+            <span class="val">&#8358;31,800.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Zone Delivery Fee:</span>
+            <span class="val">&#8358;1,750.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Statutory VAT (7.5%):</span>
+            <span class="val">&#8358;2,385.00</span>
+          </div>
+          <div class="row row--total">
+            <span class="label">TOTAL INVOICE:</span>
+            <span class="val">&#8358;35,935.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Terms:</span>
+            <span class="val">Cash / POS on Delivery (COD)</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Status:</span>
+            <span class="val">PENDING DOORSTEP PAYMENT</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Official Waybill & Verification -->
+        <div class="verify-box">
+          <div class="verify-qr">
+            <img src="data:image/png;base64,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" alt="Waybill QR Code">
+          </div>
+          <div class="verify-info">
+            <div class="verify-thanks">Dispatched by</div>
+            <div class="verify-brand">BEMS FARMS GLOBAL LTD</div>
+            <div class="verify-policy">OFFICIAL DISPATCH INVOICE &bull; GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="footer">
+          <div class="footer-url">www.bemsfarms.com &bull; support@bemsfarms.com</div>
+          <div class="footer-tagline">Fresh Food. Farm Produce. Commercial Dispatch.</div>
+          <div class="footer-location">Abia State. Head Office</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- 3. RECEIPT OF ONLINE ORDER (CUSTOMER PAYMENT PROOF)         -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="panel-online" class="receipt-panel">
+      <div class="receipt-slip">
+
+        <div class="seal-wrap">
+          <div class="seal-ring">
+            <img src="/bemsfarms_icon_b.png" alt="Bems Farms Seal" onerror="this.src='/bemsfarms_logo_compact.png'">
+          </div>
+          <div class="store-brand">BEMS FARMS GLOBAL LTD</div>
+        </div>
+
+        <h1 class="main-title">ONLINE PAYMENT RECEIPT</h1>
+        <div class="datetime">04.10.2026 &nbsp;|&nbsp; 09:12:40</div>
+
+        <div class="pill-wrap">
+          <span class="code-pill">Order Code: #BF-980253</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Payer & Order Identity -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Customer Name:</span>
+            <span class="val">Amaka Chioma Obi</span>
+          </div>
+          <div class="row">
+            <span class="label">Customer Phone:</span>
+            <span class="val">+234 802 345 6789</span>
+          </div>
+          <div class="row">
+            <span class="label">Sales Channel:</span>
+            <span class="val">Bems Farms Web Store</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery Address:</span>
+            <span class="val">14 Faulks Road, Aba</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Fulfilment & Logistics Verification -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Fulfilment:</span>
+            <span class="val">Doorstep Delivery</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery Zone:</span>
+            <span class="val">ZONE002 (Aba Metropolis)</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivered By:</span>
+            <span class="val">Driver Emeka Chukwu</span>
+          </div>
+          <div class="row">
+            <span class="label">Fulfilment Status:</span>
+            <span class="val">ORDER COMPLETED &bull; DELIVERED</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Delivered Items Summary -->
+        <div class="block">
+          <div class="items-head">
+            <span>ITEM / DESCRIPTION</span>
+            <span>AMOUNT</span>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Bems Pure Palm Oil 5L (Sealed Keg)</div>
+            <div class="item-meta">
+              <span>1 keg &times; &#8358;16,200.00</span>
+              <strong>&#8358;16,200.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Honey Beans (1 Painter)</div>
+            <div class="item-meta">
+              <span>2 painters &times; &#8358;4,200.00</span>
+              <strong>&#8358;8,400.00</strong>
+            </div>
+          </div>
+
+          <div class="item-row">
+            <div class="item-name">Golden Terra Oil 1L</div>
+            <div class="item-meta">
+              <span>2 bottles &times; &#8358;3,600.00</span>
+              <strong>&#8358;7,200.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Final Settlement Breakdown -->
+        <div class="block">
+          <div class="row">
+            <span class="label">Items Subtotal:</span>
+            <span class="val">&#8358;31,800.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery Fee:</span>
+            <span class="val">&#8358;1,750.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Statutory VAT (7.5%):</span>
+            <span class="val">&#8358;2,385.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Coupon Discount:</span>
+            <span class="val">&#8358;0.00</span>
+          </div>
+          <div class="row row--total">
+            <span class="label">TOTAL AMOUNT PAID:</span>
+            <span class="val">&#8358;35,935.00</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Method:</span>
+            <span class="val">Online Card (Paystack Verified)</span>
+          </div>
+          <div class="row">
+            <span class="label">Gateway Transaction Ref:</span>
+            <span class="val">PSTK_TRX_98210482910</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Status:</span>
+            <span class="val">SUCCESSFUL &bull; SETTLED</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- QR Code Electronic Payment Proof -->
+        <div class="verify-box">
+          <div class="verify-qr">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACgCAYAAACLz2ctAAAAAklEQVR4AewaftIAAAYASURBVO3BUY5juREAwUyi73/l9PyZIBZ4akEaeo2KsD8Y45LFGBctxrhoMcZFizEu+uEfqNxU8Qkqp4qdyisqdirfUnFSeVLxROWmit1ijIsWY1y0GOOixRgX/fCiim9Q+TdQ+a2Kb6k4qewqnlR8i8qTxRgXLca4aDHGRT+8SeUdFe9Q+QSVJxVPVJ6o/E0Vn6DyjorfWoxx0WKMixZjXLQY46If/qUq3qGyqzipnCqeVDxRGf+1GOOixRgXLca46If/YyrvqDip7CqeqJwqnqicKnYqTyr+1y3GuGgxxkWLMS5ajHHRD2+quEnlVLGreKLyDpVTxa7iicorVHYVJ5VPqPhbFmNctBjjosUYF/3wIpX/JRUnlV3FSWVXcVI5VexUnqicKp5UnFS+QeWmxRgXLca4aDHGRYsxLrI/+BdQ2VWcVHYVn6Kyq/gWlVPF/6PFGBctxrhoMcZFizEusj84qJwqdirfUvG3qLyj4qSyq/gUlV3FO1S+peK3FmNctBjjosUYF/3wIpVdxbeofEvFruJTKnYq36JyqviEipPKb6mcKnaLMS5ajHHRYoyLFmNc9MNlKq+o2Kk8qTip7CpeofKk4knFE5VTxROVJxVPVE4VO5WTyq7iyWKMixZjXLQY46IfvkjlScW3qJwqnqh8QsVJ5RNUnlR8iso3LMa4aDHGRYsxLlqMcdEPH6TypGKncqp4R8VO5R0Vn6DypOKk8qTiicqpYqfyjoonKqeK3WKMixZjXLQY4yL7gzeoPKk4qewqTiqnim9Q+ZSK31J5RcUnqOwqXqHyCRW7xRgXLca4aDHGRYsxLvrhRSqfULFT+RaVJxWfovJbFe9QOVXsVN6hcqp4orKreLIY46LFGBctxrhoMcZFP/wDlVPFTuVUsVM5VewqTionlV3FSeVvUTlVPFHZqbyi4onKt6g8qfitxRgXLca4aDHGRT+8SOUTVJ5UPFE5VfyWyqniScVJZVfxpOIVKk8qdiqnip3KOyqeqJwqdosxLlqMcdFijIsWY1z0w5sqTiq7ipPKruKkcqrYVTxReYfKqWKn8gkqp4pTxU7lHSpPKk4qO5VTxW8txrhoMcZFizEusj/4EpVPqXiisqs4qfwtFU9UThUnlV3FE5VTxU7lFRU7lScVTxZjXLQY46LFGBctxrjohxepPKnYVZxUdhWvUPmEip3KKyp2Kk9UPqXiicq3qDyp2KmcKnaLMS5ajHHRYoyL7A9eoPKkYqfyjoonKqeKncqp4hNUThVPVD6h4hNU3lHxCYsxLlqMcdFijIsWY1xkf3BQeVLxN6l8Q8VJ5UnFE5VTxbeo/FbFt6icKnaLMS5ajHHRYoyLFmNc9MOLKnYqTyqeqLyi4onKruKk8qTipLJTOVXsKp6ovKLityreofIJFU8WY1y0GOOixRgX/fBBFU9UdhWvUNlVnCqeVHxCxROVU8Wu4qRyUtlVPFF5R8UTlU9YjHHRYoyLFmNctBjjoh/eVHFS2VWcKnYqr6j4BpVTxTtUPqHipPK3qDypeKJyqtgtxrhoMcZFizEu+uEfVLyj4rcqXqHypGKncqp4R8VO5VSxUzmp/C0V71A5VexUPmExxkWLMS5ajHHRYoyLfvgHKjdVnCpuUvmEip3KKyp2Ku9Q2VV8S8WTxRgXLca4aDHGRfYHB5VTxTeonCpOKruKfyOVXcVJ5RMq3qHyCRVPFmNctBjjosUYFy3GuOiHN6m8o+JbVH6r4hUqu4onKqeKd1Q8UdmpfEvFSeW3FmNctBjjosUYFy3GuOiHfymVJxXfovKk4onKK1Q+oeKJyjsqdiqnit1ijIsWY1y0GOOiH/6lKk4qn6Byqnii8kRlV3FSOVXsVE4VT1SeVJxUfqviyWKMixZjXLQY46LFGBf98KaKv6lip3KqeKKyq3iHyqlip/JE5VNUfqvipPJE5VTxW4sxLlqMcdFijIt+eJHKTSq7iicq31JxUtlVnFR2Fa9Q2VWcVJ5U7FROFe9Q2VU8WYxx0WKMixZjXLQY4yL7gzEuWYxx0WKMixZjXPQfrY/RbyYv2B4AAAAASUVORK5CYII=" alt="Online Payment QR Code">
+          </div>
+          <div class="verify-info">
+            <div class="verify-thanks">Thank you for ordering with</div>
+            <div class="verify-brand">BEMS FARMS GLOBAL LTD</div>
+            <div class="verify-policy">ELECTRONIC PAYMENT RECEIPT &bull; GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="footer">
+          <div class="footer-url">www.bemsfarms.com &bull; support@bemsfarms.com</div>
+          <div class="footer-tagline">Fresh Food. Farm Produce. Quality Groceries Delivered Daily.</div>
+          <div class="footer-location">Abia State. Head Office</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function showReceipt(type) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.receipt-panel').forEach(p => p.classList.remove('active'));
+
+      if (type === 'pos') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('panel-pos').classList.add('active');
+      } else if (type === 'invoice') {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('panel-invoice').classList.add('active');
+      } else if (type === 'online') {
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
+        document.getElementById('panel-online').classList.add('active');
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -449,9 +449,9 @@ export async function sendRawBytes(bytes) {
  */
 export async function printReceiptESC(receiptData, paperWidth = 80) {
   const {
-    storeName = 'BEMS FARMS LTD',
+    storeName = 'BEMS FARMS GLOBAL LTD',
     storeTagline = 'Fresh Food. Trusted Quality.',
-    storeAddress = 'Abia State, Nigeria',
+    storeAddress = 'Abia State. Head Office',
     storePhone = '+234 800 236 7326',
     receiptNumber = 'BF-' + Date.now().toString().slice(-6),
     date = new Date().toLocaleString('en-NG', { dateStyle: 'short', timeStyle: 'short' }),
@@ -506,38 +506,35 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     return `${d}.${m}.${y} | ${h}:${min}:${s}`
   }
 
-  const cleanCode = (receiptNumber || '980253').toString().replace(/^[#\s]+/, '')
+  const cleanCode = (receiptNumber || 'BF-980253').toString().replace(/^[#\s]+/, '')
 
   // 1. Header & Store Branding
   builder.align('center')
-    .bold(true).size('double').textLn(docTitle).size('normal').bold(false)
+    .bold(true).size('double').textLn(storeName).size('normal').bold(false)
+    .textLn(docTitle)
     .textLn(formatDateTime(date))
     .emptyLine(1)
-    .bold(true).textLn(`[ Ticket code: ${cleanCode} ]`).bold(false)
+    .bold(true).textLn(`[ Order code: #${cleanCode} ]`).bold(false)
     .emptyLine(1)
     .dashedLine()
 
-  // 2. Passenger / Customer Info
+  // 2. Customer & Store Info
   builder.align('left')
-    .twoColumnRow('Passenger Name:', customer)
-    .twoColumnRow('Phone Number:', receiptData.customerPhone || storePhone)
-    .dashedLine()
-
-  // 3. Journey / Fulfilment Details
-  if (receiptData.fromLocation || receiptData.toLocation) {
-    builder.twoColumnRow('From:', receiptData.fromLocation || 'Isi Gate')
-    builder.twoColumnRow('To:', receiptData.toLocation || 'Ubakala')
-    builder.twoColumnRow('Date:', String(date).split('|')[0].trim())
-    builder.twoColumnRow('Departure Time:', receiptData.departureTime || '08:30 AM')
-    builder.twoColumnRow('Bus No:', receiptData.busNo || 'AB-11024')
+    .twoColumnRow('Customer Name:', customer)
+    if (receiptData.customerPhone) builder.twoColumnRow('Phone Number:', receiptData.customerPhone)
+    if (receiptData.branch) builder.twoColumnRow('Branch / Store:', receiptData.branch)
+    if (cashier) builder.twoColumnRow('Cashier / Staff:', cashier)
     builder.dashedLine()
-  } else if (receiptData.fulfillment || receiptData.cashier) {
+
+  // 3. Fulfilment & Logistics
+  if (receiptData.fulfillment || receiptData.deliveryZone || receiptData.driverName) {
     if (receiptData.fulfillment) builder.twoColumnRow('Fulfilment:', receiptData.fulfillment)
-    if (receiptData.cashier) builder.twoColumnRow('Cashier:', receiptData.cashier)
+    if (receiptData.deliveryZone) builder.twoColumnRow('Delivery Zone:', receiptData.deliveryZone)
+    if (receiptData.driverName) builder.twoColumnRow('Driver / Courier:', receiptData.driverName)
     builder.dashedLine()
   }
 
-  // 4. Items List (If items exist)
+  // 4. Items List (Farm produce & groceries)
   if (items && items.length > 0) {
     builder.bold(true).threeColumnRow('ITEM', 'QTY x PRICE', 'TOTAL').bold(false)
     builder.dashedLine()
@@ -547,18 +544,24 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
       const price = Number(it.price || it.unit_price || 0)
       const lineTotal = Number(it.total ?? (qty * price))
       builder.textLn(name)
-      builder.twoColumnRow(`  ${qty} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
+      builder.twoColumnRow(`  ${qty} ${it.unit || 'pcs'} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
     })
     builder.dashedLine()
   }
 
   // 5. Financials
-  builder.twoColumnRow('Fare Amount:', `N${Math.round(subtotal || total).toLocaleString()}`)
-  builder.twoColumnRow('Manifest Fee:', `N${Math.round(receiptData.deliveryFee || 0).toLocaleString()}`)
+  builder.twoColumnRow('Items Subtotal:', `N${Math.round(subtotal || total).toLocaleString()}`)
   if (tax > 0) builder.twoColumnRow('VAT (7.5%):', `N${Math.round(tax).toLocaleString()}`)
+  if (receiptData.deliveryFee > 0) builder.twoColumnRow('Delivery Fee:', `N${Math.round(receiptData.deliveryFee).toLocaleString()}`)
   if (discount > 0) builder.twoColumnRow('Discount:', `-N${Math.round(discount).toLocaleString()}`)
-  builder.twoColumnRow('Payment Method:', method || 'Card')
+  builder.doubleLine()
+  builder.bold(true).size('tall')
+    .twoColumnRow('TOTAL PAID:', `N${Math.round(total).toLocaleString()}`, true)
+    .size('normal').bold(false)
+  builder.doubleLine()
+  builder.twoColumnRow('Payment Method:', method || 'POS Card')
   builder.twoColumnRow('Transaction Ref:', receiptData.paymentReference || `TRX2026095${cleanCode}`)
+  builder.twoColumnRow('Payment Status:', 'PAID • VERIFIED')
   builder.dashedLine()
 
   // 6. Thank You & Verification Policy
@@ -567,14 +570,16 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     .textLn('Thank you for choosing')
     .bold(true).size('tall').textLn(storeName).size('normal').bold(false)
     .emptyLine(1)
-    .textLn(docNote)
+    .textLn('GOODS SOLD IN GOOD CONDITION')
+    .textLn('ARE NOT RETURNABLE')
     .emptyLine(1)
     .dashedLine()
 
   // 7. Footer
   builder.align('center')
-    .textLn('www.smarttripconnect.com')
-    .textLn('SmartEIRS... Tax and Revenue Management')
+    .textLn('www.bemsfarms.com · support@bemsfarms.com')
+    .textLn('Fresh Food. Farm Produce. Quality Groceries.')
+    .textLn('Abia State. Head Office')
     .emptyLine(2)
     .cut(true)
 

@@ -977,6 +977,7 @@ a.link-custom-primary {
 .thermal-receipt__footer { text-align:center; padding-top:2px; }
 .thermal-receipt__footer-url { font-size:10px; font-weight:700; color:#000; margin-bottom:2px; }
 .thermal-receipt__footer-tagline { font-size:9px; font-weight:600; color:#333; line-height:1.25; }
+.thermal-receipt__footer-location { font-size:8.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:#222; margin-top:3px; }
 .pos-success-hero-card--receipt { width:min(400px,calc(100vw - 24px)); max-height:94vh; overflow-y:auto; }
 .thermal-receipt--58 { width:58mm; padding:3mm 2mm; font-size:9.5px; }
 .thermal-receipt--58 .thermal-receipt__seal-ring { width:38px; height:38px; }

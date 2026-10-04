@@ -746,6 +746,9 @@ export default function OrderDetail() {
           channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
           cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
           fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
+          deliveryAddress={order.delivery_address || order.shipping_address || order.address}
+          deliveryZone={order.zone_name || order.delivery_zone}
+          driverName={order.driver?.name || order.driver_name}
           status={order.status?.toUpperCase()}
           items={items}
           subtotal={subtotal}
@@ -860,6 +863,9 @@ export default function OrderDetail() {
                       channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
                       cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
                       fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
+                      deliveryAddress={order.delivery_address || order.shipping_address || order.address}
+                      deliveryZone={order.zone_name || order.delivery_zone}
+                      driverName={order.driver?.name || order.driver_name}
                       status={order.status?.toUpperCase()}
                       items={items}
                       subtotal={subtotal}
