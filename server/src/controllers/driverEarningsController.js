@@ -307,7 +307,11 @@ const requestWithdrawal = async (req, res, next) => {
 
     // Fetch driver for balance check, bank defaults, and security PIN status
     const driverResult = await client.query(
-      "SELECT total_earnings, bank_name, account_number, account_name, name, pin_hash, pin_failed_attempts, pin_locked_until FROM drivers WHERE id = $1 FOR UPDATE",
+      `SELECT total_earnings, bank_name, account_number, account_name, name, 
+              pin_hash, pin_failed_attempts, pin_locked_until, 
+              COALESCE(payout_locked, false) AS payout_locked, payout_locked_reason,
+              COALESCE(wallet_is_frozen, false) AS wallet_is_frozen, wallet_frozen_reason 
+       FROM drivers WHERE id = $1 FOR UPDATE`,
       [driverId]
     );
 
@@ -318,6 +322,19 @@ const requestWithdrawal = async (req, res, next) => {
 
     const driver = driverResult.rows[0];
 
+    // Anti-fraud security rule: block cashout if payout is locked or wallet is frozen
+    if (driver.payout_locked || driver.wallet_is_frozen) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        success: false,
+        payout_locked: true,
+        requires_verification: true,
+        message: driver.payout_locked_reason || driver.wallet_frozen_reason || "Payout requests on your account are locked to protect your wallet against fraud. Please complete security verification to unlock cashout.",
+        unlock_endpoint: "/api/driver/security/verify-unlock",
+        otp_endpoint: "/api/driver/security/send-unlock-otp",
+      });
+    }
+
     // Optional PIN verification on cashout
     const providedPin = pin || security_pin;
     if (driver.pin_hash && (providedPin || pin_token)) {
@@ -327,6 +344,8 @@ const requestWithdrawal = async (req, res, next) => {
         return res.status(423).json({
           message: `Security PIN is locked due to too many failed attempts. Try again in ${remainingMinutes} minute(s).`,
           locked: true,
+          payout_locked: true,
+          requires_verification: true,
         });
       }
 
@@ -346,13 +365,32 @@ const requestWithdrawal = async (req, res, next) => {
           const currentAttempts = (parseInt(driver.pin_failed_attempts, 10) || 0) + 1;
           if (currentAttempts >= 5) {
             await client.query(
-              "UPDATE drivers SET pin_failed_attempts = $1, pin_locked_until = NOW() + INTERVAL '15 minutes' WHERE id = $2",
+              `UPDATE drivers 
+               SET 
+                 pin_failed_attempts = $1, 
+                 pin_locked_until = NOW() + INTERVAL '15 minutes',
+                 payout_locked = true,
+                 payout_locked_reason = 'Too many failed PIN attempts during payout request.',
+                 payout_locked_at = NOW(),
+                 wallet_is_frozen = true,
+                 wallet_frozen_reason = 'Payout security lock: Failed PIN threshold reached.'
+               WHERE id = $2`,
               [currentAttempts, driverId]
             );
+            try {
+              await client.query(
+                `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+                 VALUES ($1, 'Security Alert: Payout Requests Locked', 'Multiple incorrect security PIN attempts were entered during withdrawal. For your safety, payout requests have been locked. Please complete security verification to restore cashout access.', 'security', 'wallet', NOW())`,
+                [driverId]
+              );
+            } catch (_) {}
             await client.query("COMMIT");
-            return res.status(401).json({
-              message: "Incorrect PIN. Account security is locked for 15 minutes.",
+            return res.status(423).json({
+              success: false,
+              message: "Incorrect PIN. Account security and payout requests are locked to prevent fraud. Please complete system verification to unlock.",
               locked: true,
+              payout_locked: true,
+              requires_verification: true,
             });
           } else {
             await client.query(

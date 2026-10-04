@@ -590,6 +590,29 @@ async function sendDriverPasswordResetEmail(driver, resetToken) {
   });
 }
 
+async function sendDriverSecurityVerificationEmail(driver, otpCode) {
+  return sendMail({
+    to: driver.email,
+    subject: "🛡️ Security Verification Code — Unlock Payouts (Bems Farms)",
+    html: `<div style="${emailStyles}">
+      ${header("Security Verification Code 🛡️")}
+      <p style="color: #4B5563; font-size: 15px; line-height: 1.6;">Hello <strong>${driver.name}</strong>,</p>
+      <p style="color: #4B5563; font-size: 14px; line-height: 1.6;">
+        Payout requests on your Bems Farms driver account were locked after multiple failed security PIN attempts. To protect your wallet and confirm your identity, enter the one-time verification code below in your driver app:
+      </p>
+      <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+        <p style="font-size: 13px; color: #991B1B; font-weight: 700; margin: 0 0 10px; text-transform: uppercase;">One-Time Security Verification Code:</p>
+        <p style="font-size: 34px; font-weight: 900; color: #7F1D1D; margin: 0; letter-spacing: 6px;">${otpCode}</p>
+        <p style="font-size: 12px; color: #991B1B; margin: 8px 0 0;">Valid for 15 minutes</p>
+      </div>
+      <p style="color: #4B5563; font-size: 13px; line-height: 1.5;">
+        Never share this code with anyone. If you did not initiate this cashout attempt, please contact Bems Farms dispatch operations immediately.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
 async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }) {
   const adminEmail = to || process.env.ADMIN_NOTIF_EMAIL || "info@bemsfarms.com";
   const domain = process.env.ADMIN_URL || "https://bemsfarms.com/admin";
@@ -831,6 +854,7 @@ module.exports = {
   sendDriverApprovedEmail,
   sendDriverRejectionEmail,
   sendDriverPasswordResetEmail,
+  sendDriverSecurityVerificationEmail,
   sendDriverStatementEmail,
   sendAdminAlertEmail,
 };

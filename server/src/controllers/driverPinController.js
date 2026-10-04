@@ -24,7 +24,10 @@ const getPinStatus = async (req, res, next) => {
         (pin_hash IS NOT NULL) AS has_pin,
         pin_updated_at,
         pin_failed_attempts,
-        pin_locked_until
+        pin_locked_until,
+        COALESCE(payout_locked, false) AS payout_locked,
+        payout_locked_reason,
+        payout_locked_at
       FROM drivers
       WHERE id = $1
       `,
@@ -45,6 +48,8 @@ const getPinStatus = async (req, res, next) => {
       success: true,
       has_pin: Boolean(row.has_pin),
       is_locked: isLocked,
+      payout_locked: Boolean(row.payout_locked),
+      payout_locked_reason: row.payout_locked_reason,
       remaining_lock_minutes: remainingMinutes,
       locked_until: row.pin_locked_until,
       pin_updated_at: row.pin_updated_at,
@@ -219,25 +224,41 @@ const verifyPin = async (req, res, next) => {
       const newAttempts = currentAttempts + 1;
 
       if (newAttempts >= 5) {
-        // Lock for 15 minutes
+        // Anti-fraud security rule: Lock PIN and lock payout requests
         await pool.query(
           `
           UPDATE drivers 
           SET 
             pin_failed_attempts = $1,
-            pin_locked_until = NOW() + INTERVAL '15 minutes'
+            pin_locked_until = NOW() + INTERVAL '15 minutes',
+            payout_locked = true,
+            payout_locked_reason = 'Too many failed PIN attempts. Payout requests locked to protect against unauthorized cashouts.',
+            payout_locked_at = NOW(),
+            wallet_is_frozen = true,
+            wallet_frozen_reason = 'Payout security lock: Failed PIN threshold reached.'
           WHERE id = $2
           `,
           [newAttempts, driverId]
         );
 
-        return res.status(401).json({
+        // Record security alert in driver notifications
+        try {
+          await pool.query(
+            `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+             VALUES ($1, 'Security Alert: Payout Requests Locked', 'Multiple incorrect security PIN attempts were entered. For your account security, payout requests are locked. Please complete identity verification to unlock cashout.', 'security', 'wallet', NOW())`,
+            [driverId]
+          );
+        } catch (_) {}
+
+        return res.status(423).json({
           success: false,
           valid: false,
           locked: true,
+          payout_locked: true,
           remaining_attempts: 0,
           remaining_lock_minutes: 15,
-          message: "Incorrect PIN. Account security is temporarily locked for 15 minutes.",
+          message: "Incorrect PIN. Account security and payout requests are locked to prevent fraud. Please complete identity verification to unlock cashout.",
+          requires_verification: true,
         });
       }
 
@@ -379,9 +400,209 @@ const resetPinWithPassword = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/pin/send-unlock-otp & /api/driver/security/send-unlock-otp ──
+// Send 6-digit verification code to registered email to unlock payouts
+const sendUnlockPayoutOtp = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+
+    // Fetch driver details
+    const driverResult = await pool.query(
+      "SELECT id, name, email, phone FROM drivers WHERE id = $1",
+      [driverId]
+    );
+
+    if (driverResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    const driver = driverResult.rows[0];
+    if (!driver.email) {
+      return res.status(400).json({
+        success: false,
+        message: "No registered email on file. Please contact Bems Farms dispatch operations for assistance.",
+      });
+    }
+
+    // Generate secure 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    await pool.query(
+      `
+      INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (driver_id)
+      DO UPDATE SET reset_token = $2, reset_token_expires = $3
+      `,
+      [driverId, otpCode, expiresAt]
+    );
+
+    const emailService = require("../services/emailService");
+    await emailService.sendDriverSecurityVerificationEmail(driver, otpCode);
+
+    res.json({
+      success: true,
+      message: `Security verification OTP sent to ${driver.email}. Valid for 15 minutes.`,
+      expires_in_minutes: 15,
+    });
+  } catch (err) {
+    console.error("Driver sendUnlockPayoutOtp error:", err.message);
+    next(err);
+  }
+};
+
+// ── POST /api/driver/pin/verify-unlock & /api/driver/security/verify-unlock ──
+// Verify account password + OTP to unlock payouts and optionally set new PIN
+const verifyAndUnlockPayout = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { password, otp_code, code, new_pin, confirm_pin } = req.body;
+
+    const cleanPassword = password ? String(password).trim() : "";
+    const cleanOtp = (otp_code || code) ? String(otp_code || code).trim() : "";
+    const cleanPin = new_pin ? String(new_pin).trim() : "";
+    const cleanConfirm = confirm_pin ? String(confirm_pin).trim() : "";
+
+    if (!cleanPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Driver account password is required for security verification.",
+      });
+    }
+
+    if (!cleanOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "One-time security verification code (OTP) is required.",
+      });
+    }
+
+    // Fetch auth record
+    const authResult = await pool.query(
+      "SELECT password_hash, reset_token, reset_token_expires FROM driver_auth WHERE driver_id = $1",
+      [driverId]
+    );
+
+    if (authResult.rows.length === 0 || !authResult.rows[0].password_hash) {
+      return res.status(400).json({
+        success: false,
+        message: "Driver credentials not found. Please contact dispatch.",
+      });
+    }
+
+    const auth = authResult.rows[0];
+
+    // 1. Verify Password
+    const isPasswordValid = await bcrypt.compare(cleanPassword, auth.password_hash);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect account password.",
+      });
+    }
+
+    // 2. Verify OTP
+    if (!auth.reset_token || auth.reset_token !== cleanOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid verification code. Please check the code sent to your email.",
+      });
+    }
+
+    if (auth.reset_token_expires && new Date(auth.reset_token_expires) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification code has expired. Please request a new code.",
+      });
+    }
+
+    // 3. Optional New PIN setup
+    let newPinHash = null;
+    if (cleanPin) {
+      if (!isValid6DigitPin(cleanPin)) {
+        return res.status(400).json({
+          success: false,
+          message: "New PIN must be exactly 6 numeric digits.",
+        });
+      }
+      if (cleanConfirm && cleanConfirm !== cleanPin) {
+        return res.status(400).json({
+          success: false,
+          message: "New PIN and confirmation PIN do not match.",
+        });
+      }
+      newPinHash = await bcrypt.hash(cleanPin, 10);
+    }
+
+    // 4. Unlock driver payouts, clear failed attempts and unlock PIN
+    const updateQuery = newPinHash
+      ? `
+        UPDATE drivers 
+        SET 
+          payout_locked = false,
+          payout_locked_reason = NULL,
+          payout_locked_at = NULL,
+          wallet_is_frozen = false,
+          wallet_frozen_reason = NULL,
+          pin_failed_attempts = 0,
+          pin_locked_until = NULL,
+          pin_hash = $1,
+          pin_updated_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `
+      : `
+        UPDATE drivers 
+        SET 
+          payout_locked = false,
+          payout_locked_reason = NULL,
+          payout_locked_at = NULL,
+          wallet_is_frozen = false,
+          wallet_frozen_reason = NULL,
+          pin_failed_attempts = 0,
+          pin_locked_until = NULL,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `;
+
+    const updateParams = newPinHash ? [newPinHash, driverId] : [driverId];
+    await pool.query(updateQuery, updateParams);
+
+    // Clear reset token in driver_auth
+    await pool.query(
+      "UPDATE driver_auth SET reset_token = NULL, reset_token_expires = NULL" + (newPinHash ? ", pin_hash = $1" : "") + " WHERE driver_id = " + (newPinHash ? "$2" : "$1"),
+      newPinHash ? [newPinHash, driverId] : [driverId]
+    );
+
+    // Insert security notification
+    try {
+      await pool.query(
+        `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+         VALUES ($1, 'Security Verification Passed', 'Your identity has been verified. Payout requests and wallet cashout access have been fully restored.', 'security', 'wallet', NOW())`,
+        [driverId]
+      );
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      payout_locked: false,
+      message: "Security verification successful! Payout requests and wallet cashouts are now unlocked.",
+      has_pin: true,
+    });
+  } catch (err) {
+    console.error("Driver verifyAndUnlockPayout error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   getPinStatus,
   setupPin,
   verifyPin,
   resetPinWithPassword,
+  sendUnlockPayoutOtp,
+  verifyAndUnlockPayout,
 };

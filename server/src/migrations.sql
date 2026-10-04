@@ -1095,3 +1095,14 @@ DO $$ BEGIN
     FOREIGN KEY (unit_of_measure_id) REFERENCES units(id) ON DELETE SET NULL;
 EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
 END $$;
+
+-- ── 33. DRIVER SECURITY & FLEET GOVERNANCE (ANTI-FRAUD PAYOUT LOCK & ZONE APPROVAL) ──
+ALTER TABLE drivers 
+ADD COLUMN IF NOT EXISTS payout_locked BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS payout_locked_reason TEXT,
+ADD COLUMN IF NOT EXISTS payout_locked_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS requested_zone_id INTEGER,
+ADD COLUMN IF NOT EXISTS zone_change_status VARCHAR(50) DEFAULT 'none',
+ADD COLUMN IF NOT EXISTS zone_change_requested_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS zone_change_notes TEXT;
+

@@ -91,6 +91,10 @@ router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile)
 router.patch("/profile", driverProtect, driverAuthController.updateProfile);
 router.put("/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/availability", driverProtect, driverAuthController.toggleAvailability);
+router.post("/zone/request-change", driverProtect, driverAuthController.requestZoneChange);
+router.post("/zone/change-request", driverProtect, driverAuthController.requestZoneChange);
+router.post("/request-zone-change", driverProtect, driverAuthController.requestZoneChange);
+router.get("/zone/request-status", driverProtect, driverAuthController.getZoneRequestStatus);
 
 // ── 2. Profile Photo / Avatar Upload ─────────────────────────────────
 router.post("/upload/avatar", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
@@ -207,6 +211,10 @@ router.post("/pin/verify", driverProtect, driverPinController.verifyPin);
 router.post("/pin/validate", driverProtect, driverPinController.verifyPin);
 router.post("/pin/check", driverProtect, driverPinController.verifyPin);
 router.post("/pin/reset", driverProtect, driverPinController.resetPinWithPassword);
+router.post("/pin/send-unlock-otp", driverProtect, driverPinController.sendUnlockPayoutOtp);
+router.post("/pin/verify-unlock", driverProtect, driverPinController.verifyAndUnlockPayout);
+router.post("/security/send-unlock-otp", driverProtect, driverPinController.sendUnlockPayoutOtp);
+router.post("/security/verify-unlock", driverProtect, driverPinController.verifyAndUnlockPayout);
 
 // ── 6. Push Tokens & In-App Notification Feed ────────────────────────
 router.post("/device-token", driverProtect, driverNotificationController.registerDeviceToken);

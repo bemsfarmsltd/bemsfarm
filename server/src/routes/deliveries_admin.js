@@ -1323,6 +1323,158 @@ router.patch(
   }
 );
 
+// ── PATCH /api/admin/deliveries/drivers/:id/zone-request ──────────
+// Approve or Reject Driver Zone Change Request (Item 10)
+router.patch(
+  "/drivers/:id/zone-request",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { action = "approve", notes = "" } = req.body; // 'approve' | 'reject'
+
+      const driverCheck = await pool.query(
+        `SELECT d.*, dz.zone_name AS requested_zone_name 
+         FROM drivers d 
+         LEFT JOIN delivery_zones dz ON d.requested_zone_id = dz.zone_id 
+         WHERE d.id = $1`,
+        [id]
+      );
+
+      if (driverCheck.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverCheck.rows[0];
+
+      if (!driver.requested_zone_id) {
+        return res.status(400).json({ message: "Driver does not have an active zone change request." });
+      }
+
+      const zoneTitle = driver.requested_zone_name || `Zone #${driver.requested_zone_id}`;
+
+      if (action === "approve") {
+        const updateRes = await pool.query(
+          `UPDATE drivers 
+           SET primary_zone_id = requested_zone_id,
+               zone_change_status = 'approved',
+               zone_change_notes = COALESCE(NULLIF($1, ''), 'Approved by dispatch admin'),
+               updated_at = NOW()
+           WHERE id = $2
+           RETURNING *`,
+          [notes.trim(), id]
+        );
+
+        const updatedDriver = updateRes.rows[0];
+
+        // Notify driver in-app
+        await pool.query(
+          `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+           VALUES ($1, 'Zone Change Approved', $2, 'announcement', 'zone_change', NOW())`,
+          [
+            id,
+            `Congratulations! Your transfer to ${zoneTitle} has been approved by dispatch. You can now accept deliveries in this zone.`,
+          ]
+        );
+
+        return res.json({
+          status: "success",
+          message: `Zone change request approved. Driver ${driver.name} is now assigned to ${zoneTitle}.`,
+          driver: updatedDriver,
+        });
+      } else {
+        // Reject request
+        const updateRes = await pool.query(
+          `UPDATE drivers 
+           SET zone_change_status = 'rejected',
+               zone_change_notes = COALESCE(NULLIF($1, ''), 'Declined by dispatch management'),
+               updated_at = NOW()
+           WHERE id = $2
+           RETURNING *`,
+          [notes.trim(), id]
+        );
+
+        const updatedDriver = updateRes.rows[0];
+
+        // Notify driver in-app
+        await pool.query(
+          `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+           VALUES ($1, 'Zone Change Request Declined', $2, 'system', 'zone_change', NOW())`,
+          [
+            id,
+            `Your request to transfer to ${zoneTitle} was not approved: ${notes || "Operational zone quotas are full"}. You remain in your current zone.`,
+          ]
+        );
+
+        return res.json({
+          status: "success",
+          message: `Zone change request rejected for driver ${driver.name}.`,
+          driver: updatedDriver,
+        });
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── PATCH /api/admin/deliveries/drivers/:id/unlock-payout ───────────
+// Manually unlock/unfreeze a driver's payout requests (Item 5)
+router.patch(
+  "/drivers/:id/unlock-payout",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { notes = "" } = req.body;
+
+      const driverRes = await pool.query(
+        `UPDATE drivers 
+         SET payout_locked = false,
+             payout_locked_reason = NULL,
+             payout_locked_at = NULL,
+             wallet_is_frozen = false,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+      );
+
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+
+      // Reset PIN failure lockout on credentials
+      await pool.query(
+        `UPDATE driver_auth 
+         SET failed_attempts = 0, locked_until = NULL, reset_token = NULL 
+         WHERE driver_id = $1`,
+        [id]
+      );
+
+      // In-app notification to driver
+      await pool.query(
+        `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+         VALUES ($1, 'Payout Access Restored', $2, 'system', 'payout', NOW())`,
+        [
+          id,
+          "Your cashout and payout privileges have been verified and unlocked by dispatch administration. You can now request withdrawals.",
+        ]
+      );
+
+      res.json({
+        status: "success",
+        message: `Payout lock removed successfully for driver ${driver.name}.`,
+        driver,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // ── DELETE /api/admin/deliveries/drivers/:id ────────────────────────
 router.delete(
   "/drivers/:id",

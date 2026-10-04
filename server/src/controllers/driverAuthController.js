@@ -83,6 +83,49 @@ const register = async (req, res, next) => {
       return res.status(400).json({ message: "Password must be at least 6 characters long" });
     }
 
+    // ── Item 20: Documents are COMPULSORY during initial driver registration ──
+    const docs = (typeof documents === "object" && documents !== null) ? documents : {};
+    const licenseDoc = (docs && (docs.driver_license || docs.drivers_license || docs.driver_license_front || docs.license)) || req.body.driver_license || req.body.drivers_license;
+    const ninDoc = (docs && (docs.nin_slip || docs.nin || docs.nin_document)) || req.body.nin_slip || req.body.nin_document;
+    const vehicleDoc = (docs && (docs.vehicle_registration || docs.vehicle_reg || docs.vehicle_document || docs.logbook)) || req.body.vehicle_registration || req.body.vehicle_reg;
+    const passportDoc = (avatar_url || (docs && (docs.passport_photo || docs.photo || docs.avatar)) || req.body.passport_photo || req.body.photo || "").trim();
+
+    const missingDocs = [];
+    if (!license_number || !license_number.trim() || !licenseDoc) {
+      missingDocs.push("Driver's License (license number AND scanned document/photo are compulsory)");
+    }
+    if (!nin_number || !nin_number.trim() || !ninDoc) {
+      missingDocs.push("National Identity / NIN (11-digit NIN number AND NIN slip/card scan are compulsory)");
+    }
+    if (!vehicle_plate || !vehicle_plate.trim() || !vehicleDoc) {
+      missingDocs.push("Vehicle Registration (license plate number AND vehicle registration paper are compulsory)");
+    }
+    if (!passportDoc) {
+      missingDocs.push("Driver Passport Photograph (clear face photo or selfie is compulsory)");
+    }
+
+    if (missingDocs.length > 0) {
+      return res.status(400).json({
+        code: "MANDATORY_DOCUMENTS_REQUIRED",
+        message: "Compliance documents are compulsory during initial registration. All 4 verification items must be provided before your application can be submitted.",
+        missing_documents: missingDocs,
+        required_items: {
+          license: "license_number and documents.driver_license (or driver_license)",
+          nin: "nin_number and documents.nin_slip (or nin_slip)",
+          vehicle: "vehicle_plate and documents.vehicle_registration (or vehicle_registration)",
+          passport: "avatar_url or documents.passport_photo (or passport_photo)",
+        },
+      });
+    }
+
+    const consolidatedDocuments = {
+      ...docs,
+      driver_license: licenseDoc,
+      nin_slip: ninDoc,
+      vehicle_registration: vehicleDoc,
+      passport_photo: passportDoc,
+    };
+
     await client.query("BEGIN");
 
     // Check if phone or email already exists
@@ -183,8 +226,8 @@ const register = async (req, res, next) => {
         bank_name ? bank_name.trim() : null,
         account_number ? account_number.trim() : null,
         account_name ? account_name.trim() : null,
-        avatar_url || null,
-        typeof documents === "object" ? JSON.stringify(documents) : "{}",
+        passportDoc || avatar_url || null,
+        JSON.stringify(consolidatedDocuments),
         `Self-service registered on ${new Date().toISOString().slice(0, 10)}. Awaiting admin verification.`,
       ]
     );
@@ -579,10 +622,42 @@ const updateProfile = async (req, res, next) => {
     const updates = [];
     const params = [];
 
+    let pendingZoneDetails = null;
+
     if (primary_zone_id !== undefined || zone_id !== undefined) {
-      const zId = primary_zone_id !== undefined ? primary_zone_id : zone_id;
-      params.push(zId || null);
-      updates.push(`primary_zone_id = $${params.length}`);
+      const targetZone = primary_zone_id !== undefined ? primary_zone_id : zone_id;
+      const curDriverRes = await pool.query(
+        "SELECT primary_zone_id, requested_zone_id, zone_change_status FROM drivers WHERE id = $1",
+        [driverId]
+      );
+      const curDriver = curDriverRes.rows[0];
+
+      if (targetZone && String(curDriver?.primary_zone_id) !== String(targetZone)) {
+        // Driver CANNOT freely change zone without admin approval (Item 10)
+        await pool.query(
+          `UPDATE drivers 
+           SET requested_zone_id = $1, 
+               zone_change_status = 'pending_approval', 
+               zone_change_requested_at = NOW(), 
+               zone_change_notes = $2, 
+               updated_at = NOW() 
+           WHERE id = $3`,
+          [targetZone, req.body.zone_change_reason || req.body.zone_change_notes || "Requested via profile update", driverId]
+        );
+
+        await pool.query(
+          `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+           VALUES ($1, 'Zone Change Request Submitted', 'Your request to change delivery zones has been submitted for admin approval.', 'system', 'zone_change', NOW())`,
+          [driverId]
+        );
+
+        pendingZoneDetails = {
+          current_zone_id: curDriver?.primary_zone_id,
+          requested_zone_id: targetZone,
+          status: "pending_approval",
+          message: "Zone change request submitted and awaiting admin approval.",
+        };
+      }
     }
 
     if (phone !== undefined) {
@@ -659,6 +734,19 @@ const updateProfile = async (req, res, next) => {
     }
 
     if (updates.length === 0) {
+      if (pendingZoneDetails) {
+        const curRes = await pool.query("SELECT * FROM drivers WHERE id = $1", [driverId]);
+        const d = curRes.rows[0];
+        return res.json({
+          driver: {
+            ...d,
+            is_available: isDriverApproved(d) ? req.driver.is_available : false,
+            is_on_delivery: req.driver.is_on_delivery,
+          },
+          zone_change: pendingZoneDetails,
+          message: "Zone change request submitted and awaiting admin approval.",
+        });
+      }
       return res.status(400).json({ message: "No profile fields to update" });
     }
 
@@ -696,7 +784,12 @@ const updateProfile = async (req, res, next) => {
         is_available: isDriverApproved(updatedDriver) ? req.driver.is_available : false,
         is_on_delivery: req.driver.is_on_delivery,
       },
-      message: "Profile updated successfully",
+      zone_change: pendingZoneDetails || {
+        status: updatedDriver.zone_change_status || "none",
+        current_zone_id: updatedDriver.primary_zone_id,
+        requested_zone_id: updatedDriver.requested_zone_id,
+      },
+      message: "Profile updated successfully" + (pendingZoneDetails ? ". Zone change is pending admin approval." : ""),
     });
   } catch (err) {
     console.error("Driver updateProfile error:", err.message);
@@ -891,6 +984,108 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/zone/request-change ───────────────────────────
+// Request Zone Change (Requires Admin Approval - Item 10)
+const requestZoneChange = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const targetZoneId = req.body.zone_id || req.body.primary_zone_id;
+    const reason = (req.body.reason || req.body.notes || "Requested via driver app").trim();
+
+    if (!targetZoneId) {
+      return res.status(400).json({ message: "Target zone_id is required" });
+    }
+
+    // Check if target zone exists
+    const zoneRes = await pool.query(
+      "SELECT zone_id, zone_name FROM delivery_zones WHERE zone_id = $1 OR id::text = $1",
+      [String(targetZoneId)]
+    );
+    const zoneName = zoneRes.rows.length > 0 ? zoneRes.rows[0].zone_name : `Zone ${targetZoneId}`;
+
+    const currentDriverRes = await pool.query(
+      "SELECT primary_zone_id, requested_zone_id, zone_change_status FROM drivers WHERE id = $1",
+      [driverId]
+    );
+    const current = currentDriverRes.rows[0];
+
+    if (String(current.primary_zone_id) === String(targetZoneId)) {
+      return res.status(400).json({ message: "You are already assigned to this delivery zone." });
+    }
+
+    if (current.zone_change_status === "pending_approval" && String(current.requested_zone_id) === String(targetZoneId)) {
+      return res.status(409).json({
+        message: "You already have a pending zone change request for this zone awaiting admin approval.",
+        zone_change_status: "pending_approval",
+        requested_zone_id: current.requested_zone_id,
+      });
+    }
+
+    await pool.query(
+      `UPDATE drivers 
+       SET requested_zone_id = $1, 
+           zone_change_status = 'pending_approval', 
+           zone_change_requested_at = NOW(), 
+           zone_change_notes = $2, 
+           updated_at = NOW() 
+       WHERE id = $3`,
+      [targetZoneId, reason, driverId]
+    );
+
+    // In-app notification
+    await pool.query(
+      `INSERT INTO driver_notifications (driver_id, title, body, type, reference_type, created_at)
+       VALUES ($1, 'Zone Change Request Submitted', $2, 'system', 'zone_change', NOW())`,
+      [
+        driverId,
+        `Your request to transfer to ${zoneName} has been submitted to dispatch operations and is pending admin approval.`,
+      ]
+    );
+
+    res.json({
+      status: "success",
+      message: `Your request to change to ${zoneName} has been submitted for admin approval.`,
+      zone_change_status: "pending_approval",
+      current_zone_id: current.primary_zone_id,
+      requested_zone_id: targetZoneId,
+      requested_zone_name: zoneName,
+      requested_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── GET /api/driver/zone/request-status ────────────────────────────
+const getZoneRequestStatus = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const r = await pool.query(
+      `SELECT d.primary_zone_id, d.requested_zone_id, d.zone_change_status, d.zone_change_requested_at, d.zone_change_notes,
+              dz_cur.zone_name AS current_zone_name,
+              dz_req.zone_name AS requested_zone_name
+       FROM drivers d
+       LEFT JOIN delivery_zones dz_cur ON d.primary_zone_id = dz_cur.zone_id
+       LEFT JOIN delivery_zones dz_req ON d.requested_zone_id = dz_req.zone_id
+       WHERE d.id = $1`,
+      [driverId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ message: "Driver not found" });
+    const row = r.rows[0];
+    res.json({
+      primary_zone_id: row.primary_zone_id,
+      current_zone_name: row.current_zone_name,
+      requested_zone_id: row.requested_zone_id,
+      requested_zone_name: row.requested_zone_name,
+      zone_change_status: row.zone_change_status || "none",
+      zone_change_requested_at: row.zone_change_requested_at,
+      zone_change_notes: row.zone_change_notes,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -900,5 +1095,7 @@ module.exports = {
   toggleAvailability,
   forgotPassword,
   resetPassword,
+  requestZoneChange,
+  getZoneRequestStatus,
 };
 
