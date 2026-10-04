@@ -867,8 +867,7 @@
 }
 
 .bems-doc-body .bems-doc-sign,
-.bems-doc-sign,
-.bems-doc-footer-group .bems-doc-sign {
+.bems-doc-sign {
   display: grid;
   grid-template-columns: 1fr minmax(260px, auto);
   gap: 32px;
@@ -877,16 +876,27 @@
   padding-top: 12px;
 }
 
+.bems-doc-footer-group .bems-doc-sign {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, auto);
+  gap: 32px;
+  align-items: end;
+  margin-top: 0;
+  padding: 12px 14mm 14px 14mm !important;
+  box-sizing: border-box;
+}
+
 /* Thanks banner & Footer */
 .bems-doc-thanks {
   margin-left: 6px;
   flex-shrink: 0;
-  padding: 14px 15mm 14px 11mm;
+  padding: 12px 14mm 12px calc(14mm - 6px);
   background: var(--bems-g0);
   border-top: 1px solid var(--bems-line);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .bems-doc-thanks h3 {
@@ -906,13 +916,14 @@
 .bems-doc-foot {
   margin-left: 6px;
   flex-shrink: 0;
-  padding: 7px 15mm 8px 11mm;
+  padding: 7px 14mm 8px calc(14mm - 6px);
   background: var(--bems-g9);
   color: #a9c9b5;
   font-size: 9.5px;
   display: flex;
   justify-content: space-between;
   margin-bottom: 0 !important;
+  box-sizing: border-box;
 }
 
 /* ── Driver Statement Specific Enhancements ── */
