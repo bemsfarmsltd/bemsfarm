@@ -167,9 +167,17 @@ export default function DispatchAlertBanner() {
   }
 
   const filteredDrivers = useMemo(() => {
+    // Only approved, active, and verified drivers should be available for assignment
+    const eligibleDrivers = drivers.filter(d => 
+      d.onboarding_status === 'approved' &&
+      d.status !== 'suspended' &&
+      d.status !== 'pending' &&
+      d.status !== 'rejected' &&
+      d.status !== 'inactive'
+    )
     const q = driverSearch.toLowerCase().trim()
-    if (!q) return drivers
-    return drivers.filter(d =>
+    if (!q) return eligibleDrivers
+    return eligibleDrivers.filter(d =>
       (d.name || '').toLowerCase().includes(q) ||
       (d.phone || '').toLowerCase().includes(q) ||
       (d.vehicle_plate || '').toLowerCase().includes(q) ||

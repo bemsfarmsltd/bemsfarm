@@ -73,17 +73,19 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+const BEMS_HQ_STORE_COORDS = { lat: 5.5245, lng: 7.4912 }; // Umuahia Central Fulfillment Hub
+
 /**
  * Automatically assign the closest online & available driver to an order/delivery.
  * Drivers who are currently in transit, on an active delivery, or in the excludedDriverIds list are bypassed.
- * 
+ *
  * @param {string|number} orderId - Order ID or Delivery ID
- * @param {object} storeCoords - { lat, lng } (Default: Bems Farms Store Hub, Aba, Abia State: 5.1065, 7.3667)
+ * @param {object} storeCoords - { lat, lng } (Default: Bems Farms Central Hub, Umuahia: 5.5245, 7.4912)
  * @param {Array<number>} excludedDriverIds - List of driver IDs to bypass (e.g. timed-out or rejected drivers)
  */
 async function autoAssignClosestDriver(
   orderId,
-  storeCoords = { lat: 5.1065, lng: 7.3667 },
+  storeCoords = BEMS_HQ_STORE_COORDS,
   excludedDriverIds = []
 ) {
   const client = await pool.connect();
@@ -260,6 +262,7 @@ async function autoAssignClosestDriver(
           SELECT latitude, longitude, recorded_at
           FROM driver_locations
           WHERE driver_id = d.id
+            AND recorded_at >= NOW() - INTERVAL '30 minutes'
           ORDER BY recorded_at DESC
           LIMIT 1
         ) dl ON true
@@ -323,8 +326,40 @@ async function autoAssignClosestDriver(
         };
       });
 
-      driversWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
-      bestDriver = driversWithDistance[0];
+      // Operational Safety Guardrail: Max allowable distance for motorcycle courier auto-dispatch (30 km)
+      const MAX_AUTO_DISPATCH_DISTANCE_KM = 30.0;
+      const eligibleNearbyDrivers = driversWithDistance.filter(drv => drv.distanceKm <= MAX_AUTO_DISPATCH_DISTANCE_KM);
+
+      if (eligibleNearbyDrivers.length === 0) {
+        if (['packed', 'packed_ready', 'awaiting_driver_confirmation'].includes(order.status)) {
+          await client.query(
+            `UPDATE orders
+             SET status = 'awaiting_driver_confirmation',
+                 tracking_status = 'awaiting_driver_confirmation',
+                 driver_id = NULL,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [order.id]
+          );
+
+          await insertDispatchAlert({
+            order_id: order.id,
+            order_ref: order.order_ref,
+            delivery_id: order.delivery_id,
+            message: `Delivery destination is outside courier dispatch radius (> ${MAX_AUTO_DISPATCH_DISTANCE_KM} km). Manual logistics routing required.`,
+          }).catch((e) => console.warn('[dispatch-alert] Notice:', e.message));
+        }
+
+        await client.query("COMMIT");
+        return {
+          success: false,
+          status: "awaiting_driver_confirmation",
+          message: `Closest available driver is ${driversWithDistance[0]?.distanceKm?.toFixed(1) || '?'} km away, which exceeds the max auto-dispatch radius (${MAX_AUTO_DISPATCH_DISTANCE_KM} km). Administrative manual routing required.`,
+        };
+      }
+
+      eligibleNearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
+      bestDriver = eligibleNearbyDrivers[0];
     }
 
     // Ensure delivery record exists
@@ -459,7 +494,7 @@ async function autoAssignClosestDriver(
  */
 async function processUnresponsiveAssignments(
   timeoutMinutes = 5,
-  storeCoords = { lat: 5.1065, lng: 7.3667 }
+  storeCoords = BEMS_HQ_STORE_COORDS
 ) {
   try {
     // Find active orders/deliveries:

@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -127,8 +127,7 @@ export default function AdminOrderMap({
     if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
       return [lat, lng]
     }
-    // Default to near Umuahia central
-    return [5.5295, 7.4985]
+    return null
   }, [order?.latitude, order?.customer_lat, order?.longitude, order?.customer_lng])
 
   const driverCoords = useMemo(() => {
@@ -137,7 +136,7 @@ export default function AdminOrderMap({
     if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
       return [lat, lng]
     }
-    return [5.5240, 7.4930]
+    return null
   }, [order?.driver_lat, order?.driver_lng])
 
   const hasDriver = Boolean(order?.driver_name || order?.driver_id || order?.driver)
@@ -147,22 +146,65 @@ export default function AdminOrderMap({
     if (isPos) {
       return [BEMS_HQ_COORDS]
     }
-    const pts = [BEMS_HQ_COORDS, destCoords]
-    if (hasDriver) {
+    const pts = [BEMS_HQ_COORDS]
+    if (destCoords) {
+      pts.push(destCoords)
+    }
+    if (driverCoords) {
       pts.push(driverCoords)
     }
     return pts
-  }, [isPos, destCoords, hasDriver, driverCoords])
+  }, [isPos, destCoords, driverCoords])
+
+  const originCoords = useMemo(() => {
+    if (driverCoords) {
+      return driverCoords
+    }
+    return BEMS_HQ_COORDS
+  }, [driverCoords])
+
+  const [roadPolyline, setRoadPolyline] = useState([])
+
+  useEffect(() => {
+    if (isPos || !destCoords) {
+      setRoadPolyline([])
+      return
+    }
+    let cancelled = false
+    const [startLat, startLng] = originCoords
+    const [endLat, endLng] = destCoords
+    if (!startLat || !startLng || !endLat || !endLng) return
+
+    fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return
+        if (data.routes && data.routes[0]) {
+          const latLngs = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng])
+          setRoadPolyline(latLngs)
+        }
+      })
+      .catch(() => {})
+
+    return () => { cancelled = true }
+  }, [isPos, originCoords[0], originCoords[1], destCoords ? destCoords[0] : null, destCoords ? destCoords[1] : null])
 
   const polylinePts = useMemo(() => {
-    if (isPos) return []
-    if (hasDriver) {
-      return [driverCoords, destCoords]
+    if (isPos || !destCoords) return []
+    if (roadPolyline && roadPolyline.length > 0) {
+      return roadPolyline
     }
-    return [BEMS_HQ_COORDS, destCoords]
-  }, [isPos, hasDriver, driverCoords, destCoords])
+    return [originCoords, destCoords]
+  }, [isPos, roadPolyline, originCoords, destCoords])
 
   const driverMarkerIcon = useMemo(() => createDriverMarkerIcon(order?.driver_name), [order?.driver_name])
+
+  const mapCenter = useMemo(() => {
+    if (isPos) return BEMS_HQ_COORDS
+    if (destCoords) return destCoords
+    if (driverCoords) return driverCoords
+    return BEMS_HQ_COORDS
+  }, [isPos, destCoords, driverCoords])
 
   return (
     <div className="rounded-3 overflow-hidden border position-relative shadow-xs" style={{ height, background: '#f8fafc' }}>
@@ -170,7 +212,7 @@ export default function AdminOrderMap({
       <div className="position-absolute d-flex align-items-center justify-content-between gap-2 px-2 py-1 m-2 rounded-2 bg-dark bg-opacity-75 text-white"
         style={{ zIndex: 1000, fontSize: 11, fontWeight: 600, backdropFilter: 'blur(4px)' }}>
         <div className="d-flex align-items-center gap-1.5">
-          <span className="rounded-circle" style={{ width: 7, height: 7, background: isPos ? '#38bdf8' : '#4ade80' }} />
+          <span className="rounded-circle" style={{ width: 7, height: 7, background: isPos ? '#38bdf8' : (isEnRoute ? '#3b82f6' : '#4ade80') }} />
           <span>{isPos ? '🏬 In-Store Fulfillment Hub' : (isEnRoute ? '🛵 Driver En Route (Live)' : '📍 Delivery Location & Hub')}</span>
         </div>
         {order?.eta_minutes && (
@@ -180,9 +222,27 @@ export default function AdminOrderMap({
         )}
       </div>
 
+      {/* Safety Notice Overlay if destination GPS is missing */}
+      {!isPos && !destCoords && (
+        <div className="position-absolute start-0 end-0 bottom-0 p-2 m-2 rounded-2 bg-amber-50 border border-amber-300 text-amber-900 d-flex align-items-center gap-2"
+          style={{ zIndex: 1000, fontSize: 11, background: 'rgba(254, 243, 199, 0.95)', backdropFilter: 'blur(4px)' }}>
+          <i className="ri-error-warning-line text-warning fs-6" />
+          <span><strong>Delivery GPS Unpinned:</strong> Recipient address is not geocoded. Routing cannot be calculated.</span>
+        </div>
+      )}
+
+      {/* Driver GPS Offline Notice if driver is assigned but hasn't pinged in 30 mins */}
+      {!isPos && hasDriver && !driverCoords && (
+        <div className="position-absolute start-0 end-0 top-0 mt-5 mx-2 p-1.5 rounded-2 bg-light border border-secondary text-dark d-flex align-items-center gap-1.5"
+          style={{ zIndex: 999, fontSize: 10.5, background: 'rgba(248, 250, 252, 0.92)', backdropFilter: 'blur(4px)' }}>
+          <i className="ri-signal-wifi-off-line text-danger" />
+          <span><strong>Courier Telemetry Offline:</strong> {order?.driver_name || 'Driver'} phone has not reported GPS in &gt; 30 minutes.</span>
+        </div>
+      )}
+
       <MapContainer
-        center={isPos ? BEMS_HQ_COORDS : destCoords}
-        zoom={14}
+        center={mapCenter}
+        zoom={13}
         scrollWheelZoom={false}
         style={{ width: '100%', height: '100%' }}
       >
@@ -205,8 +265,8 @@ export default function AdminOrderMap({
           </Popup>
         </Marker>
 
-        {/* Customer Destination Marker (For delivery orders) */}
-        {!isPos && (
+        {/* Customer Destination Marker (Only when real coordinates exist) */}
+        {!isPos && destCoords && (
           <Marker position={destCoords} icon={customerDestIcon}>
             <Popup>
               <div style={{ fontSize: 12 }}>
@@ -218,8 +278,8 @@ export default function AdminOrderMap({
           </Marker>
         )}
 
-        {/* Assigned Driver Marker */}
-        {!isPos && hasDriver && (
+        {/* Assigned Driver Marker (Only when real fresh GPS exists) */}
+        {!isPos && hasDriver && driverCoords && (
           <Marker position={driverCoords} icon={driverMarkerIcon}>
             <Popup>
               <div style={{ fontSize: 12 }}>
@@ -232,8 +292,8 @@ export default function AdminOrderMap({
           </Marker>
         )}
 
-        {/* Route Line */}
-        {!isPos && polylinePts.length > 0 && (
+        {/* Route Line (Only when real destination exists) */}
+        {!isPos && destCoords && polylinePts.length > 0 && (
           <Polyline
             positions={polylinePts}
             pathOptions={{

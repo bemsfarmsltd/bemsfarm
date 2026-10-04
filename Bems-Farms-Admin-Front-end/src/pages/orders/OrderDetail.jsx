@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import BemsOfficialDocument from '../../components/documents/BemsOfficialDocument'
 import { useAuth } from '../../context/AuthContext'
+import AdminOrderMap from '../../components/ui/AdminOrderMap'
 
 const STATUS_COLOR = {
   pending_payment: 'warning',
@@ -553,11 +554,26 @@ export default function OrderDetail() {
                 </span>
               )}
             </div>
+            {/* Live Interactive Delivery Map */}
+            <div className="p-2 border-bottom bg-light">
+              <AdminOrderMap order={order} height="220px" />
+            </div>
             <div className="card-body d-flex flex-column gap-2 small">
               <div className="d-flex justify-content-between">
                 <span className="text-muted">Driver</span>
                 <span className="fw-bold">{order.driver_name || <span className="text-danger">Unassigned</span>}</span>
               </div>
+              {order.driver_lat && order.driver_lng ? (
+                <div className="d-flex justify-content-between align-items-center bg-light p-1.5 rounded border">
+                  <span className="text-muted d-flex align-items-center gap-1">
+                    <span className="badge bg-success p-1 rounded-circle" style={{ width: 8, height: 8, display: 'inline-block' }} />
+                    Live Driver GPS
+                  </span>
+                  <span className="font-monospace text-dark" style={{ fontSize: 11 }}>
+                    {Number(order.driver_lat).toFixed(4)}, {Number(order.driver_lng).toFixed(4)}
+                  </span>
+                </div>
+              ) : null}
               {order.driver_phone && (
                 <div className="d-flex justify-content-between">
                   <span className="text-muted">Phone</span>

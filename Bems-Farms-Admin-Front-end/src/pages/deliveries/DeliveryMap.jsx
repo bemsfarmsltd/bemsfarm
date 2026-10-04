@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,12 +14,20 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Bems Farms Hubs
+// Bems Farms Hubs - Single Canonical Source of Truth
 const HUBS = [
-  { id: 'aba', name: 'Bems Farms Aba Commercial Depot', city: 'Aba', coords: [5.1065, 7.3667], type: 'depot' },
-  { id: 'umuahia', name: 'Bems Farms HQ Distribution Center', city: 'Umuahia', coords: [5.5245, 7.4912], type: 'hq' },
+  { id: 'umuahia', name: 'Bems Farms Central Hub & Fulfillment Center', city: 'Umuahia', coords: [5.5245, 7.4912], type: 'hq' },
 ]
-const DEFAULT_CENTER = [5.115, 7.368] // Aba central view
+const DEFAULT_CENTER = [5.5245, 7.4912] // Umuahia central view
+
+function getCustomerCoords(del) {
+  const cLat = safeNum(del?.customer_lat, null)
+  const cLng = safeNum(del?.customer_lng, null)
+  if (cLat != null && cLng != null && (cLat !== 0 || cLng !== 0)) {
+    return [cLat, cLng]
+  }
+  return null // Never fabricate a fake fallback pin
+}
 
 const STATUS_CFG = {
   assigned:           { label: 'Awaiting Pickup',   color: '#0891b2', bg: '#cffafe', border: '#a5f3fc', pulse: false, icon: 'ri-user-location-line' },
@@ -192,6 +200,9 @@ function MapCameraController({ target, bounds }) {
 }
 
 export default function DeliveryMap() {
+  const [searchParams] = useSearchParams()
+  const urlOrderId = searchParams.get('orderId')
+
   const [deliveries, setDeliveries] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected]   = useState(null)
@@ -205,6 +216,11 @@ export default function DeliveryMap() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date())
 
+  // Real OSRM Road polyline and metrics for selected delivery
+  const [roadPolyline, setRoadPolyline] = useState([])
+  const [roadDistanceKm, setRoadDistanceKm] = useState(null)
+  const [roadDurationMins, setRoadDurationMins] = useState(null)
+
   const load = useCallback(async (isManual = false) => {
     if (isManual) setIsRefreshing(true)
     try {
@@ -213,26 +229,22 @@ export default function DeliveryMap() {
       setDeliveries(list)
       setLastUpdated(new Date())
 
-      // Auto-select first active delivery if none selected
+      // Auto-select requested order from URL or first active delivery if none selected
       setSelected(prev => {
+        if (urlOrderId) {
+          const match = list.find(d =>
+            String(d.order_id || '').toLowerCase() === urlOrderId.toLowerCase() ||
+            String(d.id || '').toLowerCase() === urlOrderId.toLowerCase() ||
+            String(d.delivery_ref || '').toLowerCase() === urlOrderId.toLowerCase()
+          )
+          if (match) return match
+        }
         if (prev) {
           const updated = list.find(d => d.id === prev.id)
           return updated || prev
         }
         if (list.length > 0) {
           const defaultDel = list.find(d => d.status === 'en_route' || d.status === 'out_for_delivery') || list[0]
-          if (defaultDel && defaultDel.driver_lat != null) {
-            const dLat = safeNum(defaultDel.driver_lat)
-            const dLng = safeNum(defaultDel.driver_lng)
-            const custLat = defaultDel.customer_lat != null ? safeNum(defaultDel.customer_lat) : dLat + 0.014
-            const custLng = defaultDel.customer_lng != null ? safeNum(defaultDel.customer_lng) : dLng - 0.016
-            const hub = getClosestHub(dLat, dLng)
-            setFitBoundsTarget([
-              [dLat, dLng],
-              [custLat, custLng],
-              hub.coords,
-            ])
-          }
           return defaultDel
         }
         return null
@@ -247,13 +259,59 @@ export default function DeliveryMap() {
         toast.success('Live GPS positions refreshed')
       }
     }
-  }, [])
+  }, [urlOrderId])
 
   useEffect(() => {
     load()
     const id = setInterval(() => load(false), refreshSec * 1000)
     return () => clearInterval(id)
   }, [load, refreshSec])
+
+  // Fetch real road route from OSRM whenever selected delivery changes or updates
+  useEffect(() => {
+    if (!selected) {
+      setRoadPolyline([])
+      setRoadDistanceKm(null)
+      setRoadDurationMins(null)
+      return
+    }
+
+    const dLat = safeNum(selected.driver_lat, null)
+    const dLng = safeNum(selected.driver_lng, null)
+    const custCoords = getCustomerCoords(selected)
+    const custLat = custCoords ? custCoords[0] : null
+    const custLng = custCoords ? custCoords[1] : null
+
+    const boundsPoints = [HUBS[0].coords]
+    if (dLat != null && dLng != null) boundsPoints.push([dLat, dLng])
+    if (custLat != null && custLng != null) boundsPoints.push([custLat, custLng])
+    if (boundsPoints.length >= 2) {
+      setFitBoundsTarget(boundsPoints)
+    }
+
+    if (dLat == null || dLng == null || custLat == null || custLng == null) {
+      setRoadPolyline([])
+      setRoadDistanceKm(null)
+      setRoadDurationMins(null)
+      return
+    }
+
+    let cancelled = false
+    fetch(`https://router.project-osrm.org/route/v1/driving/${dLng},${dLat};${custLng},${custLat}?overview=full&geometries=geojson`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return
+        if (data.routes && data.routes[0]) {
+          const latLngs = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng])
+          setRoadPolyline(latLngs)
+          setRoadDistanceKm((data.routes[0].distance / 1000).toFixed(1))
+          setRoadDurationMins(Math.round(data.routes[0].duration / 60))
+        }
+      })
+      .catch(() => {})
+
+    return () => { cancelled = true }
+  }, [selected?.id, selected?.driver_lat, selected?.driver_lng, selected?.customer_lat, selected?.customer_lng])
 
   // Filtered deliveries for list
   const filteredDeliveries = useMemo(() => {
@@ -277,18 +335,17 @@ export default function DeliveryMap() {
 
   const handleSelectDelivery = (del) => {
     setSelected(del)
-    if (del.driver_lat != null && del.driver_lng != null) {
-      const dLat = safeNum(del.driver_lat)
-      const dLng = safeNum(del.driver_lng)
-      const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : dLat + 0.014
-      const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : dLng - 0.016
-      const hub = getClosestHub(dLat, dLng)
-      setFitBoundsTarget([
-        [dLat, dLng],
-        [custLat, custLng],
-        hub.coords,
-      ])
+    const dLat = safeNum(del.driver_lat, null)
+    const dLng = safeNum(del.driver_lng, null)
+    const custCoords = getCustomerCoords(del)
+    const boundsPoints = [HUBS[0].coords]
+    if (dLat != null && dLng != null) boundsPoints.push([dLat, dLng])
+    if (custCoords) boundsPoints.push(custCoords)
+    if (boundsPoints.length >= 2) {
+      setFitBoundsTarget(boundsPoints)
       setFlyTarget(null)
+    } else if (boundsPoints.length === 1) {
+      setFlyTarget(boundsPoints[0])
     }
   }
 
@@ -298,8 +355,7 @@ export default function DeliveryMap() {
     setFitBoundsTarget(null)
   }
 
-  const focusAba = () => setFlyTarget(HUBS[0].coords)
-  const focusUmuahia = () => setFlyTarget(HUBS[1].coords)
+  const focusUmuahia = () => setFlyTarget(HUBS[0].coords)
   const fitAll = () => {
     const points = deliveries
       .filter(d => d.driver_lat != null && d.driver_lng != null)
@@ -484,7 +540,7 @@ export default function DeliveryMap() {
             </span>
           </div>
           <p className="text-muted small mb-0 mt-0.5">
-            Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations in Abia State
+            Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations across Nigeria
           </p>
         </div>
 
@@ -595,7 +651,7 @@ export default function DeliveryMap() {
               </div>
               <div className="fs-3 fw-bolder text-dark mb-1">{deliveries.length}</div>
               <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
-                <span>Abia State Geofence</span>
+                <span>Interstate &amp; Regional Coverage</span>
                 <strong className="text-dark font-monospace">{refreshSec}s auto-refresh</strong>
               </div>
             </div>
@@ -674,9 +730,14 @@ export default function DeliveryMap() {
                 const isSel = selected?.id === del.id
                 const dLat = safeNum(del.driver_lat, null)
                 const dLng = safeNum(del.driver_lng, null)
-                const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : (dLat ? dLat + 0.014 : 5.122)
-                const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : (dLng ? dLng - 0.016 : 7.352)
-                const distKm = (dLat && dLng) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null
+                const custCoords = getCustomerCoords(del)
+                const custLat = custCoords ? custCoords[0] : null
+                const custLng = custCoords ? custCoords[1] : null
+                const distKm = (isSel && roadDistanceKm)
+                  ? roadDistanceKm
+                  : ((dLat != null && dLng != null && custLat != null && custLng != null)
+                      ? calcDistanceKm(dLat, dLng, custLat, custLng)
+                      : null)
 
                 const itemsCount = del.items?.length || 0
 
@@ -761,10 +822,20 @@ export default function DeliveryMap() {
                         </span>
                       </div>
 
-                      {/* ETA & Distance */}
-                      <div className="d-flex align-items-center gap-1.5">
+                      {/* ETA & Distance or Offline Badges */}
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap justify-content-end">
+                        {dLat == null && (
+                          <span className="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5" style={{ fontSize: 9 }}>
+                            <i className="ri-signal-wifi-off-line me-0.5" />GPS Offline
+                          </span>
+                        )}
+                        {custCoords == null && (
+                          <span className="badge rounded-pill bg-warning-subtle text-dark border border-warning-subtle px-1.5 py-0.5" style={{ fontSize: 9 }}>
+                            <i className="ri-map-pin-line me-0.5" />Unpinned
+                          </span>
+                        )}
                         {distKm != null && (
-                          <span className="text-primary fw-semibold font-monospace">
+                          <span className="text-primary fw-semibold font-monospace" style={{ fontSize: 10 }}>
                             <i className="ri-navigation-line me-0.5" />{distKm} km
                           </span>
                         )}
@@ -866,18 +937,10 @@ export default function DeliveryMap() {
 
             <button
               className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-none d-md-inline-flex align-items-center gap-1"
-              onClick={focusAba}
-              title="Center on Aba Commercial Depot">
-              <i className="ri-store-3-line text-dark" />
-              <span>Aba Hub</span>
-            </button>
-
-            <button
-              className="btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-none d-md-inline-flex align-items-center gap-1"
               onClick={focusUmuahia}
-              title="Center on Umuahia HQ">
+              title="Center on Umuahia Central Hub">
               <i className="ri-plant-line text-success" />
-              <span>Umuahia HQ</span>
+              <span>Umuahia Central Hub</span>
             </button>
           </div>
 
@@ -922,58 +985,71 @@ export default function DeliveryMap() {
               const isSelectedDelivery = selected?.id === del.id
               const dLat = safeNum(del.driver_lat, null)
               const dLng = safeNum(del.driver_lng, null)
-              if (dLat == null || dLng == null) return null
+              const custCoords = getCustomerCoords(del)
+              const custLat = custCoords ? custCoords[0] : null
+              const custLng = custCoords ? custCoords[1] : null
 
-              const driverPos = [dLat, dLng]
-              const custLat = del.customer_lat != null ? safeNum(del.customer_lat) : dLat + 0.014
-              const custLng = del.customer_lng != null ? safeNum(del.customer_lng) : dLng - 0.016
-              const customerPos = [custLat, custLng]
-              const closestHub = getClosestHub(dLat, dLng)
+              const driverPos = (dLat != null && dLng != null) ? [dLat, dLng] : null
+              const customerPos = (custLat != null && custLng != null) ? [custLat, custLng] : null
+              const centralHub = HUBS[0]
+
+              if (!driverPos && !customerPos) return null
 
               // Generate route paths
-              const hubToDriverRoute = interpolateRoute(closestHub.coords, driverPos, 0.04)
-              const driverToCustomerRoute = interpolateRoute(driverPos, customerPos, 0.06)
+              const hubToDriverRoute = driverPos ? interpolateRoute(centralHub.coords, driverPos, 0.04) : []
+              const driverToCustomerRoute = (driverPos && customerPos)
+                ? ((isSelectedDelivery && roadPolyline.length > 0)
+                    ? roadPolyline
+                    : interpolateRoute(driverPos, customerPos, 0.06))
+                : []
 
               return (
                 <Fragment key={del.id}>
                   {/* 1. Hub to Driver (Completed Journey Segment) */}
-                  <Polyline
-                    positions={hubToDriverRoute}
-                    pathOptions={{
-                      color: '#64748b',
-                      weight: isSelectedDelivery ? 3.5 : 2,
-                      dashArray: '5,7',
-                      opacity: isSelectedDelivery ? 0.75 : 0.4,
-                      className: 'completed-transit-leg',
-                    }}
-                  />
+                  {driverPos && hubToDriverRoute.length > 0 && (
+                    <Polyline
+                      positions={hubToDriverRoute}
+                      pathOptions={{
+                        color: '#64748b',
+                        weight: isSelectedDelivery ? 3.5 : 2,
+                        dashArray: '5,7',
+                        opacity: isSelectedDelivery ? 0.75 : 0.4,
+                        className: 'completed-transit-leg',
+                      }}
+                    />
+                  )}
 
                   {/* 2. Driver to Customer Destination (Live Transit Flow Journey Line) */}
-                  {/* Ambient Glow Aura */}
-                  <Polyline
-                    positions={driverToCustomerRoute}
-                    pathOptions={{
-                      color: isSelectedDelivery ? color : '#3b82f6',
-                      weight: isSelectedDelivery ? 10 : 6,
-                      opacity: isSelectedDelivery ? 0.35 : 0.2,
-                      lineCap: 'round',
-                    }}
-                  />
-                  {/* Active Animated Journey Line */}
-                  <Polyline
-                    positions={driverToCustomerRoute}
-                    pathOptions={{
-                      color: isSelectedDelivery ? color : '#2563eb',
-                      weight: isSelectedDelivery ? 4.5 : 3,
-                      opacity: isSelectedDelivery ? 1 : 0.8,
-                      className: 'live-transit-flow',
-                    }}
-                  />
+                  {driverPos && customerPos && driverToCustomerRoute.length > 0 && (
+                    <>
+                      {/* Ambient Glow Aura */}
+                      <Polyline
+                        positions={driverToCustomerRoute}
+                        pathOptions={{
+                          color: isSelectedDelivery ? color : '#3b82f6',
+                          weight: isSelectedDelivery ? 10 : 6,
+                          opacity: isSelectedDelivery ? 0.35 : 0.2,
+                          lineCap: 'round',
+                        }}
+                      />
+                      {/* Active Animated Journey Line */}
+                      <Polyline
+                        positions={driverToCustomerRoute}
+                        pathOptions={{
+                          color: isSelectedDelivery ? color : '#2563eb',
+                          weight: isSelectedDelivery ? 4.5 : 3,
+                          opacity: isSelectedDelivery ? 1 : 0.8,
+                          className: 'live-transit-flow',
+                        }}
+                      />
+                    </>
+                  )}
 
                   {/* 3. Driver Live GPS Marker */}
-                  <Marker
-                    position={driverPos}
-                    icon={driverIcon(del.driver_name, color, cfg.pulse || isSelectedDelivery, del.driver_heading || 0)}
+                  {driverPos && (
+                    <Marker
+                      position={driverPos}
+                      icon={driverIcon(del.driver_name, color, cfg.pulse || isSelectedDelivery, del.driver_heading || 0)}
                     eventHandlers={{
                       click: () => handleSelectDelivery(del),
                     }}>
@@ -1029,46 +1105,49 @@ export default function DeliveryMap() {
                       </div>
                     </Popup>
                   </Marker>
+                  )}
 
                   {/* 4. Customer Destination Marker */}
-                  <Marker
-                    position={customerPos}
-                    icon={customerIcon(color, del.customer_name)}
-                    eventHandlers={{
-                      click: () => handleSelectDelivery(del),
-                    }}>
-                    <Popup>
-                      <div style={{ padding: '14px 16px', minWidth: 250 }}>
-                        <div className="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                            style={{ width: 32, height: 32, background: color, fontSize: 12 }}>
-                            <i className="ri-user-star-fill" />
+                  {customerPos && (
+                    <Marker
+                      position={customerPos}
+                      icon={customerIcon(color, del.customer_name)}
+                      eventHandlers={{
+                        click: () => handleSelectDelivery(del),
+                      }}>
+                      <Popup>
+                        <div style={{ padding: '14px 16px', minWidth: 250 }}>
+                          <div className="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                              style={{ width: 32, height: 32, background: color, fontSize: 12 }}>
+                              <i className="ri-user-star-fill" />
+                            </div>
+                            <div>
+                              <div className="fw-bold text-dark" style={{ fontSize: 13 }}>{del.customer_name}</div>
+                              <div className="text-muted" style={{ fontSize: 10.5 }}>Recipient Delivery Destination</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="fw-bold text-dark" style={{ fontSize: 13 }}>{del.customer_name}</div>
-                            <div className="text-muted" style={{ fontSize: 10.5 }}>Recipient Delivery Destination</div>
+
+                          <div className="small mb-2">
+                            <div className="text-muted" style={{ fontSize: 10.5 }}>Destination Address:</div>
+                            <div className="fw-medium text-dark">{del.delivery_address}</div>
                           </div>
-                        </div>
 
-                        <div className="small mb-2">
-                          <div className="text-muted" style={{ fontSize: 10.5 }}>Destination Address:</div>
-                          <div className="fw-medium text-dark">{del.delivery_address}</div>
-                        </div>
+                          <div className="p-2 rounded-2 bg-light border mb-2.5 d-flex justify-content-between align-items-center" style={{ fontSize: 11.5 }}>
+                            <span>Order Total:</span>
+                            <span className="fw-bold text-success fs-6">{fmt(del.order_total)}</span>
+                          </div>
 
-                        <div className="p-2 rounded-2 bg-light border mb-2.5 d-flex justify-content-between align-items-center" style={{ fontSize: 11.5 }}>
-                          <span>Order Total:</span>
-                          <span className="fw-bold text-success fs-6">{fmt(del.order_total)}</span>
+                          {del.customer_phone && (
+                            <a href={`tel:${del.customer_phone}`} className="btn btn-sm btn-success w-100" style={{ fontSize: 11.5 }}>
+                              <i className="ri-phone-fill me-1" />Call {del.customer_name?.split(' ')[0]} ({del.customer_phone})
+                            </a>
+                          )}
                         </div>
-
-                        {del.customer_phone && (
-                          <a href={`tel:${del.customer_phone}`} className="btn btn-sm btn-success w-100" style={{ fontSize: 11.5 }}>
-                            <i className="ri-phone-fill me-1" />Call {del.customer_name?.split(' ')[0]} ({del.customer_phone})
-                          </a>
-                        )}
-                      </div>
-                    </Popup>
-                  </Marker>
+                      </Popup>
+                    </Marker>
+                  )}
                 </Fragment>
               )
             })}
@@ -1113,9 +1192,11 @@ export default function DeliveryMap() {
             const cfg = STATUS_CFG[selected.status] || DEFAULT_STATUS_CFG
             const dLat = safeNum(selected.driver_lat, null)
             const dLng = safeNum(selected.driver_lng, null)
-            const custLat = selected.customer_lat != null ? safeNum(selected.customer_lat) : (dLat ? dLat + 0.014 : 5.122)
-            const custLng = selected.customer_lng != null ? safeNum(selected.customer_lng) : (dLng ? dLng - 0.016 : 7.352)
-            const distKm = (dLat && dLng) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null
+            const custCoords = getCustomerCoords(selected)
+            const custLat = custCoords ? custCoords[0] : null
+            const custLng = custCoords ? custCoords[1] : null
+            const distKm = roadDistanceKm ?? ((dLat != null && dLng != null && custLat != null && custLng != null) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null)
+            const etaMins = roadDurationMins ?? (selected.eta_minutes || (distKm ? Math.round((distKm / 45) * 60) : null))
             const items = selected.items || []
 
             if (hudMinimized) {
@@ -1140,10 +1221,16 @@ export default function DeliveryMap() {
                   <div className="rounded-circle text-white d-flex align-items-center justify-content-center" style={{ width: 22, height: 22, background: color, fontSize: 10 }}>
                     <i className="ri-riding-line" />
                   </div>
-                  <span className="fw-bold small text-dark">{selected.driver_name} → {selected.customer_name}</span>
-                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: 9.5 }}>
-                    ~{selected.eta_minutes || 15}m ETA
-                  </span>
+                  <span className="fw-bold small text-dark">{selected.driver_name || 'Driver'} → {selected.customer_name}</span>
+                  {etaMins != null ? (
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: 9.5 }}>
+                      ~{etaMins}m ETA
+                    </span>
+                  ) : (
+                    <span className="badge bg-light text-muted border" style={{ fontSize: 9.5 }}>
+                      No Live ETA
+                    </span>
+                  )}
                   <button className="btn btn-xs btn-link p-0 text-muted" onClick={(e) => { e.stopPropagation(); setHudMinimized(false); }}>
                     <i className="ri-fullscreen-line" />
                   </button>
@@ -1232,8 +1319,19 @@ export default function DeliveryMap() {
 
                     <div className="d-flex align-items-start gap-1.5 mt-1.5 text-secondary" style={{ fontSize: 11 }}>
                       <i className="ri-map-pin-2-fill text-danger flex-shrink-0 mt-0.5" />
-                      <span className="fw-semibold">{selected.delivery_address || 'Abia State Destination'}</span>
+                      <span className="fw-semibold">{selected.delivery_address || 'Customer Delivery Address'}</span>
                     </div>
+
+                    {!custCoords && (
+                      <div className="mt-1 badge bg-warning-subtle text-dark border border-warning-subtle text-wrap text-start w-100 p-1.5" style={{ fontSize: 10 }}>
+                        <i className="ri-alert-line me-1 text-warning" />Customer address is not geocoded to GPS coordinates.
+                      </div>
+                    )}
+                    {dLat == null && (
+                      <div className="mt-1 badge bg-danger-subtle text-danger border border-danger-subtle text-wrap text-start w-100 p-1.5" style={{ fontSize: 10 }}>
+                        <i className="ri-signal-wifi-off-line me-1" />Driver phone GPS offline (&gt;30m no signal).
+                      </div>
+                    )}
 
                     {selected.customer_phone && (
                       <div className="mt-2 d-flex align-items-center gap-1.5">
@@ -1269,7 +1367,7 @@ export default function DeliveryMap() {
                       <div className="p-1.5 rounded-2 bg-light border">
                         <div className="text-muted" style={{ fontSize: 9.5 }}>Estimated Arrival</div>
                         <div className="fw-bold text-primary" style={{ fontSize: 12 }}>
-                          {selected.eta_minutes != null ? `~${selected.eta_minutes} mins` : '—'}
+                          {etaMins != null ? `~${etaMins} mins` : '—'}
                         </div>
                       </div>
                     </div>

@@ -195,6 +195,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         SELECT latitude, longitude, heading, speed, recorded_at 
         FROM driver_locations 
         WHERE driver_id = dr.id 
+          AND recorded_at >= NOW() - INTERVAL '30 minutes'
         ORDER BY recorded_at DESC 
         LIMIT 1
       ) dl ON true
@@ -1039,6 +1040,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         SELECT latitude, longitude, heading, speed, recorded_at 
         FROM driver_locations 
         WHERE driver_id = dr.id 
+          AND recorded_at >= NOW() - INTERVAL '30 minutes'
         ORDER BY recorded_at DESC 
         LIMIT 1
       ) dl ON true
