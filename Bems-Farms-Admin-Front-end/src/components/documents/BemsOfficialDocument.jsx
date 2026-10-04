@@ -433,47 +433,43 @@ export default function BemsOfficialDocument({
             </div>
           </section>
 
-          {/* ── GREETING ── */}
-          <section className="bems-doc-greet">
-            <div>
-              <h2>{isReceipt ? `Thank you, ${firstCustomerName}.` : `Hello ${firstCustomerName},`}</h2>
-              <p>
-                {isReceipt
-                  ? 'We have received your payment in full for the order below. Please keep this receipt for your records.'
-                  : `Thank you for your order. Here is your invoice for the items below. Kindly make payment by ${dueDate}, using your invoice number as the payment reference.`
-                }
-              </p>
-            </div>
-          </section>
-
           {/* ── CUSTOMER DETAILS (BILLED TO) ── */}
           <section className="bems-doc-customer-card">
-            <div className="bems-doc-customer-badge">
-              {isReceipt ? 'Customer Details' : 'Billed To'}
+            <div className="bems-doc-customer-card-header">
+              <span className="bems-doc-customer-badge">
+                {isReceipt ? 'Customer Details' : 'Billed To'}
+              </span>
+              <span className="bems-doc-customer-ref">
+                Doc Ref: {docNumber}
+              </span>
             </div>
-            <div className="bems-doc-cust-grid">
-              <div className="bems-doc-cust-row">
-                <span className="lbl">Name:</span>
-                <span className="val nm">{customerName}</span>
+            <div className="bems-doc-cust-grid-2col">
+              <div className="bems-doc-cust-col">
+                <div className="bems-doc-cust-row">
+                  <span className="lbl">Name:</span>
+                  <span className="val nm">{customerName}</span>
+                </div>
+                {customerAddress && (
+                  <div className="bems-doc-cust-row">
+                    <span className="lbl">Address:</span>
+                    <span className="val">{customerAddress}</span>
+                  </div>
+                )}
               </div>
-              {customerAddress && (
-                <div className="bems-doc-cust-row">
-                  <span className="lbl">Address:</span>
-                  <span className="val">{customerAddress}</span>
-                </div>
-              )}
-              {customerPhone && (
-                <div className="bems-doc-cust-row">
-                  <span className="lbl">Phone:</span>
-                  <span className="val mono">{customerPhone}</span>
-                </div>
-              )}
-              {customerEmail && (
-                <div className="bems-doc-cust-row">
-                  <span className="lbl">Email:</span>
-                  <span className="val">{customerEmail}</span>
-                </div>
-              )}
+              <div className="bems-doc-cust-col">
+                {customerPhone && (
+                  <div className="bems-doc-cust-row">
+                    <span className="lbl">Phone:</span>
+                    <span className="val mono">{customerPhone}</span>
+                  </div>
+                )}
+                {customerEmail && (
+                  <div className="bems-doc-cust-row">
+                    <span className="lbl">Email:</span>
+                    <span className="val">{customerEmail}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 

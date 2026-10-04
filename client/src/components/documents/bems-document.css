@@ -372,26 +372,52 @@
   margin-bottom: 0;
 }
 
-/* Customer Details Card (Explicit Structured Labels) */
+/* Customer Details Card (Executive Structured Layout) */
 .bems-doc-customer-card {
-  border: 1px solid var(--bems-line);
-  border-radius: 10px;
-  background: #fbfdfc;
-  padding: 13px 20px 14px;
-  margin-bottom: 20px;
+  border: 1px solid #d4e3d9;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  margin-top: 2px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(16, 42, 29, 0.03);
+}
+
+.bems-doc-customer-card-header {
+  background: #f3f7f4;
+  border-bottom: 1px solid #e2ebe5;
+  padding: 5px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .bems-doc-customer-badge {
-  font-size: 8.5px;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .15em;
-  color: var(--bems-g6);
-  margin-bottom: 8px;
-  display: block;
+  letter-spacing: .12em;
+  color: var(--bems-g7);
+  display: inline-block;
 }
 
-.bems-doc-cust-grid {
+.bems-doc-customer-ref {
+  font-size: 9.5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--bems-muted);
+  letter-spacing: .03em;
+}
+
+.bems-doc-cust-grid-2col {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 7px 24px;
+  padding: 9px 14px 10px;
+  background: #fbfdfc;
+}
+
+.bems-doc-cust-col {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -399,17 +425,17 @@
 
 .bems-doc-cust-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   font-size: 11.5px;
   line-height: 1.45;
 }
 
 .bems-doc-cust-row .lbl {
-  width: 72px;
+  width: 66px;
   flex-shrink: 0;
   font-size: 11px;
   font-weight: 700;
-  color: #4b6354;
+  color: #3b5a47;
   letter-spacing: .02em;
 }
 
@@ -417,18 +443,22 @@
   color: var(--bems-ink);
   font-weight: 500;
   word-break: break-word;
+  flex: 1;
 }
 
 .bems-doc-cust-row .val.nm {
-  font-family: 'Fraunces', serif;
-  font-weight: 600;
-  font-size: 15px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
   color: var(--bems-g9);
-  line-height: 1.25;
+  line-height: 1.4;
 }
 
 .bems-doc-cust-row .val.mono {
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: .02em;
 }
 
 /* Bottom Support & Enquiries */
