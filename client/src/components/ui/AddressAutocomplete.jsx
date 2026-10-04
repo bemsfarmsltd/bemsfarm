@@ -103,7 +103,7 @@ export default function AddressAutocomplete({
           longitude: suggestion.longitude,
           zone_id: res.data?.zone?.zone_id || "ZONE001",
           zone_name: res.data?.zone?.zone_name,
-          delivery_fee: res.data?.zone?.delivery_fee || 1000,
+          delivery_fee: (res.data?.zone?.delivery_fee !== undefined && res.data?.zone?.delivery_fee !== null && !isNaN(Number(res.data.zone.delivery_fee))) ? Number(res.data.zone.delivery_fee) : 1000,
           verified: true,
         });
       }

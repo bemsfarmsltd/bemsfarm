@@ -497,15 +497,8 @@ export default function CheckoutPage() {
     if (!address.trim()) return "Street address is required for delivery";
     if (!city.trim()) return "City or area is required";
 
-    const isTestZone = selectedZone?.zone_id === "ZONE_TEST" || 
-      (state && state.toLowerCase().includes("test")) ||
-      (address && address.toLowerCase().includes("test")) ||
-      (city && city.toLowerCase().includes("test"));
-
     if (!latitude || !longitude) {
-      if (!isTestZone) {
-        return "Please select a verified delivery address from the suggestions or pin your exact location on the map (📍 Pin Map).";
-      }
+      return "Please select a verified delivery address from the suggestions or pin your exact location on the map (📍 Pin Map).";
     }
     return null;
   };
