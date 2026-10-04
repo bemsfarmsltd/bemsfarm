@@ -372,87 +372,97 @@
   margin-bottom: 0;
 }
 
-/* Parties - Structured 2-Column Details Panel */
-.bems-doc-parties {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Customer Details Card (Normal Official Receipt / Invoice Format) */
+.bems-doc-customer-card {
   border: 1px solid var(--bems-line);
   border-radius: 10px;
-  overflow: hidden;
-  background: #ffffff;
+  background: #fbfdfc;
+  padding: 13px 20px 14px;
+  margin-bottom: 20px;
 }
 
-.bems-doc-party {
-  padding: 12px 18px 14px;
-  display: flex;
-  flex-direction: column;
-}
-
-.bems-doc-party + .bems-doc-party {
-  border-left: 1px solid var(--bems-line);
-  background: var(--bems-g0);
-}
-
-.bems-doc-party .cap {
+.bems-doc-customer-badge {
   font-size: 8.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .14em;
+  letter-spacing: .15em;
   color: var(--bems-g6);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
-.bems-doc-party .nm {
+.bems-doc-customer-card .nm {
   font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 15.5px;
   color: var(--bems-g9);
-  margin: 0 0 7px;
+  margin: 0 0 4px;
   line-height: 1.25;
 }
 
-.bems-doc-party-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-}
-
-.bems-doc-party-row {
-  display: flex;
-  align-items: baseline;
-  font-size: 11px;
-  line-height: 1.4;
+.bems-doc-customer-card .addr {
+  font-size: 11.5px;
   color: var(--bems-ink);
+  line-height: 1.5;
+  margin-bottom: 4px;
 }
 
-.bems-doc-party-row .lbl {
-  width: 58px;
-  flex-shrink: 0;
+.bems-doc-customer-card .contact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--bems-ink2);
+}
+
+.bems-doc-customer-card .contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bems-doc-customer-card .contact-item .lbl {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: .04em;
 }
 
-.bems-doc-party-row .val {
+.bems-doc-customer-card .contact-item .val {
   color: var(--bems-ink);
   font-weight: 500;
-  word-break: break-word;
 }
 
-.bems-doc-party-row .val.mono {
+.bems-doc-customer-card .contact-item .val.mono {
   font-family: 'SF Mono', Monaco, Consolas, monospace;
-  font-size: 10.5px;
 }
 
-.bems-doc-party-row .sub {
-  color: #64748b;
-  font-size: 9.5px;
-  font-weight: 400;
-  margin-left: 3px;
+.bems-doc-customer-card .dot {
+  color: #94a3b8;
+  font-weight: bold;
+}
+
+/* Bottom Support & Enquiries */
+.bems-doc-support-enquiries {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed rgba(18, 61, 39, .15);
+  font-size: 10px;
+  color: var(--bems-ink);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bems-doc-support-enquiries b {
+  color: var(--bems-g9);
+}
+
+.bems-doc-support-enquiries .mono {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-weight: 600;
 }
 
 /* Table */

@@ -446,49 +446,28 @@ export default function BemsOfficialDocument({
             </div>
           </section>
 
-          {/* ── PARTIES / CLIENT & SUPPORT DETAILS ── */}
-          <section className="bems-doc-parties">
-            {/* Left: Customer / Client Details */}
-            <div className="bems-doc-party">
-              <div className="cap">{isReceipt ? 'Customer' : 'Billed To'}</div>
+          {/* ── CUSTOMER DETAILS (BILLED TO) ── */}
+          <section className="bems-doc-customer-card">
+            <div className="bems-doc-customer-badge">
+              {isReceipt ? 'Customer Details' : 'Billed To'}
+            </div>
+            <div className="bems-doc-customer-body">
               <div className="nm">{customerName}</div>
-              <div className="bems-doc-party-list">
-                <div className="bems-doc-party-row">
-                  <span className="lbl">Address:</span>
-                  <span className="val">{customerAddress || 'Direct Delivery / Umuahia Hub'}</span>
-                </div>
+              {customerAddress && <div className="addr">{customerAddress}</div>}
+              <div className="contact">
                 {customerPhone && (
-                  <div className="bems-doc-party-row">
+                  <span className="contact-item">
                     <span className="lbl">Phone:</span>
                     <span className="val mono">{customerPhone}</span>
-                  </div>
+                  </span>
                 )}
+                {customerPhone && customerEmail && <span className="dot">·</span>}
                 {customerEmail && (
-                  <div className="bems-doc-party-row">
+                  <span className="contact-item">
                     <span className="lbl">Email:</span>
                     <span className="val">{customerEmail}</span>
-                  </div>
+                  </span>
                 )}
-              </div>
-            </div>
-
-            {/* Right: Support & Remittance Details */}
-            <div className="bems-doc-party help">
-              <div className="cap">Support & Enquiries</div>
-              <div className="nm">Bems Farms Customer Care</div>
-              <div className="bems-doc-party-list">
-                <div className="bems-doc-party-row">
-                  <span className="lbl">Helpline:</span>
-                  <span className="val">{companyPhone || '+234 813 652 6794'} <span className="sub">(Call / WhatsApp)</span></span>
-                </div>
-                <div className="bems-doc-party-row">
-                  <span className="lbl">Email:</span>
-                  <span className="val">{companyEmail}</span>
-                </div>
-                <div className="bems-doc-party-row">
-                  <span className="lbl">Ref No:</span>
-                  <span className="val mono fw-bold">{docNumber}</span>
-                </div>
               </div>
             </div>
           </section>
@@ -659,11 +638,31 @@ export default function BemsOfficialDocument({
           <section className="bems-doc-sign">
             {isReceipt ? (
               <div className="bems-doc-keep">
-                <b>Keep this receipt.</b> It is your proof of payment to {companyName} for the goods listed and can be used for your accounting, reimbursement or audit records.
+                <div>
+                  <b>Keep this receipt.</b> It is your proof of payment to {companyName} for the goods listed and can be used for your accounting, reimbursement or audit records.
+                </div>
+                <div className="bems-doc-support-enquiries">
+                  <b>Support & Enquiries:</b>
+                  <span>Call / WhatsApp {companyPhone || '+234 813 652 6794'}</span>
+                  <span>·</span>
+                  <span>{companyEmail}</span>
+                  <span>·</span>
+                  <span>Ref: <span className="mono">{docNumber}</span></span>
+                </div>
               </div>
             ) : (
               <div className="bems-doc-keep terms">
-                <b>Payment terms.</b> {paymentTerms}
+                <div>
+                  <b>Payment terms.</b> {paymentTerms}
+                </div>
+                <div className="bems-doc-support-enquiries">
+                  <b>Support & Enquiries:</b>
+                  <span>Call / WhatsApp {companyPhone || '+234 813 652 6794'}</span>
+                  <span>·</span>
+                  <span>{companyEmail}</span>
+                  <span>·</span>
+                  <span>Ref: <span className="mono">{docNumber}</span></span>
+                </div>
               </div>
             )}
 
