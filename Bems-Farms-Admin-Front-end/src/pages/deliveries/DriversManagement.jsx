@@ -2060,15 +2060,23 @@ export default function DriversManagement() {
                     />
                   </div>
                   <div className="col-6">
-                    <label className="form-label fw-medium small">
-                      Email Address (Optional)
+                    <label className="form-label fw-medium small d-flex justify-content-between align-items-center">
+                      <span>Email Address {isEditing ? '' : '(Optional)'}</span>
+                      {isEditing && (
+                        <span className="text-muted" style={{ fontSize: 10 }}>
+                          <i className="ri-lock-2-line me-1" />Immutable
+                        </span>
+                      )}
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${isEditing ? 'bg-light text-muted' : ''}`}
                       type="email"
                       placeholder="e.g. samuel.okafor@gmail.com"
                       value={form.email}
+                      disabled={isEditing}
+                      readOnly={isEditing}
                       onChange={(e) => setField('email', e.target.value)}
+                      title={isEditing ? 'Driver email address cannot be modified once registered' : ''}
                     />
                   </div>
                   <div className="col-6">

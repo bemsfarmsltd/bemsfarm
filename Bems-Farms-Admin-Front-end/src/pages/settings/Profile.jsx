@@ -296,14 +296,21 @@ export default function Profile() {
                   />
                 </div>
                 <div className="col-md-6">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Email Address</label>
+                  <label className="form-label fw-medium text-dark d-flex align-items-center justify-content-between" style={{ fontSize: 13 }}>
+                    <span>Email Address</span>
+                    <span className="text-muted fs-11"><i className="ri-lock-2-line me-1"></i>Immutable</span>
+                  </label>
                   <input
                     type="email"
-                    className="form-control"
-                    placeholder="henry@bemsfarms.com"
+                    className="form-control bg-light text-muted"
                     value={fields.email}
-                    onChange={(e) => setFields({ ...fields, email: e.target.value })}
+                    disabled
+                    readOnly
+                    title="Registered email address is an immutable identity and audit anchor"
                   />
+                  <div className="form-text text-muted" style={{ fontSize: 11 }}>
+                    Registered email is permanently locked for system security and audit compliance.
+                  </div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Phone Number</label>

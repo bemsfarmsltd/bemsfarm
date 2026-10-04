@@ -1144,23 +1144,32 @@ router.patch(
         zone_id,
         notes,
       } = req.body;
+
+      if (email !== undefined && email.trim() !== "") {
+        const curDr = await pool.query("SELECT email FROM drivers WHERE id = $1", [req.params.id]);
+        if (curDr.rows.length && curDr.rows[0].email && email.trim().toLowerCase() !== curDr.rows[0].email.toLowerCase()) {
+          return res.status(403).json({
+            code: "EMAIL_CHANGE_FORBIDDEN",
+            message: "Driver registered email address is an immutable identity and audit anchor and cannot be modified.",
+          });
+        }
+      }
+
       await pool.query(
         `
       UPDATE drivers SET
         name             = COALESCE($1, name),
         phone            = COALESCE($2, phone),
-        email            = COALESCE($3, email),
-        vehicle_type     = COALESCE($4, vehicle_type),
-        vehicle_plate    = COALESCE($5, vehicle_plate),
-        primary_zone_id  = COALESCE($6, primary_zone_id),
-        notes            = COALESCE($7, notes),
+        vehicle_type     = COALESCE($3, vehicle_type),
+        vehicle_plate    = COALESCE($4, vehicle_plate),
+        primary_zone_id  = COALESCE($5, primary_zone_id),
+        notes            = COALESCE($6, notes),
         updated_at       = NOW()
-      WHERE id = $8
+      WHERE id = $7
     `,
         [
           name || null,
           phone || null,
-          email || null,
           vehicle_type || null,
           vehicle_plate || null,
           zone_id || null,

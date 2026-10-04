@@ -664,9 +664,16 @@ const updateProfile = async (req, res, next) => {
       params.push(phone.trim());
       updates.push(`phone = $${params.length}`);
     }
-    if (email !== undefined) {
-      params.push(email.trim().toLowerCase());
-      updates.push(`email = $${params.length}`);
+    if (email !== undefined && email.trim() !== "") {
+      const curDriverRes = await pool.query("SELECT email FROM drivers WHERE id = $1", [driverId]);
+      const curEmail = (curDriverRes.rows[0]?.email || "").trim().toLowerCase();
+      const newEmail = email.trim().toLowerCase();
+      if (newEmail !== curEmail) {
+        return res.status(403).json({
+          code: "EMAIL_CHANGE_FORBIDDEN",
+          message: "Registered email address cannot be changed from the driver app. Email is an immutable security and audit anchor. Please contact Bems Farms dispatch operations.",
+        });
+      }
     }
     if (avatar_url !== undefined || photo !== undefined) {
       params.push(avatar_url || photo);
