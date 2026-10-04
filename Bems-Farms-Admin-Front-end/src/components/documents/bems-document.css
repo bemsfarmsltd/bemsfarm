@@ -372,17 +372,20 @@
   margin-bottom: 0;
 }
 
-/* Parties */
+/* Parties - Structured 2-Column Details Panel */
 .bems-doc-parties {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border: 1px solid var(--bems-line);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
+  background: #ffffff;
 }
 
 .bems-doc-party {
-  padding: 13px 18px;
+  padding: 12px 18px 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .bems-doc-party + .bems-doc-party {
@@ -390,23 +393,66 @@
   background: var(--bems-g0);
 }
 
+.bems-doc-party .cap {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--bems-g6);
+  margin-bottom: 3px;
+}
+
 .bems-doc-party .nm {
   font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--bems-g9);
-  margin: 4px 0 3px;
+  margin: 0 0 7px;
+  line-height: 1.25;
 }
 
-.bems-doc-party p {
+.bems-doc-party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+.bems-doc-party-row {
+  display: flex;
+  align-items: baseline;
   font-size: 11px;
-  color: var(--bems-ink2);
-  line-height: 1.6;
-  margin-bottom: 0;
+  line-height: 1.4;
+  color: var(--bems-ink);
 }
 
-.bems-doc-party.help b {
-  color: var(--bems-g9);
+.bems-doc-party-row .lbl {
+  width: 58px;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.bems-doc-party-row .val {
+  color: var(--bems-ink);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.bems-doc-party-row .val.mono {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 10.5px;
+}
+
+.bems-doc-party-row .sub {
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 400;
+  margin-left: 3px;
 }
 
 /* Table */

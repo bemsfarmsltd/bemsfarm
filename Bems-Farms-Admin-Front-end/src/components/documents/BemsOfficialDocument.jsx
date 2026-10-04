@@ -446,29 +446,50 @@ export default function BemsOfficialDocument({
             </div>
           </section>
 
-          {/* ── PARTIES ── */}
+          {/* ── PARTIES / CLIENT & SUPPORT DETAILS ── */}
           <section className="bems-doc-parties">
+            {/* Left: Customer / Client Details */}
             <div className="bems-doc-party">
               <div className="cap">{isReceipt ? 'Customer' : 'Billed To'}</div>
               <div className="nm">{customerName}</div>
-              <p>
-                {customerAddress}<br />
-                {[customerPhone, customerEmail].filter(Boolean).join(' · ')}
-              </p>
+              <div className="bems-doc-party-list">
+                <div className="bems-doc-party-row">
+                  <span className="lbl">Address:</span>
+                  <span className="val">{customerAddress || 'Direct Delivery / Umuahia Hub'}</span>
+                </div>
+                {customerPhone && (
+                  <div className="bems-doc-party-row">
+                    <span className="lbl">Phone:</span>
+                    <span className="val mono">{customerPhone}</span>
+                  </div>
+                )}
+                {customerEmail && (
+                  <div className="bems-doc-party-row">
+                    <span className="lbl">Email:</span>
+                    <span className="val">{customerEmail}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Right: Support & Remittance Details */}
             <div className="bems-doc-party help">
-              <div className="cap">Questions about this order?</div>
-              <div className="nm">We're here to help</div>
-              <p>
-                {companyPhone ? (
-                  <><b>Call</b> {companyPhone}<br /></>
-                ) : (
-                  <><b>Call / WhatsApp</b> +234 813 652 6794<br /></>
-                )}
-                <b>Email</b> {companyEmail}<br />
-                Quote {isReceipt ? 'receipt' : 'invoice'} no. <span className="mono">{docNumber}</span>
-              </p>
+              <div className="cap">Support & Enquiries</div>
+              <div className="nm">Bems Farms Customer Care</div>
+              <div className="bems-doc-party-list">
+                <div className="bems-doc-party-row">
+                  <span className="lbl">Helpline:</span>
+                  <span className="val">{companyPhone || '+234 813 652 6794'} <span className="sub">(Call / WhatsApp)</span></span>
+                </div>
+                <div className="bems-doc-party-row">
+                  <span className="lbl">Email:</span>
+                  <span className="val">{companyEmail}</span>
+                </div>
+                <div className="bems-doc-party-row">
+                  <span className="lbl">Ref No:</span>
+                  <span className="val mono fw-bold">{docNumber}</span>
+                </div>
+              </div>
             </div>
           </section>
 
