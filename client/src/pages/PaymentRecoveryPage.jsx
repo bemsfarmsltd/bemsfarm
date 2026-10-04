@@ -38,6 +38,10 @@ export default function PaymentRecoveryPage() {
         payment_ref: intent.payment_ref,
         checkout_intent_id: intent.id,
         address: intent.address,
+        latitude: intent.latitude,
+        longitude: intent.longitude,
+        zone_id: intent.zone_id,
+        delivery_fee: intent.delivery_fee,
       });
       clearCart();
       localStorage.removeItem("bems_pending_checkout");

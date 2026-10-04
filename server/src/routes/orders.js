@@ -387,7 +387,19 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Checkout has expired. Please start checkout again." });
       }
-      if (intent.rows[0].payment_ref !== effectivePaymentRef) {
+      const intentPaymentRef = intent.rows[0].payment_ref;
+      const monnifyMatches = monnifyData && (
+        monnifyData.paymentReference === intentPaymentRef ||
+        monnifyData.transactionReference === intentPaymentRef ||
+        effectivePaymentRef === intentPaymentRef
+      );
+      const directMatches = (
+        intentPaymentRef === effectivePaymentRef ||
+        (payment_reference && payment_reference === intentPaymentRef) ||
+        (transaction_reference && transaction_reference === intentPaymentRef)
+      );
+
+      if (!directMatches && !monnifyMatches) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Payment reference does not match checkout." });
       }

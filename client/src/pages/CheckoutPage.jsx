@@ -646,7 +646,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const createOrder = async (ref, checkout) => {
+  const createOrder = async (ref, checkout, merchantPaymentRef) => {
     await maybePersistAddress();
 
     const finalFee = (checkout.delivery_fee !== undefined && checkout.delivery_fee !== null && !isNaN(Number(checkout.delivery_fee)))
@@ -659,7 +659,9 @@ export default function CheckoutPage() {
       zone_id: checkout.zone_id || selectedZone?.zone_id || "ZONE001",
       delivery_fee: finalFee,
       payment_method: payMethod,
-      payment_ref: ref || undefined,
+      payment_ref: ref || merchantPaymentRef || undefined,
+      payment_reference: merchantPaymentRef || ref || undefined,
+      transaction_reference: ref || undefined,
       checkout_intent_id: checkout.intentId || undefined,
       address: `${form.address}, ${form.city}, ${form.state}`,
       city: form.city,
@@ -758,25 +760,26 @@ export default function CheckoutPage() {
     setError(null);
     setLoading(true);
 
-    const finalizeOrderAfterPayment = async (transactionReference) => {
-      if (!transactionReference || finalizingReference.current === transactionReference) return;
-      finalizingReference.current = transactionReference;
-      localStorage.setItem("bems_pending_payment_ref", transactionReference);
+    const finalizeOrderAfterPayment = async (transactionReference, merchantPaymentRef) => {
+      const primaryRef = transactionReference || merchantPaymentRef;
+      if (!primaryRef || finalizingReference.current === primaryRef) return;
+      finalizingReference.current = primaryRef;
+      localStorage.setItem("bems_pending_payment_ref", primaryRef);
       try {
-        const orderId = await createOrder(transactionReference, checkout);
+        const orderId = await createOrder(primaryRef, checkout, merchantPaymentRef || paymentReference);
         clearCart();
         localStorage.removeItem("bems_pending_payment_ref");
         localStorage.removeItem("bems_pending_checkout");
         setTimeout(() => {
           setLoading(false);
-          navigate("/order-confirmed", { state: { orderId, reference: transactionReference } });
+          navigate("/order-confirmed", { state: { orderId, reference: primaryRef } });
         }, 400);
       } catch (orderErr) {
         console.error("Order creation after payment failed:", orderErr);
         setLoading(false);
         const detail = orderErr?.response?.data?.message || orderErr.message;
         setError(
-          `Payment received (ref: ${transactionReference}) but finalizing order encountered: ${detail}. ` +
+          `Payment received (ref: ${primaryRef}) but finalizing order encountered: ${detail}. ` +
           `Your payment is secure. Please contact customer support with this reference.`,
         );
         setPaymentRecoveryAvailable(true);
@@ -801,7 +804,9 @@ export default function CheckoutPage() {
             setError("Payment was not completed. Please try again or choose Cash on Delivery.");
             return;
           }
-          finalizeOrderAfterPayment(response.transactionReference);
+          const txRef = response.transactionReference || response.paymentReference || paymentReference;
+          const payRef = response.paymentReference || paymentReference;
+          finalizeOrderAfterPayment(txRef, payRef);
         },
         onClose: () => {
           setLoading(false);
