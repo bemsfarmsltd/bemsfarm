@@ -451,24 +451,29 @@ export default function BemsOfficialDocument({
             <div className="bems-doc-customer-badge">
               {isReceipt ? 'Customer Details' : 'Billed To'}
             </div>
-            <div className="bems-doc-customer-body">
-              <div className="nm">{customerName}</div>
-              {customerAddress && <div className="addr">{customerAddress}</div>}
-              <div className="contact">
-                {customerPhone && (
-                  <span className="contact-item">
-                    <span className="lbl">Phone:</span>
-                    <span className="val mono">{customerPhone}</span>
-                  </span>
-                )}
-                {customerPhone && customerEmail && <span className="dot">·</span>}
-                {customerEmail && (
-                  <span className="contact-item">
-                    <span className="lbl">Email:</span>
-                    <span className="val">{customerEmail}</span>
-                  </span>
-                )}
+            <div className="bems-doc-cust-grid">
+              <div className="bems-doc-cust-row">
+                <span className="lbl">Name:</span>
+                <span className="val nm">{customerName}</span>
               </div>
+              {customerAddress && (
+                <div className="bems-doc-cust-row">
+                  <span className="lbl">Address:</span>
+                  <span className="val">{customerAddress}</span>
+                </div>
+              )}
+              {customerPhone && (
+                <div className="bems-doc-cust-row">
+                  <span className="lbl">Phone:</span>
+                  <span className="val mono">{customerPhone}</span>
+                </div>
+              )}
+              {customerEmail && (
+                <div className="bems-doc-cust-row">
+                  <span className="lbl">Email:</span>
+                  <span className="val">{customerEmail}</span>
+                </div>
+              )}
             </div>
           </section>
 
