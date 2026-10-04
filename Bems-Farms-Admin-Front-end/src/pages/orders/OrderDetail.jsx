@@ -573,7 +573,29 @@ export default function OrderDetail() {
                     {Number(order.driver_lat).toFixed(4)}, {Number(order.driver_lng).toFixed(4)}
                   </span>
                 </div>
+              ) : order.driver_name ? (
+                <div className="d-flex justify-content-between align-items-center bg-light p-1.5 rounded border">
+                  <span className="text-muted d-flex align-items-center gap-1">
+                    <span className="badge bg-secondary p-1 rounded-circle" style={{ width: 8, height: 8, display: 'inline-block' }} />
+                    Courier Telemetry
+                  </span>
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>
+                    Offline (&gt;30m no signal)
+                  </span>
+                </div>
               ) : null}
+
+              {(!order.latitude && !order.customer_lat) && (
+                <div className="d-flex justify-content-between align-items-center p-1.5 rounded border" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+                  <span className="text-dark d-flex align-items-center gap-1" style={{ fontSize: 10.5 }}>
+                    <i className="ri-map-pin-line text-warning" />
+                    Destination GPS
+                  </span>
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>
+                    Address unpinned
+                  </span>
+                </div>
+              )}
               {order.driver_phone && (
                 <div className="d-flex justify-content-between">
                   <span className="text-muted">Phone</span>
