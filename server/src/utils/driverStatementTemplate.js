@@ -264,9 +264,6 @@ function renderDriverStatementHtml({
           <dd class="grand">
             <span class="naira" style="font-size:14px;">₦</span>${closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </dd>
-
-          <dt>Settlement Account</dt>
-          <dd class="mono" style="font-size:9.5px;color:#8a6d12;">${accountNumber} (${bankName})</dd>
         </dl>
       </section>
 

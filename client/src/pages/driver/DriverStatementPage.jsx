@@ -1751,9 +1751,6 @@ export default function DriverStatementPage() {
                             <span className="naira" style={{ fontSize: 14 }}>₦</span>
                             {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </dd>
-
-                          <dt>Settlement Account</dt>
-                          <dd className="mono" style={{ fontSize: 9.5, color: "#8a6d12" }}>{accountNumber} ({bankName})</dd>
                         </dl>
                       </section>
 
@@ -1932,9 +1929,6 @@ export default function DriverStatementPage() {
                                 <span className="naira" style={{ fontSize: 14 }}>₦</span>
                                 {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </dd>
-
-                              <dt>Settlement Account</dt>
-                              <dd className="mono" style={{ fontSize: 9.5, color: "#8a6d12" }}>{accountNumber} ({bankName})</dd>
                             </dl>
                           </section>
 

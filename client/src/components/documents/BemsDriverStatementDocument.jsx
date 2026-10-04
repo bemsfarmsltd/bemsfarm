@@ -592,9 +592,6 @@ export default function BemsDriverStatementDocument({
                     <span className="naira" style={{ fontSize: 15 }}>₦</span>
                     {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </dd>
-
-                  <dt>Settlement Account</dt>
-                  <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
                 </dl>
               </section>
 
@@ -776,9 +773,6 @@ export default function BemsDriverStatementDocument({
                         <span className="naira" style={{ fontSize: 15 }}>₦</span>
                         {closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </dd>
-
-                      <dt>Settlement Account</dt>
-                      <dd className="bal mono" style={{ fontSize: 10 }}>{accountNumber} ({bankName})</dd>
                     </dl>
                   </section>
 
