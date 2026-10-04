@@ -437,17 +437,17 @@ export default function PaymentSettings() {
                           <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Bank Name</label>
                           <input
                             className="form-control"
-                            placeholder="e.g. Zenith Bank / Moniepoint MFB"
-                            value={form.bank_name}
+                            placeholder="Globus Bank"
+                            value={form.bank_name || ''}
                             onChange={e => fld('bank_name', e.target.value)}
                           />
                         </div>
                         <div className="col-12">
                           <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Account Number</label>
                           <input
-                            className="form-control font-monospace"
-                            placeholder="10-digit NUBAN"
-                            value={form.account_number}
+                            className="form-control font-monospace fw-bold"
+                            placeholder="1000574564"
+                            value={form.account_number || ''}
                             onChange={e => fld('account_number', e.target.value)}
                           />
                         </div>
@@ -455,10 +455,19 @@ export default function PaymentSettings() {
                           <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Account Name</label>
                           <input
                             className="form-control"
-                            placeholder="Bems Farms Global Ltd"
-                            value={form.account_name}
+                            placeholder="Bems Farms Global LTD"
+                            value={form.account_name || ''}
                             onChange={e => fld('account_name', e.target.value)}
                           />
+                        </div>
+                        <div className="col-12 mt-2">
+                          <div className="p-2.5 rounded-3 bg-light border text-muted" style={{ fontSize: 12 }}>
+                            <i className="ri-information-line text-success me-1"></i>
+                            Synchronized with official company billing. Full remittance &amp; template options are in{' '}
+                            <Link to="/settings/invoices" className="fw-semibold text-success text-decoration-underline" onClick={() => setModalOpen(false)}>
+                              Invoice &amp; Bank Settings
+                            </Link>.
+                          </div>
                         </div>
                       </div>
                     ) : (

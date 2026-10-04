@@ -954,9 +954,14 @@ export default function Sidebar() {
                 <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Payment &amp; Tax</span>
                 </NavLink>
-                {is('superadmin', 'admin') && (
+                {is('superadmin', 'admin', 'manager', 'accountant') && (
+                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Invoices &amp; Bank Details</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager', 'cashier') && (
                   <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Receipts &amp; Invoices</span>
+                    <span>POS Thermal Receipts</span>
                   </NavLink>
                 )}
                 <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>

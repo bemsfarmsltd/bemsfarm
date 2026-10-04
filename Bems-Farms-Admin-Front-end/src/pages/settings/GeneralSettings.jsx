@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 
@@ -234,6 +235,24 @@ export default function GeneralSettings() {
 
         {/* Right Column: Localization, Currency & Store Rules */}
         <div className="col-lg-5">
+          {/* Card: Company Bank & Invoicing Credentials */}
+          <div className="card shadow-sm border mb-4 bg-light-subtle">
+            <div className="card-body p-3.5 d-flex align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
+                <div className="rounded-3 bg-success-subtle text-success p-2.5 d-flex align-items-center justify-content-center" style={{ width: 42, height: 42 }}>
+                  <i className="ri-bank-card-line fs-20"></i>
+                </div>
+                <div>
+                  <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: 13.5 }}>Company Bank &amp; Invoices</h6>
+                  <p className="text-muted mb-0" style={{ fontSize: 11.5 }}>Globus Bank, official billing &amp; templates</p>
+                </div>
+              </div>
+              <Link to="/settings/invoices" className="btn btn-sm btn-outline-success fw-medium px-3 text-nowrap" style={{ fontSize: 12 }}>
+                Configure →
+              </Link>
+            </div>
+          </div>
+
           {/* Card 3: Localization & Currency */}
           <div className="card shadow-sm border mb-4">
             <div className="card-header bg-white py-3 border-bottom">

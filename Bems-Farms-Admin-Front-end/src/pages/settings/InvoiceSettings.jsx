@@ -8,18 +8,18 @@ import BemsOfficialStamp from '../../components/documents/BemsOfficialStamp'
 const BLANK = {
   invoice_prefix: 'INV-',
   invoice_next_number: '1001',
-  invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-  invoice_account_name: 'Bems Farms Global Ltd',
-  invoice_account_number: '1023849502',
-  invoice_secondary_bank: 'Zenith Bank',
-  invoice_secondary_account_number: '1223849502',
+  invoice_bank_name: 'Globus Bank',
+  invoice_account_name: 'Bems Farms Global LTD',
+  invoice_account_number: '1000574564',
+  invoice_secondary_bank: '',
+  invoice_secondary_account_number: '',
   invoice_company_name: 'Bems Farms Global Ltd',
-  invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
+  invoice_company_address: 'Abia State. Head Office',
   invoice_rc_number: '',
   invoice_tin: '',
-  invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
+  invoice_phone: '',
   invoice_email: 'corporate@bemsfarms.com',
-  invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+  invoice_footer: 'Thank you for choosing Bems Farms. Abia State. Head Office',
   invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
   company_signature_url: '',
 }
@@ -134,7 +134,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Bems Farms Global Ltd"
+                    placeholder="Bems Farms Global LTD"
                     value={form.invoice_account_name || ''}
                     onChange={e => fld('invoice_account_name', e.target.value)}
                   />
@@ -145,7 +145,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Moniepoint MFB / Zenith Bank"
+                    placeholder="Globus Bank"
                     value={form.invoice_bank_name || ''}
                     onChange={e => fld('invoice_bank_name', e.target.value)}
                   />
@@ -156,7 +156,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control font-monospace fw-bold"
-                    placeholder="1023849502"
+                    placeholder="1000574564"
                     value={form.invoice_account_number || ''}
                     onChange={e => fld('invoice_account_number', e.target.value)}
                   />
@@ -167,7 +167,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Zenith Bank"
+                    placeholder="e.g. Zenith Bank (Optional)"
                     value={form.invoice_secondary_bank || ''}
                     onChange={e => fld('invoice_secondary_bank', e.target.value)}
                   />
@@ -178,7 +178,7 @@ export default function InvoiceSettings() {
                   <input
                     type="text"
                     className="form-control font-monospace"
-                    placeholder="1223849502"
+                    placeholder="Optional 10-digit NUBAN"
                     value={form.invoice_secondary_account_number || ''}
                     onChange={e => fld('invoice_secondary_account_number', e.target.value)}
                   />
@@ -479,9 +479,9 @@ export default function InvoiceSettings() {
                     <i className="ri-bank-line text-success"/>Official Remittance Bank Details:
                   </div>
                   <div className="bg-light p-3 rounded text-dark font-monospace fs-12 border">
-                    <div><strong>Bank:</strong> {form.invoice_bank_name || 'Moniepoint MFB / Zenith Bank'}</div>
-                    <div><strong>Account Name:</strong> {form.invoice_account_name || 'Bems Farms Global Ltd'}</div>
-                    <div><strong>Account Number:</strong> <span className="text-primary fw-bold">{form.invoice_account_number || '1023849502'}</span></div>
+                    <div><strong>Bank:</strong> {form.invoice_bank_name || 'Globus Bank'}</div>
+                    <div><strong>Account Name:</strong> {form.invoice_account_name || 'Bems Farms Global LTD'}</div>
+                    <div><strong>Account Number:</strong> <span className="text-primary fw-bold">{form.invoice_account_number || '1000574564'}</span></div>
                     {form.invoice_secondary_bank && form.invoice_secondary_account_number && (
                       <div className="mt-1 pt-1 border-top text-muted">
                         <strong>Alt:</strong> {form.invoice_secondary_bank} ({form.invoice_secondary_account_number})

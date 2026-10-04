@@ -145,8 +145,20 @@ router.get("/payment", requireRole("superadmin", "admin", "manager"), async (req
     const gateways = await pool.query(
       "SELECT id, name, slug, is_live, is_enabled, webhook_url, updated_at FROM payment_gateways ORDER BY id"
     );
+    const invoiceSettings = await getGroup("invoices");
+    const rows = gateways.rows.map(g => {
+      if (g.slug === 'bank_transfer') {
+        return {
+          ...g,
+          bank_name: invoiceSettings.invoice_bank_name || invoiceSettings.bank_name || 'Globus Bank',
+          account_number: invoiceSettings.invoice_account_number || invoiceSettings.account_number || '1000574564',
+          account_name: invoiceSettings.invoice_account_name || invoiceSettings.account_name || 'Bems Farms Global LTD',
+        };
+      }
+      return g;
+    });
     // Strip secret keys from GET response — never expose to frontend
-    res.json({ gateways: gateways.rows });
+    res.json({ gateways: rows, invoiceSettings });
   } catch (err) {
     next(err);
   }
@@ -172,6 +184,27 @@ router.post("/payment/:slug", requireRole("superadmin", "admin", "manager"), asy
       [slug, name || slug, public_key || null, secret_key || null, webhook_url || null,
        is_live ?? false, is_enabled ?? false]
     );
+
+    // If configuring bank transfer, automatically synchronize with official invoice settings
+    if (slug === 'bank_transfer') {
+      const invoiceUpdates = {};
+      if (req.body.bank_name !== undefined) {
+        invoiceUpdates.invoice_bank_name = req.body.bank_name;
+        invoiceUpdates.bank_name = req.body.bank_name;
+      }
+      if (req.body.account_number !== undefined) {
+        invoiceUpdates.invoice_account_number = req.body.account_number;
+        invoiceUpdates.account_number = req.body.account_number;
+      }
+      if (req.body.account_name !== undefined) {
+        invoiceUpdates.invoice_account_name = req.body.account_name;
+        invoiceUpdates.account_name = req.body.account_name;
+      }
+      if (Object.keys(invoiceUpdates).length > 0) {
+        await saveGroup("invoices", invoiceUpdates, req.user.id);
+      }
+    }
+
     res.json({ gateway: result.rows[0] });
   } catch (err) {
     next(err);
@@ -325,11 +358,11 @@ router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
 const DEFAULT_INVOICE_SETTINGS = {
   invoice_prefix: 'INV-',
   invoice_next_number: '1001',
-  invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-  invoice_account_name: 'Bems Farms Global Ltd',
-  invoice_account_number: '1023849502',
-  invoice_secondary_bank: 'Zenith Bank',
-  invoice_secondary_account_number: '1223849502',
+  invoice_bank_name: 'Globus Bank',
+  invoice_account_name: 'Bems Farms Global LTD',
+  invoice_account_number: '1000574564',
+  invoice_secondary_bank: '',
+  invoice_secondary_account_number: '',
   invoice_company_name: 'Bems Farms Global Ltd',
   invoice_company_address: 'Abia State. Head Office',
   invoice_rc_number: '',
@@ -339,9 +372,9 @@ const DEFAULT_INVOICE_SETTINGS = {
   invoice_footer: 'Thank you for choosing Bems Farms. Abia State. Head Office',
   invoice_payment_terms: 'Notice: GOODS SOLD IN GOOD CONDITION ARE NOT RETURNABLE. Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
   // Direct aliases for document renderer
-  bank_name: 'Moniepoint MFB / Zenith Bank',
-  account_name: 'Bems Farms Global Ltd',
-  account_number: '1023849502',
+  bank_name: 'Globus Bank',
+  account_name: 'Bems Farms Global LTD',
+  account_number: '1000574564',
   company_signature_url: '',
 };
 

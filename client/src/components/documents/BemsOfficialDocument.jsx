@@ -164,9 +164,9 @@ export default function BemsOfficialDocument({
   const securityCode = generateSecurityCode(docNumber, total)
 
   // Dynamic Bank and Company Info
-  const accountName = effectiveSettings.invoice_account_name || effectiveSettings.account_name || 'Bems Farms Global Ltd'
-  const bankName = effectiveSettings.invoice_bank_name || effectiveSettings.bank_name || 'Moniepoint MFB / Zenith Bank'
-  const accountNumber = effectiveSettings.invoice_account_number || effectiveSettings.account_number || '1023849502'
+  const accountName = effectiveSettings.invoice_account_name || effectiveSettings.account_name || 'Bems Farms Global LTD'
+  const bankName = effectiveSettings.invoice_bank_name || effectiveSettings.bank_name || 'Globus Bank'
+  const accountNumber = effectiveSettings.invoice_account_number || effectiveSettings.account_number || '1000574564'
   const secondaryBank = effectiveSettings.invoice_secondary_bank || effectiveSettings.secondary_bank || ''
   const secondaryAccount = effectiveSettings.invoice_secondary_account_number || effectiveSettings.secondary_account || ''
   let companyName = effectiveSettings.invoice_company_name || effectiveSettings.company_name || 'Bems Farms Global Ltd'

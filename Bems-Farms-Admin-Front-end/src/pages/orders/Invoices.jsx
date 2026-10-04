@@ -95,19 +95,19 @@ export default function Invoices() {
   const [submitting, setSubmitting]     = useState(false)
   const [bankSettings, setBankSettings] = useState(null)
   const [bankForm, setBankForm]         = useState({
-    invoice_bank_name: 'Moniepoint MFB / Zenith Bank',
-    invoice_account_name: 'Bems Farms Global Ltd',
-    invoice_account_number: '1023849502',
-    invoice_secondary_bank: 'Zenith Bank',
-    invoice_secondary_account_number: '1223849502',
+    invoice_bank_name: 'Globus Bank',
+    invoice_account_name: 'Bems Farms Global LTD',
+    invoice_account_number: '1000574564',
+    invoice_secondary_bank: '',
+    invoice_secondary_account_number: '',
     invoice_company_name: 'Bems Farms Global Ltd',
-    invoice_company_address: 'Central Farm Settlement Hub, Umuahia, Abia State',
+    invoice_company_address: 'Abia State. Head Office',
     invoice_rc_number: '',
     invoice_tin: '',
-    invoice_phone: '+234 800 236 7326 / +234 814 000 0000',
+    invoice_phone: '',
     invoice_email: 'corporate@bemsfarms.com',
     invoice_payment_terms: 'Payment is due within 7 days of invoice issue date. Goods are released on confirmation of payment.',
-    invoice_footer: 'Thank you for choosing Bems Farms. Premium farm produce from Abia State to your table.',
+    invoice_footer: 'Thank you for choosing Bems Farms. Abia State. Head Office',
   })
   const [savingBank, setSavingBank]     = useState(false)
 
@@ -1325,7 +1325,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="e.g. Bems Farms Global Ltd"
+                        placeholder="e.g. Bems Farms Global LTD"
                         value={bankForm.invoice_account_name || ''}
                         onChange={e => {
                           const val = e.target.value
@@ -1339,7 +1339,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="e.g. Moniepoint MFB / Zenith Bank"
+                        placeholder="e.g. Globus Bank"
                         value={bankForm.invoice_bank_name || ''}
                         onChange={e => {
                           const val = e.target.value
@@ -1353,7 +1353,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm font-monospace fw-bold"
-                        placeholder="e.g. 1023849502"
+                        placeholder="e.g. 1000574564"
                         value={bankForm.invoice_account_number || ''}
                         onChange={e => {
                           const val = e.target.value
@@ -1367,7 +1367,7 @@ export default function Invoices() {
                       <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="e.g. Zenith Bank"
+                        placeholder="e.g. Zenith Bank (Optional)"
                         value={bankForm.invoice_secondary_bank || ''}
                         onChange={e => {
                           const val = e.target.value
