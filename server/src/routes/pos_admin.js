@@ -513,6 +513,15 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     // identical, only the payment/order status differ from a paid-in-full sale.
     const isPayLater = payment_method === "Pay Later";
 
+    // Verify validCustomerId exists in users table to prevent orders_user_id_fkey foreign key constraint crashes
+    let validUserId = null;
+    if (validCustomerId) {
+      const userCheck = await client.query("SELECT id FROM users WHERE id = $1", [validCustomerId]);
+      if (userCheck.rows.length > 0) {
+        validUserId = validCustomerId;
+      }
+    }
+
     // Create order — `id` has no DB default, so it must be supplied explicitly
     // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
@@ -527,7 +536,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         reference,
         clientKey || reference,
         validCustomerId,
-        validCustomerId,
+        validUserId,
         customer_name,
         customer_phone || null,
         subtotal,
@@ -555,6 +564,19 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
            VALUES ($1,$2,$3,'paid',$4,$5,NOW(),NOW(),NOW())`,
           [`${reference}-${i + 1}`, orderId, p.amount, p.method, JSON.stringify({ pos_session_id: validSessionId, split_index: i })]
         );
+      }
+    } else if (!isPayLater) {
+      try {
+        await client.query("SAVEPOINT pos_pmt_sp");
+        await client.query(
+          `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, metadata, paid_at, created_at, updated_at)
+           VALUES ($1,$2,$3,'paid',$4,$5,NOW(),NOW(),NOW())`,
+          [`PAY-${reference}`, orderId, total, payment_method, JSON.stringify({ pos_session_id: validSessionId })]
+        );
+        await client.query("RELEASE SAVEPOINT pos_pmt_sp");
+      } catch (pmtErr) {
+        await client.query("ROLLBACK TO SAVEPOINT pos_pmt_sp").catch(() => {});
+        console.warn("Non-fatal POS single payment record notice:", pmtErr.message);
       }
     }
 
@@ -659,7 +681,14 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     }
 
     if (appliedCoupon) {
-      await recordCouponUsage(client, { coupon: appliedCoupon, discount: finalDiscount, customerId: customer_id || null, orderId: reference });
+      try {
+        await client.query("SAVEPOINT pos_cpn_sp");
+        await recordCouponUsage(client, { coupon: appliedCoupon, discount: finalDiscount, customerId: validUserId || validCustomerId || null, orderId: reference });
+        await client.query("RELEASE SAVEPOINT pos_cpn_sp");
+      } catch (cpnErr) {
+        await client.query("ROLLBACK TO SAVEPOINT pos_cpn_sp").catch(() => {});
+        console.warn("Non-fatal coupon usage record notice:", cpnErr.message);
+      }
     }
 
     await client.query("COMMIT");
@@ -1960,12 +1989,13 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
       return res.status(400).json({ message: "Order ID is required" });
     }
 
+    const cleanId = String(order_id || '').replace(/^ORD-/i, '').replace(/^#/, '').trim();
     const orderRes = await client.query(
       `SELECT o.id, o.order_ref, o.status, o.tracking_status
        FROM orders o
-       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1))
+       WHERE (UPPER(o.id) = UPPER($1) OR UPPER(o.order_ref) = UPPER($1) OR UPPER(o.id) = UPPER($2) OR UPPER(o.order_ref) = UPPER($2))
        FOR UPDATE OF o`,
-      [order_id]
+      [order_id, cleanId]
     );
 
     if (!orderRes.rows.length) {
@@ -1977,14 +2007,13 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
 
     const order = orderRes.rows[0];
 
-    // Fetch all items for this order
+    // Fetch all items for this order (including custom/non-inventory items)
     const itemsRes = await client.query(
       `SELECT oi.id, oi.product_id, oi.quantity, COALESCE(oi.scanned_quantity, 0) as scanned_quantity,
               p.name as product_name, p.stock, p.stock_quantity
        FROM order_items oi
-       JOIN products p ON p.id = oi.product_id
-       WHERE oi.order_id = $1
-       FOR UPDATE OF p`,
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1`,
       [order.id]
     );
 
@@ -1993,40 +2022,49 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
       const prevScannedQty = parseInt(item.scanned_quantity, 10);
       const remainingQty = Math.max(0, orderedQty - prevScannedQty);
 
-      if (remainingQty > 0) {
+      if (item.product_id && remainingQty > 0) {
         const currentStock = parseInt(item.stock ?? item.stock_quantity ?? 0, 10);
         const newStock = Math.max(0, currentStock - remainingQty);
 
-        // Update product stock
+        // Update product stock safely
         await client.query(
           `UPDATE products
-           SET stock = $1, stock_quantity = $1, updated_at = NOW()
+           SET stock = GREATEST(0, COALESCE(stock, 0) - $1),
+               stock_quantity = GREATEST(0, COALESCE(stock_quantity, 0) - $1),
+               updated_at = NOW()
            WHERE id = $2`,
-          [newStock, item.product_id]
+          [remainingQty, item.product_id]
         );
 
-        // Log inventory transaction
-        await logInventoryTransaction(client, {
-          order_id: order.id,
-          product_id: item.product_id,
-          quantity: remainingQty,
-          previous_quantity: currentStock,
-          new_quantity: newStock,
-          pos_terminal: terminal_id,
-          pos_operator_id: req.user.id,
-          transaction_type: 'pos_packaging_stockout',
-          source_reference: `POS-PACKALL-${order.id}`,
-          notes: `Batch inspected & packed at POS for order #${order.order_ref || order.id}`
-        });
-
-        // Update order_items
-        await client.query(
-          `UPDATE order_items
-           SET scanned_quantity = quantity
-           WHERE id = $1`,
-          [item.id]
-        );
+        // Log inventory transaction with savepoint protection
+        try {
+          await client.query("SAVEPOINT pos_packall_inv_sp");
+          await logInventoryTransaction(client, {
+            order_id: order.id,
+            product_id: item.product_id,
+            quantity: remainingQty,
+            previous_quantity: currentStock,
+            new_quantity: newStock,
+            pos_terminal: terminal_id,
+            pos_operator_id: req.user.id,
+            transaction_type: 'pos_packaging_stockout',
+            source_reference: `POS-PACKALL-${order.id}`,
+            notes: `Batch inspected & packed at POS for order #${order.order_ref || order.id}`
+          });
+          await client.query("RELEASE SAVEPOINT pos_packall_inv_sp");
+        } catch (invErr) {
+          await client.query("ROLLBACK TO SAVEPOINT pos_packall_inv_sp").catch(() => {});
+          console.warn("Non-fatal inventory audit log notice in pack-all:", invErr.message);
+        }
       }
+
+      // Always ensure order_items scanned_quantity is set to full quantity
+      await client.query(
+        `UPDATE order_items
+         SET scanned_quantity = quantity
+         WHERE id = $1`,
+        [item.id]
+      );
     }
 
     // Mark order as packed
