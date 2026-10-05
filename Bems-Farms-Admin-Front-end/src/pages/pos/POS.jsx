@@ -238,7 +238,11 @@ export default function POS() {
   const [activeModal, setActiveModal]       = useState(null)
   const [checkoutStep, setCheckoutStep]     = useState('tender') // 'tender' | 'confirm' | 'success'
   const [isSubmittingSale, setIsSubmittingSale] = useState(false)
+  const isSubmittingSaleRef = useRef(false)
+  const lastSubmitTimeRef   = useRef(0)
+
   const closeModal = () => {
+    if (isSubmittingSaleRef.current) return
     setActiveModal(null)
     setCheckoutStep('tender')
   }
@@ -906,7 +910,9 @@ export default function POS() {
               setCheckoutStep('confirm')
             }
           } else if (checkoutStep === 'confirm') {
-            confirmPayment(checkoutPayMethod)
+            if (!isSubmittingSale && !isSubmittingSaleRef.current) {
+              confirmPayment(checkoutPayMethod)
+            }
           } else if (checkoutStep === 'success') {
             newOrder()
           }
@@ -1649,6 +1655,15 @@ export default function POS() {
   // Payment Confirmation / Online Order Packing
   async function confirmPayment(method) {
     if (cart.length === 0) return
+
+    const now = Date.now()
+    // Immediate synchronous lock: blocks double clicks, button spams, and queued event loop flushes
+    if (isSubmittingSaleRef.current || isSubmittingSale || (now - lastSubmitTimeRef.current < 1200)) {
+      console.warn('[POS] Blocked rapid concurrent confirmPayment invocation')
+      return
+    }
+    isSubmittingSaleRef.current = true
+    lastSubmitTimeRef.current = now
     setIsSubmittingSale(true)
     playBeep('success')
 
@@ -1714,6 +1729,7 @@ export default function POS() {
         setActiveOnlineOrderRawId(null)
         setSuccessData(completedReceipt)
         setCheckoutStep('success')
+        isSubmittingSaleRef.current = false
         setIsSubmittingSale(false)
         clearCart()
 
@@ -1782,6 +1798,7 @@ export default function POS() {
       } catch (err) {
         console.error('Online order pack completion failed:', err)
         showToast(`Could not complete packing: ${err.response?.data?.message || err.message}`, 'error', '⚠️')
+        isSubmittingSaleRef.current = false
         setIsSubmittingSale(false)
         return
       }
@@ -1824,6 +1841,7 @@ export default function POS() {
 
       const salePayload = {
         order_ref: orderId,
+        idempotency_key: orderId,
         customer_id: validCustomerId || undefined,
         customer_name: customer?.name || 'Walk-in Customer',
         customer_phone: customer?.phone || '',
@@ -1879,6 +1897,7 @@ export default function POS() {
       console.warn('POS transaction sync notice', e)
       const errorMsg = e.response?.data?.message || e.message || 'Sale could not be saved. Receipt was not printed.'
       showToast(errorMsg, 'error', '⚠️')
+      isSubmittingSaleRef.current = false
       setIsSubmittingSale(false)
       return
     }
@@ -1890,6 +1909,7 @@ export default function POS() {
     // Set active receipt for background printing
     setSuccessData(completedReceipt)
     setCheckoutStep('success')
+    isSubmittingSaleRef.current = false
     setIsSubmittingSale(false)
 
     // Clear cart in background
@@ -1905,6 +1925,8 @@ export default function POS() {
   }
 
   function newOrder() {
+    isSubmittingSaleRef.current = false
+    setIsSubmittingSale(false)
     setSuccessData(null)
     setCheckoutStep('tender')
     closeModal()
@@ -2697,9 +2719,9 @@ export default function POS() {
 
               <button
                 id="pos-pay-btn"
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || isSubmittingSale}
                 onClick={() => {
-                  if (cart.length > 0) {
+                  if (cart.length > 0 && !isSubmittingSale && !isSubmittingSaleRef.current) {
                     if (activeOnlineOrderRawId) {
                       confirmPayment('Online Order')
                     } else {
@@ -4340,7 +4362,11 @@ export default function POS() {
                         type="button"
                         className="pos-confirm-sale-btn"
                         disabled={isSubmittingSale}
-                        onClick={() => confirmPayment(checkoutPayMethod)}
+                        onClick={() => {
+                          if (!isSubmittingSale && !isSubmittingSaleRef.current) {
+                            confirmPayment(checkoutPayMethod)
+                          }
+                        }}
                       >
                         <div className="d-flex align-items-center gap-2">
                           {isSubmittingSale ? (
@@ -4591,8 +4617,17 @@ export default function POS() {
                 </div>
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-outline-secondary w-50 py-2 fw-bold" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-amber-solid w-50 py-2 fw-bold text-dark" onClick={() => confirmPayment('Store Credit / Pay Later')}>
-                    Authorize Credit
+                  <button
+                    type="button"
+                    className="btn btn-amber-solid w-50 py-2 fw-bold text-dark"
+                    disabled={isSubmittingSale}
+                    onClick={() => {
+                      if (!isSubmittingSale && !isSubmittingSaleRef.current) {
+                        confirmPayment('Store Credit / Pay Later')
+                      }
+                    }}
+                  >
+                    {isSubmittingSale ? 'Authorizing...' : 'Authorize Credit'}
                   </button>
                 </div>
               </div>

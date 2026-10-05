@@ -268,11 +268,60 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     await client.query("BEGIN");
 
     const {
-      items, customer_id, customer_name = "Walk-in Customer",
+      items, customer_id, customer_name = "Walk-in Customer", customer_phone = "",
       payment_method = "cash", amount_tendered,
       discount_amount = 0, coupon_code,
       notes, session_id, split_payments,
+      order_ref, idempotency_key,
     } = req.body;
+
+    const clientKey = String(idempotency_key || order_ref || "").trim();
+
+    // ── IDEMPOTENCY / RAPID DOUBLE-CLICK GUARD ──────────────────────────────
+    // If the client provided an idempotency_key or order_ref (unique per cart/checkout session),
+    // serialize concurrent requests via an advisory transaction lock. If the cashier clicked
+    // multiple times during a network/UI freeze, the first request processes normally, while all
+    // subsequent requests wait for the lock and immediately return the already-created order,
+    // preventing duplicate orders and double-deductions of stock.
+    if (clientKey) {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pos_sale_${clientKey}`]);
+
+      const existingOrderRes = await client.query(
+        `SELECT o.*,
+                COALESCE(
+                  (SELECT json_agg(
+                    json_build_object(
+                      'id', oi.id,
+                      'product_id', oi.product_id,
+                      'name', oi.name,
+                      'quantity', oi.quantity,
+                      'unit_price', oi.unit_price,
+                      'line_total', oi.line_total,
+                      'packaging_unit_name', oi.packaging_unit_name
+                    )
+                  ) FROM order_items oi WHERE oi.order_id = o.id),
+                  '[]'::json
+                ) as items
+         FROM orders o
+         WHERE (o.payment_ref = $1 OR o.order_ref = $1 OR o.id = $1)
+           AND o.created_at >= NOW() - INTERVAL '15 minutes'
+         ORDER BY o.created_at DESC
+         LIMIT 1`,
+        [clientKey]
+      );
+
+      if (existingOrderRes.rows.length > 0) {
+        const existingOrder = existingOrderRes.rows[0];
+        await client.query("COMMIT");
+        return res.status(200).json({
+          message: "Sale already processed (duplicate submission prevented)",
+          order: existingOrder,
+          items: existingOrder.items || [],
+          change_amount: amount_tendered ? Math.max(0, parseFloat(amount_tendered) - parseFloat(existingOrder.total)) : 0,
+          duplicate_prevented: true,
+        });
+      }
+    }
 
     const validCustomerId = (customer_id && !isNaN(customer_id) && parseInt(customer_id) > 0) ? parseInt(customer_id) : null;
     const validSessionId = (session_id && !isNaN(session_id) && parseInt(session_id) > 0) ? parseInt(session_id) : null;
@@ -469,17 +518,19 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
       `INSERT INTO orders
-         (id, order_ref, customer_id, user_id, customer_name, subtotal, discount_amount, tax_amount,
+         (id, order_ref, payment_ref, customer_id, user_id, customer_name, customer_phone, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1, $2, $3::bigint, $4::int, $5, $6, $7, $8, $9, $10, $11, $12, 'Physical Store (POS)', $13, $14, $15, NOW(), NOW())
+       VALUES ($1, $2, $3, $4::bigint, $5::int, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'Physical Store (POS)', $15, $16, $17, NOW(), NOW())
        RETURNING *`,
       [
         reference,
         reference,
+        clientKey || reference,
         validCustomerId,
         validCustomerId,
         customer_name,
+        customer_phone || null,
         subtotal,
         finalDiscount,
         tax_amount,

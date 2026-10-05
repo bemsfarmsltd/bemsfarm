@@ -19,6 +19,7 @@ const sale = z.object({
   items: z.array(z.record(z.string(), z.any())).min(1, "Items required"),
   customer_id: z.any().optional(),
   customer_name: z.string().optional(),
+  customer_phone: z.string().optional(),
   payment_method: z.string().optional(),
   amount_tendered: numLike.optional(),
   discount_amount: numLike.optional(),
@@ -26,6 +27,8 @@ const sale = z.object({
   notes: z.string().optional(),
   session_id: numLike.optional(),
   split_payments: z.array(z.record(z.string(), z.any())).optional(),
+  order_ref: z.string().optional(),
+  idempotency_key: z.string().optional(),
 });
 
 const heldOrder = z.object({
