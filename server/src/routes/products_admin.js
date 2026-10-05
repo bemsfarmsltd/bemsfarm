@@ -282,7 +282,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
             OR p.sku ILIKE ${ilikeParam}
             OR p.barcode ILIKE ${ilikeParam}
             OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.name ILIKE ${ilikeParam})
-            OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(p.tags, '[]'::jsonb)) tag WHERE tag ILIKE ${ilikeParam})
+            OR p.tags::text ILIKE ${ilikeParam}
           )`);
         });
         where.push(`(${tokenConditions.join(" AND ")})`);

@@ -1845,7 +1845,17 @@ export default function POS() {
         split_payments: method === 'Split Tender' ? splitRows.filter(r => Number(r.amount) > 0) : undefined
       }
 
-      const saleResponse = await api.post('/admin/pos/sale', salePayload).catch(() => api.post('/admin/pos/sales', salePayload))
+      let saleResponse
+      try {
+        saleResponse = await api.post('/admin/pos/sale', salePayload)
+      } catch (err1) {
+        // Fallback to plural /sales endpoint if primary returns 404
+        if (err1.response?.status === 404) {
+          saleResponse = await api.post('/admin/pos/sales', salePayload)
+        } else {
+          throw err1
+        }
+      }
       const savedOrder = saleResponse.data?.order || {}
       const savedItems = saleResponse.data?.items || []
       completedReceipt = {
@@ -1867,7 +1877,8 @@ export default function POS() {
       }
     } catch (e) {
       console.warn('POS transaction sync notice', e)
-      showToast('Sale could not be saved. Receipt was not printed.', 'error', '⚠️')
+      const errorMsg = e.response?.data?.message || e.message || 'Sale could not be saved. Receipt was not printed.'
+      showToast(errorMsg, 'error', '⚠️')
       setIsSubmittingSale(false)
       return
     }

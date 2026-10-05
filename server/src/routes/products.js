@@ -69,7 +69,7 @@ router.get("/search", async (req, res, next) => {
       conditions.push(`(
         p.name ILIKE ${ilikeParam}
         OR c.name ILIKE ${ilikeParam}
-        OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(p.tags, '[]'::jsonb)) tag WHERE tag ILIKE ${ilikeParam})
+        OR p.tags::text ILIKE ${ilikeParam}
         OR p.description ~* ('\\m' || ${wordParam} || '\\M')
       )`);
     });

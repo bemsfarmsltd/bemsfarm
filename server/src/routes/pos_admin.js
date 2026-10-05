@@ -335,13 +335,54 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         const unit_price = pkg ? parseFloat(pkg.price) : (item.unit_price ? parseFloat(item.unit_price) : parseFloat(p.unit_price || p.price || 0));
         const packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || item.packaging_name || null);
 
-        const availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
+        let availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
         const effectiveNeeded = quantity * multiplier;
+
+        // Auto-Replenishment / Unboxing: If a piece variant is being sold and base stock is 0 or insufficient,
+        // automatically unbox 1 or more parent cartons if carton stock is available.
+        if (p.stock != null && effectiveNeeded > availableStock) {
+          const baseName = p.name.replace(/\s*\((piece|unit|tin|sachet)\)\s*$/i, "").trim();
+          const cartonRes = await client.query(
+            `SELECT id, name, stock, stock_quantity, description FROM products
+             WHERE id != $1 AND LOWER(name) LIKE LOWER($2) AND LOWER(name) LIKE '%carton%' AND COALESCE(stock, stock_quantity, 0) > 0
+             ORDER BY id ASC LIMIT 1 FOR UPDATE`,
+            [p.id, `${baseName}%`]
+          );
+
+          if (cartonRes.rows.length > 0) {
+            const carton = cartonRes.rows[0];
+            const countMatch = carton.name.match(/carton\s+of\s+(\d+)/i) || (carton.description && carton.description.match(/(\d+)\s*(pcs|pieces)/i));
+            const cartonPcs = countMatch ? parseInt(countMatch[1]) : 12;
+            const cartonsToOpen = Math.ceil((effectiveNeeded - availableStock) / cartonPcs);
+            const cartonAvail = carton.stock != null ? carton.stock : (carton.stock_quantity || 0);
+
+            if (cartonAvail >= cartonsToOpen) {
+              const pcsGained = cartonsToOpen * cartonPcs;
+              await client.query(
+                `UPDATE products SET stock = GREATEST(0, stock - $1), stock_quantity = GREATEST(0, stock_quantity - $1), updated_at = NOW() WHERE id = $2`,
+                [cartonsToOpen, carton.id]
+              );
+              await client.query(
+                `UPDATE products SET stock = COALESCE(stock, 0) + $1, stock_quantity = COALESCE(stock_quantity, 0) + $1, updated_at = NOW() WHERE id = $2`,
+                [pcsGained, p.id]
+              );
+              availableStock += pcsGained;
+              p.stock = availableStock;
+              p.stock_quantity = availableStock;
+            }
+          }
+        }
+
         if (p.stock != null && effectiveNeeded > availableStock && availableStock >= 0) {
-          await client.query("ROLLBACK");
-          return res.status(400).json({
-            message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
-          });
+          // If inventory tracking is disabled on the product, allow sale
+          if (p.track_inventory === false) {
+            // Permitted
+          } else {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+              message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
+            });
+          }
         }
 
         const line_total = unit_price * quantity;
@@ -497,6 +538,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         const newStock = prodRes.rows[0]?.stock ?? Math.max(0, currentStock - effectiveDeduction);
 
         try {
+          await client.query("SAVEPOINT pos_inv_log_sp");
           await logInventoryTransaction(client, {
             order_id: orderId,
             product_id: item.product_id,
@@ -509,7 +551,9 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
             source_reference: reference,
             notes: `POS Counter Sale: ${displayName} (Qty: ${effectiveDeduction})`
           });
+          await client.query("RELEASE SAVEPOINT pos_inv_log_sp");
         } catch (logErr) {
+          await client.query("ROLLBACK TO SAVEPOINT pos_inv_log_sp").catch(() => {});
           console.warn("POS inventory_transactions log warning:", logErr.message);
         }
 
@@ -521,6 +565,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
 
         // Post perpetual inventory reduction for this line item
         try {
+          await client.query("SAVEPOINT pos_cogs_sp");
           await postInventoryDoubleEntry(client, {
             event_type: "cogs",
             product_id: item.product_id,
@@ -534,7 +579,9 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
             narration: `POS Counter Sale fulfillment: ${displayName} (Qty: ${effectiveDeduction})`,
             user_id: req.user.id,
           });
+          await client.query("RELEASE SAVEPOINT pos_cogs_sp");
         } catch (finErr) {
+          await client.query("ROLLBACK TO SAVEPOINT pos_cogs_sp").catch(() => {});
           console.warn("POS line COGS double-entry non-fatal warning:", finErr.message);
         }
       }
@@ -544,6 +591,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     // Dr: Cash POS Drawer (1130) or Accounts Receivable (1140)
     // Cr: Product Sales Revenue (4110)
     try {
+      await client.query("SAVEPOINT pos_rev_sp");
       await postGeneralJournal(client, {
         source_module: "pos",
         source_ref: reference,
@@ -554,7 +602,9 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         narration: `POS Retail Sale (${reference}) for ${customer_name} (${payment_method})`,
         user_id: req.user.id,
       });
+      await client.query("RELEASE SAVEPOINT pos_rev_sp");
     } catch (finErr) {
+      await client.query("ROLLBACK TO SAVEPOINT pos_rev_sp").catch(() => {});
       console.warn("POS revenue double-entry non-fatal warning:", finErr.message);
     }
 
