@@ -313,6 +313,16 @@ export default function POS() {
 
   const scanInputRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [actionsHidden, setActionsHidden] = useState(() => {
+    try { return localStorage.getItem('pos_actions_hidden') === '1' } catch { return false }
+  })
+  const toggleActionsHidden = () => {
+    setActionsHidden(prev => {
+      const next = !prev
+      try { localStorage.setItem('pos_actions_hidden', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -2603,8 +2613,18 @@ export default function POS() {
         </div>
 
         {/* ─── FAR RIGHT: ACTION TOOLBAR (always visible) ────────────────── */}
-        <aside className="pos-footer-utilities" aria-label="Register actions">
-          {[
+        <aside className={`pos-footer-utilities ${actionsHidden ? 'is-collapsed' : ''}`} aria-label="Register actions">
+          <button
+            type="button"
+            id="pos-actions-toggle"
+            onClick={toggleActionsHidden}
+            className="pos-actions-toggle"
+            title={actionsHidden ? 'Show actions' : 'Hide actions'}
+            aria-expanded={!actionsHidden}>
+            <i className={actionsHidden ? 'ri-arrow-left-s-line' : 'ri-arrow-right-s-line'}></i>
+            {!actionsHidden && <span>Hide</span>}
+          </button>
+          {!actionsHidden && [
             { label: 'Hold',      key: 'F4', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
             { label: 'Returns',   key: '',   icon: 'ri-arrow-go-back-line',  color: '#e11d48', modal: 'return' },
             { label: 'Invoice',   key: '',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
@@ -7155,6 +7175,35 @@ export default function POS() {
           border-left: 1.5px solid var(--pos-border);
           background: var(--pos-header-bg);
           overflow-y: auto;
+          transition: width 0.2s ease, padding 0.2s ease;
+        }
+        .pos-footer-utilities.is-collapsed {
+          width: 34px;
+          padding: 14px 4px;
+        }
+        .pos-actions-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          height: 30px;
+          border-radius: 9px;
+          border: 1px dashed var(--pos-border);
+          background: transparent;
+          color: var(--pos-text-muted);
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .pos-actions-toggle i { font-size: 18px; }
+        .pos-actions-toggle:hover {
+          color: #059669;
+          border-color: #059669;
+          background: rgba(5, 150, 105, 0.08);
+        }
+        .pos-footer-utilities.is-collapsed .pos-actions-toggle {
+          height: 60px;
+          border-style: solid;
         }
         .pos-foot-util-btn {
           position: relative;
