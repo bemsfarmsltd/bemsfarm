@@ -18,7 +18,6 @@ export default function Sidebar() {
     deliveries: '/deliveries/active',
     customers: '/customers',
     finance: '/accounts/transactions',
-    reports: '/reports/sales',
     chef: '/chef-bems/conversations',
     onboarding: '/onboarding',
     settings: '/settings/general',
@@ -33,7 +32,6 @@ export default function Sidebar() {
   const showDelivery  = is('superadmin', 'admin', 'manager', 'delivery_manager')
   const showCustomers = is('superadmin', 'admin', 'manager', 'cashier')
   const showFinance   = is('superadmin', 'admin', 'manager', 'accountant')
-  const showReports   = is('superadmin', 'admin', 'manager', 'accountant')
   const showStaff     = is('superadmin', 'admin', 'manager')
   const showChefAI    = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showStores    = is('superadmin', 'admin')
@@ -53,7 +51,6 @@ export default function Sidebar() {
     if (path.startsWith('/deliveries')) return 'deliveries'
     if (path.startsWith('/customers')) return 'customers'
     if (path.startsWith('/accounts')) return 'finance'
-    if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
     if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings/team') || path.startsWith('/settings/staff') || path.startsWith('/settings/roles')) return 'onboarding'
     if (path.startsWith('/settings')) return 'settings'
@@ -518,20 +515,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 9. Reports */}
-            {showReports && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('reports')}
-                title="Analytics & Reports"
-              >
-                <i className="ri-bar-chart-box-line rail-icon"></i>
-                <span className="rail-label">Reports</span>
-              </button>
-            )}
-
-            {/* 10. Chef Bems AI */}
+            {/* 9. Chef Bems AI */}
             {showChefAI && (
               <button
                 type="button"
@@ -613,7 +597,6 @@ export default function Sidebar() {
                 {activeTab === 'deliveries' && 'Operations & Dispatch'}
                 {activeTab === 'customers' && 'Customer CRM'}
                 {activeTab === 'finance' && 'Finance & Accounts'}
-                {activeTab === 'reports' && 'Analytics & Reports'}
                 {activeTab === 'chef' && 'Chef Bems AI'}
                 {activeTab === 'onboarding' && 'Team & Onboarding'}
                 {activeTab === 'stores' && 'Multi-Store Network'}
@@ -860,27 +843,6 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 8. REPORTS */}
-            {activeTab === 'reports' && (
-              <>
-                <NavLink to="/reports/sales" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Sales Report</span>
-                </NavLink>
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/reports/inventory" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Inventory Report</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/reports/customers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Customer Report</span>
-                  </NavLink>
-                )}
-                <NavLink to="/reports/finance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Finance &amp; P&amp;L</span>
-                </NavLink>
-              </>
-            )}
 
             {/* 9. CHEF BEMS AI */}
             {activeTab === 'chef' && (
