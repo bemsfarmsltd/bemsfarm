@@ -2514,106 +2514,99 @@ export default function POS() {
             </div>
           )}
 
-          {/* Discount Selector Chips */}
-          <div className="pos-discount-strip">
-            <span className="pos-discount-title">Discount:</span>
-            {[0, 5, 10, 15, 20].map(d => (
+          {/* ── Checkout Panel ── */}
+          <div className="pos-checkout-panel">
+            <div className="pos-co-discount">
+              <span className="pos-co-label">Discount</span>
+              <div className="pos-co-seg" role="group" aria-label="Discount">
+                {[0, 5, 10, 15, 20].map(d => (
+                  <button
+                    key={d}
+                    id={`pos-discount-${d}`}
+                    onClick={() => setDiscountPct(d)}
+                    className={discountPct === d ? 'active' : ''}>
+                    {d === 0 ? 'None' : `${d}%`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pos-co-lines">
+              <div className="pos-co-line">
+                <span>Subtotal · {itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
+                <span>{fmt(subtotal)}</span>
+              </div>
+              {discountPct > 0 && (
+                <div className="pos-co-line is-discount">
+                  <span>Discount ({discountPct}%)</span>
+                  <span>− {fmt(discountAmt)}</span>
+                </div>
+              )}
+              {taxConfig.enabled && (
+                <div className="pos-co-line">
+                  <span>{taxConfig.label} ({taxConfig.rate}%{taxConfig.inclusive ? ', incl.' : ''})</span>
+                  <span>{fmt(vat)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pos-co-actions">
               <button
-                key={d}
-                onClick={() => setDiscountPct(d)}
-                className={`pos-discount-btn ${discountPct === d ? 'active' : ''}`}>
-                {d === 0 ? 'None' : `${d}%`}
+                type="button"
+                id="pos-actions-toggle"
+                onClick={toggleActionsHidden}
+                className={`pos-co-more ${actionsHidden ? '' : 'active'}`}
+                title={actionsHidden ? 'More actions: Hold, Returns, Invoice, Pay Later, Receipts, Analytics' : 'Hide actions'}
+                aria-expanded={!actionsHidden}>
+                <i className="ri-apps-2-line"></i>
+                <span>More</span>
               </button>
-            ))}
-          </div>
 
-          {/* Electronic Register Display Screen */}
-          <div className="pos-register-screen">
-            <div className="pos-screen-line">
-              <span>Subtotal ({itemCount} items)</span>
-              <strong>{fmt(subtotal)}</strong>
-            </div>
-
-            {discountPct > 0 && (
-              <div className="pos-screen-line discount-highlight">
-                <span>Discount ({discountPct}%)</span>
-                <strong>− {fmt(discountAmt)}</strong>
-              </div>
-            )}
-
-            {taxConfig.enabled && (
-              <div className="pos-screen-line">
-                <span>{taxConfig.label} ({taxConfig.rate}%)</span>
-                <strong>{fmt(vat)}</strong>
-              </div>
-            )}
-
-            <div className="pos-screen-total-card">
-              <div>
-                <div className="pos-grand-label">TOTAL PAYABLE</div>
-                <div className="pos-grand-sub">
-                  {taxConfig.enabled
-                    ? (taxConfig.inclusive ? `INCL. ${taxConfig.rate}% ${taxConfig.label}` : `+ ${taxConfig.rate}% ${taxConfig.label}`)
-                    : 'TAX EXEMPT / DISABLED'}
-                </div>
-              </div>
-              <div className="pos-grand-value">{fmt(total)}</div>
-            </div>
-          </div>
-
-          {/* Unified 1-Click Pay / Complete Sale Button */}
-          <div className="pos-single-pay-container mt-3 mb-2">
-            <button
-              disabled={cart.length === 0}
-              onClick={() => {
-                if (cart.length > 0) {
-                  if (activeOnlineOrderRawId) {
-                    confirmPayment('Online Order')
-                  } else {
-                    setCashReceived(String(total))
-                    setActiveModal('checkout')
+              <button
+                id="pos-pay-btn"
+                disabled={cart.length === 0}
+                onClick={() => {
+                  if (cart.length > 0) {
+                    if (activeOnlineOrderRawId) {
+                      confirmPayment('Online Order')
+                    } else {
+                      setCashReceived(String(total))
+                      setActiveModal('checkout')
+                    }
                   }
-                }
-              }}
-              className="pos-single-pay-btn"
-              style={activeOnlineOrderRawId ? { background: 'linear-gradient(135deg, #059669, #047857)', border: 'none' } : {}}
-            >
-              <div className="d-flex align-items-center gap-3">
-                <div className="pos-single-pay-icon">
-                  <i className={activeOnlineOrderRawId ? "ri-box-3-line" : "ri-secure-payment-line"}></i>
-                </div>
-                <div className="text-start">
-                  <div className="pos-single-pay-title">
-                    {activeOnlineOrderRawId ? 'COMPLETE & MARK PACKED [F8]' : 'PAY / COMPLETE SALE [F8]'}
-                  </div>
-                  <div className="pos-single-pay-sub">
-                    {activeOnlineOrderRawId 
-                      ? `Packing Order #${activeOnlineOrderRawId} · Tap to complete & dispatch driver` 
-                      : `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · Tap to choose tender & print`}
-                  </div>
-                </div>
-              </div>
-              <div className="pos-single-pay-amount">
-                {fmt(total)}
-                <i className="ri-arrow-right-line ms-2"></i>
-              </div>
-            </button>
+                }}
+                className="pos-co-pay">
+                <span className="pos-co-pay-left">
+                  <span className="pos-co-pay-title">
+                    {cart.length === 0 ? 'No items yet' : activeOnlineOrderRawId ? 'Complete & Pack' : 'Charge'}
+                    {cart.length > 0 && <kbd>F8</kbd>}
+                  </span>
+                  <span className="pos-co-pay-sub">
+                    {cart.length === 0
+                      ? 'Scan or tap a product'
+                      : activeOnlineOrderRawId
+                        ? `Order #${activeOnlineOrderRawId}`
+                        : 'Choose tender & print'}
+                  </span>
+                </span>
+                <span className="pos-co-pay-amount">{fmt(total)}</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ─── FAR RIGHT: ACTION TOOLBAR (always visible) ────────────────── */}
-        <aside className={`pos-footer-utilities ${actionsHidden ? 'is-collapsed' : ''}`} aria-label="Register actions">
+        {/* ─── FAR RIGHT: ACTION TOOLBAR (opened from "More") ────────────── */}
+        {!actionsHidden && (
+        <aside className="pos-footer-utilities" aria-label="Register actions">
           <button
             type="button"
-            id="pos-actions-toggle"
             onClick={toggleActionsHidden}
             className="pos-actions-toggle"
-            title={actionsHidden ? 'Show actions' : 'Hide actions'}
-            aria-expanded={!actionsHidden}>
-            <i className={actionsHidden ? 'ri-arrow-left-s-line' : 'ri-arrow-right-s-line'}></i>
-            {!actionsHidden && <span>Hide</span>}
+            title="Hide actions">
+            <i className="ri-arrow-right-s-line"></i>
+            <span>Hide</span>
           </button>
-          {!actionsHidden && [
+          {[
             { label: 'Hold',      key: 'F4', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
             { label: 'Returns',   key: '',   icon: 'ri-arrow-go-back-line',  color: '#e11d48', modal: 'return' },
             { label: 'Invoice',   key: '',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
@@ -2636,6 +2629,7 @@ export default function POS() {
             </button>
           ))}
         </aside>
+        )}
       </div>
 
       {/* ═══ MODALS & WORKFLOWS ═══════════════════════════════════════════ */}
@@ -7299,6 +7293,157 @@ export default function POS() {
           background: var(--pos-bg);
           border: 1px solid var(--pos-border);
           color: var(--pos-text-muted);
+        }
+
+        /* ── Checkout Panel ── */
+        .pos-checkout-panel {
+          flex-shrink: 0;
+          padding: 14px 16px 16px;
+          border-top: 1px solid var(--pos-border);
+          background: var(--pos-header-bg);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .pos-co-discount {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .pos-co-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--pos-text-muted);
+        }
+        .pos-co-seg {
+          display: flex;
+          padding: 3px;
+          gap: 2px;
+          border-radius: 10px;
+          background: var(--pos-bg);
+          border: 1px solid var(--pos-border);
+        }
+        .pos-co-seg button {
+          border: none;
+          background: transparent;
+          color: var(--pos-text-muted);
+          font-size: 12px;
+          font-weight: 700;
+          padding: 5px 11px;
+          border-radius: 7px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .pos-co-seg button:hover { color: var(--pos-text-main); }
+        .pos-co-seg button.active {
+          background: var(--pos-card-bg);
+          color: #059669;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
+        }
+        .pos-co-lines {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .pos-co-line {
+          display: flex;
+          justify-content: space-between;
+          font-size: 13px;
+          color: var(--pos-text-muted);
+        }
+        .pos-co-line span:last-child {
+          font-weight: 700;
+          color: var(--pos-text-main);
+          font-variant-numeric: tabular-nums;
+        }
+        .pos-co-line.is-discount span { color: #e11d48; }
+        .pos-co-actions {
+          display: flex;
+          gap: 10px;
+        }
+        .pos-co-more {
+          flex-shrink: 0;
+          width: 64px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          border-radius: 14px;
+          border: 1px solid var(--pos-border);
+          background: var(--pos-card-bg);
+          color: var(--pos-text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .pos-co-more i { font-size: 20px; }
+        .pos-co-more:hover,
+        .pos-co-more.active {
+          color: #059669;
+          border-color: #059669;
+        }
+        .pos-co-pay {
+          flex: 1;
+          min-height: 68px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 18px;
+          border: none;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #059669, #047857);
+          color: #fff;
+          cursor: pointer;
+          text-align: left;
+          box-shadow: 0 10px 24px -10px rgba(5, 150, 105, 0.7);
+          transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+        .pos-co-pay:hover:not(:disabled) {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+          box-shadow: 0 14px 28px -10px rgba(5, 150, 105, 0.8);
+        }
+        .pos-co-pay:disabled {
+          cursor: not-allowed;
+          background: var(--pos-bg);
+          color: var(--pos-text-muted);
+          border: 1px dashed var(--pos-border);
+          box-shadow: none;
+        }
+        .pos-co-pay-left {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .pos-co-pay-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 800;
+        }
+        .pos-co-pay-title kbd {
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 5px;
+          background: rgba(255, 255, 255, 0.2);
+          color: #fff;
+        }
+        .pos-co-pay-sub {
+          font-size: 11.5px;
+          opacity: 0.8;
+        }
+        .pos-co-pay-amount {
+          font-size: 28px;
+          font-weight: 900;
+          letter-spacing: -0.5px;
+          font-variant-numeric: tabular-nums;
         }
 
         /* ── Modals & Overlays ── */
