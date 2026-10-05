@@ -2601,31 +2601,33 @@ export default function POS() {
             </button>
           </div>
         </div>
-      </div>
 
-      {/* ═══ BOTTOM COMMAND BAR (full width) ═════════════════════════════ */}
-      <footer className="pos-footer-utilities">
-        {[
-          { label: 'Hold',      key: 'F4', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
-          { label: 'Returns',   key: '',   icon: 'ri-arrow-go-back-line',  color: '#e11d48', modal: 'return' },
-          { label: 'Invoice',   key: '',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
-          { label: 'Pay Later', key: '',   icon: 'ri-time-line',           color: '#0891b2', modal: 'paylater' },
-          { label: 'Receipts',  key: '',   icon: 'ri-folder-history-line', color: '#2563eb', modal: 'history' },
-          { label: 'Analytics', key: 'F7', icon: 'ri-bar-chart-box-line',  color: '#059669', modal: 'analytics' },
-        ].map(b => (
-          <button
-            key={b.label}
-            disabled={b.modal === 'hold' && cart.length === 0}
-            onClick={() => setActiveModal(b.modal)}
-            className="pos-foot-util-btn">
-            <span className="pos-foot-icon-wrap" style={{ color: b.color, background: `${b.color}18` }}>
-              <i className={b.icon}></i>
-            </span>
-            <span className="pos-foot-text">{b.label}</span>
-            {b.key && <kbd className="pos-foot-kbd">{b.key}</kbd>}
-          </button>
-        ))}
-      </footer>
+        {/* ─── FAR RIGHT: ACTION TOOLBAR (always visible) ────────────────── */}
+        <aside className="pos-footer-utilities" aria-label="Register actions">
+          {[
+            { label: 'Hold',      key: 'F4', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
+            { label: 'Returns',   key: '',   icon: 'ri-arrow-go-back-line',  color: '#e11d48', modal: 'return' },
+            { label: 'Invoice',   key: '',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
+            { label: 'Pay Later', key: '',   icon: 'ri-time-line',           color: '#0891b2', modal: 'paylater' },
+            { label: 'Receipts',  key: '',   icon: 'ri-folder-history-line', color: '#2563eb', modal: 'history' },
+            { label: 'Analytics', key: 'F7', icon: 'ri-bar-chart-box-line',  color: '#059669', modal: 'analytics' },
+          ].map(b => (
+            <button
+              key={b.label}
+              id={`pos-action-${b.modal}`}
+              disabled={b.modal === 'hold' && cart.length === 0}
+              onClick={() => setActiveModal(b.modal)}
+              title={b.key ? `${b.label} [${b.key}]` : b.label}
+              className="pos-foot-util-btn">
+              <span className="pos-foot-icon-wrap" style={{ color: b.color, background: `${b.color}1f` }}>
+                <i className={b.icon}></i>
+              </span>
+              <span className="pos-foot-text">{b.label}</span>
+              {b.key && <kbd className="pos-foot-kbd">{b.key}</kbd>}
+            </button>
+          ))}
+        </aside>
+      </div>
 
       {/* ═══ MODALS & WORKFLOWS ═══════════════════════════════════════════ */}
       {activeModal && activeModal !== 'success' && (
@@ -7144,52 +7146,60 @@ export default function POS() {
         /* ── Bottom Utilities ── */
         .pos-footer-utilities {
           flex-shrink: 0;
-          height: 52px;
+          width: 92px;
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          padding: 0 16px;
-          border-top: 1.5px solid var(--pos-border);
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+          padding: 14px 8px;
+          border-left: 1.5px solid var(--pos-border);
           background: var(--pos-header-bg);
-          box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.04);
-          z-index: 50;
+          overflow-y: auto;
         }
         .pos-foot-util-btn {
+          position: relative;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 8px;
-          padding: 6px 14px 6px 6px;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 10px;
+          gap: 6px;
+          padding: 12px 4px 10px;
+          background: var(--pos-card-bg);
+          border: 1.5px solid var(--pos-border);
+          border-radius: 14px;
           cursor: pointer;
-          transition: background 0.15s ease, border-color 0.15s ease;
+          box-shadow: var(--pos-shadow-sm);
+          transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
         .pos-foot-util-btn:hover:not(:disabled) {
-          background: var(--pos-bg);
-          border-color: var(--pos-border);
+          transform: translateY(-2px);
+          border-color: #059669;
+          box-shadow: 0 8px 18px -6px rgba(5, 150, 105, 0.25);
         }
-        .pos-foot-util-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .pos-foot-util-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .pos-foot-icon-wrap {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: 22px;
         }
         .pos-foot-text {
-          font-size: 12.5px;
+          font-size: 11.5px;
           font-weight: 800;
+          line-height: 1.15;
+          text-align: center;
           color: var(--pos-text-main);
         }
         .pos-foot-kbd {
+          position: absolute;
+          top: 5px;
+          right: 5px;
           font-family: inherit;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 800;
-          padding: 2px 6px;
+          padding: 1px 5px;
           border-radius: 5px;
           background: var(--pos-bg);
           border: 1px solid var(--pos-border);
