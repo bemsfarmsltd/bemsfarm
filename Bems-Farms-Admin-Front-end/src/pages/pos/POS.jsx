@@ -315,6 +315,7 @@ export default function POS() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [actionsHidden, setActionsHidden] = useState(true)
   const toggleActionsHidden = () => setActionsHidden(prev => !prev)
+  const [headerHidden, setHeaderHidden] = useState(true)
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -831,7 +832,8 @@ export default function POS() {
         if (viewMode === 'hub') {
           setViewMode('register')
         } else {
-          scanInputRef.current?.focus()
+          setHeaderHidden(false)
+          setTimeout(() => scanInputRef.current?.focus(), 0)
         }
         return
       }
@@ -2068,7 +2070,19 @@ export default function POS() {
     <div className={`pos-app-root theme-${theme}`}>
 
       {/* ═══ TOPBAR / HEADER ═════════════════════════════════════════════ */}
-      <header className="pos-nav-header">
+      {headerHidden && (
+        <button
+          type="button"
+          id="pos-header-show"
+          className="pos-header-reveal-tab"
+          onClick={() => setHeaderHidden(false)}
+          title="Show top bar (F1)">
+          <i className="ri-arrow-down-s-line"></i>
+          <span>Menu</span>
+          {onlineOrders.length > 0 && <span className="pos-reveal-dot">{onlineOrders.length}</span>}
+        </button>
+      )}
+      <header className={`pos-nav-header ${headerHidden ? 'is-collapsed' : ''}`}>
         {/* Brand */}
         <div className="pos-brand-box">
           <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" className="pos-main-logo" />
@@ -2103,38 +2117,26 @@ export default function POS() {
           )}
         </div>
 
-        {/* Right Controls: Return to Sales Hub, Online Orders, Theme, Exit */}
+        {/* Right Controls — compact icon buttons */}
         <div className="pos-hud-controls">
-          {/* Return to Sales Hub Button (Dedicated First Screen) */}
           <button
             onClick={() => setViewMode('hub')}
-            className="pos-header-analytics-pill"
-            style={{ background: '#F1F5F9', color: '#0F172A', border: '1px solid #CBD5E1' }}
+            className="pos-icon-circle-btn"
             title="Return to Sales Hub & Shift Dashboard">
-            <i className="ri-arrow-left-line text-dark"></i>
-            <span className="text-dark fw-bold">Sales Hub</span>
+            <i className="ri-arrow-left-line"></i>
           </button>
 
-          {/* Online Orders with Live Notification Badge on Order Icon */}
-          {(() => {
-            const availableCount = onlineOrders.length
-            return (
-              <button
-                onClick={() => setActiveModal('online')}
-                className="pos-header-online-pill"
-                title={`Online & WhatsApp Orders [F3] (${availableCount} available)`}>
-                <span className="pos-order-icon-badge-wrapper">
-                  <i className="ri-shopping-bag-3-line"></i>
-                  {availableCount > 0 && (
-                    <span className="pos-order-icon-badge-num">
-                      {availableCount}
-                    </span>
-                  )}
-                </span>
-                <span>Orders</span>
-              </button>
-            )
-          })()}
+          <button
+            onClick={() => setActiveModal('online')}
+            className="pos-icon-circle-btn"
+            title={`Online & WhatsApp Orders [F3] (${onlineOrders.length} available)`}>
+            <span className="pos-order-icon-badge-wrapper">
+              <i className="ri-shopping-bag-3-line"></i>
+              {onlineOrders.length > 0 && (
+                <span className="pos-order-icon-badge-num">{onlineOrders.length}</span>
+              )}
+            </span>
+          </button>
 
           {heldOrders.length > 0 && (
             <button onClick={() => recallOrder(0)} className="pos-held-counter-btn">
@@ -2143,19 +2145,17 @@ export default function POS() {
             </button>
           )}
 
-          {/* Direct Hardware ESC/POS Thermal Printer Status & Quick Connect */}
           {isDirectPrinterSupported() && (
             <button
               type="button"
               onClick={handleDirectPrinterToggle}
-              className={`pos-icon-circle-btn ${directPrinterConnected ? 'border-success text-success bg-success-subtle' : ''}`}
+              className="pos-icon-circle-btn"
               style={directPrinterConnected ? { color: '#059669', borderColor: '#10b981', backgroundColor: '#ecfdf5' } : {}}
               title={directPrinterConnected ? 'Direct Thermal Printer: Online (100% Silent ESC/POS) · Tap to disconnect' : 'Connect Direct Thermal USB/Serial Printer (Silent Print)'}>
               <i className={directPrinterConnected ? 'ri-printer-fill' : 'ri-printer-line'}></i>
             </button>
           )}
 
-          {/* Fullscreen Toggle Icon Button */}
           <button
             type="button"
             onClick={toggleFullScreen}
@@ -2164,38 +2164,35 @@ export default function POS() {
             <i className={isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'}></i>
           </button>
 
-          {/* Theme Toggle Icon Button */}
           <button
             onClick={toggleTheme}
             className="pos-icon-circle-btn"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
-            {theme === 'dark' ? (
-              <i className="ri-sun-fill text-amber"></i>
-            ) : (
-              <i className="ri-moon-fill text-sapphire"></i>
-            )}
+            <i className={theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'}></i>
           </button>
 
-          {/* Exit Button */}
-          <Link to="/dashboard" className="pos-dashboard-exit" title="Back to Main Dashboard">
+          <Link to="/dashboard" className="pos-icon-circle-btn" title="Exit to Main Dashboard">
             <i className="ri-logout-box-r-line"></i>
-            <span>Exit</span>
           </Link>
 
-          {/* Salesperson Profile Trigger */}
           <button
             onClick={() => setActiveModal('analytics')}
-            className="pos-cashier-shift-pill"
-            title="Logged In Cashier Profile & Shift Performance [F7]">
-            <div className="pos-cashier-circle-mini">
+            className="pos-cashier-avatar-btn"
+            title={`${user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Cashier' : 'Cashier'} · Shift: ${fmt(shiftStats.totalSales)} [F7]`}>
+            <span className="pos-cashier-circle-mini">
               {user ? (user.first_name?.[0] || 'B') + (user.last_name?.[0] || 'F') : 'SA'}
-            </div>
-            <div className="pos-cashier-shift-info text-start">
-              <div className="pos-cashier-shift-name">{user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Cashier' : 'Stephen Ade'}</div>
-              <div className="pos-cashier-shift-stats">
-                <span className="text-muted">Shift:</span> <strong className="text-emerald">{fmt(shiftStats.totalSales)}</strong>
-              </div>
-            </div>
+            </span>
+          </button>
+
+          <span className="pos-hud-divider" />
+
+          <button
+            type="button"
+            id="pos-header-hide"
+            onClick={() => setHeaderHidden(true)}
+            className="pos-icon-circle-btn"
+            title="Hide top bar">
+            <i className="ri-arrow-up-s-line"></i>
           </button>
         </div>
       </header>
@@ -5531,15 +5528,15 @@ export default function POS() {
 
         /* ── Header ── */
         .pos-nav-header {
-          height: 60px;
+          height: 48px;
+          flex-shrink: 0;
           display: flex;
           align-items: center;
-          padding: 0 20px;
+          padding: 0 14px;
           background: var(--pos-header-bg);
-          border-bottom: 1.5px solid var(--pos-border);
-          gap: 16px;
+          border-bottom: 1px solid var(--pos-border);
+          gap: 14px;
           z-index: 100;
-          box-shadow: var(--pos-shadow-sm);
         }
         .pos-brand-box {
           display: flex;
@@ -5547,7 +5544,7 @@ export default function POS() {
           gap: 12px;
         }
         .pos-main-logo {
-          height: 40px;
+          height: 30px;
           object-fit: contain;
         }
         .pos-terminal-badge {
@@ -5595,7 +5592,7 @@ export default function POS() {
         }
         .pos-search-input {
           width: 100%;
-          height: 42px;
+          height: 36px;
           padding-left: 42px;
           padding-right: 95px;
           background: var(--pos-input-bg);
@@ -5648,7 +5645,7 @@ export default function POS() {
         .pos-hud-controls {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 4px;
         }
         .pos-theme-btn {
           display: flex;
@@ -5843,23 +5840,80 @@ export default function POS() {
           animation: pulse 2s infinite;
         }
         .pos-icon-circle-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 1.5px solid var(--pos-border);
-          background: var(--pos-card-bg);
-          color: var(--pos-text-main);
+          position: relative;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          border: 1px solid transparent;
+          background: transparent;
+          color: var(--pos-text-muted);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 15px;
+          font-size: 17px;
           cursor: pointer;
-          box-shadow: var(--pos-shadow-sm);
+          text-decoration: none;
           transition: all 0.15s ease;
         }
         .pos-icon-circle-btn:hover {
-          border-color: #059669;
-          transform: translateY(-1px);
+          color: var(--pos-text-main);
+          background: var(--pos-bg);
+          border-color: var(--pos-border);
+        }
+        .pos-cashier-avatar-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          margin-left: 4px;
+          cursor: pointer;
+        }
+        .pos-hud-divider {
+          width: 1px;
+          height: 22px;
+          background: var(--pos-border);
+          margin: 0 2px;
+        }
+        .pos-nav-header {
+          transition: margin-top 0.2s ease;
+        }
+        .pos-nav-header.is-collapsed {
+          margin-top: -48px;
+          visibility: hidden;
+        }
+        .pos-header-reveal-tab {
+          position: fixed;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 120;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 14px 5px 10px;
+          border: 1.5px solid var(--pos-border);
+          border-top: none;
+          border-radius: 0 0 12px 12px;
+          background: var(--pos-header-bg);
+          color: var(--pos-text-muted);
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: var(--pos-shadow-sm);
+        }
+        .pos-header-reveal-tab i { font-size: 16px; }
+        .pos-header-reveal-tab:hover { color: #059669; border-color: #059669; }
+        .pos-reveal-dot {
+          margin-left: 4px;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          border-radius: 999px;
+          background: #ef4444;
+          color: #fff;
+          font-size: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         /* ── Category Dock ── */
