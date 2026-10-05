@@ -5904,14 +5904,14 @@ export default function POS() {
         }
         .pos-inventory-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          gap: 18px;
         }
         .pos-product-tile {
           background: var(--pos-card-bg);
           border: 1.5px solid var(--pos-border);
-          border-radius: 16px;
-          padding: 12px;
+          border-radius: 18px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -5923,7 +5923,7 @@ export default function POS() {
         .pos-product-tile:hover {
           transform: translateY(-4px);
           border-color: #059669;
-          box-shadow: 0 12px 24px -4px rgba(5, 150, 105, 0.15), var(--pos-shadow-md);
+          box-shadow: 0 14px 28px -4px rgba(5, 150, 105, 0.16), var(--pos-shadow-md);
         }
         .pos-product-tile.in-cart-active {
           border-color: #059669;
@@ -5933,13 +5933,13 @@ export default function POS() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
         .pos-stock-tag {
-          font-size: 9px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 2px 8px;
-          border-radius: 6px;
+          padding: 3px 9px;
+          border-radius: 7px;
           background: #ecfdf5;
           color: #059669;
         }
@@ -5948,25 +5948,25 @@ export default function POS() {
           color: #b45309;
         }
         .pos-tile-counter {
-          width: 24px;
-          height: 24px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
           background: #059669;
           color: #fff;
-          font-size: 11px;
+          font-size: 11.5px;
           font-weight: 900;
           display: flex;
           align-items: center;
           justify-content: center;
         }
         .pos-tile-media {
-          height: 100px;
+          height: 140px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 12px;
+          border-radius: 14px;
           background: var(--pos-bg);
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           overflow: hidden;
           border: 1px solid var(--pos-border-subtle);
         }
@@ -5977,39 +5977,39 @@ export default function POS() {
           transition: transform 0.3s ease;
         }
         .pos-product-tile:hover .pos-tile-img {
-          transform: scale(1.08);
+          transform: scale(1.06);
         }
         .pos-tile-emoji-fallback {
-          font-size: 48px;
+          font-size: 56px;
         }
         .pos-tile-info {
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
         .pos-tile-name {
-          font-size: 13.5px;
+          font-size: 15px;
           font-weight: 800;
           color: var(--pos-text-main);
-          line-height: 1.3;
-          margin-bottom: 3px;
+          line-height: 1.35;
+          margin-bottom: 4px;
           overflow: hidden;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          min-height: 35px;
+          min-height: 41px;
         }
         .pos-tile-sku {
-          font-size: 10px;
+          font-size: 11px;
           color: var(--pos-text-muted);
         }
         .pos-tile-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding-top: 8px;
+          padding-top: 10px;
           border-top: 1px solid var(--pos-border);
         }
         .pos-tile-price {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 900;
           color: #059669;
           letter-spacing: -0.3px;
@@ -6017,10 +6017,10 @@ export default function POS() {
         .pos-tile-stepper {
           display: flex;
           align-items: center;
-          gap: 3px;
+          gap: 4px;
           background: #f1f5f9;
-          padding: 2px 4px;
-          border-radius: 8px;
+          padding: 3px 6px;
+          border-radius: 9px;
           border: 1px solid #cbd5e1;
         }
         .theme-dark .pos-tile-stepper {
@@ -6028,13 +6028,13 @@ export default function POS() {
           border-color: #334155;
         }
         .pos-tile-step-btn {
-          width: 22px;
-          height: 22px;
+          width: 24px;
+          height: 24px;
           border-radius: 6px;
           border: none;
           background: #ffffff;
           color: #0f172a;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
           cursor: pointer;
           display: flex;
@@ -6051,23 +6051,23 @@ export default function POS() {
           color: #fff;
         }
         .pos-tile-step-val {
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 900;
           color: var(--pos-text-main);
-          min-width: 18px;
+          min-width: 20px;
           text-align: center;
         }
         .pos-tile-add-btn {
-          width: 30px;
-          height: 30px;
-          border-radius: 10px;
+          width: 36px;
+          height: 36px;
+          border-radius: 11px;
           background: #ecfdf5;
           color: #059669;
           border: 1.5px solid #a7f3d0;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
+          font-size: 20px;
           transition: all 0.15s ease;
         }
         .pos-product-tile:hover .pos-tile-add-btn {
