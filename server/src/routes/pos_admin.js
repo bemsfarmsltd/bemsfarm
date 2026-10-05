@@ -293,11 +293,10 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
                     json_build_object(
                       'id', oi.id,
                       'product_id', oi.product_id,
-                      'name', oi.name,
+                      'name', oi.product_name,
                       'quantity', oi.quantity,
                       'unit_price', oi.unit_price,
-                      'line_total', oi.line_total,
-                      'packaging_unit_name', oi.packaging_unit_name
+                      'line_total', oi.subtotal
                     )
                   ) FROM order_items oi WHERE oi.order_id = o.id),
                   '[]'::json
