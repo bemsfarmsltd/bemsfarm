@@ -2600,31 +2600,32 @@ export default function POS() {
               </div>
             </button>
           </div>
-
-          {/* Bottom Register Utilities */}
-          <div className="pos-footer-utilities">
-            {[
-              { label: 'Hold [F4]', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
-              { label: 'Returns',   icon: 'ri-arrow-go-back-line', color: '#e11d48', modal: 'return' },
-              { label: 'Invoice',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
-              { label: 'Pay Later', icon: 'ri-time-line',           color: '#0891b2', modal: 'paylater' },
-              { label: 'Receipts',  icon: 'ri-folder-history-line', color: '#2563eb', modal: 'history' },
-              { label: 'Analytics [F7]', icon: 'ri-bar-chart-box-line', color: '#059669', modal: 'analytics' },
-            ].map(b => (
-              <button
-                key={b.label}
-                disabled={b.modal === 'hold' && cart.length === 0}
-                onClick={() => setActiveModal(b.modal)}
-                className="pos-foot-util-btn">
-                <span className="pos-foot-icon-wrap" style={{ color: b.color, background: `${b.color}15` }}>
-                  <i className={b.icon}></i>
-                </span>
-                <span className="pos-foot-text">{b.label}</span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
+
+      {/* ═══ BOTTOM COMMAND BAR (full width) ═════════════════════════════ */}
+      <footer className="pos-footer-utilities">
+        {[
+          { label: 'Hold',      key: 'F4', icon: 'ri-pause-circle-line',   color: '#d97706', modal: 'hold' },
+          { label: 'Returns',   key: '',   icon: 'ri-arrow-go-back-line',  color: '#e11d48', modal: 'return' },
+          { label: 'Invoice',   key: '',   icon: 'ri-file-text-line',      color: '#7c3aed', modal: 'invoice' },
+          { label: 'Pay Later', key: '',   icon: 'ri-time-line',           color: '#0891b2', modal: 'paylater' },
+          { label: 'Receipts',  key: '',   icon: 'ri-folder-history-line', color: '#2563eb', modal: 'history' },
+          { label: 'Analytics', key: 'F7', icon: 'ri-bar-chart-box-line',  color: '#059669', modal: 'analytics' },
+        ].map(b => (
+          <button
+            key={b.label}
+            disabled={b.modal === 'hold' && cart.length === 0}
+            onClick={() => setActiveModal(b.modal)}
+            className="pos-foot-util-btn">
+            <span className="pos-foot-icon-wrap" style={{ color: b.color, background: `${b.color}18` }}>
+              <i className={b.icon}></i>
+            </span>
+            <span className="pos-foot-text">{b.label}</span>
+            {b.key && <kbd className="pos-foot-kbd">{b.key}</kbd>}
+          </button>
+        ))}
+      </footer>
 
       {/* ═══ MODALS & WORKFLOWS ═══════════════════════════════════════════ */}
       {activeModal && activeModal !== 'success' && (
@@ -7142,34 +7143,56 @@ export default function POS() {
 
         /* ── Bottom Utilities ── */
         .pos-footer-utilities {
-          display: flex;
-          border-top: 1.5px solid var(--pos-border);
-          background: var(--pos-header-bg);
-        }
-        .pos-foot-util-btn {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          padding: 10px 2px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-        }
-        .pos-foot-util-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .pos-foot-icon-wrap {
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
+          flex-shrink: 0;
+          height: 52px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 15px;
+          gap: 6px;
+          padding: 0 16px;
+          border-top: 1.5px solid var(--pos-border);
+          background: var(--pos-header-bg);
+          box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.04);
+          z-index: 50;
+        }
+        .pos-foot-util-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px 6px 6px;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .pos-foot-util-btn:hover:not(:disabled) {
+          background: var(--pos-bg);
+          border-color: var(--pos-border);
+        }
+        .pos-foot-util-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .pos-foot-icon-wrap {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
         }
         .pos-foot-text {
+          font-size: 12.5px;
+          font-weight: 800;
+          color: var(--pos-text-main);
+        }
+        .pos-foot-kbd {
+          font-family: inherit;
           font-size: 10px;
           font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 5px;
+          background: var(--pos-bg);
+          border: 1px solid var(--pos-border);
           color: var(--pos-text-muted);
         }
 
