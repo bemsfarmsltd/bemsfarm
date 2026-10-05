@@ -601,8 +601,33 @@ export default function POS() {
     setToastTimer(setTimeout(() => setToast(null), 2400))
   }
 
+  // Helper to determine if a product has sellable stock (> 0 or piece variant with parent carton available)
+  const isProductSellable = useCallback((p) => {
+    if (!p) return false
+    const directStock = Number(p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 0))
+    if (directStock > 0) return true
+    // Check if it's a piece/unit variant with an available parent carton in stock
+    const name = (p.name || '').toLowerCase()
+    if (name.includes('piece') || name.includes('unit') || name.includes('tin') || name.includes('sachet')) {
+      const baseName = name.replace(/\s*\((piece|unit|tin|sachet)\)\s*$/i, '').trim()
+      const hasCarton = productsList.some(other =>
+        other.id !== p.id &&
+        other.name?.toLowerCase().includes('carton') &&
+        other.name?.toLowerCase().startsWith(baseName) &&
+        Number(other.stock != null ? other.stock : (other.stock_quantity != null ? other.stock_quantity : 0)) > 0
+      )
+      if (hasCarton) return true
+    }
+    return false
+  }, [productsList])
+
   // Cart & Product Methods
   function addProductToCart(product, specificUnit = null) {
+    if (!isProductSellable(product)) {
+      playBeep('error')
+      showToast(`"${product.name}" is OUT OF STOCK (0 available)`, 'error', '🚫')
+      return
+    }
     playBeep('scan')
     const unit = specificUnit || product.selectedPackagingUnit || null
     const price = unit ? Number(unit.price || (product.price * (unit.multiplier || 1))) : (product.base_price || product.price)
@@ -1956,22 +1981,27 @@ export default function POS() {
 
   const cashChange = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
 
+  // Sellable / In-stock products list (Out-of-stock items completely hidden from POS)
+  const inStockProductsList = useMemo(() => {
+    return productsList.filter(isProductSellable)
+  }, [productsList, isProductSellable])
+
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts = { all: productsList.length, popular: Math.min(12, productsList.length) }
+    const counts = { all: inStockProductsList.length, popular: Math.min(12, inStockProductsList.length) }
     CATEGORY_DEFINITIONS.forEach(c => {
       if (c.id !== 'all' && c.id !== 'popular') {
-        counts[c.id] = productsList.filter(p => p.cat === c.id).length
+        counts[c.id] = inStockProductsList.filter(p => p.cat === c.id).length
       }
     })
     return counts
-  }, [productsList])
+  }, [inStockProductsList])
 
-  // Filtered Products
+  // Filtered Products (Only in-stock / sellable goods)
   const filteredProducts = useMemo(() => {
     if (search.trim()) {
       const q = search.trim().toLowerCase()
-      return productsList.filter(p =>
+      return inStockProductsList.filter(p =>
         (p.name && p.name.toLowerCase().includes(q)) ||
         (p.sku && p.sku.toLowerCase().includes(q)) ||
         (p.barcode && p.barcode.toLowerCase().includes(q)) ||
@@ -1979,12 +2009,12 @@ export default function POS() {
       )
     }
     if (activeCategory === 'popular') {
-      return productsList.slice(0, 12)
+      return inStockProductsList.slice(0, 12)
     } else if (activeCategory !== 'all') {
-      return productsList.filter(p => p.cat === activeCategory)
+      return inStockProductsList.filter(p => p.cat === activeCategory)
     }
-    return productsList
-  }, [activeCategory, search, productsList])
+    return inStockProductsList
+  }, [activeCategory, search, inStockProductsList])
 
   // Filtered Customers
   const filteredCustomers = useMemo(() => {
@@ -2392,7 +2422,7 @@ export default function POS() {
                       {/* Card Header Status */}
                       <div className="pos-tile-top">
                         <span className={`pos-stock-tag ${isLowStock ? 'low-warning' : ''}`}>
-                          {isLowStock ? `LOW (${p.stock})` : (p.stock > 0 ? `${p.stock} in stock` : 'In Stock')}
+                          {isLowStock ? `LOW (${p.stock})` : (p.stock > 0 ? `${p.stock} in stock` : 'Carton Replenish')}
                         </span>
                         {inCart && (
                           <span className="pos-tile-counter">{inCart.qty}</span>
