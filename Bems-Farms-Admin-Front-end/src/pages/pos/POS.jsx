@@ -313,16 +313,8 @@ export default function POS() {
 
   const scanInputRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [actionsHidden, setActionsHidden] = useState(() => {
-    try { return localStorage.getItem('pos_actions_hidden') === '1' } catch { return false }
-  })
-  const toggleActionsHidden = () => {
-    setActionsHidden(prev => {
-      const next = !prev
-      try { localStorage.setItem('pos_actions_hidden', next ? '1' : '0') } catch { /* ignore */ }
-      return next
-    })
-  }
+  const [actionsHidden, setActionsHidden] = useState(true)
+  const toggleActionsHidden = () => setActionsHidden(prev => !prev)
 
   useEffect(() => {
     const handleFullscreenChange = () => {
