@@ -316,6 +316,7 @@ export default function POS() {
   const [actionsHidden, setActionsHidden] = useState(true)
   const toggleActionsHidden = () => setActionsHidden(prev => !prev)
   const [headerHidden, setHeaderHidden] = useState(true)
+  const ordersLoadedRef = useRef(false)
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -486,6 +487,7 @@ export default function POS() {
                 }))
               }
             })
+            ordersLoadedRef.current = true
             setOnlineOrders(prev => {
               return mappedOrders.map(mo => {
                 const prevOrder = prev.find(p => p.id === mo.id || p.rawId === mo.rawId)
@@ -576,6 +578,7 @@ export default function POS() {
               }))
             }
           })
+          ordersLoadedRef.current = true
           setOnlineOrders(mappedOrders)
         }
       }).catch(() => {})
@@ -2044,9 +2047,125 @@ export default function POS() {
     setSplitRows(r => r.map((row, ri) => ri === i ? { ...row, [field]: val } : row))
   }
 
+  // ── New online order alert ─────────────────────────────────────────────────────────
+  // The first load only records existing orders; anything that appears after
+  // that triggers a chime and a pop-up until the cashier responds.
+  const seenOrderIdsRef = useRef(null)
+  const [newOrderAlert, setNewOrderAlert] = useState([])
+
+  useEffect(() => {
+    if (!Array.isArray(onlineOrders)) return
+    const ids = onlineOrders.map(o => String(o.rawId ?? o.id))
+    if (seenOrderIdsRef.current === null) {
+      if (!ordersLoadedRef.current) return // wait for the first orders fetch
+      seenOrderIdsRef.current = new Set(ids)
+      return
+    }
+    const fresh = onlineOrders.filter(o => !seenOrderIdsRef.current.has(String(o.rawId ?? o.id)))
+    ids.forEach(id => seenOrderIdsRef.current.add(id))
+    if (fresh.length > 0) {
+      setNewOrderAlert(prev => {
+        const known = new Set(prev.map(o => String(o.rawId ?? o.id)))
+        return [...prev, ...fresh.filter(o => !known.has(String(o.rawId ?? o.id)))]
+      })
+    }
+  }, [onlineOrders])
+
+  useEffect(() => {
+    if (newOrderAlert.length === 0) return
+    playBeep('success')
+    let rings = 1
+    const ring = setInterval(() => {
+      if (rings >= 6) { clearInterval(ring); return }
+      playBeep('success')
+      rings += 1
+    }, 4000)
+    const originalTitle = document.title
+    document.title = `(${newOrderAlert.length}) New order · Bems POS`
+    return () => {
+      clearInterval(ring)
+      document.title = originalTitle
+    }
+  }, [newOrderAlert.length])
+
+  const dismissNewOrderAlert = () => setNewOrderAlert([])
+  const viewNewOrders = () => {
+    setNewOrderAlert([])
+    setViewMode('register')
+    setActiveModal('online')
+  }
+
+  const newOrderAlertEl = newOrderAlert.length > 0 ? (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="pos-new-order-title"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)', padding: 16,
+      }}>
+      <div style={{
+        width: '100%', maxWidth: 440, background: '#ffffff', color: '#0f172a', borderRadius: 20,
+        boxShadow: '0 30px 60px -15px rgba(0,0,0,0.45)', overflow: 'hidden', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+      }}>
+        <div style={{ background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+            <i className="ri-notification-3-fill"></i>
+          </div>
+          <div>
+            <div id="pos-new-order-title" style={{ fontSize: 18, fontWeight: 800 }}>
+              {newOrderAlert.length === 1 ? 'New order received' : `${newOrderAlert.length} new orders received`}
+            </div>
+            <div style={{ fontSize: 12.5, opacity: 0.85 }}>Prepare and pack as soon as possible</div>
+          </div>
+        </div>
+
+        <div style={{ maxHeight: 280, overflowY: 'auto', padding: '8px 22px' }}>
+          {newOrderAlert.map(o => {
+            const meta = CHANNEL_META[o.channel] || CHANNEL_META.website
+            const itemCount = (o.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0)
+            return (
+              <div key={o.rawId ?? o.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                  <i className={meta.icon}></i>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customer || 'Online Customer'}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {o.id} · {itemCount} {itemCount === 1 ? 'item' : 'items'} · {o.time}
+                  </div>
+                </div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#059669' }}>{fmt(o.total)}</div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, padding: '16px 22px 20px' }}>
+          <button
+            type="button"
+            id="pos-new-order-dismiss"
+            onClick={dismissNewOrderAlert}
+            style={{ flex: 1, height: 46, borderRadius: 12, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', fontWeight: 700, cursor: 'pointer' }}>
+            Later
+          </button>
+          <button
+            type="button"
+            id="pos-new-order-view"
+            autoFocus
+            onClick={viewNewOrders}
+            style={{ flex: 2, height: 46, borderRadius: 12, border: 'none', background: '#059669', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>
+            View {newOrderAlert.length === 1 ? 'order' : 'orders'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   // ── Render First Screen: Sales Hub & Shift Dashboard ──────────────────────
   if (viewMode === 'hub') {
     return (
+      <>
       <SalesHub
         onOpenRegister={() => setViewMode('register')}
         historyList={historyList}
@@ -2062,12 +2181,15 @@ export default function POS() {
         }}
         user={user}
       />
+      {newOrderAlertEl}
+      </>
     )
   }
 
   // ── Render Active Ringing & Scanning Terminal ─────────────────────────────
   return (
     <div className={`pos-app-root theme-${theme}`}>
+      {newOrderAlertEl}
 
       {/* ═══ TOPBAR / HEADER ═════════════════════════════════════════════ */}
       {headerHidden && (
@@ -5960,11 +6082,14 @@ export default function POS() {
 
         /* ── Inventory Grid Area ── */
         .pos-inventory-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
           flex: 1;
           overflow-y: auto;
           padding: 18px;
           background: var(--pos-bg);
         }
+        .pos-inventory-scroll::-webkit-scrollbar { display: none; }
         .pos-inventory-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
