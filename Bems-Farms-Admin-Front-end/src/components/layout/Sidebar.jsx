@@ -19,7 +19,6 @@ export default function Sidebar() {
     customers: '/customers',
     finance: '/accounts/transactions',
     chef: '/chef-bems/conversations',
-    onboarding: '/onboarding',
     settings: '/settings/general',
     godeye: '/god-eye',
   }
@@ -52,8 +51,7 @@ export default function Sidebar() {
     if (path.startsWith('/customers')) return 'customers'
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/chef-bems')) return 'chef'
-    if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings/team') || path.startsWith('/settings/staff') || path.startsWith('/settings/roles')) return 'onboarding'
-    if (path.startsWith('/settings')) return 'settings'
+    if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings')) return 'settings'
     if (path.startsWith('/god-eye')) return 'godeye'
     return 'dashboards'
   }
@@ -528,26 +526,13 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 11. Team Onboarding */}
-            {showStaff && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('onboarding')}
-                title="Team Onboarding & Staff"
-              >
-                <i className="ri-user-add-line rail-icon"></i>
-                <span className="rail-label">Onboarding</span>
-              </button>
-            )}
-
-            {/* 12. Settings */}
+            {/* 10. Settings & Onboarding */}
             {showSettings && (
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
                 onClick={() => handleCategoryClick('settings')}
-                title="System Settings"
+                title="Settings & Onboarding"
               >
                 <i className="ri-settings-3-line rail-icon"></i>
                 <span className="rail-label">Settings</span>
@@ -598,9 +583,8 @@ export default function Sidebar() {
                 {activeTab === 'customers' && 'Customer CRM'}
                 {activeTab === 'finance' && 'Finance & Accounts'}
                 {activeTab === 'chef' && 'Chef Bems AI'}
-                {activeTab === 'onboarding' && 'Team & Onboarding'}
                 {activeTab === 'stores' && 'Multi-Store Network'}
-                {activeTab === 'settings' && 'System Settings'}
+                {activeTab === 'settings' && 'Settings & Onboarding'}
               </div>
             </div>
 
@@ -875,36 +859,7 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 10. ONBOARDING */}
-            {activeTab === 'onboarding' && (
-              <>
-                <Link
-                  to="/onboarding"
-                  className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
-                >
-                  <span>Staff Directory</span>
-                </Link>
-                <Link
-                  to="/onboarding?tab=onboarding"
-                  className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
-                >
-                  <span>Team Onboarding</span>
-                </Link>
-                <Link
-                  to="/onboarding?tab=roles"
-                  className={`dual-sub-link ${isOnboardingTabActive('roles') ? 'active' : ''}`}
-                >
-                  <span>Roles &amp; Permissions</span>
-                </Link>
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Admin System Access</span>
-                  </NavLink>
-                )}
-              </>
-            )}
-
-            {/* 12. SETTINGS */}
+            {/* 10. SETTINGS & ONBOARDING */}
             {activeTab === 'settings' && (
               <>
                 <NavLink to="/settings/profile" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
@@ -913,6 +868,37 @@ export default function Sidebar() {
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Store Profile</span>
                 </NavLink>
+
+                {/* Team Onboarding & Staff Management */}
+                {showStaff && (
+                  <>
+                    <Link
+                      to="/onboarding?tab=onboarding"
+                      className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
+                    >
+                      <span>Team Onboarding</span>
+                    </Link>
+                    <Link
+                      to="/onboarding"
+                      className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
+                    >
+                      <span>Staff Directory</span>
+                    </Link>
+                    <Link
+                      to="/onboarding?tab=roles"
+                      className={`dual-sub-link ${isOnboardingTabActive('roles') ? 'active' : ''}`}
+                    >
+                      <span>Roles &amp; Permissions</span>
+                    </Link>
+                  </>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Admin System Access</span>
+                  </NavLink>
+                )}
+
+                {/* Store Operations & Billing Settings */}
                 <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Payment &amp; Tax</span>
                 </NavLink>

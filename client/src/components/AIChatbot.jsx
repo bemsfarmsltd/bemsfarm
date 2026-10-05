@@ -1,11 +1,152 @@
 // client/src/components/AIChatbot.jsx
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 import { escapeHtml } from "../utils/sanitize";
+
+function isItemInCart(item, cartItems) {
+  return (cartItems || []).some((ci) => {
+    const ciId = ci.product?.id || ci.id;
+    const ciName = ci.product?.name || ci.name || "";
+    const matchesId = item.id && ciId && String(ciId) === String(item.id);
+    const matchesName = item.name && ciName && ciName.toLowerCase().trim() === item.name.toLowerCase().trim();
+    return Boolean(matchesId || matchesName);
+  });
+}
+
+function ChatRecipeBundleCard({ bundle, isAutoAdded, cartItems, onAddItems, onInstantCheckout }) {
+  const [selectedItems, setSelectedItems] = useState(() => {
+    const initial = {};
+    (bundle.items || []).forEach((item) => {
+      initial[item.id] = true;
+    });
+    return initial;
+  });
+
+  const toggleItem = (id) => {
+    setSelectedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const activeItems = useMemo(() => {
+    return (bundle.items || []).filter((item) => selectedItems[item.id]);
+  }, [bundle.items, selectedItems]);
+
+  const bundleTotal = useMemo(() => {
+    return activeItems.reduce(
+      (sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
+      0
+    );
+  }, [activeItems]);
+
+  const allActiveInCart = useMemo(() => {
+    if (activeItems.length === 0) return false;
+    return activeItems.every((item) => isItemInCart(item, cartItems));
+  }, [activeItems, cartItems]);
+
+  return (
+    <div className="mt-2.5 overflow-hidden rounded-xl border border-amber-300 bg-gradient-to-b from-amber-50/70 to-white p-2.5 shadow-xs">
+      <div className="flex items-center justify-between gap-1 border-b border-amber-200/80 pb-2">
+        <div className="min-w-0">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A2E1C]">
+            👨‍🍳 1-Click Recipe Bundle
+          </span>
+          <h5 className="mt-1 font-display text-xs font-black text-[#0A2E1C] truncate">
+            {bundle.recipe_name || "Recommended Ingredients"}
+          </h5>
+        </div>
+        {bundle.servings && (
+          <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-900">
+            {bundle.servings} Servings
+          </span>
+        )}
+      </div>
+
+      {(isAutoAdded || bundle.isAutoAdded || allActiveInCart) && (
+        <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-100 border border-emerald-300 px-2 py-1 text-[10px] font-bold text-emerald-900">
+          <span>✨</span>
+          <span>Added to your active cart!</span>
+        </div>
+      )}
+
+      <div className="my-2 space-y-1 max-h-36 overflow-y-auto pr-0.5">
+        {(bundle.items || []).map((item) => {
+          const isChecked = !!selectedItems[item.id];
+          const inCart = isItemInCart(item, cartItems);
+          return (
+            <label
+              key={item.id}
+              className={`flex items-center justify-between gap-2 rounded-lg border p-1.5 text-[10px] transition cursor-pointer ${
+                isChecked
+                  ? "border-emerald-600/70 bg-emerald-50/50 text-slate-900"
+                  : "border-slate-200 bg-white/70 text-slate-400 line-through"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleItem(item.id)}
+                  className="h-3.5 w-3.5 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer"
+                />
+                <div className="min-w-0 truncate">
+                  <span className="font-bold text-slate-800 block truncate">{item.name}</span>
+                  <span className="text-[9px] text-slate-500">{item.unit || "1 unit"} (x{item.quantity || 1})</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-black text-emerald-800">
+                  ₦{((Number(item.price) || 0) * (item.quantity || 1)).toLocaleString()}
+                </span>
+                {inCart && (
+                  <span className="rounded bg-emerald-100 border border-emerald-300 px-1 py-0.2 text-[8px] font-black text-emerald-800">
+                    ✓
+                  </span>
+                )}
+              </div>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="pt-2 border-t border-amber-200/80">
+        <div className="flex items-center justify-between mb-2 text-xs">
+          <span className="font-bold text-slate-600">Subtotal:</span>
+          <span className="font-black text-emerald-900">₦{bundleTotal.toLocaleString()}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {allActiveInCart ? (
+            <div className="flex items-center justify-center gap-1 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-900 py-1.5 px-2 text-[10px] font-black">
+              <span>✅ In Cart</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={activeItems.length === 0}
+              onClick={() => onAddItems(activeItems)}
+              className="flex items-center justify-center gap-1 rounded-lg bg-[#0A2E1C] hover:bg-[#13422B] text-white py-1.5 px-2 text-[10px] font-black shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <span>🛒 Add All ({activeItems.length})</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={activeItems.length === 0}
+            onClick={() => onInstantCheckout(activeItems)}
+            className="flex items-center justify-center gap-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] py-1.5 px-2 text-[10px] font-black shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            <span>⚡ Checkout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const CHEF_QUESTIONS = [
   { text: "How to cook party jollof?", value: "Give me a step-by-step recipe for Nigerian party jollof rice using BemsFarms ingredients." },
@@ -23,11 +164,13 @@ const SUPPORT_QUESTIONS = [
 
 export default function AIChatbot() {
   const { user } = useAuth();
+  const { cartItems, addToCart, addMultipleToCart, openCartDrawer } = useCart();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState("chef"); // "chef" | "support"
+  const [cartNotice, setCartNotice] = useState(null);
 
   // Chef Mode State
   const [chefMessages, setChefMessages] = useState([
@@ -126,16 +269,51 @@ export default function AIChatbot() {
         content: m.content,
       }));
 
+      const activeCartItemNames = cartItems
+        .map((i) => i.product?.name || i.name)
+        .filter(Boolean);
+
+      const userPreferences = JSON.parse(
+        localStorage.getItem("bemsfarms_prefs") || "{}"
+      );
+
       const res = await api.post("/ai/chef-chat", {
         message: content,
         history: conversationHistory,
+        cartItems: activeCartItemNames,
+        userPreferences,
         userId: user?.id || null,
         email: user?.email || null,
         name: user?.name || null,
       });
 
-      const reply = res.data?.reply || res.data?.message || res.data?.content || "I'm here to help! Could you please clarify your culinary question?";
-      setChefMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      const data = res.data || {};
+      const reply = data.reply || data.message || data.content || "I'm here to help! Could you please clarify your culinary question?";
+      const isAutoAdd = data.action === "AUTO_ADD_TO_CART";
+      const itemsToAdd = data.recipeBundle?.items || data.relatedProducts || [];
+
+      // Auto-Add Intent (e.g. user requested "Add ingredients to cart")
+      if (isAutoAdd && itemsToAdd.length > 0) {
+        const formatted = itemsToAdd.map((i) => ({
+          ...i,
+          price: Number(i.price) || 0,
+          quantity: i.quantity || 1,
+        }));
+        addMultipleToCart(formatted, { preventDuplicate: true });
+        setCartNotice(`✨ Chef Bems added ${itemsToAdd.length} ingredient(s) directly to your active cart!`);
+        setTimeout(() => setCartNotice(null), 5000);
+      }
+
+      setChefMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: reply,
+          recipeBundle: data.recipeBundle ? { ...data.recipeBundle, isAutoAdded: isAutoAdd } : null,
+          relatedProducts: data.relatedProducts || [],
+          autoAdded: isAutoAdd,
+        },
+      ]);
       if (!open || isMinimized) setUnread((n) => n + 1);
     } catch (err) {
       setChefMessages((prev) => [
@@ -149,6 +327,40 @@ export default function AIChatbot() {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 120);
     }
+  };
+
+  const handleAddProduct = (product) => {
+    addToCart(
+      {
+        id: product.id,
+        name: product.name,
+        price: Number(product.price) || 0,
+        image_url: product.image_url || product.image,
+        unit: product.unit || "unit",
+      },
+      product.quantity || 1
+    );
+    setCartNotice(`Added ${product.name} to cart!`);
+    setTimeout(() => setCartNotice(null), 4000);
+  };
+
+  const handleAddBundleItems = (items) => {
+    if (!items || items.length === 0) return;
+    const formatted = items.map((i) => ({
+      ...i,
+      price: Number(i.price) || 0,
+      quantity: i.quantity || 1,
+    }));
+    addMultipleToCart(formatted, { preventDuplicate: true });
+    setCartNotice(`✨ Added ${items.length} ingredient(s) to your cart!`);
+    setTimeout(() => setCartNotice(null), 5000);
+  };
+
+  const handleInstantCheckout = (items) => {
+    if (!items || items.length === 0) return;
+    handleAddBundleItems(items);
+    setOpen(false);
+    navigate("/checkout");
   };
 
   const handleSendSupportMessage = async (text) => {
@@ -441,6 +653,23 @@ export default function AIChatbot() {
               </button>
             </div>
 
+            {/* Cart Notification Bar */}
+            {cartNotice && (
+              <div className="flex items-center justify-between bg-emerald-700 text-white px-3 py-1.5 text-[10px] font-bold shadow-xs">
+                <span className="truncate">{cartNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openCartDrawer();
+                  }}
+                  className="shrink-0 underline text-amber-300 hover:text-white font-extrabold ml-2 cursor-pointer"
+                >
+                  View Cart →
+                </button>
+              </div>
+            )}
+
             {/* Messages Scroll Area */}
             <div className="flex-1 space-y-3 overflow-y-auto bg-[#FAF9F6] p-3.5 text-xs">
               {/* CHEF MESSAGES */}
@@ -469,6 +698,57 @@ export default function AIChatbot() {
                       }`}
                     >
                       {formatMessage(msg.content)}
+
+                      {/* Recipe Bundle Interactive Card */}
+                      {msg.recipeBundle && (
+                        <ChatRecipeBundleCard
+                          bundle={msg.recipeBundle}
+                          isAutoAdded={msg.autoAdded || msg.recipeBundle.isAutoAdded}
+                          cartItems={cartItems}
+                          onAddItems={handleAddBundleItems}
+                          onInstantCheckout={handleInstantCheckout}
+                        />
+                      )}
+
+                      {/* Standalone Related Products List */}
+                      {!msg.recipeBundle && msg.relatedProducts?.length > 0 && (
+                        <div className="mt-2.5 pt-2 border-t border-slate-100">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block mb-1.5">
+                            Ingredients Available on Bems Farms:
+                          </span>
+                          <div className="space-y-1.5">
+                            {msg.relatedProducts.map((product, pIdx) => {
+                              const inCart = isItemInCart(product, cartItems);
+                              return (
+                                <div
+                                  key={product.id || pIdx}
+                                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-[#FAF9F6] p-1.5"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[11px] font-bold text-slate-900">{product.name}</p>
+                                    <p className="text-[10px] font-bold text-emerald-800">
+                                      ₦{Number(product.price).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  {inCart ? (
+                                    <span className="rounded bg-emerald-100 border border-emerald-300 text-emerald-800 px-2 py-0.5 text-[9px] font-black shrink-0">
+                                      ✓ In Cart
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddProduct(product)}
+                                      className="rounded px-2.5 py-1 text-[10px] font-black transition cursor-pointer shrink-0 bg-[#0A2E1C] hover:bg-[#14422B] text-white active:scale-95"
+                                    >
+                                      + Add
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
