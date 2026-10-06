@@ -5,6 +5,7 @@ import api from '../../lib/api'
 import BarcodeSvg from '../../components/ui/BarcodeSvg'
 import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
 import ProductDetailModal from '../../components/products/ProductDetailModal'
+import { formatCartonStock } from '../pos/POS'
 
 export default function ProductsList() {
   const navigate = useNavigate()
@@ -409,22 +410,30 @@ export default function ProductsList() {
                       <td>
                         <span className="badge bg-light text-dark border">{p.category || 'General'}</span>
                       </td>
-                      <td className="fw-bold text-dark">
-                        {formatNaira(p.price || p.unit_price)}
+                      <td className="text-dark">
+                        <div className="fw-bold">{formatNaira(p.price || p.unit_price)} <span className="fs-xs text-muted fw-normal">/{p.piece_unit_name || 'pc'}</span></div>
+                        {p.carton_price && p.pcs_per_carton > 1 && (
+                          <div className="fs-xs text-primary fw-semibold">{formatNaira(p.carton_price)} <span className="text-muted fw-normal">/{p.carton_unit_name || 'ctn'} ({p.pcs_per_carton}x)</span></div>
+                        )}
                       </td>
                       <td className="text-muted">
                         {p.cost_price ? formatNaira(p.cost_price) : '—'}
                       </td>
                       <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="fw-bold">{p.stock ?? p.stock_quantity ?? 0}</span>
-                          {isOutStock ? (
-                            <span className="badge bg-danger-subtle text-danger fs-xs">Out of Stock</span>
-                          ) : isLowStock ? (
-                            <span className="badge bg-warning-subtle text-warning fs-xs">Low Stock</span>
-                          ) : (
-                            <span className="badge bg-success-subtle text-success fs-xs">In Stock</span>
-                          )}
+                        <div className="d-flex flex-column gap-1">
+                          <span className="fw-bold text-dark fs-sm">
+                            {formatCartonStock(p.stock ?? p.stock_quantity ?? 0, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)}
+                          </span>
+                          <div className="d-flex align-items-center gap-1.5">
+                            {isOutStock ? (
+                              <span className="badge bg-danger-subtle text-danger fs-xs">Out of Stock</span>
+                            ) : isLowStock ? (
+                              <span className="badge bg-warning-subtle text-warning fs-xs">Low Stock</span>
+                            ) : (
+                              <span className="badge bg-success-subtle text-success fs-xs">In Stock</span>
+                            )}
+                            <span className="text-muted fs-xs font-monospace">({p.stock ?? p.stock_quantity ?? 0} pcs)</span>
+                          </div>
                         </div>
                       </td>
                       <td>

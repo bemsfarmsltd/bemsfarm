@@ -15,6 +15,26 @@ function formatNaira(amount) {
   return `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function formatCartonStock(totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function StockList() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -240,17 +260,34 @@ export default function StockList() {
                         </td>
                         <td>
                           <code className="text-primary d-block">{p.sku || '—'}</code>
-                          {p.barcode && <small className="text-muted font-monospace" style={{ fontSize: '11px' }}>BC: {p.barcode}</small>}
+                          {p.barcode && <small className="text-muted font-monospace d-block" style={{ fontSize: '11px' }}>BC: {p.barcode}</small>}
+                          {p.carton_barcode && <small className="text-secondary font-monospace d-block" style={{ fontSize: '10px' }}>Ctn BC: {p.carton_barcode}</small>}
                         </td>
                         <td><span className="badge bg-light text-dark">{p.category || 'General'}</span></td>
                         <td className="text-end fw-bold">
                           <span className={p.stock === 0 ? 'text-danger' : p.stock <= (p.low_stock_threshold || 5) ? 'text-warning' : 'text-success'}>
-                            {p.stock}
+                            {formatCartonStock(p.stock, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)}
                           </span>
+                          {Number(p.pcs_per_carton) > 1 && (
+                            <small className="text-muted d-block font-monospace" style={{ fontSize: '11px' }}>
+                              ({p.stock} total {p.piece_unit_name || 'pcs'})
+                            </small>
+                          )}
                         </td>
                         <td className="text-end text-muted">{p.low_stock_threshold || 5}</td>
                         <td className="text-end">{formatNaira(p.cost_price)}</td>
-                        <td className="text-end">{formatNaira(p.unit_price)}</td>
+                        <td className="text-end">
+                          <div>
+                            {formatNaira(p.unit_price)}
+                            <small className="text-muted"> / {p.piece_unit_name || 'pc'}</small>
+                          </div>
+                          {Number(p.pcs_per_carton) > 1 && p.carton_price > 0 && (
+                            <div className="text-primary fw-semibold" style={{ fontSize: '11px' }}>
+                              {formatNaira(p.carton_price)}
+                              <small className="text-muted"> / {p.carton_unit_name || 'ctn'}</small>
+                            </div>
+                          )}
+                        </td>
                         <td className="text-end fw-semibold">{formatNaira((p.stock || 0) * (p.unit_price || 0))}</td>
                         <td className="text-center">
                           <span className={`badge ${cfg.cls}`}>{cfg.label}</span>
@@ -310,11 +347,18 @@ export default function StockList() {
                 <div className="modal-body">
                   <div className="mb-3">
                     <label className="form-label text-muted fs-13">Current Warehouse Stock</label>
-                    <div className="fs-18 fw-bold text-primary">{adjustModal.stock} {adjustModal.unit || 'units'}</div>
+                    <div className="fs-18 fw-bold text-primary">
+                      {formatCartonStock(adjustModal.stock, adjustModal.pcs_per_carton, adjustModal.carton_unit_name, adjustModal.piece_unit_name)}
+                      {Number(adjustModal.pcs_per_carton) > 1 && (
+                        <span className="fs-13 fw-normal text-muted ms-2">({adjustModal.stock} total {adjustModal.piece_unit_name || 'pcs'})</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">New Accurate Stock Quantity <span className="text-danger">*</span></label>
+                    <label className="form-label fw-semibold">
+                      New Accurate Stock Quantity ({adjustModal.piece_unit_name || adjustModal.unit || 'pieces'}) <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       className="form-control"
@@ -323,6 +367,11 @@ export default function StockList() {
                       onChange={(e) => setAdjustForm({ ...adjustForm, new_quantity: e.target.value })}
                       required
                     />
+                    {Number(adjustModal.pcs_per_carton) > 1 && (
+                      <small className="text-muted mt-1 d-block">
+                        <strong>Pack Breakdown:</strong> {formatCartonStock(adjustForm.new_quantity, adjustModal.pcs_per_carton, adjustModal.carton_unit_name, adjustModal.piece_unit_name)} ({adjustModal.pcs_per_carton} pcs per {adjustModal.carton_unit_name || 'carton'})
+                      </small>
+                    )}
                   </div>
 
                   <div className="mb-3">

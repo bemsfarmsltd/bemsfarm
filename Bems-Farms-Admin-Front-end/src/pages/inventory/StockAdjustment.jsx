@@ -16,6 +16,26 @@ const REASONS = [
   'Promotional Giveaway',
 ]
 
+function formatCartonStock(totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function StockAdjustment() {
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
@@ -119,7 +139,8 @@ export default function StockAdjustment() {
         const nameMatch = p.name?.toLowerCase().includes(q)
         const skuMatch = p.sku?.toLowerCase().includes(q)
         const barcodeMatch = p.barcode?.toLowerCase().includes(q)
-        return nameMatch || skuMatch || barcodeMatch
+        const cartonBcMatch = p.carton_barcode?.toLowerCase().includes(q)
+        return nameMatch || skuMatch || barcodeMatch || cartonBcMatch
       })
       .slice(0, 40)
   }, [products, productSearch])
@@ -155,8 +176,8 @@ export default function StockAdjustment() {
       const query = productSearch.trim().toLowerCase()
       if (!query) return
 
-      // 1. Exact barcode match
-      let match = products.find((p) => p.barcode?.toLowerCase() === query)
+      // 1. Exact barcode match (piece or carton barcode)
+      let match = products.find((p) => p.barcode?.toLowerCase() === query || p.carton_barcode?.toLowerCase() === query)
       // 2. Exact SKU match
       if (!match) {
         match = products.find((p) => p.sku?.toLowerCase() === query)
@@ -188,6 +209,7 @@ export default function StockAdjustment() {
       let match = products.find(
         (p) =>
           p.barcode?.toLowerCase() === query ||
+          p.carton_barcode?.toLowerCase() === query ||
           p.sku?.toLowerCase() === query ||
           p.name?.toLowerCase().includes(query)
       )
@@ -458,7 +480,16 @@ export default function StockAdjustment() {
           <div className="row g-3 mb-3">
             <div className="col-6">
               <label className="form-label text-muted fs-12">Recorded Stock</label>
-              <div className="form-control bg-light fw-bold text-secondary">{form.current_qty}</div>
+              <div className="form-control bg-light fw-bold text-secondary">
+                {selectedProduct && Number(selectedProduct.pcs_per_carton) > 1 ? (
+                  <div>
+                    <div>{formatCartonStock(form.current_qty, selectedProduct.pcs_per_carton, selectedProduct.carton_unit_name, selectedProduct.piece_unit_name)}</div>
+                    <small className="text-muted fw-normal fs-11">({form.current_qty} total pcs)</small>
+                  </div>
+                ) : (
+                  <span>{form.current_qty} {selectedProduct?.unit || 'units'}</span>
+                )}
+              </div>
             </div>
             <div className="col-6">
               <label className="form-label fw-semibold">New Accurate Count <span className="text-danger">*</span></label>
@@ -471,6 +502,11 @@ export default function StockAdjustment() {
                 onChange={(e) => setForm({ ...form, new_quantity: e.target.value })}
                 required
               />
+              {selectedProduct && Number(selectedProduct.pcs_per_carton) > 1 && (
+                <small className="text-primary fw-semibold mt-1 d-block fs-11">
+                  = {formatCartonStock(form.new_quantity, selectedProduct.pcs_per_carton, selectedProduct.carton_unit_name, selectedProduct.piece_unit_name)}
+                </small>
+              )}
             </div>
           </div>
 

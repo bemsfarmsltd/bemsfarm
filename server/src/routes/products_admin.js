@@ -295,6 +295,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
     if (status) {
       params.push(status);
       where.push(`p.status = $${params.length}`);
+    } else {
+      where.push("p.status != 'merged'");
     }
     if (stock === "low")
       where.push("p.stock <= p.low_stock_threshold AND p.stock > 0");
@@ -317,6 +319,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
         p.id, p.name, p.sku, p.image_url, p.barcode, p.category_id,
         p.unit_price, p.cost_price, p.price,
         p.stock, p.low_stock_threshold,
+        p.pcs_per_carton, p.carton_price, p.carton_barcode,
+        p.carton_unit_name, p.piece_unit_name,
         p.status, p.is_featured, p.available_for_sale,
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
         p.barcode_last_printed_at,
@@ -1126,6 +1130,27 @@ router.post(
             [product.id, unit.unit_name.trim(), uMult, uPrice, uCost, uBc, uSku, uIsDef]
           );
         }
+
+        const primaryBulkUnit = packaging_units.find(u => parseFloat(u.multiplier) > 1);
+        if (primaryBulkUnit) {
+          await client.query(
+            `UPDATE products
+             SET pcs_per_carton = $1,
+                 carton_price = $2,
+                 carton_barcode = $3,
+                 carton_unit_name = $4,
+                 piece_unit_name = $5
+             WHERE id = $6`,
+            [
+              parseFloat(primaryBulkUnit.multiplier) || 1,
+              parseFloat(primaryBulkUnit.price) || null,
+              primaryBulkUnit.barcode?.trim() || null,
+              primaryBulkUnit.unit_name?.trim() || 'Carton',
+              unit || 'Piece',
+              product.id
+            ]
+          );
+        }
       }
 
       // Sync to n8n catalogue
@@ -1668,6 +1693,27 @@ router.patch(
             `INSERT INTO product_packaging_units (product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())`,
             [req.params.id, unit.unit_name.trim(), uMult, uPrice, uCost, uBc, uSku, uIsDef]
+          );
+        }
+
+        const primaryBulkUnit = packaging_units.find(u => parseFloat(u.multiplier) > 1);
+        if (primaryBulkUnit) {
+          await client.query(
+            `UPDATE products
+             SET pcs_per_carton = $1,
+                 carton_price = $2,
+                 carton_barcode = $3,
+                 carton_unit_name = $4,
+                 piece_unit_name = COALESCE($5, piece_unit_name, 'Piece')
+             WHERE id = $6`,
+            [
+              parseFloat(primaryBulkUnit.multiplier) || 1,
+              parseFloat(primaryBulkUnit.price) || null,
+              primaryBulkUnit.barcode?.trim() || null,
+              primaryBulkUnit.unit_name?.trim() || 'Carton',
+              unit || null,
+              req.params.id
+            ]
           );
         }
       }

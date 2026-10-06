@@ -41,6 +41,26 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
     return '₦' + Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
+  const formatCartonStock = (totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') => {
+    const stock = parseInt(totalStock) || 0
+    const perCarton = parseInt(pcsPerCarton) || 0
+    if (perCarton <= 1) {
+      return `${stock} ${pieceUnit || 'Pcs'}`
+    }
+    const cartons = Math.floor(stock / perCarton)
+    const loosePcs = stock % perCarton
+
+    if (cartons > 0 && loosePcs > 0) {
+      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+      return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+    } else if (cartons > 0 && loosePcs === 0) {
+      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+      return `${cartons} ${ctnLabel}`
+    } else {
+      return `${loosePcs} ${pieceUnit || 'Pcs'}`
+    }
+  }
+
   const handleCopyBarcode = () => {
     if (!product?.barcode) return
     navigator.clipboard.writeText(product.barcode)
@@ -191,9 +211,18 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                         </span>
                       </div>
                       <div className="d-flex align-items-baseline gap-2">
-                        <h3 className="fw-bold font-display text-dark mb-0">{stockQty.toLocaleString()}</h3>
+                        <h3 className="fw-bold font-display text-dark mb-0">
+                          {Number(product.pcs_per_carton) > 1
+                            ? formatCartonStock(stockQty, product.pcs_per_carton, product.carton_unit_name, product.piece_unit_name)
+                            : stockQty.toLocaleString()}
+                        </h3>
                         <span className="text-muted fs-sm">{product.unit_abbr || product.unit || 'units'}</span>
                       </div>
+                      {Number(product.pcs_per_carton) > 1 && (
+                        <div className="text-muted fs-xs font-monospace mt-1">
+                          Total Base Stock: <strong>{stockQty.toLocaleString()} pieces</strong>
+                        </div>
+                      )}
                       <div className="text-muted fs-xs mt-2 d-flex justify-content-between">
                         <span>Threshold: <strong>{lowThreshold}</strong></span>
                         <span>Track: <strong>{product.track_inventory ? 'Yes' : 'No'}</strong></span>
@@ -210,7 +239,16 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                           {profitMargin}% margin
                         </span>
                       </div>
-                      <h3 className="fw-bold font-display text-dark mb-0">{formatNaira(sellingPrice)}</h3>
+                      <h3 className="fw-bold font-display text-dark mb-0">
+                        {formatNaira(sellingPrice)}
+                        <small className="fs-xs fw-normal text-muted"> / {product.piece_unit_name || 'pc'}</small>
+                      </h3>
+                      {Number(product.pcs_per_carton) > 1 && product.carton_price > 0 && (
+                        <div className="text-primary fw-bold fs-xs mt-1">
+                          {formatNaira(product.carton_price)}
+                          <small className="text-muted fw-normal"> / {product.carton_unit_name || 'carton'}</small>
+                        </div>
+                      )}
                       <div className="text-muted fs-xs mt-2 d-flex justify-content-between">
                         <span>Cost: <strong>{costPrice > 0 ? formatNaira(costPrice) : '—'}</strong></span>
                         <span>Profit: <strong className="text-success">{grossProfit > 0 ? formatNaira(grossProfit) : '—'}</strong></span>
@@ -337,13 +375,13 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                               />
                             </div>
                             <span className="font-monospace fs-xs text-muted d-block">
-                              Standard 1D Code 128
+                              Standard Piece 1D Code 128
                             </span>
                           </>
                         ) : (
                           <div className="py-3 text-muted">
                             <i className="ri-barcode-line fs-2 d-block mb-1 opacity-50"></i>
-                            <span className="fs-xs">No barcode assigned yet.</span>
+                            <span className="fs-xs">No piece barcode assigned.</span>
                             <div className="mt-2">
                               <Link
                                 to="/products/barcode"
@@ -352,6 +390,37 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                               >
                                 Go to Barcode Studio
                               </Link>
+                            </div>
+                          </div>
+                        )}
+
+                        {product.carton_barcode && (
+                          <div className="mt-3 pt-3 border-top text-start">
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fs-xs fw-bold text-primary">
+                                <i className="ri-archive-line me-1"></i>
+                                {product.carton_unit_name || 'Carton'} Barcode
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-light border py-0 px-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(product.carton_barcode)
+                                  toast.success('Carton barcode copied!')
+                                }}
+                                title="Copy carton barcode"
+                              >
+                                <i className="ri-file-copy-line"></i>
+                              </button>
+                            </div>
+                            <div className="bg-white p-2 rounded text-center border">
+                              <BarcodeSvg
+                                value={product.carton_barcode}
+                                format="CODE128"
+                                height={42}
+                                width={1.8}
+                                displayValue={true}
+                              />
                             </div>
                           </div>
                         )}
@@ -457,6 +526,30 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                                     <td className="text-muted fw-semibold ps-3">Unit of Measure</td>
                                     <td>{product.unit_name ? `${product.unit_name} (${product.unit_abbr || product.unit})` : (product.unit || 'pcs')}</td>
                                   </tr>
+                                  {Number(product.pcs_per_carton) > 1 && (
+                                    <>
+                                      <tr>
+                                        <td className="text-muted fw-semibold ps-3">Bulk Packaging Unit</td>
+                                        <td>
+                                          <span className="badge bg-primary-subtle text-primary border">
+                                            1 {product.carton_unit_name || 'Carton'} = {product.pcs_per_carton} {product.piece_unit_name || product.unit || 'pieces'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                      {product.carton_price > 0 && (
+                                        <tr>
+                                          <td className="text-muted fw-semibold ps-3">Carton Price</td>
+                                          <td className="fw-bold text-success">{formatNaira(product.carton_price)}</td>
+                                        </tr>
+                                      )}
+                                      {product.carton_barcode && (
+                                        <tr>
+                                          <td className="text-muted fw-semibold ps-3">Carton Barcode</td>
+                                          <td className="font-monospace text-dark">{product.carton_barcode}</td>
+                                        </tr>
+                                      )}
+                                    </>
+                                  )}
                                   <tr>
                                     <td className="text-muted fw-semibold ps-3">Available for Sale</td>
                                     <td>

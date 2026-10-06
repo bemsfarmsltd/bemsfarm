@@ -94,7 +94,8 @@ export default function StockIn() {
     setForm({
       product_id: defaultProdId,
       warehouse_id: defaultWh,
-      quantity: 20,
+      unit_mode: Number(preselectedProduct?.pcs_per_carton) > 1 ? 'carton' : 'piece',
+      quantity: 10,
       unit_cost: defaultCost,
       supplier: 'Bems Farms Internal Harvest',
       reference: refNum,
@@ -111,6 +112,7 @@ export default function StockIn() {
     setForm((prev) => ({
       ...prev,
       product_id: id ? String(id) : '',
+      unit_mode: Number(found?.pcs_per_carton) > 1 ? 'carton' : 'piece',
       unit_cost: found?.cost_price !== undefined ? String(found.cost_price) : prev.unit_cost,
     }))
   }
@@ -120,25 +122,36 @@ export default function StockIn() {
     if (!form.product_id) {
       return toast.error('Please select a product to receive')
     }
-    if (!form.quantity || parseInt(form.quantity) <= 0) {
+    const rawQty = parseInt(form.quantity)
+    if (!rawQty || rawQty <= 0) {
       return toast.error('Please enter a valid quantity greater than 0')
     }
+
+    const currentProd = products.find((p) => String(p.id) === String(form.product_id))
+    const pcsPerCarton = parseInt(currentProd?.pcs_per_carton) || 0
+    const isCartonMode = form.unit_mode === 'carton' && pcsPerCarton > 1
+    const totalPieces = isCartonMode ? rawQty * pcsPerCarton : rawQty
+
+    const notesExtra = isCartonMode
+      ? `Received ${rawQty} ${currentProd?.carton_unit_name || 'carton'}(s) @ ${pcsPerCarton} pcs/carton = ${totalPieces} total pieces.`
+      : ''
+    const finalNotes = [form.notes?.trim(), notesExtra].filter(Boolean).join(' | ')
 
     setSubmitting(true)
     try {
       const res = await api.post('/admin/inventory/stock-in', {
         product_id: parseInt(form.product_id),
         warehouse_id: form.warehouse_id ? parseInt(form.warehouse_id) : null,
-        quantity: parseInt(form.quantity),
+        quantity: totalPieces,
         unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : 0,
         supplier: form.supplier?.trim() || 'Direct Intake',
         reference: form.reference?.trim() || undefined,
         batch_no: form.batch_no?.trim() || undefined,
         expiry_date: form.expiry_date || undefined,
-        notes: form.notes?.trim() || undefined,
+        notes: finalNotes || undefined,
       })
 
-      toast.success(res.data?.message || 'Stock received successfully!')
+      toast.success(res.data?.message || `Successfully received ${totalPieces} pieces into stock!`)
       setModalOpen(false)
       fetchMovements()
     } catch (err) {
@@ -308,18 +321,49 @@ export default function StockIn() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
-                      <label className="form-label fw-semibold">Quantity Received <span className="text-danger">*</span></label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="1"
-                        placeholder="e.g. 50"
-                        value={form.quantity}
-                        onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                        required
-                      />
-                    </div>
+                    {(() => {
+                      const curProd = products.find((p) => String(p.id) === String(form.product_id))
+                      const hasCarton = Number(curProd?.pcs_per_carton) > 1
+                      return (
+                        <div className="col-md-4">
+                          <label className="form-label fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Quantity Received <span className="text-danger">*</span></span>
+                            {hasCarton && (
+                              <div className="btn-group btn-group-sm" role="group">
+                                <button
+                                  type="button"
+                                  className={`btn py-0 px-2 fs-11 ${form.unit_mode === 'carton' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                  onClick={() => setForm((prev) => ({ ...prev, unit_mode: 'carton' }))}
+                                >
+                                  {curProd.carton_unit_name || 'Cartons'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`btn py-0 px-2 fs-11 ${form.unit_mode === 'piece' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                  onClick={() => setForm((prev) => ({ ...prev, unit_mode: 'piece' }))}
+                                >
+                                  {curProd.piece_unit_name || 'Pieces'}
+                                </button>
+                              </div>
+                            )}
+                          </label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min="1"
+                            placeholder={form.unit_mode === 'carton' ? "e.g. 10 cartons" : "e.g. 50 pieces"}
+                            value={form.quantity}
+                            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                            required
+                          />
+                          {hasCarton && form.unit_mode === 'carton' && (
+                            <small className="text-primary fw-semibold mt-1 d-block fs-11">
+                              = {(parseInt(form.quantity) || 0) * curProd.pcs_per_carton} {curProd.piece_unit_name || 'pieces'} ({curProd.pcs_per_carton} pcs/{curProd.carton_unit_name || 'carton'})
+                            </small>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div className="col-md-4">
                       <label className="form-label fw-semibold">Unit Cost (₦)</label>

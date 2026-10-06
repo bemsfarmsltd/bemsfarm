@@ -251,11 +251,11 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper", "ki
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = ["p.status != 'archived'"];
+    const where = ["p.status NOT IN ('archived', 'merged')"];
 
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length})`);
+      where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length} OR p.carton_barcode ILIKE $${params.length})`);
     }
     if (category) {
       params.push(parseInt(category));
@@ -275,10 +275,12 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper", "ki
 
     const rows = await pool.query(`
       SELECT
-        p.id, p.name, p.sku, p.image_url,
+        p.id, p.name, p.sku, p.barcode, p.image_url,
         p.stock, p.stock_quantity, p.low_stock_threshold,
         COALESCE(p.unit_price, p.price, 0) AS unit_price,
         COALESCE(p.cost_price, 0)          AS cost_price,
+        p.pcs_per_carton, p.carton_price, p.carton_barcode,
+        p.carton_unit_name, p.piece_unit_name,
         p.status, p.expiry_date,
         cat.name AS category,
         ''       AS brand,
@@ -304,7 +306,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper", "ki
         COUNT(*) FILTER (WHERE stock > 0 AND stock <= COALESCE(low_stock_threshold, 0)) AS low_stock,
         COALESCE(SUM(stock * COALESCE(unit_price, price, 0)), 0) AS total_value
       FROM products
-      WHERE status != 'archived'
+      WHERE status NOT IN ('archived', 'merged')
     `);
 
     res.json({
@@ -1045,7 +1047,7 @@ router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storeke
         COALESCE(SUM(p.stock), 0) AS total_units,
         COALESCE(SUM(p.stock * COALESCE(p.unit_price, p.price, 0)), 0) AS total_value
       FROM warehouses w
-      LEFT JOIN products p ON p.warehouse_id = w.id AND p.status != 'archived'
+      LEFT JOIN products p ON p.warehouse_id = w.id AND p.status NOT IN ('archived', 'merged')
       GROUP BY w.id
       ORDER BY w.id ASC
     `);
@@ -1063,11 +1065,13 @@ router.get("/warehouses/:id/products", requireRole("superadmin", "manager", "adm
         p.stock, p.low_stock_threshold,
         COALESCE(p.unit_price, p.price, 0) AS unit_price,
         COALESCE(p.cost_price, 0) AS cost_price,
+        p.pcs_per_carton, p.carton_price, p.carton_barcode,
+        p.carton_unit_name, p.piece_unit_name,
         p.status,
         c.name AS category
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.warehouse_id = $1 AND p.status != 'archived'
+      WHERE p.warehouse_id = $1 AND p.status NOT IN ('archived', 'merged')
       ORDER BY p.name ASC
     `, [req.params.id]);
 

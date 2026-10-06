@@ -198,7 +198,7 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
 
     const rows = await client.query(
       `SELECT id, name, price, stock, available_for_sale
-       FROM products WHERE id = ANY($1::int[]) AND status != 'archived' FOR UPDATE`,
+       FROM products WHERE id = ANY($1::int[]) AND status = 'active' AND available_for_sale = true FOR UPDATE`,
       [[...requested.keys()]],
     );
     const products = new Map(rows.rows.map((product) => [product.id, product]));
@@ -434,7 +434,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     const productIds = [...requested.keys()];
     const productRows = await client.query(
       `SELECT id, name, price, stock, available_for_sale, sku, barcode, unit
-       FROM products WHERE id = ANY($1::int[]) AND status != 'archived' FOR UPDATE`,
+       FROM products WHERE id = ANY($1::int[]) AND status = 'active' AND available_for_sale = true FOR UPDATE`,
       [productIds],
     );
     const productsById = new Map(productRows.rows.map((p) => [p.id, p]));

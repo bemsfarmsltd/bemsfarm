@@ -118,14 +118,34 @@ export default function Barcode() {
     }
   }
 
+  const formatCartonStock = (totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') => {
+    const stock = parseInt(totalStock) || 0
+    const perCarton = parseInt(pcsPerCarton) || 0
+    if (perCarton <= 1) {
+      return `${stock} ${pieceUnit || 'Pcs'}`
+    }
+    const cartons = Math.floor(stock / perCarton)
+    const loosePcs = stock % perCarton
+
+    if (cartons > 0 && loosePcs > 0) {
+      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+      return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+    } else if (cartons > 0 && loosePcs === 0) {
+      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+      return `${cartons} ${ctnLabel}`
+    } else {
+      return `${loosePcs} ${pieceUnit || 'Pcs'}`
+    }
+  }
+
   useEffect(() => {
     fetchProducts()
   }, [targetProductId])
 
   // Stats calculation
   const totalProducts = products.length
-  const productsWithBarcode = useMemo(() => products.filter((p) => p.barcode && p.barcode.trim()), [products])
-  const productsMissingBarcode = useMemo(() => products.filter((p) => !p.barcode || !p.barcode.trim()), [products])
+  const productsWithBarcode = useMemo(() => products.filter((p) => (p.barcode && p.barcode.trim()) || (p.carton_barcode && p.carton_barcode.trim())), [products])
+  const productsMissingBarcode = useMemo(() => products.filter((p) => (!p.barcode || !p.barcode.trim()) && (!p.carton_barcode || !p.carton_barcode.trim())), [products])
   const productsUnprinted = useMemo(() => {
     return products.filter((p) => p.barcode && p.barcode.trim() && !p.barcode_last_printed_at)
   }, [products])
@@ -135,8 +155,8 @@ export default function Barcode() {
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       // Tab filter
-      if (activeTab === 'with_barcode' && (!p.barcode || !p.barcode.trim())) return false
-      if (activeTab === 'missing_barcode' && p.barcode && p.barcode.trim()) return false
+      if (activeTab === 'with_barcode' && (!p.barcode || !p.barcode.trim()) && (!p.carton_barcode || !p.carton_barcode.trim())) return false
+      if (activeTab === 'missing_barcode' && (p.barcode && p.barcode.trim())) return false
       if (activeTab === 'unprinted' && (!p.barcode || !p.barcode.trim() || p.barcode_last_printed_at)) return false
       if (activeTab === 'queue' && !printQueue[p.id]) return false
 
@@ -155,7 +175,8 @@ export default function Barcode() {
         const nameMatch = p.name?.toLowerCase().includes(q)
         const skuMatch = p.sku?.toLowerCase().includes(q)
         const bcMatch = p.barcode?.toLowerCase().includes(q)
-        if (!nameMatch && !skuMatch && !bcMatch) return false
+        const cartonBcMatch = p.carton_barcode?.toLowerCase().includes(q)
+        if (!nameMatch && !skuMatch && !bcMatch && !cartonBcMatch) return false
       }
 
       return true
@@ -1266,6 +1287,11 @@ export default function Barcode() {
                           </td>
                           <td>
                             <div className="fw-bold text-dark fs-sm">{formatNaira(p.price || p.unit_price)}</div>
+                            {Number(p.pcs_per_carton) > 1 && p.carton_price > 0 && (
+                              <div className="text-primary fw-semibold fs-xs">
+                                {formatNaira(p.carton_price)} <small className="text-muted">/ {p.carton_unit_name || 'ctn'}</small>
+                              </div>
+                            )}
                             <div className="d-flex align-items-center gap-1 mt-1">
                               <span
                                 className={`badge ${
@@ -1274,16 +1300,56 @@ export default function Barcode() {
                                     : 'bg-danger-subtle text-danger border border-danger-subtle'
                                 } fs-xs py-0`}
                               >
-                                Stock: {p.stock ?? p.stock_quantity ?? 0} {p.unit || 'units'}
+                                {Number(p.pcs_per_carton) > 1
+                                  ? formatCartonStock(p.stock ?? p.stock_quantity ?? 0, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)
+                                  : `Stock: ${p.stock ?? p.stock_quantity ?? 0} ${p.unit || 'units'}`}
                               </span>
                             </div>
                           </td>
                           <td>
                             {hasBarcode ? (
+                              <div>
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="bg-light p-1 rounded border">
+                                    <BarcodeSvg
+                                      value={p.barcode}
+                                      format={symbology}
+                                      width={1.2}
+                                      height={24}
+                                      displayValue={false}
+                                    />
+                                  </div>
+                                  <div>
+                                    <span className="font-monospace fs-xs fw-bold text-dark d-block">
+                                      {p.barcode}
+                                    </span>
+                                    <span className="badge bg-success-subtle text-success fs-xs py-0">Ready</span>
+                                  </div>
+                                </div>
+                                {p.carton_barcode && (
+                                  <div className="mt-1 pt-1 border-top d-flex align-items-center gap-2">
+                                    <div className="bg-light p-0.5 rounded border">
+                                      <BarcodeSvg
+                                        value={p.carton_barcode}
+                                        format={symbology}
+                                        width={1.0}
+                                        height={18}
+                                        displayValue={false}
+                                      />
+                                    </div>
+                                    <div>
+                                      <span className="font-monospace fw-bold text-primary d-block" style={{ fontSize: '11px' }}>
+                                        {p.carton_unit_name || 'Ctn'}: {p.carton_barcode}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : p.carton_barcode ? (
                               <div className="d-flex align-items-center gap-2">
                                 <div className="bg-light p-1 rounded border">
                                   <BarcodeSvg
-                                    value={p.barcode}
+                                    value={p.carton_barcode}
                                     format={symbology}
                                     width={1.2}
                                     height={24}
@@ -1291,10 +1357,10 @@ export default function Barcode() {
                                   />
                                 </div>
                                 <div>
-                                  <span className="font-monospace fs-xs fw-bold text-dark d-block">
-                                    {p.barcode}
+                                  <span className="font-monospace fs-xs fw-bold text-primary d-block">
+                                    {p.carton_barcode}
                                   </span>
-                                  <span className="badge bg-success-subtle text-success fs-xs py-0">Ready</span>
+                                  <span className="badge bg-info-subtle text-info fs-xs py-0">Carton Only</span>
                                 </div>
                               </div>
                             ) : (
