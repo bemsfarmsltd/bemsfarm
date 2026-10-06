@@ -746,7 +746,14 @@ export default function StockValuation() {
                         </td>
 
                         {/* Cost Price */}
-                        <td className="text-end font-monospace text-muted fs-13">{money(p.cost_price)}</td>
+                        <td className="text-end font-monospace text-muted fs-13">
+                          <div>{money(p.cost_price)}</div>
+                          {Number(p.pcs_per_carton) > 1 && (
+                            <small className="text-muted fs-11 d-block font-monospace">
+                              {money(Number(p.cost_price) / Number(p.pcs_per_carton))} / {p.piece_unit_name || 'pc'}
+                            </small>
+                          )}
+                        </td>
 
                         {/* Selling Price */}
                         <td className="text-end font-monospace fw-bold text-dark fs-13">

@@ -570,7 +570,13 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
       pool.query(`
         SELECT
           COUNT(*) AS total_skus,
-          COALESCE(SUM(stock * COALESCE(cost_price, 0)), 0) AS cost_value,
+          COALESCE(SUM(
+            CASE 
+              WHEN COALESCE(pcs_per_carton, 1) > 1 
+              THEN (stock::numeric / pcs_per_carton::numeric) * COALESCE(cost_price, 0)
+              ELSE stock * COALESCE(cost_price, 0)
+            END
+          ), 0) AS cost_value,
           COALESCE(SUM(stock * COALESCE(unit_price, price, 0)), 0)             AS retail_value,
           COALESCE(SUM(stock), 0) AS total_units
         FROM products WHERE status = 'active'
@@ -581,7 +587,13 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
           cat.name AS category,
           COUNT(p.id) AS skus,
           SUM(p.stock) AS total_units,
-          COALESCE(SUM(p.stock * COALESCE(p.cost_price, 0)), 0) AS cost_value,
+          COALESCE(SUM(
+            CASE 
+              WHEN COALESCE(p.pcs_per_carton, 1) > 1 
+              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0)
+              ELSE p.stock * COALESCE(p.cost_price, 0)
+            END
+          ), 0) AS cost_value,
           COALESCE(SUM(p.stock * COALESCE(p.unit_price, p.price, 0)), 0)               AS retail_value
         FROM products p
         JOIN categories cat ON p.category_id = cat.id
@@ -597,13 +609,29 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
           COALESCE(p.low_stock_threshold, p.reorder_level, 5) AS low_stock_threshold,
           COALESCE(p.unit_price, p.price, 0) AS unit_price,
           COALESCE(p.cost_price, 0)          AS cost_price,
-          p.stock * COALESCE(p.cost_price, 0) AS cost_value,
-          p.stock * COALESCE(p.unit_price, p.price, 0) AS retail_value,
-          p.stock * (COALESCE(p.unit_price, p.price, 0) - COALESCE(p.cost_price, 0)) AS potential_profit,
-          CASE WHEN COALESCE(p.unit_price, p.price, 0) > 0
-            THEN ROUND(((COALESCE(p.unit_price, p.price, 0) - COALESCE(p.cost_price, 0)) /
-              COALESCE(p.unit_price, p.price, 0)) * 100, 2)
-            ELSE 0 END AS margin_pct
+          CASE 
+            WHEN COALESCE(p.pcs_per_carton, 1) > 1 
+            THEN ROUND((p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0), 2)
+            ELSE ROUND(p.stock * COALESCE(p.cost_price, 0), 2)
+          END AS cost_value,
+          ROUND(p.stock * COALESCE(p.unit_price, p.price, 0), 2) AS retail_value,
+          ROUND(
+            (p.stock * COALESCE(p.unit_price, p.price, 0)) -
+            (CASE 
+              WHEN COALESCE(p.pcs_per_carton, 1) > 1 
+              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0)
+              ELSE p.stock * COALESCE(p.cost_price, 0)
+            END), 2
+          ) AS potential_profit,
+          CASE 
+            WHEN COALESCE(p.unit_price, p.price, 0) > 0 THEN 
+              ROUND((
+                (COALESCE(p.unit_price, p.price, 0) - 
+                 (CASE WHEN COALESCE(p.pcs_per_carton, 1) > 1 THEN COALESCE(p.cost_price, 0) / p.pcs_per_carton::numeric ELSE COALESCE(p.cost_price, 0) END)
+                ) / COALESCE(p.unit_price, p.price, 0)
+              ) * 100, 2)
+            ELSE 0 
+          END AS margin_pct
         FROM products p
         LEFT JOIN categories cat ON cat.id = p.category_id
         WHERE p.status = 'active'
