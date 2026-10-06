@@ -320,9 +320,9 @@ export default function POSProfileModal({ isOpen, onClose, onLogout, session, sh
                   {session?.terminal_id && ` · Terminal #${session.terminal_id}`}
                 </span>
               </div>
-              {shiftStats && shiftStats.totalSales > 0 && (
+              {session && (
                 <div className="fw-bold text-emerald-200">
-                  Shift Sales: ₦{Number(shiftStats.totalSales).toLocaleString()}
+                  Shift Sales: ₦{Number(shiftStats?.totalSales || 0).toLocaleString()}
                 </div>
               )}
             </div>

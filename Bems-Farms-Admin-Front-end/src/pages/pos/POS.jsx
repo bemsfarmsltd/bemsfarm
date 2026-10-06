@@ -519,7 +519,6 @@ export default function POS() {
           console.error('Live online orders load failed', e)
         }
       }
-
       await fetchOnlineOrders()
 
       try {
@@ -528,6 +527,8 @@ export default function POS() {
         if (Array.isArray(rcpts) && isMounted) {
           const mappedHistory = rcpts.map(r => ({
             inv: r.receipt_number || r.id,
+            rawTime: r.paid_at || r.created_at || null,
+            cashierId: r.cashier_id || null,
             cust: r.customer_name || 'Walk-in',
             method: r.payment_method || 'Cash',
             time: r.paid_at ? new Date(r.paid_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
@@ -2045,17 +2046,55 @@ export default function POS() {
 
   // Live Salesperson Shift Analytics
   const shiftStats = useMemo(() => {
-    const totalSales = historyList.reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const txnCount = historyList.length
+    // If no active shift session exists, shift stats are strictly 0
+    if (!session) {
+      return {
+        totalSales: 0,
+        txnCount: 0,
+        aov: 0,
+        cashSales: 0,
+        cardSales: 0,
+        transferSales: 0,
+        splitSales: 0,
+        startingFloat: 0,
+        expectedDrawerCash: 0,
+        unitsSold: 0,
+        salesTarget: 100000,
+        targetPct: 0,
+        vatCollected: 0,
+        netRevenue: 0,
+        estCommission: 0,
+        walkinCount: 0,
+        memberCount: 0,
+        loyaltyPtsIssued: 0,
+        countedCash: 0,
+        drawerVariance: 0,
+        hourlyData: [],
+        topMovingItems: []
+      }
+    }
+
+    // Filter to orders completed during this active session
+    const sessionOpenTime = session.opened_at ? new Date(session.opened_at).getTime() : 0
+    const sessionHistory = historyList.filter(h => {
+      if (h.cashierId && user?.id && Number(h.cashierId) !== Number(user.id)) return false
+      if (h.rawTime && sessionOpenTime) {
+        return new Date(h.rawTime).getTime() >= sessionOpenTime
+      }
+      return false
+    })
+
+    const totalSales = sessionHistory.reduce((s, h) => s + (Number(h.amount) || 0), 0)
+    const txnCount = sessionHistory.length
     const aov = txnCount > 0 ? Math.round(totalSales / txnCount) : 0
-    const cashSales = historyList.filter(h => h.method === 'Cash').reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const cardSales = historyList.filter(h => h.method?.includes('Card') || h.method?.includes('POS')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const transferSales = historyList.filter(h => h.method?.includes('Transfer') || h.method?.includes('QR')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const splitSales = historyList.filter(h => h.method?.includes('Split')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const startingFloat = 10000
+    const cashSales = sessionHistory.filter(h => h.method === 'Cash').reduce((s, h) => s + (Number(h.amount) || 0), 0)
+    const cardSales = sessionHistory.filter(h => h.method?.includes('Card') || h.method?.includes('POS')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
+    const transferSales = sessionHistory.filter(h => h.method?.includes('Transfer') || h.method?.includes('QR')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
+    const splitSales = sessionHistory.filter(h => h.method?.includes('Split')).reduce((s, h) => s + (Number(h.amount) || 0), 0)
+    const startingFloat = Number(session.opening_cash || 0)
     const expectedDrawerCash = startingFloat + cashSales
 
-    const unitsSold = 24
+    const unitsSold = sessionHistory.reduce((s, h) => s + (h.items?.reduce((is, item) => is + (Number(item.qty) || 1), 0) || 0), 0)
     const salesTarget = 100000
     const targetPct = Math.min(100, Math.round((totalSales / salesTarget) * 100))
     const vatCollected = taxConfig.enabled
@@ -2063,31 +2102,16 @@ export default function POS() {
       : 0
     const netRevenue = totalSales - vatCollected
     const estCommission = Math.round(totalSales * 0.02)
-    const walkinCount = historyList.filter(h => (h.cust || '').toLowerCase().includes('walk-in')).length
-    const memberCount = historyList.filter(h => !(h.cust || '').toLowerCase().includes('walk-in')).length
+    const walkinCount = sessionHistory.filter(h => (h.cust || '').toLowerCase().includes('walk-in')).length
+    const memberCount = sessionHistory.filter(h => !(h.cust || '').toLowerCase().includes('walk-in')).length
     const loyaltyPtsIssued = Math.round(totalSales / 50)
 
     // Denomination physical count total & variance
     const countedCash = Object.entries(denominations).reduce((s, [val, qty]) => s + Number(val) * (Number(qty) || 0), 0)
     const drawerVariance = countedCash - expectedDrawerCash
 
-    // Hourly Distribution Data
-    const hourlyData = [
-      { hour: '09:00 - 10:00 AM', amount: 3500, count: 1, pct: 25, isPeak: false },
-      { hour: '11:00 - 12:00 PM', amount: 14200, count: 1, pct: 100, isPeak: true },
-      { hour: '12:00 - 01:00 PM', amount: 8750, count: 1, pct: 62, isPeak: false },
-      { hour: '01:00 - 02:00 PM', amount: 2400, count: 1, pct: 17, isPeak: false },
-      { hour: '02:00 - 03:00 PM', amount: 11700, count: 2, pct: 82, isPeak: false },
-    ]
-
-    // Fast Moving Shift Items
-    const topMovingItems = [
-      { rank: 1, name: 'Kings Oil 2 Liters', icon: '🫒', sku: 'PRD-0015', qty: 5, revenue: 52500, share: '32%' },
-      { rank: 2, name: 'Ama Wonda Fried Rice', icon: '🌾', sku: 'PRD-0009', qty: 3, revenue: 36000, share: '22%' },
-      { rank: 3, name: 'Devon Kings 500ml Oil', icon: '🫒', sku: 'PRD-0017', qty: 4, revenue: 30000, share: '18%' },
-      { rank: 4, name: '210g Tin Tomatoes', icon: '🍅', sku: 'PRD-0004', qty: 3, revenue: 24000, share: '15%' },
-      { rank: 5, name: '1Kg Salt Biggest Pack', icon: '🧂', sku: 'PRD-0019', qty: 2, revenue: 25000, share: '13%' },
-    ]
+    const hourlyData = []
+    const topMovingItems = []
 
     return {
       totalSales,
@@ -2113,7 +2137,7 @@ export default function POS() {
       hourlyData,
       topMovingItems
     }
-  }, [historyList, denominations])
+  }, [historyList, denominations, session, user, taxConfig])
 
   // Split Helpers
   function addSplitRow() {
