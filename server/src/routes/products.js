@@ -45,7 +45,7 @@ router.get("/search", async (req, res, next) => {
            c.name as category_name
          FROM products p
          LEFT JOIN categories c ON c.id = p.category_id
-         WHERE p.status != 'archived' AND p.name ILIKE $1
+         WHERE p.status = 'active' AND p.available_for_sale = true AND p.name ILIKE $1
          ORDER BY p.is_featured DESC, p.name ASC
          LIMIT $2`,
         [`%${cleanQ}%`, maxResults],
@@ -93,7 +93,7 @@ router.get("/search", async (req, res, next) => {
         ) AS rank_score
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.status != 'archived'
+      WHERE p.status = 'active' AND p.available_for_sale = true
         AND (${tokenClause})
       ORDER BY rank_score DESC, COALESCE(p.stock, 0) > 0 DESC, p.is_featured DESC, p.name ASC
       LIMIT ${limitParam}

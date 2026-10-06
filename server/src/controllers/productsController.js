@@ -23,7 +23,7 @@ const getProducts = async (req, res, next) => {
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 200));
     const offset = (page - 1) * limit;
 
-    let where = "WHERE p.status != 'archived'";
+    let where = "WHERE p.status = 'active' AND p.available_for_sale = true";
     const params = [];
 
     // Filter by category
@@ -136,7 +136,7 @@ const getProductById = async (req, res, next) => {
          SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
          FROM product_reviews WHERE status = 'approved' GROUP BY product_id
        ) pr ON pr.product_id = p.id
-       WHERE p.id = $1 AND p.status != 'archived'`,
+       WHERE p.id = $1 AND p.status = 'active' AND p.available_for_sale = true`,
       [id],
     );
 
