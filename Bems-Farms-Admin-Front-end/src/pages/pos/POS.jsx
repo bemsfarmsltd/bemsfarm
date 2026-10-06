@@ -72,6 +72,26 @@ const TIER_COLOR = {
 const fmt = n => '₦' + Math.round(n || 0).toLocaleString()
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 
+export function formatCartonStock(totalStock, pcsPerCarton = 1, cartonName = 'Carton', pieceName = 'Pc') {
+  const stock = Math.max(0, parseInt(totalStock || 0))
+  const mult = Math.max(1, parseInt(pcsPerCarton || 1))
+  if (mult <= 1) {
+    return `${stock} ${stock === 1 ? pieceName : pieceName + 's'}`
+  }
+  const cartons = Math.floor(stock / mult)
+  const pcs = stock % mult
+  const cPlural = cartons === 1 ? cartonName : `${cartonName}s`
+  const pPlural = pcs === 1 ? pieceName : `${pieceName}s`
+
+  if (cartons > 0 && pcs > 0) {
+    return `${cartons} ${cPlural}, ${pcs} ${pPlural}`
+  }
+  if (cartons > 0 && pcs === 0) {
+    return `${cartons} ${cPlural}`
+  }
+  return `${pcs} ${pPlural}`
+}
+
 // Audio Synthesizer for POS Scan & Actions
 function playBeep(type = 'scan') {
   try {
@@ -394,6 +414,11 @@ export default function POS() {
               price: sanitizedPrice || 1000,
               base_price: sanitizedPrice || 1000,
               stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 25),
+              pcs_per_carton: Number(p.pcs_per_carton || 1),
+              carton_price: p.carton_price ? Number(p.carton_price) : null,
+              carton_barcode: p.carton_barcode || null,
+              carton_unit_name: p.carton_unit_name || 'Carton',
+              piece_unit_name: p.piece_unit_name || 'Piece',
               unit: p.unit || 'unit',
               packaging_units: Array.isArray(p.packaging_units) ? p.packaging_units : [],
               image: p.image_url || p.image || null,
@@ -615,25 +640,12 @@ export default function POS() {
     setToastTimer(setTimeout(() => setToast(null), 2400))
   }
 
-  // Helper to determine if a product has sellable stock (> 0 or piece variant with parent carton available)
+  // Helper to determine if a product has sellable stock (> 0)
   const isProductSellable = useCallback((p) => {
     if (!p) return false
     const directStock = Number(p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 0))
-    if (directStock > 0) return true
-    // Check if it's a piece/unit variant with an available parent carton in stock
-    const name = (p.name || '').toLowerCase()
-    if (name.includes('piece') || name.includes('unit') || name.includes('tin') || name.includes('sachet')) {
-      const baseName = name.replace(/\s*\((piece|unit|tin|sachet)\)\s*$/i, '').trim()
-      const hasCarton = productsList.some(other =>
-        other.id !== p.id &&
-        other.name?.toLowerCase().includes('carton') &&
-        other.name?.toLowerCase().startsWith(baseName) &&
-        Number(other.stock != null ? other.stock : (other.stock_quantity != null ? other.stock_quantity : 0)) > 0
-      )
-      if (hasCarton) return true
-    }
-    return false
-  }, [productsList])
+    return directStock > 0
+  }, [])
 
   // Cart & Product Methods
   function addProductToCart(product, specificUnit = null) {
@@ -742,6 +754,20 @@ export default function POS() {
         bc[String(p.id)] = p
         bc[`BF-${p.id}`] = p
       }
+      // Carton Barcode indexing
+      if (p.carton_barcode) {
+        const cleanCB = String(p.carton_barcode).trim().toUpperCase()
+        const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
+          id: `carton-${p.id}`,
+          unit_name: p.carton_unit_name || 'Carton',
+          multiplier: p.pcs_per_carton || 1,
+          price: p.carton_price
+        }
+        const pkgObj = { ...p, selectedPackagingUnit: cartonPkg }
+        bc[cleanCB] = pkgObj
+        bc[cleanCB.replace(/^BF-/, '')] = pkgObj
+      }
+
       // Packaging Units Barcodes & SKUs
       if (p.packaging_units && Array.isArray(p.packaging_units)) {
         p.packaging_units.forEach(u => {
@@ -2481,8 +2507,8 @@ export default function POS() {
                       className={`pos-product-tile ${inCart ? 'in-cart-active' : ''}`}>
                       {/* Card Header Status */}
                       <div className="pos-tile-top">
-                        <span className={`pos-stock-tag ${isLowStock ? 'low-warning' : ''}`}>
-                          {isLowStock ? `LOW (${p.stock})` : (p.stock > 0 ? `${p.stock} in stock` : 'Carton Replenish')}
+                        <span className={`pos-stock-tag ${p.stock <= 0 ? 'bg-danger-subtle text-danger border-danger-subtle' : (isLowStock ? 'low-warning' : '')}`}>
+                          {p.stock <= 0 ? 'Out of Stock (0)' : formatCartonStock(p.stock, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)}
                         </span>
                         {inCart && (
                           <span className="pos-tile-counter">{inCart.qty}</span>
@@ -2510,23 +2536,60 @@ export default function POS() {
                       {/* Info */}
                       <div className="pos-tile-info">
                         <div className="pos-tile-name" title={p.name}>{p.name}</div>
-                        <div className="pos-tile-sku">{p.sku} · per {p.unit}</div>
+                        <div className="pos-tile-sku">{p.sku} · per {p.piece_unit_name || p.unit}</div>
                       </div>
 
                       {/* Price & Action Footer */}
                       <div className="pos-tile-footer">
-                        <div className="pos-tile-price">{fmt(p.price)}</div>
-
-                        {inCart ? (
-                          <div className="pos-tile-stepper" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => updateQty(p.id, inCart.qty - 1)} className="pos-tile-step-btn">−</button>
-                            <span className="pos-tile-step-val">{inCart.qty}</span>
-                            <button onClick={() => updateQty(p.id, inCart.qty + 1)} className="pos-tile-step-btn add">+</button>
+                        {p.pcs_per_carton > 1 && (p.carton_price || p.packaging_units?.length > 0) ? (
+                          <div className="pos-tile-dual-actions w-100" onClick={e => e.stopPropagation()}>
+                            <div className="d-flex justify-content-between align-items-center mb-1 text-muted" style={{ fontSize: 11 }}>
+                              <span className="fw-bold text-success fs-14">{fmt(p.price)}<span className="fs-10 text-muted">/{p.piece_unit_name || 'pc'}</span></span>
+                              <span className="fw-bold text-primary fs-12">{fmt(p.carton_price || p.packaging_units[0]?.price)}<span className="fs-10 text-muted">/{p.carton_unit_name || 'ctn'} ({p.pcs_per_carton}x)</span></span>
+                            </div>
+                            <div className="d-flex gap-1">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-success flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1"
+                                onClick={() => addProductToCart(p, null)}
+                                title={`Add 1 ${p.piece_unit_name || 'Piece'}`}
+                              >
+                                <i className="ri-add-line"></i> {p.piece_unit_name || 'Piece'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1"
+                                onClick={() => {
+                                  const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
+                                    id: `carton-${p.id}`,
+                                    unit_name: p.carton_unit_name || 'Carton',
+                                    multiplier: p.pcs_per_carton,
+                                    price: p.carton_price
+                                  }
+                                  addProductToCart(p, cartonPkg)
+                                }}
+                                title={`Add 1 ${p.carton_unit_name || 'Carton'} (${p.pcs_per_carton}x)`}
+                              >
+                                <i className="ri-archive-line"></i> {p.carton_unit_name || 'Carton'}
+                              </button>
+                            </div>
                           </div>
                         ) : (
-                          <div className="pos-tile-add-btn">
-                            <i className="ri-add-line"></i>
-                          </div>
+                          <>
+                            <div className="pos-tile-price">{fmt(p.price)}</div>
+
+                            {inCart ? (
+                              <div className="pos-tile-stepper" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => updateQty(p.id, inCart.qty - 1)} className="pos-tile-step-btn">−</button>
+                                <span className="pos-tile-step-val">{inCart.qty}</span>
+                                <button onClick={() => updateQty(p.id, inCart.qty + 1)} className="pos-tile-step-btn add">+</button>
+                              </div>
+                            ) : (
+                              <div className="pos-tile-add-btn">
+                                <i className="ri-add-line"></i>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

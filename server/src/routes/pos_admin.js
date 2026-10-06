@@ -940,6 +940,8 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
       where.push(`(
         p.barcode = $${params.length}
         OR p.barcode ILIKE $${params.length}
+        OR p.carton_barcode = $${params.length}
+        OR p.carton_barcode ILIKE $${params.length}
         OR p.sku = $${params.length}
         OR p.sku ILIKE $${params.length}
         OR EXISTS (
@@ -948,6 +950,7 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
             AND (ppu.barcode = $${params.length} OR ppu.barcode ILIKE $${params.length} OR ppu.sku = $${params.length} OR ppu.sku ILIKE $${params.length})
         )
         OR (p.barcode IS NOT NULL AND REGEXP_REPLACE(p.barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
+        OR (p.carton_barcode IS NOT NULL AND REGEXP_REPLACE(p.carton_barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
       )`);
     } else if (q) {
       params.push(`%${q}%`);
@@ -955,6 +958,7 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
         p.name ILIKE $${params.length} 
         OR p.sku ILIKE $${params.length} 
         OR p.barcode ILIKE $${params.length}
+        OR p.carton_barcode ILIKE $${params.length}
         OR EXISTS (
           SELECT 1 FROM product_packaging_units ppu 
           WHERE ppu.product_id = p.id 
@@ -971,6 +975,11 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
               COALESCE(p.unit_price, p.price, 0) AS price,
               p.unit,
               COALESCE(p.stock, p.stock_quantity, 0) AS stock,
+              COALESCE(p.pcs_per_carton, 1) AS pcs_per_carton,
+              p.carton_price,
+              p.carton_barcode,
+              COALESCE(p.carton_unit_name, 'Carton') AS carton_unit_name,
+              COALESCE(p.piece_unit_name, 'Piece') AS piece_unit_name,
               p.image_url, p.category_id,
               c.name AS category
        FROM products p
@@ -1013,18 +1022,29 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
       const pkgUnits = packagingMap[p.id] || [];
       let matchedUnit = null;
 
-      if (trimmedBc && pkgUnits.length > 0) {
-        matchedUnit = pkgUnits.find(
-          (u) =>
-            (u.barcode && u.barcode.toLowerCase() === trimmedBc) ||
-            (u.sku && u.sku.toLowerCase() === trimmedBc)
-        );
+      if (trimmedBc) {
+        if (p.carton_barcode && p.carton_barcode.toLowerCase() === trimmedBc) {
+          matchedUnit = pkgUnits[0] || {
+            unit_name: p.carton_unit_name || 'Carton',
+            multiplier: parseFloat(p.pcs_per_carton || 1),
+            price: parseFloat(p.carton_price || 0),
+            barcode: p.carton_barcode
+          };
+        } else if (pkgUnits.length > 0) {
+          matchedUnit = pkgUnits.find(
+            (u) =>
+              (u.barcode && u.barcode.toLowerCase() === trimmedBc) ||
+              (u.sku && u.sku.toLowerCase() === trimmedBc)
+          );
+        }
       }
 
       return {
         ...p,
         price: parseFloat(p.price || 0),
         stock: parseFloat(p.stock || 0),
+        carton_price: p.carton_price ? parseFloat(p.carton_price) : null,
+        pcs_per_carton: parseInt(p.pcs_per_carton || 1),
         packaging_units: pkgUnits,
         matched_packaging_unit: matchedUnit || null,
       };
