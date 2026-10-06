@@ -21,6 +21,7 @@ export default function Barcode() {
   
   // Print Queue: Map of productId -> { product, copies }
   const [printQueue, setPrintQueue] = useState({})
+  const [printTarget, setPrintTarget] = useState('piece') // 'piece' | 'carton'
   
   // Label Customizer Settings
   const [labelTemplate, setLabelTemplate] = useState('thermal_50x25') // 'thermal_50x25' | 'thermal_50x30' | 'compact_40x20' | 'crate_100x75' | 'sheet_a4'
@@ -183,14 +184,22 @@ export default function Barcode() {
     })
   }, [products, activeTab, categoryFilter, searchTerm, printQueue])
 
-  // Queue manipulation - Automatically defaults copies to the product's actual stock quantity
+  // Queue manipulation - Defaults copies to actual stock quantity (pieces or cartons depending on printTarget)
+  const getProductStockCopies = (p, target = printTarget) => {
+    const rawStock = parseInt(p.stock ?? p.stock_quantity ?? p.quantity ?? 1) || 1
+    if (target === 'carton' && Number(p.pcs_per_carton) > 1) {
+      return Math.max(1, Math.floor(rawStock / (p.pcs_per_carton || 1)))
+    }
+    return Math.max(1, rawStock)
+  }
+
   const toggleQueueItem = (product) => {
     setPrintQueue((prev) => {
       const next = { ...prev }
       if (next[product.id]) {
         delete next[product.id]
       } else {
-        const stockQty = Math.max(1, parseInt(product.stock ?? product.stock_quantity ?? product.quantity ?? 1) || 1)
+        const stockQty = getProductStockCopies(product, printTarget)
         next[product.id] = { product, copies: stockQty }
       }
       return next
@@ -220,27 +229,39 @@ export default function Barcode() {
       const next = { ...prev }
       items.forEach((p) => {
         if (!next[p.id]) {
-          const stockQty = Math.max(1, parseInt(p.stock ?? p.stock_quantity ?? p.quantity ?? 1) || 1)
+          const stockQty = getProductStockCopies(p, printTarget)
           next[p.id] = { product: p, copies: stockQty }
         }
       })
       return next
     })
-    toast.success(`Added ${items.length} items to print queue (copies auto-filled from stock count)`)
+    toast.success(`Added ${items.length} items to print queue (copies auto-filled for ${printTarget === 'carton' ? 'bulk cartons' : 'retail pieces'})`)
   }
 
   const syncAllToStock = () => {
     setPrintQueue((prev) => {
       const next = {}
-      let updatedCount = 0
       Object.entries(prev).forEach(([id, item]) => {
-        const stockQty = Math.max(1, parseInt(item.product.stock ?? item.product.stock_quantity ?? item.product.quantity ?? 1) || 1)
+        const stockQty = getProductStockCopies(item.product, printTarget)
         next[id] = { ...item, copies: stockQty }
-        updatedCount++
       })
       return next
     })
-    toast.success('Synced all print copies to match inventory stock quantities')
+    toast.success(`Synced all print copies to match ${printTarget === 'carton' ? 'carton counts' : 'piece inventory'}`)
+  }
+
+  const handleSwitchPrintTarget = (newTarget) => {
+    if (newTarget === printTarget) return
+    setPrintTarget(newTarget)
+    setPrintQueue((prev) => {
+      const next = {}
+      Object.entries(prev).forEach(([id, item]) => {
+        const stockQty = getProductStockCopies(item.product, newTarget)
+        next[id] = { ...item, copies: stockQty }
+      })
+      return next
+    })
+    toast.success(newTarget === 'carton' ? 'Switched to Bulk Carton labels (copies updated to carton counts)' : 'Switched to Retail Piece labels (copies updated to piece counts)')
   }
 
   const clearQueue = () => {
@@ -754,17 +775,44 @@ export default function Barcode() {
     printWindow.document.close()
   }
 
-  // Flattened array of all labels in queue based on copies
+  // Flattened array of all labels in queue based on copies (supports Retail Piece vs Bulk Carton modes)
   const printableLabelArray = useMemo(() => {
     const list = []
     Object.values(printQueue).forEach(({ product, copies }) => {
-      const code = product.barcode || product.sku || `BF-${product.id}`
+      const isCarton = printTarget === 'carton' && Number(product.pcs_per_carton) > 1
+      const code = isCarton
+        ? (product.carton_barcode || product.barcode || product.sku || `BF-CTN-${product.id}`)
+        : (product.barcode || product.sku || `BF-${product.id}`)
+
+      const priceVal = isCarton
+        ? (product.carton_price && Number(product.carton_price) > 0
+            ? product.carton_price
+            : Number(product.unit_price || product.price || 0) * (product.pcs_per_carton || 1))
+        : (product.unit_price || product.price)
+
+      const unitLabel = isCarton
+        ? (product.carton_unit_name ? `${product.carton_unit_name} (${product.pcs_per_carton} ${product.piece_unit_name || 'pcs'})` : 'Carton')
+        : (product.piece_unit_name || product.unit || 'Piece')
+
+      const displayName = isCarton
+        ? `${product.name} [${product.carton_unit_name || 'Carton'}]`
+        : product.name
+
       for (let i = 0; i < copies; i++) {
-        list.push({ ...product, barcodeValue: code, copyIndex: i + 1, totalCopies: copies })
+        list.push({
+          ...product,
+          name: displayName,
+          price: priceVal,
+          unit: unitLabel,
+          barcodeValue: code,
+          isCartonLabel: isCarton,
+          copyIndex: i + 1,
+          totalCopies: copies,
+        })
       }
     })
     return list
-  }, [printQueue])
+  }, [printQueue, printTarget])
 
   // Print a single test label (50x30mm) for XP-365B alignment verification
   const handlePrintTestLabel = () => {
@@ -1584,6 +1632,37 @@ export default function Barcode() {
             </div>
 
             <div className="card-body p-3">
+              {/* Packaging Unit Level: Retail Pieces vs Bulk Cartons */}
+              <div className="mb-3 p-2 rounded-3 border bg-light">
+                <label className="form-label fw-bold fs-xs text-uppercase text-muted d-flex justify-content-between align-items-center mb-1">
+                  <span>Packaging Label Mode</span>
+                  <span className={`badge ${printTarget === 'carton' ? 'bg-primary' : 'bg-success'}`}>
+                    {printTarget === 'carton' ? 'Bulk Cartons' : 'Retail Pieces'}
+                  </span>
+                </label>
+                <div className="btn-group btn-group-sm w-100">
+                  <button
+                    type="button"
+                    className={`btn ${printTarget === 'piece' ? 'btn-success fw-bold' : 'btn-outline-secondary'}`}
+                    onClick={() => handleSwitchPrintTarget('piece')}
+                  >
+                    <i className="ri-price-tag-3-line me-1"></i> Retail Pieces
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${printTarget === 'carton' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                    onClick={() => handleSwitchPrintTarget('carton')}
+                  >
+                    <i className="ri-archive-line me-1"></i> Bulk Cartons
+                  </button>
+                </div>
+                <div className="text-muted mt-1" style={{ fontSize: '10.5px', lineHeight: 1.3 }}>
+                  {printTarget === 'carton'
+                    ? 'Prints outer carton barcodes, whole carton prices, and copies matching carton stock.'
+                    : 'Prints individual piece barcodes, retail shelf prices, and copies matching loose piece stock.'}
+                </div>
+              </div>
+
               {/* Template Preset Picker */}
               <div className="mb-3">
                 <label className="form-label fw-semibold fs-xs text-uppercase text-muted">
