@@ -427,10 +427,18 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
             // Permitted
           } else {
             await client.query("ROLLBACK");
+            const pcsPerCarton = parseInt(p.pcs_per_carton, 10) || 1;
+            const ctnStock = Math.floor(availableStock / pcsPerCarton);
+            const ctnInfo = pcsPerCarton > 1 ? ` (${ctnStock} carton${ctnStock === 1 ? '' : 's'} available)` : "";
             return res.status(400).json({
-              message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
+              message: `Only ${availableStock} base piece(s) of "${p.name}" in stock${ctnInfo}. Order requires ${effectiveNeeded} pieces (${quantity} ${packaging_unit_name || 'unit'}).`,
             });
           }
+        }
+
+        // Deduct in-memory so subsequent lines of the same product check remaining balance
+        if (p.stock != null) {
+          p.stock = Math.max(0, availableStock - effectiveNeeded);
         }
 
         const line_total = unit_price * quantity;

@@ -654,7 +654,9 @@ export default function POS() {
       showToast(`"${product.name}" is OUT OF STOCK (0 available)`, 'error', '🚫')
       return
     }
-    playBeep('scan')
+
+    const origProduct = productsList.find(p => p.id === product.id) || product
+    const directStock = Number(origProduct.stock != null ? origProduct.stock : (origProduct.stock_quantity != null ? origProduct.stock_quantity : 0))
     const unit = specificUnit || product.selectedPackagingUnit || null
     const price = unit ? Number(unit.price || (product.price * (unit.multiplier || 1))) : (product.base_price || product.price)
     const unitName = unit ? unit.unit_name : (product.unit || 'unit')
@@ -662,6 +664,31 @@ export default function POS() {
     const multiplier = unit ? Number(unit.multiplier || 1) : 1
     const cartKey = packagingUnitId ? `${product.id}-pkg-${packagingUnitId}` : `${product.id}`
 
+    // Calculate how many pieces of this product are already in cart
+    const currentPiecesInCart = cart
+      .filter(i => i.id === product.id)
+      .reduce((sum, i) => sum + (Number(i.qty) * Number(i.multiplier || 1)), 0)
+
+    if (currentPiecesInCart + multiplier > directStock) {
+      playBeep('error')
+      const remainingPieces = Math.max(0, directStock - currentPiecesInCart)
+      if (multiplier > 1) {
+        showToast(
+          `Cannot add 1 ${unitName}: requires ${multiplier} pieces, but only ${remainingPieces} available (${directStock} total stock, ${currentPiecesInCart} in cart).`,
+          'warning',
+          '⚠️'
+        )
+      } else {
+        showToast(
+          `Cannot add more: Only ${directStock} pieces in stock (${currentPiecesInCart} already in cart).`,
+          'warning',
+          '⚠️'
+        )
+      }
+      return
+    }
+
+    playBeep('scan')
     setCart(prev => {
       const ex = prev.find(i => (i.cartKey || (i.packaging_unit_id ? `${i.id}-pkg-${i.packaging_unit_id}` : `${i.id}`)) === cartKey)
       if (ex) {
@@ -691,6 +718,31 @@ export default function POS() {
       showToast('Item removed from cart', 'info', '🗑️')
       return
     }
+
+    const item = cart.find(i => (i.cartKey || i.id) === keyOrId || i.id === keyOrId)
+    if (!item) return
+
+    const origProduct = productsList.find(p => p.id === item.id) || item
+    const directStock = Number(origProduct.stock != null ? origProduct.stock : (origProduct.stock_quantity != null ? origProduct.stock_quantity : 0))
+    const itemMultiplier = Number(item.multiplier || 1)
+
+    // Calculate other items' piece count for the same product
+    const otherPieces = cart
+      .filter(i => i.id === item.id && (i.cartKey || i.id) !== keyOrId && i.id !== keyOrId)
+      .reduce((sum, i) => sum + (Number(i.qty) * Number(i.multiplier || 1)), 0)
+
+    const totalPiecesNeeded = otherPieces + (qty * itemMultiplier)
+    if (totalPiecesNeeded > directStock) {
+      playBeep('error')
+      const maxQtyThisItem = Math.floor((directStock - otherPieces) / itemMultiplier)
+      showToast(
+        `Cannot increase: Max available for this unit is ${maxQtyThisItem} (${directStock} pieces in stock).`,
+        'warning',
+        '⚠️'
+      )
+      return
+    }
+
     setCart(prev => prev.map(i => ((i.cartKey || i.id) === keyOrId || i.id === keyOrId) ? { ...i, qty } : i))
   }
 
@@ -2548,30 +2600,52 @@ export default function POS() {
                               <span className="fw-bold text-primary fs-12">{fmt(p.carton_price || p.packaging_units[0]?.price)}<span className="fs-10 text-muted">/{p.carton_unit_name || 'ctn'} ({p.pcs_per_carton}x)</span></span>
                             </div>
                             <div className="d-flex gap-1">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-success flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1"
-                                onClick={() => addProductToCart(p, null)}
-                                title={`Add 1 ${p.piece_unit_name || 'Piece'}`}
-                              >
-                                <i className="ri-add-line"></i> {p.piece_unit_name || 'Piece'}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1"
-                                onClick={() => {
-                                  const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
-                                    id: `carton-${p.id}`,
-                                    unit_name: p.carton_unit_name || 'Carton',
-                                    multiplier: p.pcs_per_carton,
-                                    price: p.carton_price
-                                  }
-                                  addProductToCart(p, cartonPkg)
-                                }}
-                                title={`Add 1 ${p.carton_unit_name || 'Carton'} (${p.pcs_per_carton}x)`}
-                              >
-                                <i className="ri-archive-line"></i> {p.carton_unit_name || 'Carton'}
-                              </button>
+                              {(() => {
+                                const availableCartons = Math.floor((p.stock || 0) / (p.pcs_per_carton || 1))
+                                const hasLoosePieces = (p.stock || 0) > 0
+                                const hasCartons = availableCartons > 0
+
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={!hasLoosePieces}
+                                      className={`btn btn-sm ${hasLoosePieces ? 'btn-outline-success' : 'btn-light text-muted opacity-50'} flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1`}
+                                      onClick={() => {
+                                        if (!hasLoosePieces) {
+                                          showToast(`"${p.name}" has 0 pieces in stock`, 'error', '🚫')
+                                          return
+                                        }
+                                        addProductToCart(p, null)
+                                      }}
+                                      title={`Add 1 ${p.piece_unit_name || 'Piece'} (${p.stock || 0} in stock)`}
+                                    >
+                                      <i className="ri-add-line"></i> {p.piece_unit_name || 'Piece'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!hasCartons}
+                                      className={`btn btn-sm ${hasCartons ? 'btn-outline-primary' : 'btn-light text-muted opacity-50'} flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1`}
+                                      onClick={() => {
+                                        if (!hasCartons) {
+                                          showToast(`Cannot add Carton: Only ${p.stock || 0} loose pieces in stock (${p.pcs_per_carton} needed for 1 carton). Sell as loose pieces!`, 'warning', '⚠️')
+                                          return
+                                        }
+                                        const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
+                                          id: `carton-${p.id}`,
+                                          unit_name: p.carton_unit_name || 'Carton',
+                                          multiplier: p.pcs_per_carton,
+                                          price: p.carton_price
+                                        }
+                                        addProductToCart(p, cartonPkg)
+                                      }}
+                                      title={hasCartons ? `Add 1 ${p.carton_unit_name || 'Carton'} (${availableCartons} ctn available)` : `No full cartons (${p.stock || 0} loose pieces in stock)`}
+                                    >
+                                      <i className="ri-archive-line"></i> {p.carton_unit_name || 'Carton'} {hasCartons ? `(${availableCartons})` : '(0)'}
+                                    </button>
+                                  </>
+                                )
+                              })()}
                             </div>
                           </div>
                         ) : (
