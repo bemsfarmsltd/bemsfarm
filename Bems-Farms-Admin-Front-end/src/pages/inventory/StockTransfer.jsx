@@ -4,6 +4,26 @@ import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import ProductSelect from '../../components/ui/ProductSelect'
 
+function formatCartonStock(totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function StockTransfer() {
   const [movements, setMovements] = useState([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +86,9 @@ export default function StockTransfer() {
       product_id: preselectedProduct?.id ? String(preselectedProduct.id) : '',
       from_warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
       to_warehouse_id: warehouses[1]?.id ? String(warehouses[1].id) : '',
-      quantity: 1, notes: '',
+      unit_mode: Number(preselectedProduct?.pcs_per_carton) > 1 ? 'carton' : 'piece',
+      quantity: 1,
+      notes: '',
     })
     setModalOpen(true)
   }
@@ -76,11 +98,21 @@ export default function StockTransfer() {
     if (!form.product_id) return toast.error('Please select a product')
     if (!form.from_warehouse_id || !form.to_warehouse_id) return toast.error('Select both source and destination warehouses')
     if (form.from_warehouse_id === form.to_warehouse_id) return toast.error('Source and destination warehouses must be different')
-    const qty = parseInt(form.quantity)
-    if (!qty || qty <= 0) return toast.error('Enter a valid quantity greater than 0')
-    if (selectedProduct && qty > selectedProduct.stock) {
-      return toast.error(`Only ${selectedProduct.stock} units of ${selectedProduct.name} in stock`)
+    const rawQty = parseInt(form.quantity)
+    if (!rawQty || rawQty <= 0) return toast.error('Enter a valid quantity greater than 0')
+
+    const pcsPerCarton = parseInt(selectedProduct?.pcs_per_carton) || 0
+    const isCartonMode = form.unit_mode === 'carton' && pcsPerCarton > 1
+    const totalPieces = isCartonMode ? rawQty * pcsPerCarton : rawQty
+
+    if (selectedProduct && totalPieces > (selectedProduct.stock || 0)) {
+      return toast.error(`Insufficient stock! Available: ${selectedProduct.stock} pieces (Requested: ${totalPieces} pieces)`)
     }
+
+    const notesExtra = isCartonMode
+      ? `Transferred ${rawQty} ${selectedProduct?.carton_unit_name || 'carton'}(s) @ ${pcsPerCarton} pcs/carton = ${totalPieces} total pieces.`
+      : ''
+    const finalNotes = [form.notes?.trim(), notesExtra].filter(Boolean).join(' | ')
 
     setSubmitting(true)
     try {
@@ -88,10 +120,10 @@ export default function StockTransfer() {
         product_id: parseInt(form.product_id),
         from_warehouse_id: parseInt(form.from_warehouse_id),
         to_warehouse_id: parseInt(form.to_warehouse_id),
-        quantity: qty,
-        notes: form.notes?.trim() || undefined,
+        quantity: totalPieces,
+        notes: finalNotes || undefined,
       })
-      toast.success('Transfer completed successfully')
+      toast.success(`Transferred ${totalPieces} pieces successfully!`)
       setModalOpen(false)
       fetchMovements()
     } catch (err) {
@@ -223,10 +255,51 @@ export default function StockTransfer() {
                       />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label fw-semibold">Quantity <span className="text-danger">*</span></label>
-                      <input type="number" className="form-control" min="1" max={selectedProduct?.stock || undefined}
-                        value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} required />
-                      {selectedProduct && <div className="form-text">Available: {selectedProduct.stock}</div>}
+                      <label className="form-label fw-semibold d-flex justify-content-between align-items-center">
+                        <span>Quantity <span className="text-danger">*</span></span>
+                        {Number(selectedProduct?.pcs_per_carton) > 1 && (
+                          <div className="btn-group btn-group-sm" role="group">
+                            <button
+                              type="button"
+                              className={`btn py-0 px-2 fs-11 ${form.unit_mode === 'carton' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => setForm((prev) => ({ ...prev, unit_mode: 'carton' }))}
+                            >
+                              {selectedProduct.carton_unit_name || 'Cartons'}
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn py-0 px-2 fs-11 ${form.unit_mode === 'piece' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => setForm((prev) => ({ ...prev, unit_mode: 'piece' }))}
+                            >
+                              {selectedProduct.piece_unit_name || 'Pieces'}
+                            </button>
+                          </div>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="1"
+                        value={form.quantity}
+                        onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                        required
+                      />
+                      {selectedProduct && (
+                        <div className="form-text mt-1">
+                          {Number(selectedProduct.pcs_per_carton) > 1 ? (
+                            <>
+                              <div>Available: <strong>{formatCartonStock(selectedProduct.stock, selectedProduct.pcs_per_carton, selectedProduct.carton_unit_name, selectedProduct.piece_unit_name)}</strong> ({selectedProduct.stock} total pcs)</div>
+                              {form.unit_mode === 'carton' && (
+                                <div className="text-primary fw-semibold">
+                                  = {(parseInt(form.quantity) || 0) * selectedProduct.pcs_per_carton} {selectedProduct.piece_unit_name || 'pieces'} ({selectedProduct.pcs_per_carton} pcs/{selectedProduct.carton_unit_name || 'carton'})
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span>Available: {selectedProduct.stock} {selectedProduct.unit || 'units'}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">From Warehouse <span className="text-danger">*</span></label>

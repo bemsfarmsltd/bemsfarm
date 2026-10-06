@@ -3,6 +3,26 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 
+function formatCartonStock(totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function StockAlerts() {
   const [loading, setLoading] = useState(true)
   const [lowStock, setLowStock] = useState([])
@@ -53,7 +73,8 @@ export default function StockAlerts() {
     return (
       item.name?.toLowerCase().includes(q) ||
       item.sku?.toLowerCase().includes(q) ||
-      item.category?.toLowerCase().includes(q)
+      item.category?.toLowerCase().includes(q) ||
+      item.carton_barcode?.toLowerCase().includes(q)
     )
   })
 
@@ -246,15 +267,27 @@ export default function StockAlerts() {
                               e.target.src = 'https://placehold.co/80x80?text=Produce'
                             }}
                           />
-                          <span className="fw-semibold text-dark">{item.name}</span>
+                          <div>
+                            <span className="fw-semibold text-dark">{item.name}</span>
+                            {item.carton_barcode && (
+                              <div className="text-muted font-monospace mt-0.5" style={{ fontSize: 11 }}>
+                                <i className="ri-barcode-line text-success me-1"></i>CTN: {item.carton_barcode}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td><code className="text-primary">{item.sku || '—'}</code></td>
                       <td><span className="badge bg-light text-dark">{item.category || 'General'}</span></td>
                       <td className="text-end fw-bold">
                         <span className={item.stock === 0 ? 'text-danger' : 'text-warning'}>
-                          {item.stock}
+                          {item.stock} {item.piece_unit_name || 'units'}
                         </span>
+                        {Number(item.pcs_per_carton) > 1 && (
+                          <small className="text-muted fw-normal fs-11 d-block">
+                            ({formatCartonStock(item.stock, item.pcs_per_carton, item.carton_unit_name, item.piece_unit_name)})
+                          </small>
+                        )}
                       </td>
                       <td className="text-end text-muted">{item.low_stock_threshold || 5}</td>
                       {activeTab === 'expiring' && (

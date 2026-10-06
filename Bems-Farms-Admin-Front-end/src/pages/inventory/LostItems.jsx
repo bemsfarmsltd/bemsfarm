@@ -33,6 +33,26 @@ const MOVE_CFG = {
   lost:         { icon: 'ri-error-warning-line',     color: '#f06548', label: 'Loss Reported' },
 }
 
+function formatCartonStock(totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function LostItems() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
@@ -45,6 +65,7 @@ export default function LostItems() {
   const [investigateItem, setInvestigateItem] = useState(null)
   const [saving, setSaving] = useState(false)
   const [trail, setTrail] = useState([])
+  const [isCartonMode, setIsCartonMode] = useState(false)
 
   const [form, setForm] = useState({
     product_id: '', warehouse_id: '', quantity: 1, reason: REASONS[0], notes: '',
@@ -87,13 +108,20 @@ export default function LostItems() {
     totalVal: records.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.estimated_value || 0), 0),
   }), [records])
 
+  const selectedProduct = useMemo(() => {
+    if (!form.product_id) return null
+    return products.find(p => String(p.id) === String(form.product_id)) || null
+  }, [products, form.product_id])
+
   function openAdd() {
     setEditItem(null)
+    setIsCartonMode(false)
     setForm({ product_id: '', warehouse_id: '', quantity: 1, reason: REASONS[0], notes: '' })
     setActiveModal('form')
   }
   function openEdit(r) {
     setEditItem(r)
+    setIsCartonMode(false)
     setForm({ product_id: '', warehouse_id: '', quantity: r.quantity, reason: r.reason || REASONS[0], notes: r.notes || '' })
     setActiveModal('form')
   }
@@ -108,7 +136,7 @@ export default function LostItems() {
       setTrail([])
     }
   }
-  function closeModal() { setActiveModal(null); setEditItem(null); setInvestigateItem(null); setTrail([]) }
+  function closeModal() { setActiveModal(null); setEditItem(null); setInvestigateItem(null); setTrail([]); setIsCartonMode(false) }
 
   async function saveForm(e) {
     e.preventDefault()
@@ -121,10 +149,14 @@ export default function LostItems() {
         toast.success('Report updated')
       } else {
         if (!form.product_id) { toast.error('Select a product'); setSaving(false); return }
+        const pcsPerCarton = parseInt(selectedProduct?.pcs_per_carton, 10) || 1
+        const multiplier = isCartonMode && pcsPerCarton > 1 ? pcsPerCarton : 1
+
         await api.post('/admin/inventory/lost-items', {
           product_id: parseInt(form.product_id),
           warehouse_id: form.warehouse_id ? parseInt(form.warehouse_id) : undefined,
           quantity: parseInt(form.quantity),
+          multiplier,
           reason: form.reason,
           notes: form.notes || undefined,
         })
@@ -314,8 +346,20 @@ export default function LostItems() {
                       <td>
                         <div className="fw-medium">{r.product_name}</div>
                         <div className="text-muted" style={{ fontSize: 11 }}>{r.category_name}</div>
+                        {r.carton_barcode && (
+                          <div className="text-muted font-monospace mt-0.5" style={{ fontSize: 10 }}>
+                            <i className="ri-barcode-line text-success me-1"></i>CTN: {r.carton_barcode}
+                          </div>
+                        )}
                       </td>
-                      <td className="fw-bold text-danger">{r.quantity}</td>
+                      <td className="fw-bold text-danger">
+                        <div>{r.quantity} {r.piece_unit_name || 'Pcs'}</div>
+                        {Number(r.pcs_per_carton) > 1 && (
+                          <small className="text-muted fw-normal fs-11 d-block">
+                            ({formatCartonStock(r.quantity, r.pcs_per_carton, r.carton_unit_name, r.piece_unit_name)})
+                          </small>
+                        )}
+                      </td>
                       <td className="fw-bold text-danger">₦{Number(r.estimated_value || 0).toLocaleString()}</td>
                       <td>
                         <div className="d-flex align-items-center gap-1" style={{ fontSize: 12 }}>
@@ -525,8 +569,41 @@ export default function LostItems() {
                           </div>
                         </>
                       )}
+                      {!editItem && selectedProduct && Number(selectedProduct.pcs_per_carton) > 1 && (
+                        <div className="col-12">
+                          <label className="form-label fw-medium d-block mb-1">Select Reporting Unit</label>
+                          <div className="btn-group w-100" role="group">
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${!isCartonMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                              onClick={() => setIsCartonMode(false)}
+                            >
+                              <i className="ri-shopping-bag-3-line me-1"></i>
+                              Loose Pieces ({selectedProduct.piece_unit_name || 'Pcs'})
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${isCartonMode ? 'btn-primary' : 'btn-outline-primary'}`}
+                              onClick={() => setIsCartonMode(true)}
+                            >
+                              <i className="ri-archive-line me-1"></i>
+                              Full {selectedProduct.carton_unit_name || 'Carton'}s ({selectedProduct.pcs_per_carton} pcs each)
+                            </button>
+                          </div>
+                          <div className="text-muted fs-12 mt-1.5 d-flex justify-content-between">
+                            <span>Available Stock: <strong>{formatCartonStock(selectedProduct.stock, selectedProduct.pcs_per_carton, selectedProduct.carton_unit_name, selectedProduct.piece_unit_name)}</strong></span>
+                            {isCartonMode && (
+                              <span className="text-danger fw-semibold">
+                                = {(parseInt(form.quantity) || 0) * selectedProduct.pcs_per_carton} pieces deducted
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div className="col-md-4">
-                        <label className="form-label fw-medium">Qty Lost <span className="text-danger">*</span></label>
+                        <label className="form-label fw-medium">
+                          {isCartonMode ? `Cartons Lost (${selectedProduct?.carton_unit_name || 'Carton'})` : `Qty Lost (${selectedProduct?.piece_unit_name || 'Units'})`} <span className="text-danger">*</span>
+                        </label>
                         <input type="number" className="form-control" min="1" required value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: Number(e.target.value) }))} />
                       </div>
                       <div className="col-md-8">

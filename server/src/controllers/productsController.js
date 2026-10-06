@@ -156,7 +156,7 @@ const getProductById = async (req, res, next) => {
          SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
          FROM product_reviews WHERE status = 'approved' GROUP BY product_id
        ) pr ON pr.product_id = p.id
-       WHERE p.category_id = $1 AND p.id != $2 AND p.status != 'archived'
+       WHERE p.category_id = $1 AND p.id != $2 AND p.status = 'active' AND p.available_for_sale = true
        LIMIT 4`,
       [result.rows[0].category_id, id],
     );

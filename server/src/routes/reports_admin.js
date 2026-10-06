@@ -289,12 +289,13 @@ router.get("/inventory", async (req, res, next) => {
       pool.query(`
         SELECT
           COUNT(*)                                            AS total_products,
-          COUNT(*) FILTER (WHERE status='active')            AS active_products,
+          COUNT(*)                                            AS active_products,
           COALESCE(SUM(COALESCE(stock,0)), 0)                AS total_units,
           COALESCE(SUM(COALESCE(stock,0) * COALESCE(cost_price, price, unit_price, 0)), 0) AS stock_value,
           COUNT(*) FILTER (WHERE COALESCE(stock,0) = 0)      AS out_of_stock_count,
           COUNT(*) FILTER (WHERE COALESCE(stock,0) > 0 AND COALESCE(stock,0) <= $1) AS low_stock_count
         FROM products
+        WHERE status = 'active'
       `, [low_stock_threshold]),
 
       pool.query(`

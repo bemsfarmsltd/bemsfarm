@@ -209,6 +209,7 @@ export default function Debulk() {
     const matched = products.find(
       (p) =>
         p.barcode?.toLowerCase() === query ||
+        p.carton_barcode?.toLowerCase() === query ||
         p.sku?.toLowerCase() === query ||
         String(p.id) === query
     )
@@ -404,7 +405,17 @@ export default function Debulk() {
 
       {/* ── TAB 1: CONVERSION STUDIO ── */}
       {activeTab === 'studio' && (
-        <div className="row g-4 mb-4">
+        <>
+          <div className="alert border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center gap-3 p-3" style={{ background: '#f0fdf4', borderLeft: '4px solid #10b981' }}>
+            <div className="rounded-circle bg-success text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 36, height: 36 }}>
+              <i className="ri-magic-line fs-18"></i>
+            </div>
+            <div className="fs-13">
+              <strong className="text-dark">Automated Single-Row De-Bulking Active:</strong> Products configured with <strong>Pieces Per Carton</strong> automatically manage carton and loose piece balances in real-time. Whenever loose pieces are sold at the POS counter or online, the system automatically de-bulks carton stock in real-time! Manual debulking below is only needed when unbundling legacy separate product rows.
+            </div>
+          </div>
+
+          <div className="row g-4 mb-4">
           {/* Left Column: Interactive Form */}
           <div className="col-12 col-xl-7">
             <div className="card shadow-sm border-0 rounded-3 bg-white">
@@ -763,6 +774,7 @@ export default function Debulk() {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* ── TAB 2: AUDIT LEDGER (FULL SCREEN HISTORY) ── */}

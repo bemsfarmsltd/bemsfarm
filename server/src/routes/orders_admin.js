@@ -580,8 +580,10 @@ router.post("/invoices/:id/fulfill", requireRole("superadmin", "manager", "admin
     const deductions = [];
 
     for (const item of items) {
-      const qty = parseInt(item.qty || item.quantity || 1, 10);
-      if (qty <= 0) continue;
+      const rawQty = parseInt(item.qty || item.quantity || 1, 10);
+      if (rawQty <= 0) continue;
+      const multiplier = parseFloat(item.multiplier || item.conversion_rate || 1);
+      const qty = Math.round(rawQty * (multiplier > 0 ? multiplier : 1));
 
       let product = null;
       if (item.product_id) {
@@ -683,8 +685,10 @@ router.post("/invoices/:id/unfulfill", requireRole("superadmin", "manager", "adm
     const reversals = [];
 
     for (const item of items) {
-      const qty = parseInt(item.qty || item.quantity || 1, 10);
-      if (qty <= 0) continue;
+      const rawQty = parseInt(item.qty || item.quantity || 1, 10);
+      if (rawQty <= 0) continue;
+      const multiplier = parseFloat(item.multiplier || item.conversion_rate || 1);
+      const qty = Math.round(rawQty * (multiplier > 0 ? multiplier : 1));
 
       let product = null;
       if (item.product_id) {

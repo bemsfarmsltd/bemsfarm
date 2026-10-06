@@ -12,6 +12,26 @@ const moneyShort = (value) => {
   return `₦${num.toLocaleString()}`
 }
 
+const formatCartonStock = (totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') => {
+  const stock = parseInt(totalStock) || 0
+  const perCarton = parseInt(pcsPerCarton) || 0
+  if (perCarton <= 1) {
+    return `${stock} ${pieceUnit || 'Pcs'}`
+  }
+  const cartons = Math.floor(stock / perCarton)
+  const loosePcs = stock % perCarton
+
+  if (cartons > 0 && loosePcs > 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+  } else if (cartons > 0 && loosePcs === 0) {
+    const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
+    return `${cartons} ${ctnLabel}`
+  } else {
+    return `${loosePcs} ${pieceUnit || 'Pcs'}`
+  }
+}
+
 export default function StockValuation() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -104,7 +124,7 @@ export default function StockValuation() {
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       prods = prods.filter((p) =>
-        [p.name, p.sku, p.barcode, p.category].some((field) =>
+        [p.name, p.sku, p.barcode, p.carton_barcode, p.category].some((field) =>
           field?.toLowerCase().includes(q)
         )
       )
@@ -668,12 +688,18 @@ export default function StockValuation() {
                             </div>
                             <div>
                               <div className="fw-bold text-dark fs-13 mb-0.5">{p.name}</div>
-                              <div className="d-flex align-items-center gap-1.5 text-muted fs-11">
+                              <div className="d-flex align-items-center gap-1.5 text-muted fs-11 flex-wrap">
                                 {p.sku && <span className="badge bg-light text-dark font-monospace">{p.sku}</span>}
                                 {p.barcode && (
                                   <span className="badge bg-light text-muted font-monospace" title="Barcode">
                                     <i className="ri-barcode-line me-1"></i>
                                     {p.barcode}
+                                  </span>
+                                )}
+                                {p.carton_barcode && (
+                                  <span className="badge bg-primary-subtle text-primary font-monospace" title="Carton Barcode">
+                                    <i className="ri-archive-line me-1"></i>
+                                    {p.carton_barcode}
                                   </span>
                                 )}
                               </div>
@@ -700,8 +726,17 @@ export default function StockValuation() {
                                   : 'bg-success-subtle text-success'
                               }`}
                             >
-                              {isZeroStock ? 'Out of Stock' : `${p.stock} ${p.unit || 'units'}`}
+                              {isZeroStock
+                                ? 'Out of Stock'
+                                : Number(p.pcs_per_carton) > 1
+                                ? formatCartonStock(p.stock, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)
+                                : `${p.stock} ${p.unit || 'units'}`}
                             </span>
+                            {!isZeroStock && Number(p.pcs_per_carton) > 1 && (
+                              <small className="text-muted fs-10 font-monospace">
+                                ({p.stock} total {p.piece_unit_name || 'pcs'})
+                              </small>
+                            )}
                             {!isZeroStock && (
                               <small className="text-muted fs-10 font-monospace">
                                 Reorder: {p.low_stock_threshold || 5}
@@ -714,7 +749,14 @@ export default function StockValuation() {
                         <td className="text-end font-monospace text-muted fs-13">{money(p.cost_price)}</td>
 
                         {/* Selling Price */}
-                        <td className="text-end font-monospace fw-bold text-dark fs-13">{money(p.unit_price)}</td>
+                        <td className="text-end font-monospace fw-bold text-dark fs-13">
+                          <div>{money(p.unit_price)}</div>
+                          {Number(p.pcs_per_carton) > 1 && p.carton_price > 0 && (
+                            <small className="text-primary fw-semibold fs-11 d-block font-monospace">
+                              {money(p.carton_price)} / {p.carton_unit_name || 'ctn'}
+                            </small>
+                          )}
+                        </td>
 
                         {/* Cost Value */}
                         <td className="text-end font-monospace text-muted fs-13">{money(p.cost_value)}</td>

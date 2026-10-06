@@ -497,7 +497,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
     const [lowStock, outOfStock, expiringSoon, expiringBatches] = await Promise.all([
       pool.query(`
         SELECT p.id, p.name, p.sku, p.stock, p.low_stock_threshold,
-               cat.name AS category, p.image_url
+               cat.name AS category, p.image_url,
+               p.pcs_per_carton, p.carton_price, p.carton_barcode,
+               p.carton_unit_name, p.piece_unit_name
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 0)
@@ -506,7 +508,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
       `),
 
       pool.query(`
-        SELECT p.id, p.name, p.sku, cat.name AS category, p.image_url
+        SELECT p.id, p.name, p.sku, cat.name AS category, p.image_url,
+               p.pcs_per_carton, p.carton_price, p.carton_barcode,
+               p.carton_unit_name, p.piece_unit_name
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.stock = 0 AND p.status = 'active'
@@ -515,7 +519,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
 
       pool.query(`
         SELECT p.id, p.name, p.sku, p.expiry_date, p.stock,
-               cat.name AS category
+               cat.name AS category,
+               p.pcs_per_carton, p.carton_price, p.carton_barcode,
+               p.carton_unit_name, p.piece_unit_name
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.expiry_date IS NOT NULL
@@ -527,6 +533,7 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
       pool.query(`
         SELECT b.id, b.batch_no, b.quantity, b.expiry_date,
                p.name AS product_name, p.sku,
+               p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name,
                (b.expiry_date - CURRENT_DATE) AS days_left
         FROM batch_management b
         JOIN products p ON b.product_id = p.id
@@ -586,6 +593,7 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
       pool.query(`
         SELECT
           p.id, p.name, p.sku, p.barcode, p.image_url, p.stock, p.unit, cat.name AS category,
+          p.pcs_per_carton, p.carton_price, p.carton_barcode, p.carton_unit_name, p.piece_unit_name,
           COALESCE(p.low_stock_threshold, p.reorder_level, 5) AS low_stock_threshold,
           COALESCE(p.unit_price, p.price, 0) AS unit_price,
           COALESCE(p.cost_price, 0)          AS cost_price,
@@ -1176,7 +1184,8 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
           COALESCE(p.created_at, NOW()),
           COALESCE(p.created_at, NOW())
         FROM products p
-        WHERE NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
+        WHERE p.status = 'active'
+          AND NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
       `, [defaultWh]);
     } catch (syncErr) {
       console.error("Batch sync error in GET /batches:", syncErr.message);
@@ -1198,9 +1207,14 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
         b.received_at,
         b.created_at,
         p.name AS product_name,
-        CONCAT('PRD-', p.id) AS sku,
+        COALESCE(p.sku, CONCAT('PRD-', p.id)) AS sku,
         p.price AS product_price,
         COALESCE(p.stock, b.quantity) AS current_stock,
+        p.pcs_per_carton,
+        p.carton_price,
+        p.carton_barcode,
+        p.carton_unit_name,
+        p.piece_unit_name,
         p.image_url AS product_image,
         COALESCE(w.name, 'Main Central Coldroom') AS warehouse_name,
         COALESCE(w.code, 'WH-COLD-01') AS warehouse_code,
@@ -1209,6 +1223,7 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
       FROM batch_management b
       LEFT JOIN products   p ON b.product_id   = p.id
       LEFT JOIN warehouses w ON b.warehouse_id  = w.id
+      WHERE p.status = 'active'
       ORDER BY b.batch_no DESC, b.expiry_date ASC NULLS LAST
     `);
 
@@ -1628,6 +1643,7 @@ router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storeke
         li.id, li.quantity, li.reason, li.estimated_value,
         li.notes, li.status, li.created_at,
         p.name AS product_name, p.sku, c.name AS category_name,
+        p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name, p.carton_barcode,
         w.name AS warehouse_name,
         r.name AS reported_by_name,
         a.name AS approved_by_name
@@ -1656,19 +1672,22 @@ router.post(
     try {
       await client.query("BEGIN");
 
-      const { product_id, warehouse_id, quantity, reason, notes, deduct_stock = true } = req.body;
+      const { product_id, warehouse_id, quantity, reason, notes, deduct_stock = true, multiplier = 1 } = req.body;
 
       if (!product_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
       if (!quantity || parseInt(quantity) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "quantity must be > 0" }); }
 
-      const prod = await client.query("SELECT unit_price, price FROM products WHERE id=$1", [parseInt(product_id)]);
+      const mult = parseInt(multiplier, 10) > 0 ? parseInt(multiplier, 10) : 1;
+      const effectiveQty = parseInt(quantity, 10) * mult;
+
+      const prod = await client.query("SELECT unit_price, price, carton_price, pcs_per_carton FROM products WHERE id=$1", [parseInt(product_id)]);
       const unitValue = parseFloat(prod.rows[0]?.unit_price || prod.rows[0]?.price || 0);
-      const estValue  = unitValue * parseInt(quantity);
+      const estValue  = unitValue * effectiveQty;
 
       const result = await client.query(
         `INSERT INTO lost_items (product_id, warehouse_id, quantity, reason, estimated_value, notes, reported_by, status, created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',NOW()) RETURNING id`,
-        [parseInt(product_id), warehouse_id ? parseInt(warehouse_id) : null, parseInt(quantity), reason || null, estValue, notes || null, req.user.id]
+        [parseInt(product_id), warehouse_id ? parseInt(warehouse_id) : null, effectiveQty, reason || null, estValue, notes || null, req.user.id]
       );
 
       if (deduct_stock) {
@@ -1676,7 +1695,7 @@ router.post(
           productId: parseInt(product_id),
           warehouseId: warehouse_id ? parseInt(warehouse_id) : null,
           type: "lost",
-          delta: -parseInt(quantity),
+          delta: -effectiveQty,
           reason: reason || "Lost/Damaged",
           notes,
           userId: req.user.id,

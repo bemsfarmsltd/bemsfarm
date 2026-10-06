@@ -58,6 +58,44 @@ const AVAILABLE_COLUMNS = [
     getRawValue: (p) => Number(p.stock ?? p.stock_quantity ?? 0),
   },
   {
+    id: 'pcs_per_carton',
+    label: 'Pcs per Carton',
+    defaultSelected: false,
+    getValue: (p) => String(p.pcs_per_carton || 1),
+    getRawValue: (p) => Number(p.pcs_per_carton || 1),
+  },
+  {
+    id: 'carton_price',
+    label: 'Carton Price (₦)',
+    defaultSelected: false,
+    isCurrency: true,
+    getValue: (p) => (p.carton_price ? `₦${Number(p.carton_price).toLocaleString()}` : '—'),
+    getRawValue: (p) => Number(p.carton_price || 0),
+  },
+  {
+    id: 'carton_barcode',
+    label: 'Carton Barcode',
+    defaultSelected: false,
+    getValue: (p) => p.carton_barcode || '—',
+    getRawValue: (p) => p.carton_barcode || '',
+  },
+  {
+    id: 'carton_stock_display',
+    label: 'Stock (Cartons & Pcs)',
+    defaultSelected: false,
+    getValue: (p) => {
+      const stock = parseInt(p.stock ?? p.stock_quantity ?? 0) || 0
+      const perCarton = parseInt(p.pcs_per_carton) || 0
+      if (perCarton <= 1) return `${stock} pcs`
+      const c = Math.floor(stock / perCarton)
+      const l = stock % perCarton
+      if (c > 0 && l > 0) return `${c} cartons, ${l} pcs`
+      if (c > 0) return `${c} cartons`
+      return `${l} pcs`
+    },
+    getRawValue: (p) => String(p.stock ?? 0),
+  },
+  {
     id: 'low_stock_threshold',
     label: 'Low Stock Alert Level',
     defaultSelected: false,
