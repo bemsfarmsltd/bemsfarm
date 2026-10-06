@@ -21,6 +21,15 @@ export default class ErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
+      let isSales = false
+      try {
+        const stored = localStorage.getItem('admin_user')
+        const u = stored ? JSON.parse(stored) : null
+        isSales = ['cashier', 'salesperson', 'sales_person', 'sales'].includes(String(u?.role || '').toLowerCase())
+      } catch {
+        isSales = false
+      }
+
       return (
         <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light p-4">
           <div className="card shadow-sm border-0 text-center p-4 p-md-5" style={{ maxWidth: 520, borderRadius: 16 }}>
@@ -47,9 +56,9 @@ export default class ErrorBoundary extends Component {
               <button
                 type="button"
                 className="btn btn-outline-secondary px-4 py-2 fw-medium"
-                onClick={() => { window.location.href = '/dashboard' }}
+                onClick={() => { window.location.href = isSales ? '/pos' : '/dashboard' }}
               >
-                Go to Dashboard
+                {isSales ? 'Return to POS' : 'Go to Dashboard'}
               </button>
             </div>
           </div>

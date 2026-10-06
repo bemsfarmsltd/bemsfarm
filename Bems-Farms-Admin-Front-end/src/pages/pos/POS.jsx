@@ -174,6 +174,15 @@ export default function POS() {
   const [customersList, setCustomersList] = useState([])
   const [historyList, setHistoryList] = useState([])
   const [loadingPOS, setLoadingPOS] = useState(true)
+  const [session, setSession] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    api.get('/admin/pos/session/current')
+      .then((res) => { if (alive) setSession(res.data?.session || null) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
 
 
 
