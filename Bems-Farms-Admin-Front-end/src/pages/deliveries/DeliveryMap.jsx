@@ -104,9 +104,12 @@ function interpolateRoute(start, end, curvature = 0.08) {
 }
 
 // ── Custom Leaflet Icons ────────────────────────────────────────────────────────
-function driverIcon(name, color, pulse, heading = 0) {
-  const pulseHtml = pulse
+function driverIcon(name, color, pulse, heading = 0, isLive = true) {
+  const pulseHtml = (pulse && isLive)
     ? `<span class="driver-live-pulse" style="--pulse-color:${color};"></span>`
+    : ''
+  const offlineBadge = !isLive
+    ? `<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:7.5px;font-weight:700;padding:1px 4px;border-radius:6px;border:1px solid #fff;line-height:1.2;">OFF</span>`
     : ''
   return L.divIcon({
     className: 'custom-driver-marker-wrap',
@@ -114,13 +117,14 @@ function driverIcon(name, color, pulse, heading = 0) {
     iconAnchor: [24, 24],
     popupAnchor: [0, -26],
     html: `
-      <div class="driver-marker-container">
+      <div class="driver-marker-container" style="${!isLive ? 'opacity:0.85;' : ''}">
         ${pulseHtml}
         <div class="driver-marker-avatar" style="background:${color};">
           <i class="ri-riding-line" style="font-size:18px;"></i>
+          ${offlineBadge}
         </div>
         <div class="driver-marker-badge" style="background:${color};">
-          ${(name || 'Driver').split(' ')[0]}
+          ${(name || 'Driver').split(' ')[0]} ${!isLive ? '(Offline)' : ''}
         </div>
       </div>`,
   })
@@ -183,7 +187,7 @@ function MapCameraController({ target, bounds }) {
           .map(b => [safeNum(b[0], null), safeNum(b[1], null)])
           .filter(([lat, lng]) => lat != null && lng != null && lat !== 0 && lng !== 0)
         if (cleanBounds.length >= 2) {
-          map.fitBounds(cleanBounds, { padding: [50, 50], maxZoom: 14, animate: false })
+          map.fitBounds(cleanBounds, { padding: [50, 50], maxZoom: 14, animate: true })
         }
       } catch (err) {
         console.error('fitBounds failed:', err)
@@ -282,22 +286,37 @@ export default function DeliveryMap() {
     const custLat = custCoords ? custCoords[0] : null
     const custLng = custCoords ? custCoords[1] : null
 
+    // Determine journey origin: driver coordinates if available, otherwise Central Hub
+    const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
+    const originCoords = hasDriverCoords ? [dLat, dLng] : HUBS[0].coords
+    const [originLat, originLng] = originCoords
+
     const boundsPoints = [HUBS[0].coords]
-    if (dLat != null && dLng != null) boundsPoints.push([dLat, dLng])
+    if (hasDriverCoords) boundsPoints.push([dLat, dLng])
     if (custLat != null && custLng != null) boundsPoints.push([custLat, custLng])
     if (boundsPoints.length >= 2) {
       setFitBoundsTarget(boundsPoints)
     }
 
-    if (dLat == null || dLng == null || custLat == null || custLng == null) {
+    // If destination coords are missing, cannot calculate route to customer
+    if (custLat == null || custLng == null) {
       setRoadPolyline([])
       setRoadDistanceKm(null)
       setRoadDurationMins(null)
       return
     }
 
+    // Immediately calculate fallback road trajectory so the map projects instantly
+    const straightDist = calcDistanceKm(originLat, originLng, custLat, custLng)
+    const instantPath = interpolateRoute(originCoords, custCoords, 0.06)
+    setRoadPolyline(instantPath)
+    if (straightDist != null) {
+      setRoadDistanceKm(straightDist)
+      setRoadDurationMins(Math.round((straightDist / 40) * 60))
+    }
+
     let cancelled = false
-    fetch(`https://router.project-osrm.org/route/v1/driving/${dLng},${dLat};${custLng},${custLat}?overview=full&geometries=geojson`)
+    fetch(`https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${custLng},${custLat}?overview=full&geometries=geojson`)
       .then(res => res.json())
       .then(data => {
         if (cancelled) return
@@ -308,7 +327,9 @@ export default function DeliveryMap() {
           setRoadDurationMins(Math.round(data.routes[0].duration / 60))
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('OSRM routing fetch failed, retaining interpolated route:', err)
+      })
 
     return () => { cancelled = true }
   }, [selected?.id, selected?.driver_lat, selected?.driver_lng, selected?.customer_lat, selected?.customer_lng])
@@ -339,7 +360,7 @@ export default function DeliveryMap() {
     const dLng = safeNum(del.driver_lng, null)
     const custCoords = getCustomerCoords(del)
     const boundsPoints = [HUBS[0].coords]
-    if (dLat != null && dLng != null) boundsPoints.push([dLat, dLng])
+    if (dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)) boundsPoints.push([dLat, dLng])
     if (custCoords) boundsPoints.push(custCoords)
     if (boundsPoints.length >= 2) {
       setFitBoundsTarget(boundsPoints)
@@ -358,8 +379,15 @@ export default function DeliveryMap() {
   const focusUmuahia = () => setFlyTarget(HUBS[0].coords)
   const fitAll = () => {
     const points = deliveries
-      .filter(d => d.driver_lat != null && d.driver_lng != null)
-      .map(d => [safeNum(d.driver_lat), safeNum(d.driver_lng)])
+      .flatMap(d => {
+        const pts = []
+        if (d.driver_lat != null && d.driver_lng != null && (d.driver_lat !== 0 || d.driver_lng !== 0)) {
+          pts.push([safeNum(d.driver_lat), safeNum(d.driver_lng)])
+        }
+        const c = getCustomerCoords(d)
+        if (c) pts.push(c)
+        return pts
+      })
     if (points.length > 0) {
       setFitBoundsTarget([...points, HUBS[0].coords])
     } else {
@@ -730,13 +758,16 @@ export default function DeliveryMap() {
                 const isSel = selected?.id === del.id
                 const dLat = safeNum(del.driver_lat, null)
                 const dLng = safeNum(del.driver_lng, null)
+                const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
+                const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 30 * 60 * 1000))
+                const originCoords = hasDriverCoords ? [dLat, dLng] : HUBS[0].coords
                 const custCoords = getCustomerCoords(del)
                 const custLat = custCoords ? custCoords[0] : null
                 const custLng = custCoords ? custCoords[1] : null
                 const distKm = (isSel && roadDistanceKm)
                   ? roadDistanceKm
-                  : ((dLat != null && dLng != null && custLat != null && custLng != null)
-                      ? calcDistanceKm(dLat, dLng, custLat, custLng)
+                  : ((custLat != null && custLng != null)
+                      ? calcDistanceKm(originCoords[0], originCoords[1], custLat, custLng)
                       : null)
 
                 const itemsCount = del.items?.length || 0
@@ -824,7 +855,7 @@ export default function DeliveryMap() {
 
                       {/* ETA & Distance or Offline Badges */}
                       <div className="d-flex align-items-center gap-1.5 flex-wrap justify-content-end">
-                        {dLat == null && (
+                        {(!hasDriverCoords || !isGpsLive) && (
                           <span className="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5" style={{ fontSize: 9 }}>
                             <i className="ri-signal-wifi-off-line me-0.5" />GPS Offline
                           </span>
@@ -836,7 +867,7 @@ export default function DeliveryMap() {
                         )}
                         {distKm != null && (
                           <span className="text-primary fw-semibold font-monospace" style={{ fontSize: 10 }}>
-                            <i className="ri-navigation-line me-0.5" />{distKm} km
+                            <i className="ri-navigation-line me-0.5" />{distKm} km {!hasDriverCoords ? '(Hub)' : ''}
                           </span>
                         )}
                         {del.eta_minutes != null && (
@@ -853,7 +884,11 @@ export default function DeliveryMap() {
                         className={`btn btn-xs w-100 fw-semibold d-inline-flex align-items-center justify-content-center gap-1 ${
                           isSel ? 'btn-primary' : 'btn-light border text-dark'
                         }`}
-                        style={{ fontSize: 11, padding: '4px 8px' }}>
+                        style={{ fontSize: 11, padding: '4px 8px' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSelectDelivery(del)
+                        }}>
                         <i className="ri-focus-3-line" />
                         {isSel ? 'Viewing Route' : 'Track Route'}
                       </button>
@@ -989,24 +1024,28 @@ export default function DeliveryMap() {
               const custLat = custCoords ? custCoords[0] : null
               const custLng = custCoords ? custCoords[1] : null
 
-              const driverPos = (dLat != null && dLng != null) ? [dLat, dLng] : null
+              const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
+              const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 30 * 60 * 1000))
+              const driverPos = hasDriverCoords ? [dLat, dLng] : null
               const customerPos = (custLat != null && custLng != null) ? [custLat, custLng] : null
               const centralHub = HUBS[0]
 
               if (!driverPos && !customerPos) return null
 
+              const originPos = driverPos || centralHub.coords
+
               // Generate route paths
               const hubToDriverRoute = driverPos ? interpolateRoute(centralHub.coords, driverPos, 0.04) : []
-              const driverToCustomerRoute = (driverPos && customerPos)
+              const activeTransitRoute = customerPos
                 ? ((isSelectedDelivery && roadPolyline.length > 0)
                     ? roadPolyline
-                    : interpolateRoute(driverPos, customerPos, 0.06))
+                    : interpolateRoute(originPos, customerPos, 0.06))
                 : []
 
               return (
                 <Fragment key={del.id}>
                   {/* 1. Hub to Driver (Completed Journey Segment) */}
-                  {driverPos && hubToDriverRoute.length > 0 && (
+                  {driverPos && hubToDriverRoute.length > 0 && calcDistanceKm(centralHub.coords[0], centralHub.coords[1], driverPos[0], driverPos[1]) > 0.5 && (
                     <Polyline
                       positions={hubToDriverRoute}
                       pathOptions={{
@@ -1019,12 +1058,12 @@ export default function DeliveryMap() {
                     />
                   )}
 
-                  {/* 2. Driver to Customer Destination (Live Transit Flow Journey Line) */}
-                  {driverPos && customerPos && driverToCustomerRoute.length > 0 && (
+                  {/* 2. Projected / Active Journey Line (from Driver or Central Hub to Customer Destination) */}
+                  {customerPos && activeTransitRoute.length > 0 && (
                     <>
                       {/* Ambient Glow Aura */}
                       <Polyline
-                        positions={driverToCustomerRoute}
+                        positions={activeTransitRoute}
                         pathOptions={{
                           color: isSelectedDelivery ? color : '#3b82f6',
                           weight: isSelectedDelivery ? 10 : 6,
@@ -1034,12 +1073,13 @@ export default function DeliveryMap() {
                       />
                       {/* Active Animated Journey Line */}
                       <Polyline
-                        positions={driverToCustomerRoute}
+                        positions={activeTransitRoute}
                         pathOptions={{
                           color: isSelectedDelivery ? color : '#2563eb',
                           weight: isSelectedDelivery ? 4.5 : 3,
                           opacity: isSelectedDelivery ? 1 : 0.8,
                           className: 'live-transit-flow',
+                          dashArray: !driverPos ? '7, 9' : undefined,
                         }}
                       />
                     </>
@@ -1049,8 +1089,8 @@ export default function DeliveryMap() {
                   {driverPos && (
                     <Marker
                       position={driverPos}
-                      icon={driverIcon(del.driver_name, color, cfg.pulse || isSelectedDelivery, del.driver_heading || 0)}
-                    eventHandlers={{
+                      icon={driverIcon(del.driver_name, color, isGpsLive && (cfg.pulse || isSelectedDelivery), del.driver_heading || 0, isGpsLive)}
+                      eventHandlers={{
                       click: () => handleSelectDelivery(del),
                     }}>
                     <Popup>
@@ -1192,11 +1232,14 @@ export default function DeliveryMap() {
             const cfg = STATUS_CFG[selected.status] || DEFAULT_STATUS_CFG
             const dLat = safeNum(selected.driver_lat, null)
             const dLng = safeNum(selected.driver_lng, null)
+            const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
+            const isGpsLive = Boolean(selected.is_gps_live ?? (selected.driver_last_ping && (new Date() - new Date(selected.driver_last_ping)) < 30 * 60 * 1000))
+            const originCoords = hasDriverCoords ? [dLat, dLng] : HUBS[0].coords
             const custCoords = getCustomerCoords(selected)
             const custLat = custCoords ? custCoords[0] : null
             const custLng = custCoords ? custCoords[1] : null
-            const distKm = roadDistanceKm ?? ((dLat != null && dLng != null && custLat != null && custLng != null) ? calcDistanceKm(dLat, dLng, custLat, custLng) : null)
-            const etaMins = roadDurationMins ?? (selected.eta_minutes || (distKm ? Math.round((distKm / 45) * 60) : null))
+            const distKm = roadDistanceKm ?? ((custLat != null && custLng != null) ? calcDistanceKm(originCoords[0], originCoords[1], custLat, custLng) : null)
+            const etaMins = roadDurationMins ?? (selected.eta_minutes || (distKm ? Math.round((distKm / 40) * 60) : null))
             const items = selected.items || []
 
             if (hudMinimized) {
@@ -1327,9 +1370,12 @@ export default function DeliveryMap() {
                         <i className="ri-alert-line me-1 text-warning" />Customer address is not geocoded to GPS coordinates.
                       </div>
                     )}
-                    {dLat == null && (
-                      <div className="mt-1 badge bg-danger-subtle text-danger border border-danger-subtle text-wrap text-start w-100 p-1.5" style={{ fontSize: 10 }}>
-                        <i className="ri-signal-wifi-off-line me-1" />Driver phone GPS offline (&gt;30m no signal).
+                    {(!hasDriverCoords || !isGpsLive) && (
+                      <div className="mt-1 badge bg-warning-subtle text-dark border border-warning-subtle text-wrap text-start w-100 p-1.5" style={{ fontSize: 10 }}>
+                        <i className="ri-signal-wifi-off-line me-1 text-danger" />
+                        {!hasDriverCoords
+                          ? 'Driver phone GPS offline. Route projected from Central Fulfillment Hub.'
+                          : 'Driver phone GPS offline (>30m no ping). Showing last known position.'}
                       </div>
                     )}
 
@@ -1361,6 +1407,9 @@ export default function DeliveryMap() {
                         <div className="fw-bold text-dark font-monospace" style={{ fontSize: 12 }}>
                           {distKm != null ? `${distKm} km` : '—'}
                         </div>
+                        {!hasDriverCoords && distKm != null && (
+                          <div className="text-muted fw-semibold" style={{ fontSize: 8.5 }}>from Hub</div>
+                        )}
                       </div>
                     </div>
                     <div className="col-4">
@@ -1369,6 +1418,9 @@ export default function DeliveryMap() {
                         <div className="fw-bold text-primary" style={{ fontSize: 12 }}>
                           {etaMins != null ? `~${etaMins} mins` : '—'}
                         </div>
+                        {!hasDriverCoords && etaMins != null && (
+                          <div className="text-muted fw-semibold" style={{ fontSize: 8.5 }}>projected</div>
+                        )}
                       </div>
                     </div>
                     <div className="col-4">

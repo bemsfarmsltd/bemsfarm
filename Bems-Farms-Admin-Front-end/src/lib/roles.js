@@ -10,6 +10,9 @@ export const ROLES = {
   ACCOUNTANT:       'accountant',
   DELIVERY_MANAGER: 'delivery_manager',
   CASHIER:          'cashier',
+  SALESPERSON:      'salesperson',
+  SALES_PERSON:     'sales_person',
+  SALES:            'sales',
   KITCHEN_STAFF:    'kitchen_staff',
 }
 
@@ -18,6 +21,13 @@ export const ROLES = {
 
 /** Every role */
 export const ALL_ROLES = Object.values(ROLES)
+
+/** Sales / cashier roles dedicated strictly to POS */
+export const SALES_ROLES = ['cashier', 'salesperson', 'sales_person', 'sales']
+
+export const isSalesRole = (role) => {
+  return role ? SALES_ROLES.includes(String(role).toLowerCase()) : false
+}
 
 /** Superadmin + Admin + Manager only */
 export const ADMIN_ONLY = ['admin', 'superadmin', 'manager']
@@ -29,13 +39,13 @@ export const FINANCE_ROLES = ['admin', 'superadmin', 'manager', 'accountant']
 export const DELIVERY_ROLES = ['admin', 'superadmin', 'manager', 'delivery_manager']
 
 /** Can access POS */
-export const POS_ROLES = ['admin', 'superadmin', 'manager', 'cashier']
+export const POS_ROLES = ['admin', 'superadmin', 'manager', 'cashier', 'salesperson', 'sales_person', 'sales']
 
 /** Can see orders */
-export const ORDER_ROLES = ['admin', 'superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff']
+export const ORDER_ROLES = ['admin', 'superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'salesperson', 'sales_person', 'sales', 'kitchen_staff']
 
 /** Can manage customers */
-export const CUSTOMER_ROLES = ['admin', 'superadmin', 'manager', 'cashier']
+export const CUSTOMER_ROLES = ['admin', 'superadmin', 'manager', 'cashier', 'salesperson', 'sales_person', 'sales']
 
 /** Can manage products & inventory */
 export const PRODUCT_ROLES = ['admin', 'superadmin', 'manager', 'kitchen_staff']
@@ -56,7 +66,7 @@ export const SETTINGS_ROLES = ['admin', 'superadmin', 'manager']
 export const MULTISTORE_ROLES = ['admin', 'superadmin']
 
 export const isStaffRole = (role) => {
-  return role ? ALL_ROLES.includes(role) : false
+  return role ? (ALL_ROLES.includes(role) || isSalesRole(role)) : false
 }
 
 export const STAFF_HOME = {
@@ -64,6 +74,9 @@ export const STAFF_HOME = {
   superadmin: '/dashboard',
   manager: '/dashboard',
   cashier: '/pos',
+  salesperson: '/pos',
+  sales_person: '/pos',
+  sales: '/pos',
   kitchen_staff: '/inventory/stock',
   delivery_manager: '/deliveries/active',
   accountant: '/accounts/overview',
@@ -117,13 +130,40 @@ export const ROLE_META = {
     password:    'delivery123',
   },
   cashier: {
-    label:       'Cashier',
+    label:       'Cashier / Sales',
     description: 'POS, orders & customers',
     color:       '#15803d',
     bg:          '#dcfce7',
     icon:        'ri-store-2-line',
     email:       'cashier@bemsfarms.com',
     password:    'cashier123',
+  },
+  salesperson: {
+    label:       'Sales Person',
+    description: 'POS, sales register & checkout',
+    color:       '#15803d',
+    bg:          '#dcfce7',
+    icon:        'ri-store-2-line',
+    email:       'sales@bemsfarms.com',
+    password:    'sales123',
+  },
+  sales_person: {
+    label:       'Sales Person',
+    description: 'POS, sales register & checkout',
+    color:       '#15803d',
+    bg:          '#dcfce7',
+    icon:        'ri-store-2-line',
+    email:       'sales@bemsfarms.com',
+    password:    'sales123',
+  },
+  sales: {
+    label:       'Sales Person',
+    description: 'POS, sales register & checkout',
+    color:       '#15803d',
+    bg:          '#dcfce7',
+    icon:        'ri-store-2-line',
+    email:       'sales@bemsfarms.com',
+    password:    'sales123',
   },
   kitchen_staff: {
     label:       'Kitchen Staff',

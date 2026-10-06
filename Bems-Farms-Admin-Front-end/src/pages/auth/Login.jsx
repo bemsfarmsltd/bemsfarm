@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
-import { isStaffRole, STAFF_HOME } from "../../lib/roles";
+import { isStaffRole, isSalesRole, STAFF_HOME } from "../../lib/roles";
 import toast from "react-hot-toast";
 import api from "../../lib/api";
 import "./Login.css";
@@ -26,8 +26,12 @@ export default function Login() {
 
   useEffect(() => {
     if (authLoading || !user) return;
+    if (isSalesRole(user.role)) {
+      navigate("/pos", { replace: true });
+      return;
+    }
     if (isStaffRole(user.role)) {
-      const from = location.state?.from || STAFF_HOME[user.role] || "/dashboard";
+      const from = location.state?.from?.pathname || location.state?.from || STAFF_HOME[user.role] || "/dashboard";
       navigate(from, { replace: true });
     }
   }, [user, authLoading, navigate, location]);
@@ -43,8 +47,11 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await login(targetEmail, targetPassword);
+      const loggedInUser = await login(targetEmail, targetPassword);
       toast.success("Welcome back!");
+      if (isSalesRole(loggedInUser?.role)) {
+        navigate("/pos", { replace: true });
+      }
     } catch (err) {
       const serverMessage =
         err.response?.data?.message ||

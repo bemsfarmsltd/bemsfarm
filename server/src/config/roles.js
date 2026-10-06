@@ -6,6 +6,9 @@ const ROLES = Object.freeze({
   ACCOUNTANT: "accountant",
   DELIVERY_MANAGER: "delivery_manager",
   CASHIER: "cashier",
+  SALESPERSON: "salesperson",
+  SALES_PERSON: "sales_person",
+  SALES: "sales",
   STOREKEEPER: "storekeeper",
   KITCHEN_STAFF: "kitchen_staff",
 });
@@ -17,6 +20,9 @@ const STAFF_ROLES = Object.freeze([
   ROLES.ACCOUNTANT,
   ROLES.DELIVERY_MANAGER,
   ROLES.CASHIER,
+  ROLES.SALESPERSON,
+  ROLES.SALES_PERSON,
+  ROLES.SALES,
   ROLES.STOREKEEPER,
   ROLES.KITCHEN_STAFF,
 ]);

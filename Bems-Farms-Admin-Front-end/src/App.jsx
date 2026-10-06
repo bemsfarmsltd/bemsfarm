@@ -3,7 +3,7 @@ import CustomerBroadcasts from './pages/customers/CustomerBroadcasts'
 import ProductDemand from './pages/customers/ProductDemand'
 import GodEye from './pages/system/SystemAudit'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ui/ErrorBoundary'
@@ -11,6 +11,7 @@ import {
   ALL_ROLES, ADMIN_ONLY, FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES, MULTISTORE_ROLES,
+  isSalesRole, STAFF_HOME,
 } from './lib/roles'
 
 // Auth & Errors
@@ -125,6 +126,32 @@ import Profile               from './pages/settings/Profile'
 import GlobalBarcodeListener from './components/GlobalBarcodeListener'
 import { RealtimeProvider } from './context/RealtimeContext'
 
+/**
+ * Root redirect:
+ * - Sales roles strictly route to /pos
+ * - Management & other staff route to their respective home dashboard
+ */
+function RootRedirect() {
+  const { user } = useAuth()
+  if (isSalesRole(user?.role)) {
+    return <Navigate to="/pos" replace />
+  }
+  return <Navigate to={STAFF_HOME[user?.role] || '/dashboard'} replace />
+}
+
+/**
+ * Admin Layout Guard:
+ * Sales staff are NEVER allowed to access the admin layout, dashboard, or management sidebar.
+ * If accessed directly via URL, they are immediately redirected to /pos.
+ */
+function AdminLayoutGuard() {
+  const { user } = useAuth()
+  if (isSalesRole(user?.role)) {
+    return <Navigate to="/pos" replace />
+  }
+  return <Layout />
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -141,18 +168,19 @@ function App() {
 
           {/* ── All authenticated users ── */}
           <Route element={<ProtectedRoute />}>
-            {/* Root redirect to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Root redirect */}
+            <Route path="/" element={<RootRedirect />} />
 
             {/* POS — full-screen, POS roles only */}
             <Route element={<ProtectedRoute allowedRoles={POS_ROLES} />}>
               <Route path="/pos" element={<POS />} />
             </Route>
 
-            <Route element={<Layout />}>
-              {/* Dashboard — everyone */}
+            {/* Admin layout — strictly guarded against sales roles */}
+            <Route element={<AdminLayoutGuard />}>
+              {/* Dashboard — everyone except sales roles */}
               <Route path="/dashboard" element={<Dashboard />} />
-              {/* My Profile — every signed-in staff member manages their own account */}
+              {/* My Profile — management and non-sales staff */}
               <Route path="/settings/profile" element={<Profile />} />
 
               {/* ── Products & Inventory ── */}
@@ -312,7 +340,7 @@ function App() {
           </Route>
 
           {/* 404 fallback */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
         </RealtimeProvider>
       </AuthProvider>

@@ -1,8 +1,11 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { isSalesRole } from '../../lib/roles'
 import api from '../../lib/api'
 import SalesHub from './SalesHub'
+import POSProfileModal from './POSProfileModal'
+import POSLogoutModal from './POSLogoutModal'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import {
   isDirectPrinterSupported,
@@ -151,7 +154,8 @@ function getProductIcon(name = '', cat = '') {
 
 // ── Main POS Component ────────────────────────────────────────────────────────
 export default function POS() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [viewMode, setViewMode] = useState('hub') // 'hub' (First Screen) | 'register' (Active Ringing)
 
   // Theme state: defaults to crisp 'light' mode or saved preference
@@ -2356,10 +2360,23 @@ export default function POS() {
             <i className={theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'}></i>
           </button>
 
-          <Link to="/dashboard" className="pos-icon-circle-btn" title="Exit to Main Dashboard">
-            <i className="ri-logout-box-r-line"></i>
-          </Link>
+          {/* Exit to Main Dashboard — strictly hidden for sales roles */}
+          {!isSalesRole(user?.role) && (
+            <Link to="/dashboard" className="pos-icon-circle-btn" title="Exit to Main Dashboard">
+              <i className="ri-dashboard-2-line"></i>
+            </Link>
+          )}
 
+          {/* Profile & Account Settings Button */}
+          <button
+            type="button"
+            onClick={() => setActiveModal('profile')}
+            className="pos-icon-circle-btn"
+            title="My Staff Profile & Account Settings">
+            <i className="ri-user-3-line text-success"></i>
+          </button>
+
+          {/* Cashier Avatar & Analytics */}
           <button
             onClick={() => setActiveModal('analytics')}
             className="pos-cashier-avatar-btn"
@@ -2367,6 +2384,16 @@ export default function POS() {
             <span className="pos-cashier-circle-mini">
               {user ? (user.first_name?.[0] || 'B') + (user.last_name?.[0] || 'F') : 'SA'}
             </span>
+          </button>
+
+          {/* Dedicated Sign Out Button */}
+          <button
+            type="button"
+            onClick={() => setShowLogoutModal(true)}
+            className="pos-icon-circle-btn"
+            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.35)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}
+            title="Sign Out of POS">
+            <i className="ri-logout-box-r-line"></i>
           </button>
 
           <span className="pos-hud-divider" />
@@ -5649,6 +5676,31 @@ export default function POS() {
           </div>
         )
       })()}
+
+      {/* ─── Staff Profile & Password Modal ─── */}
+      <POSProfileModal
+        isOpen={activeModal === 'profile'}
+        onClose={closeModal}
+        onLogout={() => {
+          closeModal()
+          setShowLogoutModal(true)
+        }}
+        session={session}
+        shiftStats={shiftStats}
+      />
+
+      {/* ─── POS Logout & Shift Confirmation Modal ─── */}
+      <POSLogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirmLogout={logout}
+        onCloseShiftFirst={() => {
+          setShowLogoutModal(false)
+          setActiveModal('analytics')
+          setAnalyticsTab('drawer')
+        }}
+        session={session}
+      />
 
       {/* ═══ SCAN TOAST NOTIFICATION ══════════════════════════════════════ */}
       {toast && (

@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { ROLE_META } from '../../lib/roles'
+import { ROLE_META, isSalesRole } from '../../lib/roles'
 
 export default function Unauthorized() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const meta = user ? ROLE_META[user.role] : null
+  const isSales = isSalesRole(user?.role)
 
   return (
     <div className="d-flex align-items-center justify-content-center min-vh-100" style={{ background: '#f8fafc' }}>
@@ -43,8 +44,9 @@ export default function Unauthorized() {
           <button className="btn btn-light" onClick={() => navigate(-1)}>
             <i className="ri-arrow-left-line me-1"></i>Go Back
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-            <i className="ri-dashboard-2-line me-1"></i>Dashboard
+          <button className="btn btn-primary" onClick={() => navigate(isSales ? '/pos' : '/dashboard')}>
+            <i className={`${isSales ? 'ri-store-2-line' : 'ri-dashboard-2-line'} me-1`}></i>
+            {isSales ? 'Return to POS' : 'Dashboard'}
           </button>
         </div>
       </div>

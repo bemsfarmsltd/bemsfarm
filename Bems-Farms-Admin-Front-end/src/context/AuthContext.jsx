@@ -29,6 +29,14 @@ const DEV_USERS = {
     password: 'cashier123',
     user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'cashier@bemsfarms.com', role: 'cashier' },
   },
+  'sales@bemsfarms.com': {
+    password: 'sales123',
+    user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'sales@bemsfarms.com', role: 'salesperson' },
+  },
+  'salesperson@bemsfarms.com': {
+    password: 'sales123',
+    user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'salesperson@bemsfarms.com', role: 'salesperson' },
+  },
   'kitchen@bemsfarms.com': {
     password: 'kitchen123',
     user: { id: 'dev-6', first_name: 'Chidi', last_name: 'Obiora', email: 'kitchen@bemsfarms.com', role: 'kitchen_staff' },

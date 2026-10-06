@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { isSalesRole } from '../../lib/roles'
 import api from '../../lib/api'
+import POSProfileModal from './POSProfileModal'
+import POSLogoutModal from './POSLogoutModal'
 
 const fmt = (n) => '₦' + Math.round(n || 0).toLocaleString()
 
@@ -89,6 +92,8 @@ export default function SalesHub({
   // Cash drawer denomination state for reconciliation modal
   const [showDrawerModal, setShowDrawerModal] = useState(false)
   const [showZReportModal, setShowZReportModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [denominations, setDenominations] = useState({
     1000: '',
     500: '',
@@ -384,9 +389,15 @@ export default function SalesHub({
         <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
           {/* Left: Brand Logo + Terminal & Shift Status */}
           <div className="d-flex align-items-center gap-3">
-            <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
-              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
-            </Link>
+            {isSalesRole(user?.role) ? (
+              <span className="d-flex align-items-center">
+                <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
+              </span>
+            ) : (
+              <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
+                <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
+              </Link>
+            )}
 
             <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 28 }}></div>
 
@@ -494,23 +505,35 @@ export default function SalesHub({
               <i className={isFullscreen ? 'ri-fullscreen-exit-line text-dark' : 'ri-fullscreen-line text-dark'} style={{ fontSize: '16px' }}></i>
             </button>
 
-            {/* Admin Switcher / Logout */}
-            {isManager ? (
+            {/* Profile Button */}
+            <button
+              type="button"
+              className="sh-secondary-btn"
+              onClick={() => setShowProfileModal(true)}
+              title="My Staff Profile & Account Settings"
+            >
+              <i className="ri-user-3-line text-success" style={{ fontSize: '15px' }}></i>
+              <span className="d-none d-sm-inline">Profile</span>
+            </button>
+
+            {/* Admin Dashboard Switcher — only for managers/admins, NEVER for sales role */}
+            {!isSalesRole(user?.role) && isManager && (
               <Link to="/dashboard" className="sh-secondary-btn" title="Back to Admin Dashboard">
                 <i className="ri-dashboard-2-line" style={{ fontSize: '15px' }}></i>
                 <span className="d-none d-sm-inline">Admin Dashboard</span>
               </Link>
-            ) : (
-              <button
-                type="button"
-                className="sh-secondary-btn text-danger"
-                onClick={logout}
-                title="End Shift & Sign Out"
-              >
-                <i className="ri-logout-box-r-line" style={{ fontSize: '15px' }}></i>
-                <span className="d-none d-sm-inline">End Shift</span>
-              </button>
             )}
+
+            {/* Sign Out / End Shift Button */}
+            <button
+              type="button"
+              className="sh-secondary-btn text-danger"
+              onClick={() => setShowLogoutModal(true)}
+              title="End Shift & Sign Out"
+            >
+              <i className="ri-logout-box-r-line" style={{ fontSize: '15px' }}></i>
+              <span className="d-none d-sm-inline">Sign Out</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1596,6 +1619,27 @@ export default function SalesHub({
           </div>
         </div>
       )}
+
+      {/* ── POS Staff Profile Modal ── */}
+      <POSProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onLogout={() => {
+          setShowProfileModal(false)
+          setShowLogoutModal(true)
+        }}
+        session={session}
+        shiftStats={kpis ? { totalSales: kpis.gross_revenue } : null}
+      />
+
+      {/* ── POS Sign Out Confirmation Modal ── */}
+      <POSLogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirmLogout={logout}
+        onCloseShiftFirst={() => setShowZReportModal(true)}
+        session={session}
+      />
 
     </div>
   )

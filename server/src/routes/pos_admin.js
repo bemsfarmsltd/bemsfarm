@@ -136,7 +136,7 @@ router.post("/session/:id/close", requireRole("superadmin","manager","admin","ca
       return res.status(404).json({ message: "Session not found" });
     }
 
-    if (req.user.role === "cashier" && session.rows[0].cashier_id !== req.user.id) {
+    if (["cashier", "salesperson", "sales_person", "sales"].includes(req.user.role) && session.rows[0].cashier_id !== req.user.id) {
       await client.query("ROLLBACK");
       return res.status(403).json({ message: "You can only close your own POS session" });
     }

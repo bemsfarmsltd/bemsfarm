@@ -70,6 +70,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         dz.zone_name AS zone,
         dl.latitude AS driver_lat, dl.longitude AS driver_lng, dl.heading AS driver_heading,
         dl.speed AS driver_speed, dl.recorded_at AS driver_last_ping,
+        COALESCE(dl.is_gps_live, false) AS is_gps_live,
         (SELECT JSON_AGG(JSON_BUILD_OBJECT(
             'id', oi.id,
             'name', COALESCE(oi.product_name, p.name, 'Farm Produce Item'),
@@ -94,10 +95,10 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
-        SELECT latitude, longitude, heading, speed, recorded_at 
+        SELECT latitude, longitude, heading, speed, recorded_at,
+          (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
-          AND recorded_at >= NOW() - INTERVAL '30 minutes'
         ORDER BY recorded_at DESC 
         LIMIT 1
       ) dl ON true
