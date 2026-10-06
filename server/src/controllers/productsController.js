@@ -108,9 +108,26 @@ const getProducts = async (req, res, next) => {
       [...params, limit, offset],
     );
 
+    const products = result.rows.map(stripPrivateProductFields);
+    if (products.length > 0) {
+      const pIds = products.map((r) => r.id);
+      const pkgUnitsRes = await pool.query(
+        "SELECT id, product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default FROM product_packaging_units WHERE product_id = ANY($1::int[]) AND is_active = true ORDER BY multiplier ASC",
+        [pIds]
+      );
+      const pkgMap = new Map();
+      for (const u of pkgUnitsRes.rows) {
+        if (!pkgMap.has(u.product_id)) pkgMap.set(u.product_id, []);
+        pkgMap.get(u.product_id).push(u);
+      }
+      for (const r of products) {
+        r.packaging_units = pkgMap.get(r.id) || [];
+      }
+    }
+
     res.json({
-      products: result.rows.map(stripPrivateProductFields),
-      count: result.rows.length,
+      products,
+      count: products.length,
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -144,6 +161,13 @@ const getProductById = async (req, res, next) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const pkgUnitsRes = await pool.query(
+      "SELECT id, product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default FROM product_packaging_units WHERE product_id = $1 AND is_active = true ORDER BY multiplier ASC",
+      [id]
+    );
+    const product = stripPrivateProductFields(result.rows[0]);
+    product.packaging_units = pkgUnitsRes.rows;
+
     // Get related products from same category — same rating join as the
     // main product list, so ProductCard (used for these related cards
     // elsewhere) has ratings available if it's ever wired to show them.
@@ -162,7 +186,7 @@ const getProductById = async (req, res, next) => {
     );
 
     res.json({
-      product: stripPrivateProductFields(result.rows[0]),
+      product,
       related: related.rows.map(stripPrivateProductFields),
     });
   } catch (error) {

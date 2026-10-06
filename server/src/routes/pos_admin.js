@@ -352,7 +352,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     let prodRows = { rows: [] };
     if (validProductIds.length > 0) {
       prodRows = await client.query(
-        "SELECT id, name, unit_price, price, stock, stock_quantity, cost_price FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
+        "SELECT id, name, unit_price, price, stock, stock_quantity, cost_price, pcs_per_carton, carton_price, carton_barcode, carton_unit_name, piece_unit_name, track_inventory FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
         [validProductIds]
       );
     }
@@ -1772,9 +1772,10 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
     // 2. Identify Product by barcode (or SKU/ID)
     const cleanCode = String(barcode).trim();
     const productRes = await client.query(
-      `SELECT p.id, p.name, p.barcode, p.sku, p.stock, p.stock_quantity
+      `SELECT p.id, p.name, p.barcode, p.sku, p.stock, p.stock_quantity, p.pcs_per_carton, p.carton_barcode
        FROM products p
-       WHERE p.barcode = $1 OR p.sku = $1 OR p.id::text = $1
+       WHERE p.barcode = $1 OR p.sku = $1 OR p.carton_barcode = $1 OR p.id::text = $1
+          OR p.id IN (SELECT product_id FROM product_packaging_units WHERE barcode = $1 OR sku = $1)
        LIMIT 1
        FOR UPDATE`,
       [cleanCode]

@@ -141,7 +141,7 @@ router.get("/subcategories", requireRole("superadmin", "manager", "admin", "kitc
         COALESCE(s.status, 'active') AS status,
         s.created_at,
         c.name AS category_name,
-        (SELECT COUNT(*) FROM products p WHERE p.sub_category_id = s.id OR p.category_id = s.category_id) AS product_count
+        (SELECT COUNT(*) FROM products p WHERE (p.sub_category_id = s.id OR p.category_id = s.category_id) AND p.status NOT IN ('merged', 'archived')) AS product_count
       FROM subcategories s
       LEFT JOIN categories c ON s.category_id = c.id
       WHERE 1=1
@@ -226,7 +226,7 @@ router.put("/subcategories/:id", requireRole("superadmin", "manager", "admin"), 
 router.delete("/subcategories/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const prodCount = await pool.query("SELECT COUNT(*) FROM products WHERE sub_category_id = $1", [parseInt(id)]);
+    const prodCount = await pool.query("SELECT COUNT(*) FROM products WHERE sub_category_id = $1 AND status NOT IN ('merged', 'archived')", [parseInt(id)]);
     if (parseInt(prodCount.rows[0].count) > 0) {
       return res.status(400).json({ message: `Cannot delete subcategory linked to ${prodCount.rows[0].count} product(s)` });
     }
@@ -941,6 +941,11 @@ router.post(
         image_2_url,
         image_3_url,
         image_4_url,
+        pcs_per_carton,
+        carton_price,
+        carton_barcode,
+        carton_unit_name,
+        piece_unit_name,
       } = req.body;
 
       if (!name?.trim()) {
@@ -1039,11 +1044,13 @@ router.post(
         available_for_sale, stock, stock_quantity, low_stock_threshold,
         track_inventory, expiry_date, return_policy,
         status, store_id, barcode, hsn_code, video_url, image_url,
+        pcs_per_carton, carton_price, carton_barcode, carton_unit_name, piece_unit_name,
         is_featured, created_by, created_at, updated_at
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10,$11,$12,$13,
         $14,$15,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
-        false,$26,NOW(),NOW()
+        $26,$27,$28,$29,$30,
+        false,$31,NOW(),NOW()
       )
       RETURNING *
     `,
@@ -1073,6 +1080,11 @@ router.post(
           hsn_code || null,
           video_url || null,
           image_url || null,
+          parseInt(pcs_per_carton, 10) || 1,
+          carton_price ? parseFloat(carton_price) : null,
+          carton_barcode?.trim() || null,
+          carton_unit_name?.trim() || 'Carton',
+          piece_unit_name?.trim() || (unit || 'Piece'),
           req.user.id,
         ],
       );
@@ -1546,6 +1558,11 @@ router.patch(
         video_url,
         image_url,
         is_featured,
+        pcs_per_carton,
+        carton_price,
+        carton_barcode,
+        carton_unit_name,
+        piece_unit_name,
       } = req.body;
 
       if (image_url !== undefined && (!image_url || !image_url.trim())) {
@@ -1626,8 +1643,13 @@ router.patch(
         video_url           = COALESCE($21, video_url),
         image_url           = COALESCE($22, image_url),
         is_featured         = COALESCE($23, is_featured),
+        pcs_per_carton      = COALESCE($24, pcs_per_carton),
+        carton_price        = COALESCE($25, carton_price),
+        carton_barcode      = CASE WHEN $26 = '__CLEAR__' OR $26 = '' THEN NULL WHEN $26 IS NOT NULL THEN $26 ELSE carton_barcode END,
+        carton_unit_name    = COALESCE($27, carton_unit_name),
+        piece_unit_name     = COALESCE($28, piece_unit_name),
         updated_at          = NOW()
-      WHERE id = $24
+      WHERE id = $29
       RETURNING *
     `,
         [
@@ -1654,6 +1676,11 @@ router.patch(
           video_url || null,
           image_url || null,
           is_featured !== undefined ? is_featured : null,
+          pcs_per_carton !== undefined && pcs_per_carton !== '' ? (parseInt(pcs_per_carton, 10) || 1) : null,
+          carton_price !== undefined && carton_price !== '' ? (parseFloat(carton_price) || null) : null,
+          carton_barcode !== undefined ? (carton_barcode === null || carton_barcode === '' ? '__CLEAR__' : String(carton_barcode).trim()) : null,
+          carton_unit_name || null,
+          piece_unit_name || null,
           req.params.id,
         ],
       );

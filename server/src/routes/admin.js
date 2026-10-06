@@ -27,9 +27,10 @@ router.get("/search", protect, adminOnly, async (req, res, next) => {
 
     const [products, orders, customers, staff] = await Promise.all([
       pool.query(
-        `SELECT id, name, sku, price, stock, image_url
+        `SELECT id, name, sku, price, stock, image_url, pcs_per_carton, carton_price
          FROM products
-         WHERE name ILIKE $1 OR sku ILIKE $1 OR barcode ILIKE $1
+         WHERE status NOT IN ('archived', 'merged')
+           AND (name ILIKE $1 OR sku ILIKE $1 OR barcode ILIKE $1 OR carton_barcode ILIKE $1)
          ORDER BY name ASC LIMIT 6`,
         [like]
       ),
