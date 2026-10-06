@@ -170,6 +170,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             {/* Root redirect */}
             <Route path="/" element={<RootRedirect />} />
+            <Route path="/admin" element={<RootRedirect />} />
 
             {/* POS — full-screen, POS roles only */}
             <Route element={<ProtectedRoute allowedRoles={POS_ROLES} />}>

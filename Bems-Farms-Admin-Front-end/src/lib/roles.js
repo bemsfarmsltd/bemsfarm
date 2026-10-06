@@ -23,7 +23,7 @@ export const ROLES = {
 export const ALL_ROLES = Object.values(ROLES)
 
 /** Sales / cashier roles dedicated strictly to POS */
-export const SALES_ROLES = ['cashier', 'salesperson', 'sales_person', 'sales']
+export const SALES_ROLES = ['cashier', 'salesperson', 'sales_person', 'sales', 'pos']
 
 export const isSalesRole = (role) => {
   return role ? SALES_ROLES.includes(String(role).toLowerCase()) : false

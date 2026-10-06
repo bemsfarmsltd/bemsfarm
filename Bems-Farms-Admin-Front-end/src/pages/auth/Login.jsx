@@ -24,16 +24,24 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const resolveTargetDestination = (userRole) => {
+    // Only dedicated cashier/salesperson/POS roles land directly on the POS register
+    if (isSalesRole(userRole)) {
+      return "/pos";
+    }
+    // Admins, Superadmins, and Management roles ALWAYS land on the main admin dashboard.
+    // They should NEVER be hijacked to /pos from a stale location state.
+    const rawFrom = location.state?.from?.pathname || location.state?.from;
+    if (rawFrom && rawFrom !== "/pos" && rawFrom !== "/login" && rawFrom !== "/unauthorized" && rawFrom !== "/") {
+      return rawFrom;
+    }
+    return STAFF_HOME[userRole] || "/dashboard";
+  };
+
   useEffect(() => {
     if (authLoading || !user) return;
-    if (isSalesRole(user.role)) {
-      navigate("/pos", { replace: true });
-      return;
-    }
-    if (isStaffRole(user.role)) {
-      const from = location.state?.from?.pathname || location.state?.from || STAFF_HOME[user.role] || "/dashboard";
-      navigate(from, { replace: true });
-    }
+    const dest = resolveTargetDestination(user.role);
+    navigate(dest, { replace: true });
   }, [user, authLoading, navigate, location]);
 
   const handleSubmit = async (e, customEmail, customPassword) => {
@@ -49,9 +57,8 @@ export default function Login() {
     try {
       const loggedInUser = await login(targetEmail, targetPassword);
       toast.success("Welcome back!");
-      if (isSalesRole(loggedInUser?.role)) {
-        navigate("/pos", { replace: true });
-      }
+      const dest = resolveTargetDestination(loggedInUser?.role);
+      navigate(dest, { replace: true });
     } catch (err) {
       const serverMessage =
         err.response?.data?.message ||
