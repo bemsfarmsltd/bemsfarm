@@ -71,6 +71,11 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
         if (f.key === 'cost_price' && ['costprice', 'cost', 'purchaseprice', 'buyprice'].includes(clean)) return true
         if (f.key === 'unit' && ['unit', 'unitofmeasure', 'uom', 'measure'].includes(clean)) return true
         if (f.key === 'main_image_url' && ['mainimageurl', 'imageurl', 'image', 'picture', 'photo'].includes(clean)) return true
+        if (f.key === 'pcs_per_carton' && ['pcspercarton', 'piecespercarton', 'pcsperctn', 'cartonsize', 'multiplier', 'unitspercarton'].includes(clean)) return true
+        if (f.key === 'carton_price' && ['cartonprice', 'bulkprice', 'ctnprice', 'packprice'].includes(clean)) return true
+        if (f.key === 'carton_unit_name' && ['cartonunitname', 'cartonunit', 'bulkunit', 'bulkunitname'].includes(clean)) return true
+        if (f.key === 'piece_unit_name' && ['pieceunitname', 'pieceunit', 'retailunit', 'retailunitname'].includes(clean)) return true
+        if (f.key === 'carton_barcode' && ['cartonbarcode', 'bulkbarcode', 'outerbarcode'].includes(clean)) return true
         return false
       })
       auto[f.key] = hit || UNMAP

@@ -1261,6 +1261,15 @@ router.post(
           const taxInput = row.tax_percent ?? row.tax;
           const taxRate = taxInput ? parseFloat(String(taxInput).replace(/[^0-9.]/g, "")) : 7.5;
 
+          // Unified Carton / Packaging Unit fields
+          const rawPcsPerCarton = String(row.pcs_per_carton ?? "").replace(/[^0-9]/g, "");
+          const pcsPerCarton = rawPcsPerCarton ? parseInt(rawPcsPerCarton, 10) : 1;
+          const rawCartonPrice = String(row.carton_price ?? "").replace(/[^0-9.]/g, "");
+          const cartonPrice = rawCartonPrice && !isNaN(parseFloat(rawCartonPrice)) ? parseFloat(rawCartonPrice) : null;
+          const cartonUnitName = row.carton_unit_name?.trim() || (pcsPerCarton > 1 ? "Carton" : null);
+          const pieceUnitName = row.piece_unit_name?.trim() || row.unit?.trim() || "piece";
+          const cartonBarcode = row.carton_barcode?.trim() || null;
+
           const parseYesNo = (val, fallback) => {
             if (val === undefined || val === null || val === "") return fallback;
             const v = String(val).trim().toLowerCase();
@@ -1387,8 +1396,13 @@ router.post(
                    category_id = COALESCE($19, category_id),
                    brand_id = COALESCE($20, brand_id),
                    unit_of_measure_id = COALESCE($21, unit_of_measure_id),
+                   pcs_per_carton = COALESCE($22, pcs_per_carton),
+                   carton_price = COALESCE($23, carton_price),
+                   carton_barcode = COALESCE($24, carton_barcode),
+                   carton_unit_name = COALESCE($25, carton_unit_name),
+                   piece_unit_name = COALESCE($26, piece_unit_name),
                    updated_at = NOW()
-               WHERE id = $22`,
+               WHERE id = $27`,
               [
                 incomingStock,
                 unitPrice,
@@ -1411,9 +1425,40 @@ router.post(
                 categoryId,
                 brandId,
                 unitOfMeasureId,
+                pcsPerCarton > 1 ? pcsPerCarton : null,
+                cartonPrice,
+                cartonBarcode,
+                cartonUnitName,
+                pieceUnitName,
                 existingProduct.id,
               ]
             );
+
+            // Sync packaging unit
+            if (pcsPerCarton > 1) {
+              const bulkPrice = cartonPrice || (unitPrice * pcsPerCarton);
+              const bulkUnit = cartonUnitName || "Carton";
+              const existUnit = await pool.query(
+                "SELECT id FROM product_packaging_units WHERE product_id = $1 AND LOWER(TRIM(unit_name)) = LOWER(TRIM($2)) LIMIT 1",
+                [existingProduct.id, bulkUnit]
+              );
+              if (existUnit.rows.length) {
+                await pool.query(
+                  `UPDATE product_packaging_units
+                   SET multiplier = $1, price = $2, cost_price = $3, barcode = COALESCE($4, barcode), updated_at = NOW()
+                   WHERE id = $5`,
+                  [pcsPerCarton, bulkPrice, costPrice, cartonBarcode, existUnit.rows[0].id]
+                );
+              } else {
+                await pool.query(
+                  `INSERT INTO product_packaging_units
+                   (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())`,
+                  [existingProduct.id, bulkUnit, pcsPerCarton, bulkPrice, costPrice, cartonBarcode]
+                );
+              }
+            }
+
             if (existingProduct.id && (incomingStock > 0 || expiryDate)) {
               const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${existingProduct.id}-${Date.now().toString().slice(-4)}`;
               const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -1437,9 +1482,10 @@ router.post(
                 unit_price, price, cost_price, stock, stock_quantity, unit, low_stock_threshold,
                 tax_rate, description, status, available_for_sale, track_inventory, model_variant,
                 tags, image_url, video_url, hsn_code, return_policy, expiry_date, created_by,
+                pcs_per_carton, carton_price, carton_barcode, carton_unit_name, piece_unit_name,
                 created_at, updated_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-                     $20,$21,$22,$23,$24,$25,NOW(),NOW())
+                     $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW(),NOW())
              RETURNING id`,
             [
               row.name.trim(),
@@ -1452,7 +1498,7 @@ router.post(
               unitPrice,
               costPrice,
               incomingStock,
-              unitStr || row.unit?.trim() || "kg",
+              unitStr || row.unit?.trim() || "piece",
               lowStockAlert,
               taxRate,
               row.description?.trim() || null,
@@ -1467,9 +1513,27 @@ router.post(
               row.return_policy?.trim() || null,
               expiryDate,
               req.user.id,
+              pcsPerCarton,
+              cartonPrice,
+              cartonBarcode,
+              cartonUnitName,
+              pieceUnitName,
             ],
           );
           const newProdId = insRes.rows[0]?.id;
+
+          // Auto-create packaging unit if carton multiplier > 1
+          if (newProdId && pcsPerCarton > 1) {
+            const bulkPrice = cartonPrice || (unitPrice * pcsPerCarton);
+            const bulkUnit = cartonUnitName || "Carton";
+            await pool.query(
+              `INSERT INTO product_packaging_units
+               (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())`,
+              [newProdId, bulkUnit, pcsPerCarton, bulkPrice, costPrice, cartonBarcode]
+            ).catch(err => console.error("Error creating packaging unit on import:", err.message));
+          }
+
           if (newProdId && (incomingStock > 0 || expiryDate)) {
             const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${newProdId}-${Date.now().toString().slice(-4)}`;
             const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
