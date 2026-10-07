@@ -1796,8 +1796,8 @@ router.patch(
           newStock !== undefined ? newStock : null,
           expiry_date || null,
           cost_price !== undefined && cost_price !== '' ? parseFloat(cost_price) : null,
-          req.params.id
-        ]).catch(() => {});
+          parseInt(req.params.id)
+        ]);
       }
 
       // Update Packaging Units if provided
