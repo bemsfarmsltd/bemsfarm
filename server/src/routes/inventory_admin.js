@@ -1117,9 +1117,9 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
           p.id,
           $1,
           CONCAT('BATCH-', TO_CHAR(COALESCE(p.created_at, NOW()), 'YYYY-MM-DD')),
-          COALESCE(p.stock, 100),
-          p.price,
-          (CURRENT_DATE + INTERVAL '180 days')::date,
+          COALESCE(p.stock, 0),
+          COALESCE(p.cost_price, p.price, 0),
+          COALESCE(p.expiry_date, (CURRENT_DATE + INTERVAL '365 days')::date),
           COALESCE(p.created_at::date, CURRENT_DATE),
           'active',
           'Produce batch consignment',
@@ -1150,7 +1150,9 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
         b.created_at,
         p.name AS product_name,
         COALESCE(p.sku, CONCAT('PRD-', p.id)) AS sku,
-        p.price AS product_price,
+        COALESCE(p.unit_price, p.price, 0) AS product_price,
+        COALESCE(p.cost_price, b.cost_price, 0) AS item_cost_price,
+        COALESCE(p.expiry_date, b.expiry_date) AS expiry_date,
         COALESCE(p.stock, b.quantity) AS current_stock,
         p.pcs_per_carton,
         p.carton_price,
@@ -1161,7 +1163,7 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
         COALESCE(w.name, 'Main Central Coldroom') AS warehouse_name,
         COALESCE(w.code, 'WH-COLD-01') AS warehouse_code,
         COALESCE(w.location, 'Abia Hub 1') AS warehouse_location,
-        (b.expiry_date - CURRENT_DATE) AS days_until_expiry
+        (COALESCE(p.expiry_date, b.expiry_date) - CURRENT_DATE) AS days_until_expiry
       FROM batch_management b
       LEFT JOIN products   p ON b.product_id   = p.id
       LEFT JOIN warehouses w ON b.warehouse_id  = w.id
