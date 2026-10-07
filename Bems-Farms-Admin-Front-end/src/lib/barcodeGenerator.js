@@ -22,6 +22,7 @@ export function calculateEan13Checksum(code12) {
  */
 export function generateUniversalGoodsCode(product = {}, format = 'CODE128', target = 'piece') {
   const isCarton = target === 'carton' || target === true
+  const isRow = target === 'row' || target === 'mid'
   const pId = product.id ? String(product.id).replace(/\D/g, '') : ''
   const catCode = (product.category_name || product.category || 'GEN')
     .replace(/[^a-zA-Z]/g, '')
@@ -29,8 +30,8 @@ export function generateUniversalGoodsCode(product = {}, format = 'CODE128', tar
     .toUpperCase() || 'AGR'
   
   if (format === 'EAN13') {
-    // 6150 prefix for retail piece vs 6159 prefix for bulk carton packaging + 3-digit id + 5-digit seed + check digit
-    const prefix = isCarton ? '6159' : '6150'
+    // 6150 prefix for retail piece vs 6155 prefix for mid row/pack vs 6159 prefix for bulk carton + 3-digit id + 5-digit seed + check digit
+    const prefix = isCarton ? '6159' : isRow ? '6155' : '6150'
     const seed = String(Math.floor(10000 + Math.random() * 90000))
     const pIdPad = pId ? String(pId).padStart(4, '0').slice(-4) : '0100'
     const code12 = `${prefix}${pIdPad.slice(1, 4)}${seed.slice(0, 5)}`
@@ -41,7 +42,7 @@ export function generateUniversalGoodsCode(product = {}, format = 'CODE128', tar
   // Default: CODE128 Alphanumeric Universal Code
   const randomSuffix = Math.floor(1000 + Math.random() * 9000)
   const timestamp = Date.now().toString().slice(-4)
-  const typeTag = isCarton ? 'CTN-' : ''
+  const typeTag = isCarton ? 'CTN-' : isRow ? 'ROW-' : ''
   return `BF-${typeTag}${catCode}-${timestamp}${randomSuffix}`
 }
 

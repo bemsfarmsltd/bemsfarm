@@ -1758,6 +1758,11 @@ router.patch(
         carton_barcode,
         carton_unit_name,
         piece_unit_name,
+        pcs_per_mid_unit,
+        mid_price,
+        mid_barcode,
+        mid_unit_name,
+        carton_cost_price,
       } = req.body;
 
       if (image_url !== undefined && (!image_url || !image_url.trim())) {
@@ -1790,13 +1795,37 @@ router.patch(
 
       if (barcode && barcode.trim()) {
         const barcodeCheck = await client.query(
-          "SELECT id, name FROM products WHERE barcode = $1 AND id != $2 AND status != 'archived'",
+          "SELECT id, name FROM products WHERE (barcode = $1 OR mid_barcode = $1 OR carton_barcode = $1) AND id != $2 AND status != 'archived'",
           [barcode.trim(), req.params.id]
         );
         if (barcodeCheck.rows.length) {
           await client.query("ROLLBACK");
           return res.status(400).json({
             message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
+          });
+        }
+      }
+      if (mid_barcode && mid_barcode.trim()) {
+        const midCheck = await client.query(
+          "SELECT id, name FROM products WHERE (barcode = $1 OR mid_barcode = $1 OR carton_barcode = $1) AND id != $2 AND status != 'archived'",
+          [mid_barcode.trim(), req.params.id]
+        );
+        if (midCheck.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            message: `Mid Barcode "${mid_barcode.trim()}" is already assigned to product "${midCheck.rows[0].name}"`
+          });
+        }
+      }
+      if (carton_barcode && carton_barcode.trim()) {
+        const cartonCheck = await client.query(
+          "SELECT id, name FROM products WHERE (barcode = $1 OR mid_barcode = $1 OR carton_barcode = $1) AND id != $2 AND status != 'archived'",
+          [carton_barcode.trim(), req.params.id]
+        );
+        if (cartonCheck.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            message: `Carton Barcode "${carton_barcode.trim()}" is already assigned to product "${cartonCheck.rows[0].name}"`
           });
         }
       }
@@ -1843,8 +1872,13 @@ router.patch(
         carton_barcode      = CASE WHEN $26 = '__CLEAR__' OR $26 = '' THEN NULL WHEN $26 IS NOT NULL THEN $26 ELSE carton_barcode END,
         carton_unit_name    = COALESCE($27, carton_unit_name),
         piece_unit_name     = COALESCE($28, piece_unit_name),
+        pcs_per_mid_unit    = COALESCE($29, pcs_per_mid_unit),
+        mid_price           = COALESCE($30, mid_price),
+        mid_barcode         = CASE WHEN $31 = '__CLEAR__' OR $31 = '' THEN NULL WHEN $31 IS NOT NULL THEN $31 ELSE mid_barcode END,
+        mid_unit_name       = COALESCE($32, mid_unit_name),
+        carton_cost_price   = COALESCE($33, carton_cost_price),
         updated_at          = NOW()
-      WHERE id = $29
+      WHERE id = $34
       RETURNING *
     `,
         [
@@ -1876,6 +1910,11 @@ router.patch(
           carton_barcode !== undefined ? (carton_barcode === null || carton_barcode === '' ? '__CLEAR__' : String(carton_barcode).trim()) : null,
           carton_unit_name || null,
           piece_unit_name || null,
+          pcs_per_mid_unit !== undefined && pcs_per_mid_unit !== '' ? (parseInt(pcs_per_mid_unit, 10) || null) : null,
+          mid_price !== undefined && mid_price !== '' ? (parseFloat(mid_price) || null) : null,
+          mid_barcode !== undefined ? (mid_barcode === null || mid_barcode === '' ? '__CLEAR__' : String(mid_barcode).trim()) : null,
+          mid_unit_name || null,
+          carton_cost_price !== undefined && carton_cost_price !== '' ? (parseFloat(carton_cost_price) || null) : null,
           req.params.id,
         ],
       );

@@ -948,6 +948,8 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
       where.push(`(
         p.barcode = $${params.length}
         OR p.barcode ILIKE $${params.length}
+        OR p.mid_barcode = $${params.length}
+        OR p.mid_barcode ILIKE $${params.length}
         OR p.carton_barcode = $${params.length}
         OR p.carton_barcode ILIKE $${params.length}
         OR p.sku = $${params.length}
@@ -958,6 +960,7 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
             AND (ppu.barcode = $${params.length} OR ppu.barcode ILIKE $${params.length} OR ppu.sku = $${params.length} OR ppu.sku ILIKE $${params.length})
         )
         OR (p.barcode IS NOT NULL AND REGEXP_REPLACE(p.barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
+        OR (p.mid_barcode IS NOT NULL AND REGEXP_REPLACE(p.mid_barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
         OR (p.carton_barcode IS NOT NULL AND REGEXP_REPLACE(p.carton_barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
       )`);
     } else if (q) {
@@ -966,6 +969,7 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
         p.name ILIKE $${params.length} 
         OR p.sku ILIKE $${params.length} 
         OR p.barcode ILIKE $${params.length}
+        OR p.mid_barcode ILIKE $${params.length}
         OR p.carton_barcode ILIKE $${params.length}
         OR EXISTS (
           SELECT 1 FROM product_packaging_units ppu 
@@ -988,6 +992,10 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
               p.carton_barcode,
               COALESCE(p.carton_unit_name, 'Carton') AS carton_unit_name,
               COALESCE(p.piece_unit_name, 'Piece') AS piece_unit_name,
+              COALESCE(p.pcs_per_mid_unit, 1) AS pcs_per_mid_unit,
+              p.mid_price,
+              p.mid_barcode,
+              COALESCE(p.mid_unit_name, 'Row') AS mid_unit_name,
               p.image_url, p.category_id,
               c.name AS category
        FROM products p
@@ -1032,11 +1040,18 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
 
       if (trimmedBc) {
         if (p.carton_barcode && p.carton_barcode.toLowerCase() === trimmedBc) {
-          matchedUnit = pkgUnits[0] || {
+          matchedUnit = pkgUnits.find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_carton)) || {
             unit_name: p.carton_unit_name || 'Carton',
             multiplier: parseFloat(p.pcs_per_carton || 1),
             price: parseFloat(p.carton_price || 0),
             barcode: p.carton_barcode
+          };
+        } else if (p.mid_barcode && p.mid_barcode.toLowerCase() === trimmedBc) {
+          matchedUnit = pkgUnits.find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_mid_unit)) || {
+            unit_name: p.mid_unit_name || 'Row',
+            multiplier: parseFloat(p.pcs_per_mid_unit || 1),
+            price: parseFloat(p.mid_price || 0),
+            barcode: p.mid_barcode
           };
         } else if (pkgUnits.length > 0) {
           matchedUnit = pkgUnits.find(
@@ -1772,9 +1787,9 @@ router.post("/pack-scan", requireRole("superadmin", "manager", "admin", "cashier
     // 2. Identify Product by barcode (or SKU/ID)
     const cleanCode = String(barcode).trim();
     const productRes = await client.query(
-      `SELECT p.id, p.name, p.barcode, p.sku, p.stock, p.stock_quantity, p.pcs_per_carton, p.carton_barcode
+      `SELECT p.id, p.name, p.barcode, p.sku, p.stock, p.stock_quantity, p.pcs_per_carton, p.carton_barcode, p.pcs_per_mid_unit, p.mid_barcode
        FROM products p
-       WHERE p.barcode = $1 OR p.sku = $1 OR p.carton_barcode = $1 OR p.id::text = $1
+       WHERE p.barcode = $1 OR p.sku = $1 OR p.carton_barcode = $1 OR p.mid_barcode = $1 OR p.id::text = $1
           OR p.id IN (SELECT product_id FROM product_packaging_units WHERE barcode = $1 OR sku = $1)
        LIMIT 1
        FOR UPDATE`,

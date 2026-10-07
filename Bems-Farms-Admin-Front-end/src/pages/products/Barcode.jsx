@@ -151,6 +151,9 @@ export default function Barcode() {
     if (printTarget === 'carton') {
       return products.filter((p) => Number(p.pcs_per_carton) > 1 && p.carton_barcode && p.carton_barcode.trim())
     }
+    if (printTarget === 'row') {
+      return products.filter((p) => Number(p.pcs_per_mid_unit) > 1 && p.mid_barcode && p.mid_barcode.trim())
+    }
     return products.filter((p) => p.barcode && p.barcode.trim())
   }, [products, printTarget])
 
@@ -158,12 +161,15 @@ export default function Barcode() {
     if (printTarget === 'carton') {
       return products.filter((p) => Number(p.pcs_per_carton) > 1 && (!p.carton_barcode || !p.carton_barcode.trim()))
     }
+    if (printTarget === 'row') {
+      return products.filter((p) => Number(p.pcs_per_mid_unit) > 1 && (!p.mid_barcode || !p.mid_barcode.trim()))
+    }
     return products.filter((p) => !p.barcode || !p.barcode.trim())
   }, [products, printTarget])
 
   const productsUnprinted = useMemo(() => {
     return products.filter((p) => {
-      const bc = printTarget === 'carton' ? p.carton_barcode : p.barcode
+      const bc = printTarget === 'carton' ? p.carton_barcode : printTarget === 'row' ? p.mid_barcode : p.barcode
       return bc && bc.trim() && !p.barcode_last_printed_at
     })
   }, [products, printTarget])
@@ -175,18 +181,28 @@ export default function Barcode() {
     return products.filter((p) => {
       // Tab filter
       if (activeTab === 'with_barcode') {
-        const hasBc = printTarget === 'carton' ? Boolean(p.carton_barcode && p.carton_barcode.trim()) : Boolean(p.barcode && p.barcode.trim())
+        const hasBc = printTarget === 'carton'
+          ? Boolean(p.carton_barcode && p.carton_barcode.trim())
+          : printTarget === 'row'
+          ? Boolean(p.mid_barcode && p.mid_barcode.trim())
+          : Boolean(p.barcode && p.barcode.trim())
         if (!hasBc) return false
       }
       if (activeTab === 'missing_barcode') {
         if (printTarget === 'carton') {
           if (Number(p.pcs_per_carton) <= 1 || (p.carton_barcode && p.carton_barcode.trim())) return false
+        } else if (printTarget === 'row') {
+          if (Number(p.pcs_per_mid_unit) <= 1 || (p.mid_barcode && p.mid_barcode.trim())) return false
         } else {
           if (p.barcode && p.barcode.trim()) return false
         }
       }
       if (activeTab === 'unprinted') {
-        const hasBc = printTarget === 'carton' ? Boolean(p.carton_barcode && p.carton_barcode.trim()) : Boolean(p.barcode && p.barcode.trim())
+        const hasBc = printTarget === 'carton'
+          ? Boolean(p.carton_barcode && p.carton_barcode.trim())
+          : printTarget === 'row'
+          ? Boolean(p.mid_barcode && p.mid_barcode.trim())
+          : Boolean(p.barcode && p.barcode.trim())
         if (!hasBc || p.barcode_last_printed_at) return false
       }
       if (activeTab === 'queue' && !printQueue[p.id]) return false
@@ -206,18 +222,22 @@ export default function Barcode() {
         const nameMatch = p.name?.toLowerCase().includes(q)
         const skuMatch = p.sku?.toLowerCase().includes(q)
         const bcMatch = p.barcode?.toLowerCase().includes(q)
+        const midBcMatch = p.mid_barcode?.toLowerCase().includes(q)
         const cartonBcMatch = p.carton_barcode?.toLowerCase().includes(q)
-        if (!nameMatch && !skuMatch && !bcMatch && !cartonBcMatch) return false
+        if (!nameMatch && !skuMatch && !bcMatch && !midBcMatch && !cartonBcMatch) return false
       }
 
       return true
     })
-  }, [products, activeTab, categoryFilter, searchTerm, printQueue])
+  }, [products, activeTab, categoryFilter, searchTerm, printQueue, printTarget])
 
-  // Determine whether an individual product row is in Carton mode or Piece mode
+  // Determine whether an individual product row is in Carton mode, Row mode, or Piece mode
   const getRowTarget = (product) => {
-    if (!product || Number(product.pcs_per_carton) <= 1) return 'piece'
-    return rowTargetOverrides[product.id] || printTarget
+    if (!product) return 'piece'
+    if (rowTargetOverrides[product.id]) return rowTargetOverrides[product.id]
+    if (printTarget === 'carton' && Number(product.pcs_per_carton) > 1) return 'carton'
+    if (printTarget === 'row' && Number(product.pcs_per_mid_unit) > 1) return 'row'
+    return 'piece'
   }
 
   // Toggle packaging mode for a specific product row
@@ -236,11 +256,14 @@ export default function Barcode() {
     }
   }
 
-  // Queue manipulation - Defaults copies to actual stock quantity (pieces or cartons depending on target)
+  // Queue manipulation - Defaults copies to actual stock quantity (pieces, rows, or cartons depending on target)
   const getProductStockCopies = (p, target = printTarget) => {
     const rawStock = parseInt(p.stock ?? p.stock_quantity ?? p.quantity ?? 1) || 1
     if (target === 'carton' && Number(p.pcs_per_carton) > 1) {
       return Math.max(1, Math.floor(rawStock / (p.pcs_per_carton || 1)))
+    }
+    if (target === 'row' && Number(p.pcs_per_mid_unit) > 1) {
+      return Math.max(1, Math.floor(rawStock / (p.pcs_per_mid_unit || 1)))
     }
     return Math.max(1, rawStock)
   }
@@ -320,6 +343,8 @@ export default function Barcode() {
     toast.success(
       newTarget === 'carton'
         ? 'Switched table & labels to Bulk Cartons (Carton Barcodes active)'
+        : newTarget === 'row'
+        ? 'Switched table & labels to Mid Rows/Packs (Row Barcodes active)'
         : 'Switched table & labels to Retail Pieces (Piece Barcodes active)'
     )
   }
@@ -343,17 +368,22 @@ export default function Barcode() {
     return Object.values(printQueue).reduce((sum, item) => sum + (item.copies || 1), 0)
   }, [printQueue])
 
-  // Single Product Barcode Generation / Assignment (Piece or Carton)
+  // Single Product Barcode Generation / Assignment (Piece, Row, or Carton)
   const handleGenerateSingle = async (product, target = 'piece') => {
     const isCarton = target === 'carton'
-    const newCode = generateUniversalGoodsCode(product, symbology, isCarton)
+    const isRow = target === 'row'
+    const newCode = generateUniversalGoodsCode(product, symbology, target)
     try {
-      const payload = isCarton ? { carton_barcode: newCode } : { barcode: newCode }
+      const payload = isCarton
+        ? { carton_barcode: newCode }
+        : isRow
+        ? { mid_barcode: newCode }
+        : { barcode: newCode }
       await api.patch(`/admin/products/${product.id}`, payload)
       setProducts((prev) =>
         prev.map((p) =>
           p.id === product.id
-            ? { ...p, ...(isCarton ? { carton_barcode: newCode } : { barcode: newCode }) }
+            ? { ...p, ...payload }
             : p
         )
       )
@@ -365,28 +395,34 @@ export default function Barcode() {
             ...prev[product.id],
             product: {
               ...prev[product.id].product,
-              ...(isCarton ? { carton_barcode: newCode } : { barcode: newCode }),
+              ...payload,
             },
           },
         }))
       }
-      toast.success(`Generated ${isCarton ? 'Carton' : 'Piece'} Barcode: ${newCode}`)
+      const labelTier = isCarton ? 'Carton' : isRow ? 'Row' : 'Piece'
+      toast.success(`Generated ${labelTier} Barcode: ${newCode}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save generated barcode')
     }
   }
 
-  // Regenerate Barcode for Single Product (Piece or Carton)
+  // Regenerate Barcode for Single Product (Piece, Row, or Carton)
   const handleRegenerateSingle = async (product, target = 'piece') => {
     const isCarton = target === 'carton'
-    const newCode = generateUniversalGoodsCode(product, symbology, isCarton)
+    const isRow = target === 'row'
+    const newCode = generateUniversalGoodsCode(product, symbology, target)
     try {
-      const payload = isCarton ? { carton_barcode: newCode } : { barcode: newCode }
+      const payload = isCarton
+        ? { carton_barcode: newCode }
+        : isRow
+        ? { mid_barcode: newCode }
+        : { barcode: newCode }
       await api.patch(`/admin/products/${product.id}`, payload)
       setProducts((prev) =>
         prev.map((p) =>
           p.id === product.id
-            ? { ...p, ...(isCarton ? { carton_barcode: newCode } : { barcode: newCode }) }
+            ? { ...p, ...payload }
             : p
         )
       )
@@ -397,31 +433,34 @@ export default function Barcode() {
             ...prev[product.id],
             product: {
               ...prev[product.id].product,
-              ...(isCarton ? { carton_barcode: newCode } : { barcode: newCode }),
+              ...payload,
             },
           },
         }))
       }
-      toast.success(`Regenerated ${isCarton ? 'Carton' : 'Piece'} barcode for "${product.name}": ${newCode}`)
+      const labelTier = isCarton ? 'Carton' : isRow ? 'Row' : 'Piece'
+      toast.success(`Regenerated ${labelTier} barcode for "${product.name}": ${newCode}`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to regenerate barcode')
     }
   }
 
-  // Delete / Clear Barcode for Single Product (Piece or Carton)
+  // Delete / Clear Barcode for Single Product (Piece, Row, or Carton)
   const handleDeleteSingle = async (product, target = 'piece') => {
     const isCarton = target === 'carton'
-    const label = isCarton ? 'carton barcode' : 'piece barcode'
+    const isRow = target === 'row'
+    const label = isCarton ? 'carton barcode' : isRow ? 'row barcode' : 'piece barcode'
     if (!window.confirm(`Are you sure you want to remove the ${label} for "${product.name}"?`)) {
       return
     }
     try {
-      const payload = isCarton ? { carton_barcode: '' } : { barcode: '' }
+      const payload = isCarton ? { carton_barcode: '' } : isRow ? { mid_barcode: '' } : { barcode: '' }
+      const clearUpdate = isCarton ? { carton_barcode: null } : isRow ? { mid_barcode: null } : { barcode: null }
       await api.patch(`/admin/products/${product.id}`, payload)
       setProducts((prev) =>
         prev.map((p) =>
           p.id === product.id
-            ? { ...p, ...(isCarton ? { carton_barcode: null } : { barcode: null }) }
+            ? { ...p, ...clearUpdate }
             : p
         )
       )
@@ -432,12 +471,12 @@ export default function Barcode() {
             ...prev[product.id],
             product: {
               ...prev[product.id].product,
-              ...(isCarton ? { carton_barcode: null } : { barcode: null }),
+              ...clearUpdate,
             },
           },
         }))
       }
-      toast.success(`${isCarton ? 'Carton' : 'Piece'} barcode removed for "${product.name}"`)
+      toast.success(`${isCarton ? 'Carton' : isRow ? 'Row' : 'Piece'} barcode removed for "${product.name}"`)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete barcode')
     }
@@ -446,15 +485,19 @@ export default function Barcode() {
   // Auto-Generate Barcodes for ALL Missing Products
   const handleAutoGenerateAllMissing = async () => {
     const isCartonMode = printTarget === 'carton'
+    const isRowMode = printTarget === 'row'
     const missingItems = isCartonMode
       ? products.filter((p) => Number(p.pcs_per_carton) > 1 && (!p.carton_barcode || !p.carton_barcode.trim()))
+      : isRowMode
+      ? products.filter((p) => Number(p.pcs_per_mid_unit) > 1 && (!p.mid_barcode || !p.mid_barcode.trim()))
       : products.filter((p) => !p.barcode || !p.barcode.trim())
 
+    const targetLabel = isCartonMode ? 'bulk carton' : isRowMode ? 'mid-tier row/pack' : 'retail piece'
     if (missingItems.length === 0) {
-      return toast.success(isCartonMode ? 'All bulk carton products already have carton barcodes assigned!' : 'All products already have piece barcodes assigned!')
+      return toast.success(`All ${targetLabel} items already have barcodes assigned!`)
     }
 
-    if (!window.confirm(`Generate Universal Bems Codes for all ${missingItems.length} uncoded ${isCartonMode ? 'bulk cartons' : 'retail piece items'}?`)) {
+    if (!window.confirm(`Generate Universal Bems Codes for all ${missingItems.length} uncoded ${targetLabel} items?`)) {
       return
     }
 
@@ -465,15 +508,15 @@ export default function Barcode() {
     const updatedProducts = [...products]
 
     for (const prod of missingItems) {
-      const newCode = generateUniversalGoodsCode(prod, symbology, isCartonMode)
+      const newCode = generateUniversalGoodsCode(prod, symbology, printTarget)
       try {
-        const payload = isCartonMode ? { carton_barcode: newCode } : { barcode: newCode }
+        const payload = isCartonMode ? { carton_barcode: newCode } : isRowMode ? { mid_barcode: newCode } : { barcode: newCode }
         await api.patch(`/admin/products/${prod.id}`, payload)
         const idx = updatedProducts.findIndex((p) => p.id === prod.id)
         if (idx !== -1) {
           updatedProducts[idx] = {
             ...updatedProducts[idx],
-            ...(isCartonMode ? { carton_barcode: newCode } : { barcode: newCode }),
+            ...payload,
           }
         }
         successCount++
@@ -487,14 +530,14 @@ export default function Barcode() {
     setAutoGeneratingAll(false)
 
     if (successCount > 0) {
-      toast.success(`Successfully assigned ${isCartonMode ? 'carton' : 'piece'} barcodes to ${successCount} products!`)
+      toast.success(`Successfully assigned ${targetLabel} barcodes to ${successCount} products!`)
     }
     if (failureCount > 0) {
       toast.error(`Failed to assign barcodes to ${failureCount} products`)
     }
   }
 
-  // Save manual barcode (Piece or Carton)
+  // Save manual barcode (Piece, Row, or Carton)
   const handleSaveManualBarcode = async () => {
     if (!editingBarcodeProduct) return
     const trimmed = customBarcodeVal.trim()
@@ -503,14 +546,15 @@ export default function Barcode() {
     }
 
     const isCarton = editBarcodeTarget === 'carton'
+    const isRow = editBarcodeTarget === 'row'
     setSavingBarcode(true)
     try {
-      const payload = isCarton ? { carton_barcode: trimmed } : { barcode: trimmed }
+      const payload = isCarton ? { carton_barcode: trimmed } : isRow ? { mid_barcode: trimmed } : { barcode: trimmed }
       await api.patch(`/admin/products/${editingBarcodeProduct.id}`, payload)
       setProducts((prev) =>
         prev.map((p) =>
           p.id === editingBarcodeProduct.id
-            ? { ...p, ...(isCarton ? { carton_barcode: trimmed } : { barcode: trimmed }) }
+            ? { ...p, ...payload }
             : p
         )
       )
@@ -521,12 +565,13 @@ export default function Barcode() {
             ...prev[editingBarcodeProduct.id],
             product: {
               ...prev[editingBarcodeProduct.id].product,
-              ...(isCarton ? { carton_barcode: trimmed } : { barcode: trimmed }),
+              ...payload,
             },
           },
         }))
       }
-      toast.success(`${isCarton ? 'Carton' : 'Piece'} barcode updated successfully`)
+      const label = isCarton ? 'Carton' : isRow ? 'Row' : 'Piece'
+      toast.success(`${label} barcode updated successfully`)
       setEditingBarcodeProduct(null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update barcode')
@@ -539,17 +584,19 @@ export default function Barcode() {
   const handleDeleteManualBarcode = async () => {
     if (!editingBarcodeProduct) return
     const isCarton = editBarcodeTarget === 'carton'
-    const label = isCarton ? 'carton barcode' : 'piece barcode'
+    const isRow = editBarcodeTarget === 'row'
+    const label = isCarton ? 'carton barcode' : isRow ? 'row barcode' : 'piece barcode'
     if (!window.confirm(`Delete ${label} for "${editingBarcodeProduct.name}"?`)) return
 
     setSavingBarcode(true)
     try {
-      const payload = isCarton ? { carton_barcode: '' } : { barcode: '' }
+      const payload = isCarton ? { carton_barcode: '' } : isRow ? { mid_barcode: '' } : { barcode: '' }
+      const clearUpdate = isCarton ? { carton_barcode: null } : isRow ? { mid_barcode: null } : { barcode: null }
       await api.patch(`/admin/products/${editingBarcodeProduct.id}`, payload)
       setProducts((prev) =>
         prev.map((p) =>
           p.id === editingBarcodeProduct.id
-            ? { ...p, ...(isCarton ? { carton_barcode: null } : { barcode: null }) }
+            ? { ...p, ...clearUpdate }
             : p
         )
       )
@@ -560,12 +607,12 @@ export default function Barcode() {
             ...prev[editingBarcodeProduct.id],
             product: {
               ...prev[editingBarcodeProduct.id].product,
-              ...(isCarton ? { carton_barcode: null } : { barcode: null }),
+              ...clearUpdate,
             },
           },
         }))
       }
-      toast.success(`${isCarton ? 'Carton' : 'Piece'} barcode removed for "${editingBarcodeProduct.name}"`)
+      toast.success(`${isCarton ? 'Carton' : isRow ? 'Row' : 'Piece'} barcode removed for "${editingBarcodeProduct.name}"`)
       setEditingBarcodeProduct(null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to remove barcode')
@@ -583,6 +630,8 @@ export default function Barcode() {
     const match = products.find(
       (p) =>
         p.barcode?.toLowerCase() === val ||
+        p.mid_barcode?.toLowerCase() === val ||
+        p.carton_barcode?.toLowerCase() === val ||
         p.sku?.toLowerCase() === val ||
         String(p.id) === val
     )
@@ -916,28 +965,40 @@ export default function Barcode() {
     printWindow.document.close()
   }
 
-  // Flattened array of all labels in queue based on copies (supports Retail Piece vs Bulk Carton modes)
+  // Flattened array of all labels in queue based on copies (supports Retail Piece vs Mid Row vs Bulk Carton modes)
   const printableLabelArray = useMemo(() => {
     const list = []
     Object.values(printQueue).forEach(({ product, copies }) => {
       const rowTarget = rowTargetOverrides[product.id] || printTarget
       const isCarton = rowTarget === 'carton' && Number(product.pcs_per_carton) > 1
+      const isRow = rowTarget === 'row' && Number(product.pcs_per_mid_unit) > 1
+
       const code = isCarton
         ? (product.carton_barcode || `BF-CTN-${product.id}`)
+        : isRow
+        ? (product.mid_barcode || `BF-ROW-${product.id}`)
         : (product.barcode || product.sku || `BF-${product.id}`)
 
       const priceVal = isCarton
         ? (product.carton_price && Number(product.carton_price) > 0
             ? product.carton_price
             : Number(product.unit_price || product.price || 0) * (product.pcs_per_carton || 1))
+        : isRow
+        ? (product.mid_price && Number(product.mid_price) > 0
+            ? product.mid_price
+            : Number(product.unit_price || product.price || 0) * (product.pcs_per_mid_unit || 1))
         : (product.unit_price || product.price)
 
       const unitLabel = isCarton
         ? (product.carton_unit_name ? `${product.carton_unit_name} (${product.pcs_per_carton} ${product.piece_unit_name || 'pcs'})` : 'Carton')
+        : isRow
+        ? (product.mid_unit_name ? `${product.mid_unit_name} (${product.pcs_per_mid_unit} ${product.piece_unit_name || 'pcs'})` : 'Row')
         : (product.piece_unit_name || product.unit || 'Piece')
 
       const displayName = isCarton
         ? `${product.name} [${product.carton_unit_name || 'Carton'}]`
+        : isRow
+        ? `${product.name} [${product.mid_unit_name || 'Row'}]`
         : product.name
 
       for (let i = 0; i < copies; i++) {
@@ -948,6 +1009,8 @@ export default function Barcode() {
           unit: unitLabel,
           barcodeValue: code,
           isCartonLabel: isCarton,
+          isRowLabel: isRow,
+          tierTarget: rowTarget,
           copyIndex: i + 1,
           totalCopies: copies,
         })
@@ -1395,6 +1458,14 @@ export default function Barcode() {
                   </button>
                   <button
                     type="button"
+                    className={`btn px-3 fw-bold ${printTarget === 'row' ? 'btn-info text-white' : 'btn-outline-secondary bg-white'}`}
+                    onClick={() => handleSwitchPrintTarget('row')}
+                    title="Switch table to Mid-Tier Rows / Packs"
+                  >
+                    <i className="ri-stack-line me-1"></i> Rows / Packs (Row Barcode)
+                  </button>
+                  <button
+                    type="button"
                     className={`btn px-3 fw-bold ${printTarget === 'carton' ? 'btn-primary text-white' : 'btn-outline-secondary bg-white'}`}
                     onClick={() => handleSwitchPrintTarget('carton')}
                     title="Switch table to Bulk Outer Cartons"
@@ -1406,11 +1477,15 @@ export default function Barcode() {
               <div className="fs-xs">
                 {printTarget === 'carton' ? (
                   <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1.5 fw-semibold">
-                    <i className="ri-box-3-line me-1"></i> Showing Distinct Carton Barcodes (6159...) &amp; Carton Stock
+                    <i className="ri-box-3-line me-1"></i> Showing Distinct Carton Barcodes (6159... or BF-CTN-...) &amp; Carton Stock
+                  </span>
+                ) : printTarget === 'row' ? (
+                  <span className="badge bg-info-subtle text-info border border-info-subtle px-2 py-1.5 fw-semibold">
+                    <i className="ri-stack-line me-1"></i> Showing Mid-Tier Row/Pack Barcodes (6155... or BF-ROW-...) &amp; Row Stock
                   </span>
                 ) : (
                   <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1.5 fw-semibold">
-                    <i className="ri-price-tag-3-line me-1"></i> Showing Retail Piece Barcodes (6150...) &amp; Loose Pieces
+                    <i className="ri-price-tag-3-line me-1"></i> Showing Retail Piece Barcodes (6150... or BF-...) &amp; Loose Pieces
                   </span>
                 )}
               </div>
@@ -1494,7 +1569,8 @@ export default function Barcode() {
                     filteredProducts.map((p) => {
                       const rowTarget = getRowTarget(p)
                       const isCartonRow = rowTarget === 'carton' && Number(p.pcs_per_carton) > 1
-                      const activeBarcode = isCartonRow ? p.carton_barcode : p.barcode
+                      const isMidRow = rowTarget === 'row' && Number(p.pcs_per_mid_unit) > 1
+                      const activeBarcode = isCartonRow ? p.carton_barcode : isMidRow ? p.mid_barcode : p.barcode
                       const hasActiveBarcode = Boolean(activeBarcode && activeBarcode.trim())
                       const stockQtyForTarget = getProductStockCopies(p, rowTarget)
                       const isQueued = Boolean(printQueue[p.id])
@@ -1535,6 +1611,11 @@ export default function Barcode() {
                                       {p.carton_unit_name || 'Carton'}
                                     </span>
                                   )}
+                                  {isMidRow && (
+                                    <span className="badge bg-info-subtle text-info ms-1.5 fs-xs py-0">
+                                      {p.mid_unit_name || 'Row'}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-muted fs-xs">
                                   SKU: <span className="font-monospace text-dark">{p.sku || '—'}</span> &bull;{' '}
@@ -1558,12 +1639,31 @@ export default function Barcode() {
                                   {formatNaira(p.price || p.unit_price)} / {p.piece_unit_name || 'piece'}
                                 </div>
                               </div>
+                            ) : isMidRow ? (
+                              <div>
+                                <div className="fw-bold text-info fs-sm">
+                                  {formatNaira(
+                                    p.mid_price && Number(p.mid_price) > 0
+                                      ? p.mid_price
+                                      : Number(p.unit_price || p.price || 0) * (p.pcs_per_mid_unit || 1)
+                                  )}
+                                  <small className="text-muted fs-xs"> / {p.mid_unit_name || 'row'}</small>
+                                </div>
+                                <div className="text-muted fs-xs">
+                                  {formatNaira(p.price || p.unit_price)} / {p.piece_unit_name || 'piece'}
+                                </div>
+                              </div>
                             ) : (
                               <div>
                                 <div className="fw-bold text-dark fs-sm">
                                   {formatNaira(p.price || p.unit_price)}
                                   <small className="text-muted fs-xs"> / {p.piece_unit_name || p.unit || 'pc'}</small>
                                 </div>
+                                {Number(p.pcs_per_mid_unit) > 1 && (
+                                  <div className="text-info fw-semibold fs-xs">
+                                    {formatNaira(p.mid_price || Number(p.price || 0) * p.pcs_per_mid_unit)} / {p.mid_unit_name || 'row'}
+                                  </div>
+                                )}
                                 {Number(p.pcs_per_carton) > 1 && (
                                   <div className="text-primary fw-semibold fs-xs">
                                     {formatNaira(p.carton_price || Number(p.price || 0) * p.pcs_per_carton)} / {p.carton_unit_name || 'ctn'}
@@ -1578,12 +1678,16 @@ export default function Barcode() {
                                   Number(p.stock ?? p.stock_quantity ?? 0) > 0
                                     ? isCartonRow
                                       ? 'bg-primary-subtle text-primary border border-primary-subtle'
+                                      : isMidRow
+                                      ? 'bg-info-subtle text-info border border-info-subtle'
                                       : 'bg-success-subtle text-success border border-success-subtle'
                                     : 'bg-danger-subtle text-danger border border-danger-subtle'
                                 } fs-xs py-0`}
                               >
                                 {isCartonRow
                                   ? `${Math.floor((p.stock ?? p.stock_quantity ?? 0) / (p.pcs_per_carton || 1))} ${p.carton_unit_name || 'Carton'}s (${p.pcs_per_carton} ${p.piece_unit_name || 'pcs'}/ctn)`
+                                  : isMidRow
+                                  ? `${Math.floor((p.stock ?? p.stock_quantity ?? 0) / (p.pcs_per_mid_unit || 1))} ${p.mid_unit_name || 'Row'}s (${p.pcs_per_mid_unit} ${p.piece_unit_name || 'pcs'}/row)`
                                   : Number(p.pcs_per_carton) > 1
                                   ? formatCartonStock(p.stock ?? p.stock_quantity ?? 0, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)
                                   : `Stock: ${p.stock ?? p.stock_quantity ?? 0} ${p.unit || 'units'}`}
@@ -1591,29 +1695,41 @@ export default function Barcode() {
                             </div>
                           </td>
                           <td>
-                            {/* Row Switch Button for Bulk Packaging */}
-                            {Number(p.pcs_per_carton) > 1 && (
+                            {/* Row Switch Buttons for Packaging Tiers */}
+                            {(Number(p.pcs_per_carton) > 1 || Number(p.pcs_per_mid_unit) > 1) && (
                               <div className="d-flex align-items-center gap-1.5 mb-1.5">
                                 <div className="btn-group btn-group-xs shadow-xs" role="group">
                                   <button
                                     type="button"
-                                    className={`btn btn-xs py-0.5 px-2 fw-bold ${!isCartonRow ? 'btn-success text-white' : 'btn-outline-secondary bg-white'}`}
+                                    className={`btn btn-xs py-0.5 px-2 fw-bold ${rowTarget === 'piece' ? 'btn-success text-white' : 'btn-outline-secondary bg-white'}`}
                                     onClick={() => toggleRowTarget(p.id, 'piece')}
                                     title="Switch this row to Retail Piece Barcode"
                                   >
                                     🏷️ Pcs
                                   </button>
-                                  <button
-                                    type="button"
-                                    className={`btn btn-xs py-0.5 px-2 fw-bold ${isCartonRow ? 'btn-primary text-white' : 'btn-outline-secondary bg-white'}`}
-                                    onClick={() => toggleRowTarget(p.id, 'carton')}
-                                    title="Switch this row to Bulk Carton Barcode"
-                                  >
-                                    📦 Carton
-                                  </button>
+                                  {Number(p.pcs_per_mid_unit) > 1 && (
+                                    <button
+                                      type="button"
+                                      className={`btn btn-xs py-0.5 px-2 fw-bold ${rowTarget === 'row' ? 'btn-info text-white' : 'btn-outline-secondary bg-white'}`}
+                                      onClick={() => toggleRowTarget(p.id, 'row')}
+                                      title="Switch this row to Mid Row/Pack Barcode"
+                                    >
+                                      📦 Row
+                                    </button>
+                                  )}
+                                  {Number(p.pcs_per_carton) > 1 && (
+                                    <button
+                                      type="button"
+                                      className={`btn btn-xs py-0.5 px-2 fw-bold ${rowTarget === 'carton' ? 'btn-primary text-white' : 'btn-outline-secondary bg-white'}`}
+                                      onClick={() => toggleRowTarget(p.id, 'carton')}
+                                      title="Switch this row to Bulk Carton Barcode"
+                                    >
+                                      🚚 Ctn
+                                    </button>
+                                  )}
                                 </div>
-                                <span className={`badge ${isCartonRow ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-success-subtle text-success border border-success-subtle'} fs-xs py-0.5`}>
-                                  {isCartonRow ? 'Carton' : 'Piece'}
+                                <span className={`badge ${rowTarget === 'carton' ? 'bg-primary-subtle text-primary border border-primary-subtle' : rowTarget === 'row' ? 'bg-info-subtle text-info border border-info-subtle' : 'bg-success-subtle text-success border border-success-subtle'} fs-xs py-0.5`}>
+                                  {rowTarget === 'carton' ? (p.carton_unit_name || 'Carton') : rowTarget === 'row' ? (p.mid_unit_name || 'Row') : (p.piece_unit_name || 'Piece')}
                                 </span>
                               </div>
                             )}
@@ -1621,7 +1737,7 @@ export default function Barcode() {
                             {hasActiveBarcode ? (
                               <div>
                                 <div className="d-flex align-items-center gap-2">
-                                  <div className={`p-1 rounded border ${isCartonRow ? 'bg-primary-subtle border-primary-subtle' : 'bg-light'}`}>
+                                  <div className={`p-1 rounded border ${isCartonRow ? 'bg-primary-subtle border-primary-subtle' : isMidRow ? 'bg-info-subtle border-info-subtle' : 'bg-light'}`}>
                                     <BarcodeSvg
                                       value={activeBarcode}
                                       format={symbology}
@@ -1632,26 +1748,26 @@ export default function Barcode() {
                                   </div>
                                   <div>
                                     <div className="d-flex align-items-center gap-1">
-                                      <span className={`font-monospace fs-xs fw-bold ${isCartonRow ? 'text-primary' : 'text-dark'} d-block`}>
+                                      <span className={`font-monospace fs-xs fw-bold ${isCartonRow ? 'text-primary' : isMidRow ? 'text-info' : 'text-dark'} d-block`}>
                                         {activeBarcode}
                                       </span>
                                       <button
                                         type="button"
                                         className="btn btn-xs btn-link text-muted p-0 ms-1"
-                                        onClick={() => handleCopyBarcode(activeBarcode, isCartonRow ? 'Carton Barcode' : 'Piece Barcode')}
+                                        onClick={() => handleCopyBarcode(activeBarcode, isCartonRow ? 'Carton Barcode' : isMidRow ? 'Row Barcode' : 'Piece Barcode')}
                                         title="Copy Barcode to clipboard"
                                       >
                                         <i className="ri-file-copy-line"></i>
                                       </button>
                                     </div>
-                                    <span className={`badge ${isCartonRow ? 'bg-primary text-white' : 'bg-success text-white'} fs-xs py-0`}>
-                                      {isCartonRow ? 'Carton Ready' : 'Piece Ready'}
+                                    <span className={`badge ${isCartonRow ? 'bg-primary text-white' : isMidRow ? 'bg-info text-white' : 'bg-success text-white'} fs-xs py-0`}>
+                                      {isCartonRow ? 'Carton Ready' : isMidRow ? 'Row Ready' : 'Piece Ready'}
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Alternate Barcode preview with quick toggle */}
-                                {isCartonRow && p.barcode && (
+                                {/* Alternate Barcode previews with quick toggle */}
+                                {rowTarget !== 'piece' && p.barcode && (
                                   <div
                                     className="fs-xs text-muted mt-1 cursor-pointer"
                                     onClick={() => toggleRowTarget(p.id, 'piece')}
@@ -1662,7 +1778,18 @@ export default function Barcode() {
                                     Piece Barcode: <span className="font-monospace text-dark fw-semibold">{p.barcode}</span>
                                   </div>
                                 )}
-                                {!isCartonRow && p.carton_barcode && (
+                                {rowTarget !== 'row' && p.mid_barcode && (
+                                  <div
+                                    className="fs-xs text-muted mt-1 cursor-pointer"
+                                    onClick={() => toggleRowTarget(p.id, 'row')}
+                                    title="Click to view Mid Row Barcode"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    <i className="ri-arrow-left-right-line me-1 text-info"></i>
+                                    Row Barcode: <span className="font-monospace text-info fw-semibold">{p.mid_barcode}</span>
+                                  </div>
+                                )}
+                                {rowTarget !== 'carton' && p.carton_barcode && (
                                   <div
                                     className="fs-xs text-muted mt-1 cursor-pointer"
                                     onClick={() => toggleRowTarget(p.id, 'carton')}
@@ -1677,15 +1804,15 @@ export default function Barcode() {
                             ) : (
                               <div className="d-flex align-items-center gap-2">
                                 <span className="badge bg-warning-subtle text-warning fs-xs">
-                                  Missing {isCartonRow ? 'Carton' : 'Piece'}
+                                  Missing {isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'}
                                 </span>
                                 <button
                                   type="button"
-                                  className={`btn btn-xs py-0 px-2 ${isCartonRow ? 'btn-outline-primary' : 'btn-outline-success'}`}
+                                  className={`btn btn-xs py-0 px-2 ${isCartonRow ? 'btn-outline-primary' : isMidRow ? 'btn-outline-info' : 'btn-outline-success'}`}
                                   onClick={() => handleGenerateSingle(p, rowTarget)}
-                                  title={`Auto-generate and save ${isCartonRow ? 'carton' : 'piece'} barcode`}
+                                  title={`Auto-generate and save ${rowTarget} barcode`}
                                 >
-                                  <i className="ri-magic-line me-1"></i> Generate {isCartonRow ? 'Carton' : 'Piece'}
+                                  <i className="ri-magic-line me-1"></i> Generate {isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'}
                                 </button>
                               </div>
                             )}
@@ -1745,7 +1872,7 @@ export default function Barcode() {
                                 <button
                                   type="button"
                                   className="btn btn-xs btn-outline-success py-1 px-1 rounded"
-                                  title={`Match ${isCartonRow ? 'carton stock' : 'loose piece inventory'} (${stockQtyForTarget})`}
+                                  title={`Match stock count (${stockQtyForTarget})`}
                                   onClick={() => setQueueCopiesDirect(p.id, stockQtyForTarget)}
                                 >
                                   <i className="ri-magic-line"></i>
@@ -1758,18 +1885,18 @@ export default function Barcode() {
                               {hasActiveBarcode ? (
                                 <button
                                   type="button"
-                                  className={`btn ${isCartonRow ? 'btn-outline-primary' : 'btn-outline-success'}`}
+                                  className={`btn ${isCartonRow ? 'btn-outline-primary' : isMidRow ? 'btn-outline-info' : 'btn-outline-success'}`}
                                   onClick={() => handleRegenerateSingle(p, rowTarget)}
-                                  title={`Regenerate New ${isCartonRow ? 'Carton' : 'Piece'} Barcode`}
+                                  title={`Regenerate New ${isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'} Barcode`}
                                 >
                                   <i className="ri-refresh-line"></i>
                                 </button>
                               ) : (
                                 <button
                                   type="button"
-                                  className={`btn ${isCartonRow ? 'btn-outline-primary' : 'btn-outline-success'}`}
+                                  className={`btn ${isCartonRow ? 'btn-outline-primary' : isMidRow ? 'btn-outline-info' : 'btn-outline-success'}`}
                                   onClick={() => handleGenerateSingle(p, rowTarget)}
-                                  title={`Generate ${isCartonRow ? 'Carton' : 'Piece'} Barcode`}
+                                  title={`Generate ${isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'} Barcode`}
                                 >
                                   <i className="ri-magic-line"></i>
                                 </button>
@@ -1780,7 +1907,7 @@ export default function Barcode() {
                                 onClick={() => {
                                   setEditingBarcodeProduct(p)
                                   setEditBarcodeTarget(rowTarget)
-                                  setCustomBarcodeVal(activeBarcode || generateUniversalGoodsCode(p, symbology, isCartonRow))
+                                  setCustomBarcodeVal(activeBarcode || generateUniversalGoodsCode(p, symbology, rowTarget))
                                 }}
                                 title="Custom Edit Barcode"
                               >
@@ -1791,7 +1918,7 @@ export default function Barcode() {
                                   type="button"
                                   className="btn btn-outline-danger"
                                   onClick={() => handleDeleteSingle(p, rowTarget)}
-                                  title={`Delete ${isCartonRow ? 'Carton' : 'Piece'} Barcode`}
+                                  title={`Delete ${isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'} Barcode`}
                                 >
                                   <i className="ri-delete-bin-line"></i>
                                 </button>
@@ -1803,7 +1930,8 @@ export default function Barcode() {
                                   if (!printQueue[p.id]) {
                                     setPrintQueue((prev) => ({ ...prev, [p.id]: { product: p, copies: stockQtyForTarget } }))
                                   }
-                                  toast.success(`Queued "${p.name}" (${isCartonRow ? 'Carton' : 'Piece'} label)`)
+                                  const tierName = isCartonRow ? 'Carton' : isMidRow ? 'Row' : 'Piece'
+                                  toast.success(`Queued "${p.name}" (${tierName} label)`)
                                 }}
                                 title="Add to Print Queue"
                               >
@@ -2290,7 +2418,7 @@ export default function Barcode() {
               </div>
 
               <div className="modal-body">
-                {Number(editingBarcodeProduct.pcs_per_carton) > 1 && (
+                {(Number(editingBarcodeProduct.pcs_per_carton) > 1 || Number(editingBarcodeProduct.pcs_per_mid_unit) > 1) && (
                   <div className="btn-group w-100 mb-3 shadow-xs" role="group">
                     <button
                       type="button"
@@ -2302,26 +2430,44 @@ export default function Barcode() {
                     >
                       🏷️ Retail Piece Barcode
                     </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${editBarcodeTarget === 'carton' ? 'btn-primary fw-bold text-white' : 'btn-outline-secondary'}`}
-                      onClick={() => {
-                        setEditBarcodeTarget('carton')
-                        setCustomBarcodeVal(editingBarcodeProduct.carton_barcode || '')
-                      }}
-                    >
-                      📦 Outer Carton Barcode
-                    </button>
+                    {Number(editingBarcodeProduct.pcs_per_mid_unit) > 1 && (
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${editBarcodeTarget === 'row' ? 'btn-info fw-bold text-white' : 'btn-outline-secondary'}`}
+                        onClick={() => {
+                          setEditBarcodeTarget('row')
+                          setCustomBarcodeVal(editingBarcodeProduct.mid_barcode || '')
+                        }}
+                      >
+                        📦 Mid Row / Pack Barcode
+                      </button>
+                    )}
+                    {Number(editingBarcodeProduct.pcs_per_carton) > 1 && (
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${editBarcodeTarget === 'carton' ? 'btn-primary fw-bold text-white' : 'btn-outline-secondary'}`}
+                        onClick={() => {
+                          setEditBarcodeTarget('carton')
+                          setCustomBarcodeVal(editingBarcodeProduct.carton_barcode || '')
+                        }}
+                      >
+                        🚚 Outer Carton Barcode
+                      </button>
+                    )}
                   </div>
                 )}
 
                 <div className="mb-3">
                   <label className="form-label fw-semibold fs-sm d-flex justify-content-between align-items-center">
                     <span>
-                      {editBarcodeTarget === 'carton' ? 'Outer Carton Barcode Value' : 'Retail Piece Barcode Value'}
+                      {editBarcodeTarget === 'carton'
+                        ? 'Outer Carton Barcode Value'
+                        : editBarcodeTarget === 'row'
+                        ? 'Mid Row / Pack Barcode Value'
+                        : 'Retail Piece Barcode Value'}
                     </span>
-                    <span className={`badge ${editBarcodeTarget === 'carton' ? 'bg-primary' : 'bg-success'}`}>
-                      {editBarcodeTarget === 'carton' ? 'Carton Packaging' : 'Piece Unit'}
+                    <span className={`badge ${editBarcodeTarget === 'carton' ? 'bg-primary' : editBarcodeTarget === 'row' ? 'bg-info' : 'bg-success'}`}>
+                      {editBarcodeTarget === 'carton' ? 'Carton Packaging' : editBarcodeTarget === 'row' ? 'Row Packaging' : 'Piece Unit'}
                     </span>
                   </label>
                   <div className="input-group">
@@ -2330,25 +2476,33 @@ export default function Barcode() {
                       className="form-control font-monospace"
                       value={customBarcodeVal}
                       onChange={(e) => setCustomBarcodeVal(e.target.value)}
-                      placeholder={editBarcodeTarget === 'carton' ? 'e.g. 6159002123456 or BF-CTN-VEG-8492' : 'e.g. 6150012849201 or BF-VEG-84920'}
+                      placeholder={
+                        editBarcodeTarget === 'carton'
+                          ? 'e.g. 6159002123456 or BF-CTN-VEG-8492'
+                          : editBarcodeTarget === 'row'
+                          ? 'e.g. 6155002123456 or BF-ROW-VEG-8492'
+                          : 'e.g. 6150012849201 or BF-VEG-84920'
+                      }
                     />
                     <button
                       type="button"
-                      className={`btn ${editBarcodeTarget === 'carton' ? 'btn-outline-primary' : 'btn-outline-success'}`}
+                      className={`btn ${editBarcodeTarget === 'carton' ? 'btn-outline-primary' : editBarcodeTarget === 'row' ? 'btn-outline-info' : 'btn-outline-success'}`}
                       onClick={() =>
                         setCustomBarcodeVal(
-                          generateUniversalGoodsCode(editingBarcodeProduct, symbology, editBarcodeTarget === 'carton')
+                          generateUniversalGoodsCode(editingBarcodeProduct, symbology, editBarcodeTarget)
                         )
                       }
-                      title={`Generate new unique ${editBarcodeTarget === 'carton' ? 'Carton (6159...)' : 'Piece (6150...)'} Code`}
+                      title={`Generate new unique ${editBarcodeTarget === 'carton' ? 'Carton (6159...)' : editBarcodeTarget === 'row' ? 'Row (6155...)' : 'Piece (6150...)'} Code`}
                     >
                       <i className="ri-magic-line me-1"></i> Auto
                     </button>
                   </div>
                   <small className="text-muted">
                     {editBarcodeTarget === 'carton'
-                      ? 'Outer carton barcodes use prefix 6159... to uniquely identify whole carton packaging.'
-                      : 'Retail piece barcodes use prefix 6150... for individual shelf items.'}
+                      ? 'Outer carton barcodes use prefix 6159... or BF-CTN-... to uniquely identify whole carton packaging.'
+                      : editBarcodeTarget === 'row'
+                      ? 'Mid row/pack barcodes use prefix 6155... or BF-ROW-... to identify bundled rows/packs.'
+                      : 'Retail piece barcodes use prefix 6150... or BF-... for individual shelf items.'}
                   </small>
                 </div>
 
@@ -2362,6 +2516,7 @@ export default function Barcode() {
               <div className="modal-footer border-0 pt-0 d-flex justify-content-between">
                 <div>
                   {((editBarcodeTarget === 'carton' && editingBarcodeProduct.carton_barcode) ||
+                    (editBarcodeTarget === 'row' && editingBarcodeProduct.mid_barcode) ||
                     (editBarcodeTarget === 'piece' && editingBarcodeProduct.barcode)) && (
                     <button
                       type="button"
@@ -2369,7 +2524,7 @@ export default function Barcode() {
                       onClick={handleDeleteManualBarcode}
                       disabled={savingBarcode}
                     >
-                      <i className="ri-delete-bin-line me-1"></i> Delete {editBarcodeTarget === 'carton' ? 'Carton' : 'Piece'} Barcode
+                      <i className="ri-delete-bin-line me-1"></i> Delete {editBarcodeTarget === 'carton' ? 'Carton' : editBarcodeTarget === 'row' ? 'Row' : 'Piece'} Barcode
                     </button>
                   )}
                 </div>
@@ -2383,11 +2538,11 @@ export default function Barcode() {
                   </button>
                   <button
                     type="button"
-                    className={`btn ${editBarcodeTarget === 'carton' ? 'btn-primary' : 'btn-success'}`}
+                    className={`btn ${editBarcodeTarget === 'carton' ? 'btn-primary' : editBarcodeTarget === 'row' ? 'btn-info text-white' : 'btn-success'}`}
                     onClick={handleSaveManualBarcode}
                     disabled={savingBarcode}
                   >
-                    {savingBarcode ? 'Saving…' : `Save ${editBarcodeTarget === 'carton' ? 'Carton' : 'Piece'} Barcode`}
+                    {savingBarcode ? 'Saving…' : `Save ${editBarcodeTarget === 'carton' ? 'Carton' : editBarcodeTarget === 'row' ? 'Row' : 'Piece'} Barcode`}
                   </button>
                 </div>
               </div>
