@@ -180,20 +180,20 @@ export default function BemsOfficialDocument({
 
   // Identifiers
   const invoiceNo = data.id || data.invoice_ref || 'INV-2026-0001'
-  const receiptNo = data.receiptNo || (invoiceNo.startsWith('INV-') ? invoiceNo.replace('INV-', 'REC-') : `REC-${invoiceNo}`)
-  const transactionRef = data.paymentRef || data.payment_reference || data.transactionRef || (invoiceNo.startsWith('INV-') ? invoiceNo.replace('INV-', 'TXN-') : `TXN-${invoiceNo}`)
+  const receiptNo = data.receipt_ref || data.receiptRef || data.receiptNo || (invoiceNo.startsWith('INV-') ? invoiceNo.replace('INV-', 'RCP-') : `RCP-${invoiceNo}`)
+  const transactionRef = data.transaction_reference || data.paymentRef || data.payment_reference || data.transactionRef || (receiptNo.startsWith('RCP-') ? receiptNo.replace('RCP-', 'TXN-') : `TXN-${receiptNo}`)
   const docNumber = isReceipt ? receiptNo : invoiceNo
 
   // Dates
-  const issuedDate = formatDate(data.issuedDate || data.created_at || new Date())
-  const dueDate = formatDate(data.dueDate || new Date(Date.now() + 7 * 86400000))
-  const paidDate = formatDate(data.paidDate || data.payment_date || data.issuedDate || new Date())
+  const issuedDate = formatDate(data.issuedDate || data.date_issued || data.created_at || new Date())
+  const dueDate = formatDate(data.dueDate || data.due_date || new Date(Date.now() + 7 * 86400000))
+  const paidDate = formatDate(data.paidDate || data.payment_date || data.paid_at || data.issuedDate || new Date())
 
   // Customer
-  const customerName = data.customer?.name || data.customer?.full_name || data.customName || 'Valued Customer'
-  const customerAddress = data.customer?.address || data.customAddress || data.shipping_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
-  const customerPhone = data.customer?.phone || data.customPhone || ''
-  const customerEmail = data.customer?.email || data.customEmail || ''
+  const customerName = data.customer?.name || data.customer_name || data.customer?.full_name || data.customName || 'Valued Customer'
+  const customerAddress = data.customer?.address || data.customer_address || data.customAddress || data.shipping_address || 'Central Farm Settlement Hub, Umuahia, Abia State'
+  const customerPhone = data.customer?.phone || data.customer_phone || data.customPhone || ''
+  const customerEmail = data.customer?.email || data.customer_email || data.customEmail || ''
 
   // Items
   const rawItems = Array.isArray(data.items) ? data.items : []
@@ -202,33 +202,67 @@ export default function BemsOfficialDocument({
       name: 'Fresh Farm Produce',
       pack: 'Standard pack',
       qty: 1,
-      price: data.amount || 0,
-      total: data.amount || 0,
+      price: data.total_invoice_amount || data.amount || 0,
+      total: data.total_invoice_amount || data.amount || 0,
       tag: 'Grade A'
     }
   ]
 
   // Totals
   const subtotal = data.subtotal || items.reduce((acc, it) => acc + Number(it.total || (it.qty * it.price) || 0), 0)
-  const discount = Number(data.discount || 0)
+  const discount = Number(data.discount || data.discount_amount || 0)
   const deliveryFee = Number(data.deliveryFee || data.delivery_fee || data.shipping_fee || data.shippingFee || 0)
-  const total = Number(data.amount || (subtotal - discount + deliveryFee))
+  const total = Number(data.total_invoice_amount || data.amount || (subtotal - discount + deliveryFee))
   const inferredDeliveryFee = deliveryFee > 0 ? deliveryFee : Math.max(0, total - (subtotal - discount))
-  const isPaid = isReceipt || data.status === 'paid'
-  const amountPaid = isPaid ? total : Number(data.amountPaid || 0)
-  const balanceDue = Math.max(0, total - amountPaid)
+
+  // Installment & Receipt details
+  const isInstallmentReceipt = isReceipt && (data.balance_remaining !== undefined || data.previous_balance !== undefined || data.receipt_ref)
+  const previousBalance = Number(data.previous_balance ?? data.previousBalance ?? total)
+  const receiptPaidAmount = Number(
+    data.receiptAmount ||
+    data.payment_amount ||
+    (isInstallmentReceipt ? data.amount : null) ||
+    data.amount_paid ||
+    data.amountPaid ||
+    total
+  )
+  const balanceRemaining = Number(
+    data.balance_remaining ??
+    data.balanceRemaining ??
+    data.balance_due ??
+    data.balanceDue ??
+    Math.max(0, (isInstallmentReceipt ? previousBalance : total) - receiptPaidAmount)
+  )
+
+  const isFullyPaid = isReceipt ? balanceRemaining <= 0 : (data.status === 'paid' || balanceRemaining <= 0)
+  const amountPaid = isReceipt ? receiptPaidAmount : Number(data.amount_paid ?? data.amountPaid ?? (isFullyPaid ? total : 0))
+  const balanceDue = isReceipt ? balanceRemaining : Number(data.balance_due ?? data.balanceDue ?? Math.max(0, total - amountPaid))
 
   // Words
-  const amountInWords = numberToWords(isReceipt ? amountPaid : total)
+  const amountInWords = numberToWords(isReceipt ? receiptPaidAmount : (isFullyPaid ? total : total))
 
   // Status label and badge
   let statusText = 'Awaiting payment'
   let statusClass = 'awaiting'
   let statusColor = '#f0dc97'
-  if (isPaid) {
+  if (isReceipt) {
+    if (balanceRemaining <= 0) {
+      statusText = 'Paid in Full'
+      statusClass = 'confirmed'
+      statusColor = '#9fe0b3'
+    } else {
+      statusText = 'Partially Paid'
+      statusClass = 'awaiting'
+      statusColor = '#fcd34d'
+    }
+  } else if (isFullyPaid) {
     statusText = 'Confirmed'
     statusClass = 'confirmed'
     statusColor = '#9fe0b3'
+  } else if (data.status === 'partially_paid' || amountPaid > 0) {
+    statusText = 'Partially Paid'
+    statusClass = 'awaiting'
+    statusColor = '#fcd34d'
   } else if (data.status === 'overdue') {
     statusText = 'Past Due'
     statusClass = 'overdue'
@@ -599,10 +633,24 @@ export default function BemsOfficialDocument({
                       <dd className="mono">₦{inferredDeliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
                     </>
                   )}
-                  <dt className="grand">Total paid</dt>
-                  <dd className="grand"><span className="naira" style={{ fontSize: 15 }}>₦</span>{amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
-                  <dt>Balance due</dt>
-                  <dd className="bal mono">₦0.00</dd>
+                  {total > 0 && (
+                    <>
+                      <dt>Total invoice value</dt>
+                      <dd className="mono">₦{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
+                  {(isInstallmentReceipt || previousBalance !== receiptPaidAmount) && previousBalance > 0 && (
+                    <>
+                      <dt>Previous balance</dt>
+                      <dd className="mono">₦{previousBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                    </>
+                  )}
+                  <dt className="grand">Amount paid today</dt>
+                  <dd className="grand"><span className="naira" style={{ fontSize: 15 }}>₦</span>{receiptPaidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</dd>
+                  <dt className={balanceRemaining > 0 ? "grand text-danger" : ""}>Balance left to pay</dt>
+                  <dd className={`bal mono ${balanceRemaining > 0 ? 'text-danger fw-bold' : ''}`}>
+                    ₦{balanceRemaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </dd>
                 </>
               ) : (
                 <>
@@ -640,9 +688,18 @@ export default function BemsOfficialDocument({
             {isReceipt ? (
               <div className="bems-doc-notice-card">
                 <div className="bems-doc-notice-section">
-                  <span className="bems-doc-notice-title">Proof of Payment</span>
+                  <span className="bems-doc-notice-title">Proof of Payment & Outstanding Debt Status</span>
                   <p className="bems-doc-notice-body">
-                    Official payment confirmation to <b>{companyName}</b> for goods listed. Retain for accounting, reimbursement, or audit records.
+                    Official payment confirmation to <b>{companyName}</b> for goods listed.
+                    {balanceRemaining > 0 ? (
+                      <span className="d-block mt-1 text-danger fw-bold">
+                        ⚠️ OUTSTANDING BALANCE: ₦{balanceRemaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} is remaining to be paid.
+                      </span>
+                    ) : (
+                      <span className="d-block mt-1 text-success fw-bold">
+                        ✅ FULLY SETTLED: Zero balance remaining. Thank you for your full settlement!
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="bems-doc-notice-section support">

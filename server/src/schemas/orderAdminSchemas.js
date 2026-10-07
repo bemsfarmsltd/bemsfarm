@@ -2,10 +2,19 @@ const { z } = require("zod");
 
 // Matches invoices_status_check in the DB.
 const invoiceStatus = z.object({
-  status: z.enum(["draft", "sent", "paid", "overdue", "cancelled"], {
-    error: "status must be one of: draft, sent, paid, overdue, cancelled",
+  status: z.enum(["draft", "sent", "paid", "partially_paid", "overdue", "cancelled"], {
+    error: "status must be one of: draft, sent, paid, partially_paid, overdue, cancelled",
   }),
   notes: z.string().optional(),
+});
+
+const recordInvoicePayment = z.object({
+  amount: z.coerce.number().positive("Payment amount must be greater than 0"),
+  payment_method: z.string().trim().min(1, "Payment method is required").default("Bank Transfer"),
+  bank_account_id: z.coerce.number().optional().nullable(),
+  transaction_reference: z.string().trim().max(100).optional().nullable(),
+  payment_date: z.string().optional(),
+  notes: z.string().trim().max(2000).optional().nullable(),
 });
 
 // No DB constraint on returns.status, but this is the fixed set the admin
@@ -56,11 +65,13 @@ const createInvoice = z.object({
   customer_address: z.string().trim().max(500).optional(),
   due_date: z.string().optional(),
   payment_method: z.string().trim().max(60).optional(),
+  payment_terms: z.string().trim().max(50).optional(),
+  amount_paid: z.coerce.number().min(0).optional(),
   notes: z.string().trim().max(2000).optional(),
   items: z.array(invoiceItem).min(1, "At least one item is required"),
   delivery_fee: z.coerce.number().min(0).default(0),
   discount_amount: z.coerce.number().min(0).default(0),
-  status: z.enum(["draft", "sent", "paid", "overdue", "cancelled"]).default("draft"),
+  status: z.enum(["draft", "sent", "paid", "partially_paid", "overdue", "cancelled"]).default("draft"),
 });
 
 const createReturn = z.object({
@@ -77,4 +88,4 @@ const createReturn = z.object({
 }).refine((data) => data.customer_id || data.customer, { message: "Customer is required", path: ["customer"] })
   .refine((data) => data.product_id || data.product, { message: "Product is required", path: ["product"] });
 
-module.exports = { invoiceStatus, returnStatus, resolveDispute, assignDriver, createInvoice, createReturn };
+module.exports = { invoiceStatus, recordInvoicePayment, returnStatus, resolveDispute, assignDriver, createInvoice, createReturn };

@@ -355,18 +355,39 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
 
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(invoice_ref ILIKE $${params.length} OR order_id ILIKE $${params.length} OR customer_name ILIKE $${params.length})`);
+      where.push(`(invoice_ref ILIKE $${params.length} OR order_id ILIKE $${params.length} OR customer_name ILIKE $${params.length} OR customer_phone ILIKE $${params.length})`);
     }
+
     if (status && status !== "all") {
-      // Supports a comma-separated list so a stat card covering more than
-      // one status (e.g. "Sent / Draft") can filter to exactly what it counted.
-      const statuses = status.split(",").map((s) => s.trim()).filter(Boolean);
-      params.push(statuses);
-      where.push(`status = ANY($${params.length})`);
+      if (status === "owing" || status === "debtors") {
+        where.push(`(balance_due > 0 AND status NOT IN ('draft', 'cancelled'))`);
+      } else if (status === "partially_paid") {
+        where.push(`(status = 'partially_paid' OR (amount_paid > 0 AND balance_due > 0))`);
+      } else {
+        const statuses = status.split(",").map((s) => s.trim()).filter(Boolean);
+        params.push(statuses);
+        where.push(`status = ANY($${params.length})`);
+      }
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
     const countRes = await pool.query(`SELECT COUNT(*) FROM invoices ${whereClause}`, params);
+
+    // Summary analytics across all invoices
+    const summaryRes = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total_invoices,
+        COUNT(*) FILTER (WHERE status = 'paid' OR (amount > 0 AND balance_due <= 0))::int AS paid_count,
+        COUNT(*) FILTER (WHERE status = 'partially_paid' OR (amount_paid > 0 AND balance_due > 0))::int AS partially_paid_count,
+        COUNT(*) FILTER (WHERE balance_due > 0 AND status NOT IN ('draft', 'cancelled'))::int AS debtors_count,
+        COUNT(*) FILTER (WHERE status = 'draft')::int AS draft_count,
+        COUNT(*) FILTER (WHERE status = 'sent')::int AS sent_count,
+        COUNT(*) FILTER (WHERE (status = 'overdue' OR (due_date < CURRENT_DATE AND balance_due > 0 AND status NOT IN ('paid', 'cancelled'))))::int AS overdue_count,
+        COALESCE(SUM(amount), 0)::numeric AS total_billed,
+        COALESCE(SUM(amount_paid), 0)::numeric AS total_collected,
+        COALESCE(SUM(balance_due) FILTER (WHERE status NOT IN ('cancelled', 'draft')), 0)::numeric AS total_outstanding
+      FROM invoices
+    `);
     
     params.push(parseInt(limit));
     params.push(offset);
@@ -378,13 +399,130 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `, params);
 
-    // The table view reads flat/snake_case fields (inv.due_date, inv.amount,
-    // ...); the view modal reads a nested customer object + camelCase
-    // aliases (selected.customer.name, selected.dueDate, ...). Both shapes
-    // are included so either consumer works off the same response.
-    const invoices = rows.rows.map((row) => ({
+    const invoices = rows.rows.map((row) => {
+      const amount = parseFloat(row.amount) || 0;
+      const amountPaid = parseFloat(row.amount_paid) || 0;
+      const balanceDue = row.balance_due !== null && row.balance_due !== undefined
+        ? parseFloat(row.balance_due)
+        : Math.max(0, amount - amountPaid);
+
+      return {
+        ...row,
+        amount,
+        amount_paid: amountPaid,
+        balance_due: balanceDue,
+        payment_terms: row.payment_terms || "net_7",
+        customer: {
+          id: row.customer_id,
+          name: row.customer_name,
+          phone: row.customer_phone,
+          email: row.customer_email,
+          address: row.customer_address,
+        },
+        orderId: row.order_id,
+        issuedDate: row.date_issued,
+        dueDate: row.due_date,
+        paymentMethod: row.payment_method,
+        deliveryFee: parseFloat(row.delivery_fee) || 0,
+        discount: parseFloat(row.discount_amount) || 0,
+        paidDate: row.paid_at,
+        items: Array.isArray(row.items) ? row.items : [],
+      };
+    });
+
+    res.json({
+      invoices,
+      total: parseInt(countRes.rows[0].count),
+      page: parseInt(page),
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
+      summary: summaryRes.rows[0] || {},
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/orders/invoices/receipts/:receiptRef ─────────────────────
+router.get("/invoices/receipts/:receiptRef", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const pmtRes = await pool.query(`
+      SELECT 
+        p.*,
+        i.invoice_ref,
+        i.customer_name,
+        i.customer_phone,
+        i.customer_email,
+        i.customer_address,
+        i.amount AS total_invoice_amount,
+        i.date_issued,
+        i.due_date,
+        i.items,
+        u.full_name AS recorder_name,
+        ba.bank_name,
+        ba.account_name,
+        ba.account_number
+      FROM invoice_payments p
+      JOIN invoices i ON i.id = p.invoice_id
+      LEFT JOIN users u ON u.id = p.recorded_by
+      LEFT JOIN bank_accounts ba ON ba.id = p.bank_account_id
+      WHERE p.receipt_ref = $1
+    `, [req.params.receiptRef]);
+
+    if (!pmtRes.rows.length) {
+      return res.status(404).json({ message: "Payment receipt not found" });
+    }
+
+    const receipt = pmtRes.rows[0];
+    res.json({
+      receipt: {
+        ...receipt,
+        amount: parseFloat(receipt.amount) || 0,
+        previous_balance: parseFloat(receipt.previous_balance) || 0,
+        balance_remaining: parseFloat(receipt.balance_remaining) || 0,
+        total_invoice_amount: parseFloat(receipt.total_invoice_amount) || 0,
+        items: Array.isArray(receipt.items) ? receipt.items : [],
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/orders/invoices/:id ──────────────────────────────────────
+router.get("/invoices/:id", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const invRes = await pool.query(
+      `SELECT * FROM invoices WHERE id::text = $1 OR invoice_ref = $1`,
+      [String(req.params.id)]
+    );
+    if (!invRes.rows.length) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+    const row = invRes.rows[0];
+    const amount = parseFloat(row.amount) || 0;
+    const amountPaid = parseFloat(row.amount_paid) || 0;
+    const balanceDue = row.balance_due !== null && row.balance_due !== undefined
+      ? parseFloat(row.balance_due)
+      : Math.max(0, amount - amountPaid);
+
+    // Fetch payments ledger for this invoice
+    const pmtRes = await pool.query(`
+      SELECT p.*, u.full_name AS recorder_name, ba.bank_name, ba.account_name, ba.account_number
+      FROM invoice_payments p
+      LEFT JOIN users u ON u.id = p.recorded_by
+      LEFT JOIN bank_accounts ba ON ba.id = p.bank_account_id
+      WHERE p.invoice_id = $1
+      ORDER BY p.payment_date ASC, p.id ASC
+    `, [row.id]);
+
+    const invoice = {
       ...row,
+      amount,
+      amount_paid: amountPaid,
+      balance_due: balanceDue,
+      payment_terms: row.payment_terms || "net_7",
       customer: {
+        id: row.customer_id,
         name: row.customer_name,
         phone: row.customer_phone,
         email: row.customer_email,
@@ -398,14 +536,26 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
       discount: parseFloat(row.discount_amount) || 0,
       paidDate: row.paid_at,
       items: Array.isArray(row.items) ? row.items : [],
-    }));
+      payments: pmtRes.rows.map((p) => ({
+        id: p.id,
+        receipt_ref: p.receipt_ref,
+        amount: parseFloat(p.amount) || 0,
+        payment_method: p.payment_method,
+        payment_date: p.payment_date,
+        previous_balance: parseFloat(p.previous_balance) || 0,
+        balance_remaining: parseFloat(p.balance_remaining) || 0,
+        transaction_reference: p.transaction_reference,
+        bank_account_id: p.bank_account_id,
+        bank_name: p.bank_name,
+        account_name: p.account_name,
+        account_number: p.account_number,
+        notes: p.notes,
+        recorder_name: p.recorder_name,
+        created_at: p.created_at,
+      })),
+    };
 
-    res.json({
-      invoices,
-      total: parseInt(countRes.rows[0].count),
-      page: parseInt(page),
-      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
-    });
+    res.json({ invoice });
   } catch (err) {
     next(err);
   }
@@ -425,6 +575,10 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
       customer_address,
       due_date,
       payment_method,
+      payment_terms = "net_7",
+      amount_paid = 0,
+      bank_account_id,
+      transaction_reference,
       notes,
       items,
       delivery_fee = 0,
@@ -441,7 +595,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
       if (custCheck.rows.length) linkedCustomerId = custCheck.rows[0].id;
     }
 
-    // Calculate subtotal — qty/price shape and positivity already enforced by createInvoice schema
+    // Calculate subtotal
     let subtotal = 0;
     const cleanItems = [];
     for (const item of items) {
@@ -463,6 +617,20 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
     const disc = parseFloat(discount_amount);
     const totalAmount = subtotal + df - disc;
 
+    const initialPaid = Math.min(totalAmount, Math.max(0, parseFloat(amount_paid) || 0));
+    const balanceDue = Math.max(0, totalAmount - initialPaid);
+
+    let finalStatus = status || "draft";
+    if (balanceDue <= 0 && totalAmount > 0) {
+      finalStatus = "paid";
+    } else if (initialPaid > 0) {
+      finalStatus = "partially_paid";
+    } else if (status === "draft") {
+      finalStatus = "draft";
+    } else {
+      finalStatus = "sent";
+    }
+
     const tempRef = `temp-${Date.now()}`;
 
     // Insert invoice
@@ -471,8 +639,8 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
         invoice_ref, customer_name, customer_phone, customer_email, customer_address,
         customer_id, channel, type, date_issued, due_date,
         amount, discount_amount, delivery_fee, payment_method, status, notes,
-        created_by, created_at, items
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'manual', 'manual', NOW(), $7, $8, $9, $10, $11, $12, $13, $14, NOW(), $15)
+        created_by, created_at, items, amount_paid, balance_due, payment_terms, paid_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'manual', 'manual', NOW(), $7, $8, $9, $10, $11, $12, $13, $14, NOW(), $15, $16, $17, $18, $19)
       RETURNING id`,
       [
         tempRef,
@@ -486,24 +654,238 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
         disc,
         df,
         payment_method || "Bank Transfer",
-        status || "draft",
+        finalStatus,
         notes || null,
         req.user.id,
-        JSON.stringify(cleanItems)
+        JSON.stringify(cleanItems),
+        initialPaid,
+        balanceDue,
+        payment_terms,
+        finalStatus === "paid" ? new Date() : null,
       ]
     );
 
     const invoiceId = result.rows[0].id;
     const invoiceRef = `INV-2026-${String(invoiceId).padStart(4, "0")}`;
 
-    // Update invoice reference
     await client.query(
       `UPDATE invoices SET invoice_ref = $1 WHERE id = $2`,
       [invoiceRef, invoiceId]
     );
 
+    let initialReceipt = null;
+    // If downpayment was made, record installment payment & receipt
+    if (initialPaid > 0) {
+      const receiptRef = `RCP-2026-${invoiceId}-01`;
+      const pmtRes = await client.query(
+        `INSERT INTO invoice_payments (
+          invoice_id, receipt_ref, amount, payment_method, bank_account_id,
+          transaction_reference, payment_date, previous_balance, balance_remaining,
+          notes, recorded_by, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, $8, $9, $10, NOW())
+        RETURNING *`,
+        [
+          invoiceId,
+          receiptRef,
+          initialPaid,
+          payment_method || "Bank Transfer",
+          bank_account_id || null,
+          transaction_reference || null,
+          totalAmount,
+          balanceDue,
+          notes || `Initial installment / down payment for ${invoiceRef}`,
+          req.user.id,
+        ]
+      );
+      initialReceipt = pmtRes.rows[0];
+
+      if (bank_account_id) {
+        await client.query(
+          `UPDATE bank_accounts
+           SET balance = balance + $1, last_transaction_at = NOW(), updated_at = NOW()
+           WHERE id = $2`,
+          [initialPaid, bank_account_id]
+        );
+
+        await client.query(
+          `INSERT INTO income (
+            reference, date, source_type, description, amount,
+            bank_account_id, payment_method, notes, created_by, created_at, source, category
+          ) VALUES ($1, CURRENT_DATE, 'Invoice Payment', $2, $3, $4, $5, $6, $7, NOW(), 'Customer Invoice', 'Sales')`,
+          [
+            receiptRef,
+            `Down payment for ${invoiceRef} (${customer_name})`,
+            initialPaid,
+            bank_account_id,
+            payment_method || "Bank Transfer",
+            notes || null,
+            req.user.id,
+          ]
+        );
+      }
+    }
+
     await client.query("COMMIT");
-    res.status(201).json({ message: "Invoice created successfully", id: invoiceId, invoice_ref: invoiceRef });
+    res.status(201).json({
+      message: "Invoice created successfully",
+      id: invoiceId,
+      invoice_ref: invoiceRef,
+      receipt: initialReceipt,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ── POST /api/admin/orders/invoices/:id/payments (Installment / Partial Payment) ──
+router.post("/invoices/:id/payments", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), validate(orderAdminSchemas.recordInvoicePayment), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const {
+      amount,
+      payment_method = "Bank Transfer",
+      bank_account_id,
+      transaction_reference,
+      payment_date,
+      notes,
+    } = req.body;
+
+    const invRes = await client.query(
+      `SELECT * FROM invoices WHERE id::text = $1 OR invoice_ref = $1 FOR UPDATE`,
+      [String(req.params.id)]
+    );
+    if (!invRes.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    const invoice = invRes.rows[0];
+    if (invoice.status === "cancelled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Cannot record payment on a cancelled invoice" });
+    }
+
+    const totalAmount = parseFloat(invoice.amount) || 0;
+    const currentPaid = parseFloat(invoice.amount_paid) || 0;
+    const currentBalance = invoice.balance_due !== null && invoice.balance_due !== undefined
+      ? parseFloat(invoice.balance_due)
+      : Math.max(0, totalAmount - currentPaid);
+
+    if (currentBalance <= 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "This invoice is already fully paid and settled." });
+    }
+
+    const payAmount = parseFloat(amount);
+    if (payAmount > currentBalance + 0.01) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `Payment amount (₦${payAmount.toLocaleString()}) cannot exceed the outstanding balance (₦${currentBalance.toLocaleString()})`,
+      });
+    }
+
+    const actualPay = Math.min(payAmount, currentBalance);
+    const balanceRemaining = Math.max(0, currentBalance - actualPay);
+    const newAmountPaid = currentPaid + actualPay;
+    const newStatus = balanceRemaining <= 0 ? "paid" : "partially_paid";
+
+    // Payment sequence
+    const countRes = await client.query(
+      `SELECT COUNT(*) FROM invoice_payments WHERE invoice_id = $1`,
+      [invoice.id]
+    );
+    const seqNum = parseInt(countRes.rows[0].count) + 1;
+    const receiptRef = `RCP-2026-${invoice.id}-${String(seqNum).padStart(2, "0")}`;
+
+    const paymentDateVal = payment_date ? new Date(payment_date) : new Date();
+
+    const insertRes = await client.query(
+      `INSERT INTO invoice_payments (
+        invoice_id, receipt_ref, amount, payment_method, bank_account_id,
+        transaction_reference, payment_date, previous_balance, balance_remaining,
+        notes, recorded_by, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      RETURNING *`,
+      [
+        invoice.id,
+        receiptRef,
+        actualPay,
+        payment_method,
+        bank_account_id || null,
+        transaction_reference || null,
+        paymentDateVal,
+        currentBalance,
+        balanceRemaining,
+        notes || null,
+        req.user.id,
+      ]
+    );
+    const recordedPayment = insertRes.rows[0];
+
+    // Update invoice balance and status
+    await client.query(
+      `UPDATE invoices
+       SET amount_paid = $1,
+           balance_due = $2,
+           status = $3,
+           paid_at = CASE WHEN $3 = 'paid' THEN NOW() ELSE paid_at END
+       WHERE id = $4`,
+      [newAmountPaid, balanceRemaining, newStatus, invoice.id]
+    );
+
+    // If bank account specified, update balance and record into income
+    if (bank_account_id) {
+      await client.query(
+        `UPDATE bank_accounts
+         SET balance = balance + $1, last_transaction_at = NOW(), updated_at = NOW()
+         WHERE id = $2`,
+        [actualPay, bank_account_id]
+      );
+
+      await client.query(
+        `INSERT INTO income (
+          reference, date, source_type, description, amount,
+          bank_account_id, payment_method, notes, created_by, created_at, source, category
+        ) VALUES ($1, CURRENT_DATE, 'Invoice Installment', $2, $3, $4, $5, $6, $7, NOW(), 'Customer Invoice', 'Sales')`,
+        [
+          receiptRef,
+          `Installment payment #${seqNum} for ${invoice.invoice_ref} (${invoice.customer_name})`,
+          actualPay,
+          bank_account_id,
+          payment_method,
+          notes || null,
+          req.user.id,
+        ]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      message: `Payment of ₦${actualPay.toLocaleString()} recorded successfully`,
+      receipt: {
+        ...recordedPayment,
+        invoice_ref: invoice.invoice_ref,
+        customer_name: invoice.customer_name,
+        customer_phone: invoice.customer_phone,
+        customer_email: invoice.customer_email,
+        customer_address: invoice.customer_address,
+        total_invoice_amount: totalAmount,
+      },
+      invoice: {
+        id: invoice.id,
+        invoice_ref: invoice.invoice_ref,
+        amount: totalAmount,
+        amount_paid: newAmountPaid,
+        balance_due: balanceRemaining,
+        status: newStatus,
+      },
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);
@@ -516,10 +898,52 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
 router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.invoiceStatus), async (req, res, next) => {
   try {
     const { status, notes } = req.body;
-    await pool.query(
-      `UPDATE invoices SET status = $1::varchar, notes = COALESCE($2, notes), paid_at = CASE WHEN $1::varchar = 'paid' THEN NOW() ELSE paid_at END WHERE id::text = $3 OR invoice_ref = $3`,
-      [status, notes || null, String(req.params.id)]
+    const invRes = await pool.query(
+      `SELECT * FROM invoices WHERE id::text = $1 OR invoice_ref = $1`,
+      [String(req.params.id)]
     );
+    if (!invRes.rows.length) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+    const inv = invRes.rows[0];
+    const totalAmount = parseFloat(inv.amount) || 0;
+    const currentPaid = parseFloat(inv.amount_paid) || 0;
+    const currentBalance = inv.balance_due !== null && inv.balance_due !== undefined
+      ? parseFloat(inv.balance_due)
+      : Math.max(0, totalAmount - currentPaid);
+
+    if (status === "paid" && currentBalance > 0) {
+      const countRes = await pool.query(`SELECT COUNT(*) FROM invoice_payments WHERE invoice_id = $1`, [inv.id]);
+      const seq = parseInt(countRes.rows[0].count) + 1;
+      const receiptRef = `RCP-2026-${inv.id}-${String(seq).padStart(2, "0")}`;
+
+      await pool.query(
+        `INSERT INTO invoice_payments (
+          invoice_id, receipt_ref, amount, payment_method, payment_date,
+          previous_balance, balance_remaining, notes, recorded_by, created_at
+        ) VALUES ($1, $2, $3, $4, NOW(), $5, 0, $6, $7, NOW())`,
+        [
+          inv.id,
+          receiptRef,
+          currentBalance,
+          inv.payment_method || "Bank Transfer",
+          currentBalance,
+          notes || "Full balance cleared via status update",
+          req.user.id,
+        ]
+      );
+
+      await pool.query(
+        `UPDATE invoices SET status = 'paid', amount_paid = amount, balance_due = 0, notes = COALESCE($1, notes), paid_at = NOW() WHERE id = $2`,
+        [notes || null, inv.id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE invoices SET status = $1::varchar, notes = COALESCE($2, notes), paid_at = CASE WHEN $1::varchar = 'paid' THEN NOW() ELSE paid_at END WHERE id = $3`,
+        [status, notes || null, inv.id]
+      );
+    }
+
     res.json({ message: "Invoice updated", status });
   } catch (err) {
     next(err);

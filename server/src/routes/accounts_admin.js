@@ -313,7 +313,7 @@ router.get("/overview", requireRole("superadmin", "manager", "accountant"), asyn
 // ════════════════════════════════════════════════════════════════════════════
 // BANK ACCOUNTS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/bank-accounts", requireRole("superadmin", "manager", "accountant"), accountsController.getBankAccounts);
+router.get("/bank-accounts", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), accountsController.getBankAccounts);
 router.post("/bank-accounts", requireRole("superadmin", "manager"), accountsController.createBankAccount);
 router.patch("/bank-accounts/:id", requireRole("superadmin", "manager"), accountsController.updateBankAccount);
 router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsController.deactivateBankAccount);
