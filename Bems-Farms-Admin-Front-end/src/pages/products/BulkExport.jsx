@@ -58,6 +58,49 @@ const AVAILABLE_COLUMNS = [
     getRawValue: (p) => Number(p.stock ?? p.stock_quantity ?? 0),
   },
   {
+    id: 'piece_unit_name',
+    label: 'Piece Unit Name',
+    defaultSelected: false,
+    getValue: (p) => p.piece_unit_name || p.unit || 'Piece',
+    getRawValue: (p) => p.piece_unit_name || p.unit || 'Piece',
+  },
+  {
+    id: 'mid_unit_name',
+    label: 'Mid Unit Name',
+    defaultSelected: false,
+    getValue: (p) => p.mid_unit_name || (p.pcs_per_mid_unit > 1 ? 'Row' : '—'),
+    getRawValue: (p) => p.mid_unit_name || '',
+  },
+  {
+    id: 'pcs_per_mid_unit',
+    label: 'Pcs per Mid Unit',
+    defaultSelected: false,
+    getValue: (p) => String(p.pcs_per_mid_unit || 1),
+    getRawValue: (p) => Number(p.pcs_per_mid_unit || 1),
+  },
+  {
+    id: 'mid_price',
+    label: 'Mid Selling Price (₦)',
+    defaultSelected: false,
+    isCurrency: true,
+    getValue: (p) => (p.mid_price ? `₦${Number(p.mid_price).toLocaleString()}` : '—'),
+    getRawValue: (p) => Number(p.mid_price || 0),
+  },
+  {
+    id: 'mid_barcode',
+    label: 'Mid Barcode',
+    defaultSelected: false,
+    getValue: (p) => p.mid_barcode || '—',
+    getRawValue: (p) => p.mid_barcode || '',
+  },
+  {
+    id: 'carton_unit_name',
+    label: 'Carton Unit Name',
+    defaultSelected: false,
+    getValue: (p) => p.carton_unit_name || (p.pcs_per_carton > 1 ? 'Carton' : '—'),
+    getRawValue: (p) => p.carton_unit_name || '',
+  },
+  {
     id: 'pcs_per_carton',
     label: 'Pcs per Carton',
     defaultSelected: false,
@@ -66,11 +109,19 @@ const AVAILABLE_COLUMNS = [
   },
   {
     id: 'carton_price',
-    label: 'Carton Price (₦)',
+    label: 'Carton Selling Price (₦)',
     defaultSelected: false,
     isCurrency: true,
     getValue: (p) => (p.carton_price ? `₦${Number(p.carton_price).toLocaleString()}` : '—'),
     getRawValue: (p) => Number(p.carton_price || 0),
+  },
+  {
+    id: 'carton_cost_price',
+    label: 'Carton Cost Price (₦)',
+    defaultSelected: false,
+    isCurrency: true,
+    getValue: (p) => (p.carton_cost_price ? `₦${Number(p.carton_cost_price).toLocaleString()}` : '—'),
+    getRawValue: (p) => Number(p.carton_cost_price || 0),
   },
   {
     id: 'carton_barcode',
@@ -81,17 +132,37 @@ const AVAILABLE_COLUMNS = [
   },
   {
     id: 'carton_stock_display',
-    label: 'Stock (Cartons & Pcs)',
+    label: 'Stock (Cartons, Rows & Pcs)',
     defaultSelected: false,
     getValue: (p) => {
       const stock = parseInt(p.stock ?? p.stock_quantity ?? 0) || 0
-      const perCarton = parseInt(p.pcs_per_carton) || 0
-      if (perCarton <= 1) return `${stock} pcs`
-      const c = Math.floor(stock / perCarton)
-      const l = stock % perCarton
-      if (c > 0 && l > 0) return `${c} cartons, ${l} pcs`
-      if (c > 0) return `${c} cartons`
-      return `${l} pcs`
+      const ctnMult = parseInt(p.pcs_per_carton) || 1
+      const midMult = parseInt(p.pcs_per_mid_unit) || 1
+      const ctnName = p.carton_unit_name || 'Carton'
+      const midName = p.mid_unit_name || 'Row'
+      const pcName = p.piece_unit_name || 'Piece'
+
+      if (ctnMult > 1 && midMult > 1 && ctnMult > midMult) {
+        const c = Math.floor(stock / ctnMult)
+        const rem = stock % ctnMult
+        const m = Math.floor(rem / midMult)
+        const pcs = rem % midMult
+        const parts = []
+        if (c > 0) parts.push(`${c} ${c === 1 ? ctnName : ctnName + 's'}`)
+        if (m > 0) parts.push(`${m} ${m === 1 ? midName : midName + 's'}`)
+        if (pcs > 0 || parts.length === 0) parts.push(`${pcs} ${pcs === 1 ? pcName : pcName + 's'}`)
+        return parts.join(', ')
+      }
+
+      if (ctnMult > 1) {
+        const c = Math.floor(stock / ctnMult)
+        const l = stock % ctnMult
+        if (c > 0 && l > 0) return `${c} ${c === 1 ? ctnName : ctnName + 's'}, ${l} ${l === 1 ? pcName : pcName + 's'}`
+        if (c > 0) return `${c} ${c === 1 ? ctnName : ctnName + 's'}`
+        return `${l} ${l === 1 ? pcName : pcName + 's'}`
+      }
+
+      return `${stock} ${stock === 1 ? pcName : pcName + 's'}`
     },
     getRawValue: (p) => String(p.stock ?? 0),
   },

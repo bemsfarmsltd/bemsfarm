@@ -1875,10 +1875,11 @@ export default function POS() {
 
         // Immediately deduct packed items from local productsList in UI
         setProductsList(prev => prev.map(p => {
-          const cartItem = cart.find(ci => ci.id === p.id || ci.productId === p.id || (ci.sku && ci.sku === p.sku))
-          if (cartItem) {
-            const deductQty = Number(cartItem.qty || 1)
-            return { ...p, stock: Math.max(0, (p.stock || 0) - deductQty) }
+          const totalDeduct = cart
+            .filter(ci => ci.id === p.id || ci.productId === p.id || (ci.sku && ci.sku === p.sku))
+            .reduce((sum, ci) => sum + (Number(ci.qty || 1) * Number(ci.multiplier || 1)), 0)
+          if (totalDeduct > 0) {
+            return { ...p, stock: Math.max(0, (p.stock || 0) - totalDeduct) }
           }
           return p
         }))
@@ -2068,6 +2069,18 @@ export default function POS() {
     setCheckoutStep('success')
     isSubmittingSaleRef.current = false
     setIsSubmittingSale(false)
+
+    // Immediately deduct sold items from local productsList in UI
+    const soldItems = receiptData.cart || []
+    setProductsList(prev => prev.map(p => {
+      const totalDeduct = soldItems
+        .filter(ci => ci.id === p.id || ci.productId === p.id || (ci.sku && ci.sku === p.sku))
+        .reduce((sum, ci) => sum + (Number(ci.qty || 1) * Number(ci.multiplier || 1)), 0)
+      if (totalDeduct > 0) {
+        return { ...p, stock: Math.max(0, (p.stock || 0) - totalDeduct) }
+      }
+      return p
+    }))
 
     // Clear cart in background
     clearCart()

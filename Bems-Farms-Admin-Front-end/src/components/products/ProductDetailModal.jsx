@@ -41,24 +41,35 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
     return '₦' + Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
-  const formatCartonStock = (totalStock, pcsPerCarton, cartonUnit = 'Carton', pieceUnit = 'Pcs') => {
+  const format3TierStock = (totalStock, pcsPerCarton, cartonUnit = 'Carton', pcsPerMid = 1, midUnit = 'Row', pieceUnit = 'Pcs') => {
     const stock = parseInt(totalStock) || 0
-    const perCarton = parseInt(pcsPerCarton) || 0
-    if (perCarton <= 1) {
-      return `${stock} ${pieceUnit || 'Pcs'}`
-    }
-    const cartons = Math.floor(stock / perCarton)
-    const loosePcs = stock % perCarton
+    const ctnMult = parseInt(pcsPerCarton) || 1
+    const midMult = parseInt(pcsPerMid) || 1
 
-    if (cartons > 0 && loosePcs > 0) {
-      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
-      return `${cartons} ${ctnLabel}, ${loosePcs} ${pieceUnit || 'Pcs'}`
-    } else if (cartons > 0 && loosePcs === 0) {
-      const ctnLabel = cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`
-      return `${cartons} ${ctnLabel}`
-    } else {
+    if (ctnMult > 1 && midMult > 1 && ctnMult > midMult) {
+      const c = Math.floor(stock / ctnMult)
+      const rem = stock % ctnMult
+      const m = Math.floor(rem / midMult)
+      const pcs = rem % midMult
+      const parts = []
+      if (c > 0) parts.push(`${c} ${c === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`}`)
+      if (m > 0) parts.push(`${m} ${m === 1 ? (midUnit || 'Row') : `${midUnit || 'Row'}s`}`)
+      if (pcs > 0 || parts.length === 0) parts.push(`${pcs} ${pcs === 1 ? (pieceUnit || 'Piece') : `${pieceUnit || 'Pcs'}`}`)
+      return parts.join(', ')
+    }
+
+    if (ctnMult > 1) {
+      const cartons = Math.floor(stock / ctnMult)
+      const loosePcs = stock % ctnMult
+      if (cartons > 0 && loosePcs > 0) {
+        return `${cartons} ${cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`}, ${loosePcs} ${pieceUnit || 'Pcs'}`
+      } else if (cartons > 0) {
+        return `${cartons} ${cartons === 1 ? (cartonUnit || 'Carton') : `${cartonUnit || 'Carton'}s`}`
+      }
       return `${loosePcs} ${pieceUnit || 'Pcs'}`
     }
+
+    return `${stock} ${pieceUnit || 'Pcs'}`
   }
 
   const handleCopyBarcode = () => {
@@ -212,13 +223,13 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                       </div>
                       <div className="d-flex align-items-baseline gap-2">
                         <h3 className="fw-bold font-display text-dark mb-0">
-                          {Number(product.pcs_per_carton) > 1
-                            ? formatCartonStock(stockQty, product.pcs_per_carton, product.carton_unit_name, product.piece_unit_name)
+                          {Number(product.pcs_per_carton) > 1 || Number(product.pcs_per_mid_unit) > 1
+                            ? format3TierStock(stockQty, product.pcs_per_carton, product.carton_unit_name, product.pcs_per_mid_unit, product.mid_unit_name, product.piece_unit_name)
                             : stockQty.toLocaleString()}
                         </h3>
                         <span className="text-muted fs-sm">{product.unit_abbr || product.unit || 'units'}</span>
                       </div>
-                      {Number(product.pcs_per_carton) > 1 && (
+                      {(Number(product.pcs_per_carton) > 1 || Number(product.pcs_per_mid_unit) > 1) && (
                         <div className="text-muted fs-xs font-monospace mt-1">
                           Total Base Stock: <strong>{stockQty.toLocaleString()} pieces</strong>
                         </div>
@@ -243,6 +254,12 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                         {formatNaira(sellingPrice)}
                         <small className="fs-xs fw-normal text-muted"> / {product.piece_unit_name || 'pc'}</small>
                       </h3>
+                      {Number(product.pcs_per_mid_unit) > 1 && product.mid_price > 0 && (
+                        <div className="fw-bold fs-xs mt-1" style={{ color: '#8b5cf6' }}>
+                          {formatNaira(product.mid_price)}
+                          <small className="text-muted fw-normal"> / {product.mid_unit_name || 'row'}</small>
+                        </div>
+                      )}
                       {Number(product.pcs_per_carton) > 1 && product.carton_price > 0 && (
                         <div className="text-primary fw-bold fs-xs mt-1">
                           {formatNaira(product.carton_price)}
@@ -526,6 +543,30 @@ export default function ProductDetailModal({ productId, onClose, onEdit, onSched
                                     <td className="text-muted fw-semibold ps-3">Unit of Measure</td>
                                     <td>{product.unit_name ? `${product.unit_name} (${product.unit_abbr || product.unit})` : (product.unit || 'pcs')}</td>
                                   </tr>
+                                  {Number(product.pcs_per_mid_unit) > 1 && (
+                                    <>
+                                      <tr>
+                                        <td className="text-muted fw-semibold ps-3">Mid-Tier Unit</td>
+                                        <td>
+                                          <span className="badge border" style={{ backgroundColor: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }}>
+                                            1 {product.mid_unit_name || 'Row'} = {product.pcs_per_mid_unit} {product.piece_unit_name || product.unit || 'pieces'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                      {product.mid_price > 0 && (
+                                        <tr>
+                                          <td className="text-muted fw-semibold ps-3">Mid Unit Price</td>
+                                          <td className="fw-bold" style={{ color: '#7c3aed' }}>{formatNaira(product.mid_price)}</td>
+                                        </tr>
+                                      )}
+                                      {product.mid_barcode && (
+                                        <tr>
+                                          <td className="text-muted fw-semibold ps-3">Mid Unit Barcode</td>
+                                          <td className="font-monospace text-dark">{product.mid_barcode}</td>
+                                        </tr>
+                                      )}
+                                    </>
+                                  )}
                                   {Number(product.pcs_per_carton) > 1 && (
                                     <>
                                       <tr>

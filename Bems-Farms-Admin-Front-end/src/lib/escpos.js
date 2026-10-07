@@ -543,8 +543,9 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
       const qty = Number(it.qty || it.quantity || 1)
       const price = Number(it.price || it.unit_price || 0)
       const lineTotal = Number(it.total ?? (qty * price))
+      const unitLabel = it.packaging_unit_name || it.packaging_name || it.unit || 'pcs'
       builder.textLn(name)
-      builder.twoColumnRow(`  ${qty} ${it.unit || 'pcs'} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
+      builder.twoColumnRow(`  ${qty} ${unitLabel} x N${price.toLocaleString()}`, `N${lineTotal.toLocaleString()}`)
     })
     builder.dashedLine()
   }
