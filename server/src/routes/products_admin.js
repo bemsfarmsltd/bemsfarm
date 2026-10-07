@@ -271,7 +271,14 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
 
       if (tokens.length === 0) {
         params.push(`%${cleanSearch}%`);
-        where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`);
+        where.push(`(
+          p.name ILIKE $${params.length} 
+          OR p.sku ILIKE $${params.length} 
+          OR p.barcode ILIKE $${params.length}
+          OR p.carton_barcode ILIKE $${params.length}
+          OR p.mid_barcode ILIKE $${params.length}
+          OR EXISTS (SELECT 1 FROM product_packaging_units ppu WHERE ppu.product_id = p.id AND (ppu.barcode ILIKE $${params.length} OR ppu.sku ILIKE $${params.length}))
+        )`);
       } else {
         const tokenConditions = [];
         tokens.forEach((t) => {
@@ -281,6 +288,9 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
             p.name ILIKE ${ilikeParam}
             OR p.sku ILIKE ${ilikeParam}
             OR p.barcode ILIKE ${ilikeParam}
+            OR p.carton_barcode ILIKE ${ilikeParam}
+            OR p.mid_barcode ILIKE ${ilikeParam}
+            OR EXISTS (SELECT 1 FROM product_packaging_units ppu WHERE ppu.product_id = p.id AND (ppu.barcode ILIKE ${ilikeParam} OR ppu.sku ILIKE ${ilikeParam}))
             OR EXISTS (SELECT 1 FROM categories c WHERE c.id = p.category_id AND c.name ILIKE ${ilikeParam})
             OR p.tags::text ILIKE ${ilikeParam}
           )`);
@@ -321,6 +331,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
         p.stock, p.low_stock_threshold,
         p.pcs_per_carton, p.carton_price, p.carton_barcode,
         p.carton_unit_name, p.piece_unit_name,
+        p.pcs_per_mid_unit, p.mid_price, p.mid_barcode, p.mid_unit_name, p.carton_cost_price,
         p.status, p.is_featured, p.available_for_sale,
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
         p.barcode_last_printed_at,
@@ -1145,21 +1156,43 @@ router.post(
           );
         }
 
-        const primaryBulkUnit = packaging_units.find(u => parseFloat(u.multiplier) > 1);
-        if (primaryBulkUnit) {
+        const validUnits = packaging_units.filter(u => u.unit_name?.trim() && parseFloat(u.multiplier) > 1);
+        validUnits.sort((a, b) => parseFloat(a.multiplier) - parseFloat(b.multiplier));
+
+        let midTier = null;
+        let cartonTier = null;
+
+        if (validUnits.length === 1) {
+          cartonTier = validUnits[0];
+        } else if (validUnits.length >= 2) {
+          midTier = validUnits[0];
+          cartonTier = validUnits[validUnits.length - 1];
+        }
+
+        if (cartonTier) {
           await client.query(
             `UPDATE products
              SET pcs_per_carton = $1,
                  carton_price = $2,
                  carton_barcode = $3,
                  carton_unit_name = $4,
-                 piece_unit_name = $5
-             WHERE id = $6`,
+                 carton_cost_price = $5,
+                 pcs_per_mid_unit = $6,
+                 mid_price = $7,
+                 mid_barcode = $8,
+                 mid_unit_name = $9,
+                 piece_unit_name = COALESCE($10, piece_unit_name, 'Piece')
+             WHERE id = $11`,
             [
-              parseFloat(primaryBulkUnit.multiplier) || 1,
-              parseFloat(primaryBulkUnit.price) || null,
-              primaryBulkUnit.barcode?.trim() || null,
-              primaryBulkUnit.unit_name?.trim() || 'Carton',
+              parseFloat(cartonTier.multiplier) || 1,
+              parseFloat(cartonTier.price) || null,
+              cartonTier.barcode?.trim() || null,
+              cartonTier.unit_name?.trim() || 'Carton',
+              cartonTier.cost_price ? parseFloat(cartonTier.cost_price) : null,
+              midTier ? (parseFloat(midTier.multiplier) || null) : null,
+              midTier ? (parseFloat(midTier.price) || null) : null,
+              midTier ? (midTier.barcode?.trim() || null) : null,
+              midTier ? (midTier.unit_name?.trim() || 'Row') : null,
               unit || 'Piece',
               product.id
             ]
@@ -1250,29 +1283,61 @@ router.post(
         if (type === "products") {
           if (!row.name?.trim()) throw new Error("Product name is required");
 
-          // Clean currency & numeric values (handle ₦, $, commas)
-          const rawPrice = String(row.unit_price ?? row.price ?? "").replace(/[^0-9.]/g, "");
+          // 1. Clean currency & numeric values for Piece Price
+          const rawPrice = String(row.piece_selling_price ?? row.unit_price ?? row.price ?? "").replace(/[^0-9.]/g, "");
           if (!rawPrice || isNaN(parseFloat(rawPrice))) {
-            throw new Error("unit_price is required and must be a valid number");
+            throw new Error("piece_selling_price (or unit_price) is required and must be a valid number");
           }
           const unitPrice = parseFloat(rawPrice);
 
-          const rawStock = String(row.quantity ?? row.stock_qty ?? row.stock ?? row.qty ?? row.count ?? 0).replace(/[^0-9]/g, "");
+          // 2. Total Stock (Total pieces in store)
+          const isAlignmentUpload = row.total_quantity_pcs !== undefined;
+          const rawStock = String(row.total_quantity_pcs ?? row.quantity ?? row.stock_qty ?? row.stock ?? row.qty ?? row.count ?? 0).replace(/[^0-9]/g, "");
           const incomingStock = rawStock ? parseInt(rawStock, 10) : 0;
 
-          const costPrice = row.cost_price ? parseFloat(String(row.cost_price).replace(/[^0-9.]/g, "")) : null;
-          const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, ""), 10) : 5;
-          const taxInput = row.tax_percent ?? row.tax;
-          const taxRate = taxInput ? parseFloat(String(taxInput).replace(/[^0-9.]/g, "")) : 7.5;
+          // 3. Piece Details
+          const pieceUnitName = row.piece_unit_name?.trim() || row.unit?.trim() || "Piece";
+          const pieceBarcode = row.piece_barcode?.trim() || row.barcode?.trim() || null;
 
-          // Unified Carton / Packaging Unit fields
+          // 4. Middle Tier (Row / Pack / Roll / Bundle)
+          const midUnitName = row.mid_unit_name?.trim() || null;
+          const rawPcsPerMid = String(row.pcs_per_mid_unit ?? row.pcs_per_row ?? "").replace(/[^0-9]/g, "");
+          const pcsPerMidUnit = rawPcsPerMid && parseInt(rawPcsPerMid, 10) > 1 ? parseInt(rawPcsPerMid, 10) : null;
+          const rawMidPrice = String(row.mid_selling_price ?? row.mid_price ?? row.row_price ?? "").replace(/[^0-9.]/g, "");
+          const midPrice = (rawMidPrice && !isNaN(parseFloat(rawMidPrice))) ? parseFloat(rawMidPrice) : null;
+          const midBarcode = row.mid_barcode?.trim() || row.row_barcode?.trim() || null;
+
+          // 5. Outer Bulk Tier (Carton / Box / Bag / Crate)
           const rawPcsPerCarton = String(row.pcs_per_carton ?? "").replace(/[^0-9]/g, "");
           const pcsPerCarton = rawPcsPerCarton ? parseInt(rawPcsPerCarton, 10) : 1;
-          const rawCartonPrice = String(row.carton_price ?? "").replace(/[^0-9.]/g, "");
-          const cartonPrice = rawCartonPrice && !isNaN(parseFloat(rawCartonPrice)) ? parseFloat(rawCartonPrice) : null;
           const cartonUnitName = row.carton_unit_name?.trim() || (pcsPerCarton > 1 ? "Carton" : null);
-          const pieceUnitName = row.piece_unit_name?.trim() || row.unit?.trim() || "piece";
+          const rawCartonPrice = String(row.carton_selling_price ?? row.carton_price ?? "").replace(/[^0-9.]/g, "");
+          const cartonPrice = rawCartonPrice && !isNaN(parseFloat(rawCartonPrice)) ? parseFloat(rawCartonPrice) : null;
           const cartonBarcode = row.carton_barcode?.trim() || null;
+
+          // 6. Cost Prices (Carton Cost -> Auto-divide to Piece Cost)
+          const rawCartonCost = String(row.carton_cost_price ?? (pcsPerCarton > 1 && row.cost_price ? row.cost_price : "") ?? "").replace(/[^0-9.]/g, "");
+          const cartonCostPrice = (rawCartonCost && !isNaN(parseFloat(rawCartonCost))) ? parseFloat(rawCartonCost) : null;
+
+          let pieceCostPrice = null;
+          if (cartonCostPrice !== null) {
+            if (pcsPerCarton > 1) {
+              pieceCostPrice = parseFloat((cartonCostPrice / pcsPerCarton).toFixed(4));
+            } else {
+              pieceCostPrice = cartonCostPrice;
+            }
+          } else if (row.cost_price) {
+            const rawCp = String(row.cost_price).replace(/[^0-9.]/g, "");
+            pieceCostPrice = rawCp && !isNaN(parseFloat(rawCp)) ? parseFloat(rawCp) : null;
+          }
+
+          const midCostPrice = (pieceCostPrice !== null && pcsPerMidUnit && pcsPerMidUnit > 1)
+            ? parseFloat((pieceCostPrice * pcsPerMidUnit).toFixed(4))
+            : null;
+
+          const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, ""), 10) : 5;
+          const taxInput = row.tax_percent ?? row.tax;
+          const taxRate = taxInput ? parseFloat(String(taxInput).replace(/[^0-9.]/g, "")) : 0;
 
           const parseYesNo = (val, fallback) => {
             if (val === undefined || val === null || val === "") return fallback;
@@ -1282,7 +1347,6 @@ router.post(
             return fallback;
           };
           const availableForSale = parseYesNo(row.available_for_sale, true);
-          // System decision: track inventory is always true
           const trackInventory = true;
 
           const tagsArr = row.tags
@@ -1333,8 +1397,8 @@ router.post(
 
           // 3. Resolve / Auto-create Unit of Measure
           let unitOfMeasureId = null;
-          let unitStr = "kg";
-          const unitInput = String(row.unit || row.unit_of_measure || "").trim();
+          let unitStr = pieceUnitName;
+          const unitInput = String(row.unit || row.unit_of_measure || pieceUnitName).trim();
           if (unitInput) {
             const unitKey = unitInput.toLowerCase();
             if (unitsMap.has(unitKey)) {
@@ -1355,10 +1419,9 @@ router.post(
           }
 
           // Duplicate avoidance & Smart Restock:
-          // Check if product already exists by Barcode, SKU (if given), or Product Name
           let existingProduct = null;
-          if (row.barcode?.trim()) {
-            const byBarcode = await pool.query("SELECT * FROM products WHERE barcode = $1 LIMIT 1", [row.barcode.trim()]);
+          if (pieceBarcode) {
+            const byBarcode = await pool.query("SELECT * FROM products WHERE barcode = $1 LIMIT 1", [pieceBarcode]);
             if (byBarcode.rows.length) existingProduct = byBarcode.rows[0];
           }
           if (!existingProduct && row.sku?.trim()) {
@@ -1374,44 +1437,51 @@ router.post(
           }
 
           if (existingProduct) {
-            // Smart restock: increment stock count and update details
+            // Smart restock / alignment
             await pool.query(
               `UPDATE products
-               SET stock = stock + $1,
-                   stock_quantity = stock_quantity + $1,
-                   unit_price = COALESCE($2, unit_price),
-                   price = COALESCE($2, price),
-                   cost_price = COALESCE($3, cost_price),
-                   barcode = COALESCE($4, barcode),
-                   unit = COALESCE($5, unit),
-                   low_stock_threshold = COALESCE($6, low_stock_threshold),
-                   tax_rate = COALESCE($7, tax_rate),
-                   description = COALESCE($8, description),
-                   status = COALESCE($9, status),
-                   available_for_sale = $10,
-                   track_inventory = $11,
-                   model_variant = COALESCE($12, model_variant),
-                   tags = COALESCE($13, tags),
-                   image_url = COALESCE($14, image_url),
-                   video_url = COALESCE($15, video_url),
-                   hsn_code = COALESCE($16, hsn_code),
-                   return_policy = COALESCE($17, return_policy),
-                   expiry_date = COALESCE($18, expiry_date),
-                   category_id = COALESCE($19, category_id),
-                   brand_id = COALESCE($20, brand_id),
-                   unit_of_measure_id = COALESCE($21, unit_of_measure_id),
-                   pcs_per_carton = COALESCE($22, pcs_per_carton),
-                   carton_price = COALESCE($23, carton_price),
-                   carton_barcode = COALESCE($24, carton_barcode),
-                   carton_unit_name = COALESCE($25, carton_unit_name),
-                   piece_unit_name = COALESCE($26, piece_unit_name),
+               SET stock = CASE WHEN $1 = true THEN $2 ELSE stock + $2 END,
+                   stock_quantity = CASE WHEN $1 = true THEN $2 ELSE stock_quantity + $2 END,
+                   unit_price = COALESCE($3, unit_price),
+                   price = COALESCE($3, price),
+                   cost_price = COALESCE($4, cost_price),
+                   carton_cost_price = COALESCE($5, carton_cost_price),
+                   barcode = COALESCE($6, barcode),
+                   unit = COALESCE($7, unit),
+                   low_stock_threshold = COALESCE($8, low_stock_threshold),
+                   tax_rate = COALESCE($9, tax_rate),
+                   description = COALESCE($10, description),
+                   status = COALESCE($11, status),
+                   available_for_sale = $12,
+                   track_inventory = $13,
+                   model_variant = COALESCE($14, model_variant),
+                   tags = COALESCE($15, tags),
+                   image_url = COALESCE($16, image_url),
+                   video_url = COALESCE($17, video_url),
+                   hsn_code = COALESCE($18, hsn_code),
+                   return_policy = COALESCE($19, return_policy),
+                   expiry_date = COALESCE($20, expiry_date),
+                   category_id = COALESCE($21, category_id),
+                   brand_id = COALESCE($22, brand_id),
+                   unit_of_measure_id = COALESCE($23, unit_of_measure_id),
+                   pcs_per_carton = COALESCE($24, pcs_per_carton),
+                   carton_price = COALESCE($25, carton_price),
+                   carton_barcode = COALESCE($26, carton_barcode),
+                   carton_unit_name = COALESCE($27, carton_unit_name),
+                   piece_unit_name = COALESCE($28, piece_unit_name),
+                   pcs_per_mid_unit = COALESCE($29, pcs_per_mid_unit),
+                   mid_price = COALESCE($30, mid_price),
+                   mid_barcode = COALESCE($31, mid_barcode),
+                   mid_unit_name = COALESCE($32, mid_unit_name),
                    updated_at = NOW()
-               WHERE id = $27`,
+               WHERE id = $33`,
               [
+                isAlignmentUpload,
                 incomingStock,
                 unitPrice,
-                costPrice,
-                row.barcode?.trim() || null,
+                pieceCostPrice,
+                cartonCostPrice,
+                pieceBarcode,
                 unitStr || row.unit?.trim() || null,
                 lowStockAlert,
                 taxRate,
@@ -1434,11 +1504,39 @@ router.post(
                 cartonBarcode,
                 cartonUnitName,
                 pieceUnitName,
+                pcsPerMidUnit,
+                midPrice,
+                midBarcode,
+                midUnitName,
                 existingProduct.id,
               ]
             );
 
-            // Sync packaging unit
+            // Sync Mid-tier Packaging Unit (Row / Pack)
+            if (pcsPerMidUnit && pcsPerMidUnit > 1 && midUnitName) {
+              const rowBulkPrice = midPrice || (unitPrice * pcsPerMidUnit);
+              const existMid = await pool.query(
+                "SELECT id FROM product_packaging_units WHERE product_id = $1 AND LOWER(TRIM(unit_name)) = LOWER(TRIM($2)) LIMIT 1",
+                [existingProduct.id, midUnitName]
+              );
+              if (existMid.rows.length) {
+                await pool.query(
+                  `UPDATE product_packaging_units
+                   SET multiplier = $1, price = $2, cost_price = $3, barcode = COALESCE($4, barcode), updated_at = NOW()
+                   WHERE id = $5`,
+                  [pcsPerMidUnit, rowBulkPrice, midCostPrice, midBarcode, existMid.rows[0].id]
+                );
+              } else {
+                await pool.query(
+                  `INSERT INTO product_packaging_units
+                   (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, false, true, NOW(), NOW())`,
+                  [existingProduct.id, midUnitName, pcsPerMidUnit, rowBulkPrice, midCostPrice, midBarcode]
+                );
+              }
+            }
+
+            // Sync Carton Packaging Unit
             if (pcsPerCarton > 1) {
               const bulkPrice = cartonPrice || (unitPrice * pcsPerCarton);
               const bulkUnit = cartonUnitName || "Carton";
@@ -1451,21 +1549,21 @@ router.post(
                   `UPDATE product_packaging_units
                    SET multiplier = $1, price = $2, cost_price = $3, barcode = COALESCE($4, barcode), updated_at = NOW()
                    WHERE id = $5`,
-                  [pcsPerCarton, bulkPrice, costPrice, cartonBarcode, existUnit.rows[0].id]
+                  [pcsPerCarton, bulkPrice, cartonCostPrice, cartonBarcode, existUnit.rows[0].id]
                 );
               } else {
                 await pool.query(
                   `INSERT INTO product_packaging_units
                    (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
                    VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())`,
-                  [existingProduct.id, bulkUnit, pcsPerCarton, bulkPrice, costPrice, cartonBarcode]
+                  [existingProduct.id, bulkUnit, pcsPerCarton, bulkPrice, cartonCostPrice, cartonBarcode]
                 );
               }
             }
 
             if (existingProduct.id && (incomingStock > 0 || expiryDate)) {
               const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-              const effectiveCost = costPrice !== null ? costPrice : existingProduct.cost_price;
+              const effectiveCost = pieceCostPrice !== null ? pieceCostPrice : existingProduct.cost_price;
               const existB = await pool.query(
                 "SELECT id FROM batch_management WHERE product_id = $1 AND status = 'active' ORDER BY id DESC LIMIT 1",
                 [existingProduct.id]
@@ -1479,8 +1577,8 @@ router.post(
                 );
               } else {
                 await pool.query(
-                  `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())`,
+                  `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW(), NOW())`,
                   [existingProduct.id, defaultWh, sessionBatchNo, incomingStock, effectiveCost, effectiveExp]
                 );
               }
@@ -1491,18 +1589,19 @@ router.post(
 
           // New product: Auto-generate collision-proof unique SKU and Barcode
           const newSku = row.sku?.trim() || (await generateUniqueSKU(pool, row.name.trim(), categoryId));
-          const newBarcode = row.barcode?.trim() || (await generateUniqueBarcode(pool, categoryId));
+          const newBarcode = pieceBarcode || (await generateUniqueBarcode(pool, categoryId));
 
           const insRes = await pool.query(
             `INSERT INTO products
                (name, sku, barcode, category_id, sub_category_id, brand_id, unit_of_measure_id,
-                unit_price, price, cost_price, stock, stock_quantity, unit, low_stock_threshold,
+                unit_price, price, cost_price, carton_cost_price, stock, stock_quantity, unit, low_stock_threshold,
                 tax_rate, description, status, available_for_sale, track_inventory, model_variant,
                 tags, image_url, video_url, hsn_code, return_policy, expiry_date, created_by,
                 pcs_per_carton, carton_price, carton_barcode, carton_unit_name, piece_unit_name,
+                pcs_per_mid_unit, mid_price, mid_barcode, mid_unit_name,
                 created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-                     $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW(),NOW())
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$11,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+                     $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,NOW(),NOW())
              RETURNING id`,
             [
               row.name.trim(),
@@ -1513,7 +1612,8 @@ router.post(
               brandId,
               unitOfMeasureId,
               unitPrice,
-              costPrice,
+              pieceCostPrice,
+              cartonCostPrice,
               incomingStock,
               unitStr || row.unit?.trim() || "piece",
               lowStockAlert,
@@ -1535,9 +1635,24 @@ router.post(
               cartonBarcode,
               cartonUnitName,
               pieceUnitName,
+              pcsPerMidUnit,
+              midPrice,
+              midBarcode,
+              midUnitName,
             ],
           );
           const newProdId = insRes.rows[0]?.id;
+
+          // Auto-create Mid-tier packaging unit
+          if (newProdId && pcsPerMidUnit && pcsPerMidUnit > 1 && midUnitName) {
+            const rowBulkPrice = midPrice || (unitPrice * pcsPerMidUnit);
+            await pool.query(
+              `INSERT INTO product_packaging_units
+               (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, false, true, NOW(), NOW())`,
+              [newProdId, midUnitName, pcsPerMidUnit, rowBulkPrice, midCostPrice, midBarcode]
+            ).catch(err => console.error("Error creating mid packaging unit on import:", err.message));
+          }
 
           // Auto-create packaging unit if carton multiplier > 1
           if (newProdId && pcsPerCarton > 1) {
@@ -1547,16 +1662,16 @@ router.post(
               `INSERT INTO product_packaging_units
                (product_id, unit_name, multiplier, price, cost_price, barcode, is_default, is_active, created_at, updated_at)
                VALUES ($1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())`,
-              [newProdId, bulkUnit, pcsPerCarton, bulkPrice, costPrice, cartonBarcode]
+              [newProdId, bulkUnit, pcsPerCarton, bulkPrice, cartonCostPrice, cartonBarcode]
             ).catch(err => console.error("Error creating packaging unit on import:", err.message));
           }
 
           if (newProdId && (incomingStock > 0 || expiryDate)) {
             const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
             await pool.query(
-              `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-               VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())`,
-              [newProdId, defaultWh, sessionBatchNo, incomingStock, costPrice, effectiveExp]
+              `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW(), NOW())`,
+              [newProdId, defaultWh, sessionBatchNo, incomingStock, pieceCostPrice, effectiveExp]
             ).catch(() => {});
           }
           imported++;
@@ -1820,21 +1935,43 @@ router.patch(
           );
         }
 
-        const primaryBulkUnit = packaging_units.find(u => parseFloat(u.multiplier) > 1);
-        if (primaryBulkUnit) {
+        const validUnits = packaging_units.filter(u => u.unit_name?.trim() && parseFloat(u.multiplier) > 1);
+        validUnits.sort((a, b) => parseFloat(a.multiplier) - parseFloat(b.multiplier));
+
+        let midTier = null;
+        let cartonTier = null;
+
+        if (validUnits.length === 1) {
+          cartonTier = validUnits[0];
+        } else if (validUnits.length >= 2) {
+          midTier = validUnits[0];
+          cartonTier = validUnits[validUnits.length - 1];
+        }
+
+        if (cartonTier) {
           await client.query(
             `UPDATE products
              SET pcs_per_carton = $1,
                  carton_price = $2,
                  carton_barcode = $3,
                  carton_unit_name = $4,
-                 piece_unit_name = COALESCE($5, piece_unit_name, 'Piece')
-             WHERE id = $6`,
+                 carton_cost_price = $5,
+                 pcs_per_mid_unit = $6,
+                 mid_price = $7,
+                 mid_barcode = $8,
+                 mid_unit_name = $9,
+                 piece_unit_name = COALESCE($10, piece_unit_name, 'Piece')
+             WHERE id = $11`,
             [
-              parseFloat(primaryBulkUnit.multiplier) || 1,
-              parseFloat(primaryBulkUnit.price) || null,
-              primaryBulkUnit.barcode?.trim() || null,
-              primaryBulkUnit.unit_name?.trim() || 'Carton',
+              parseFloat(cartonTier.multiplier) || 1,
+              parseFloat(cartonTier.price) || null,
+              cartonTier.barcode?.trim() || null,
+              cartonTier.unit_name?.trim() || 'Carton',
+              cartonTier.cost_price ? parseFloat(cartonTier.cost_price) : null,
+              midTier ? (parseFloat(midTier.multiplier) || null) : null,
+              midTier ? (parseFloat(midTier.price) || null) : null,
+              midTier ? (midTier.barcode?.trim() || null) : null,
+              midTier ? (midTier.unit_name?.trim() || 'Row') : null,
               unit || null,
               req.params.id
             ]

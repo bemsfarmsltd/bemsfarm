@@ -486,8 +486,8 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
           COUNT(*) AS total_skus,
           COALESCE(SUM(
             CASE 
-              WHEN COALESCE(pcs_per_carton, 1) > 1 
-              THEN (stock::numeric / pcs_per_carton::numeric) * COALESCE(cost_price, 0)
+              WHEN COALESCE(carton_cost_price, 0) > 0 AND COALESCE(pcs_per_carton, 1) > 1 
+              THEN (stock::numeric / pcs_per_carton::numeric) * carton_cost_price
               ELSE stock * COALESCE(cost_price, 0)
             END
           ), 0) AS cost_value,
@@ -503,8 +503,8 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
           SUM(p.stock) AS total_units,
           COALESCE(SUM(
             CASE 
-              WHEN COALESCE(p.pcs_per_carton, 1) > 1 
-              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0)
+              WHEN COALESCE(p.carton_cost_price, 0) > 0 AND COALESCE(p.pcs_per_carton, 1) > 1 
+              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * p.carton_cost_price
               ELSE p.stock * COALESCE(p.cost_price, 0)
             END
           ), 0) AS cost_value,
@@ -520,20 +520,21 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
         SELECT
           p.id, p.name, p.sku, p.barcode, p.image_url, p.stock, p.unit, cat.name AS category,
           p.pcs_per_carton, p.carton_price, p.carton_barcode, p.carton_unit_name, p.piece_unit_name,
+          p.pcs_per_mid_unit, p.mid_price, p.mid_barcode, p.mid_unit_name, p.carton_cost_price,
           COALESCE(p.low_stock_threshold, p.reorder_level, 5) AS low_stock_threshold,
           COALESCE(p.unit_price, p.price, 0) AS unit_price,
           COALESCE(p.cost_price, 0)          AS cost_price,
           CASE 
-            WHEN COALESCE(p.pcs_per_carton, 1) > 1 
-            THEN ROUND((p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0), 2)
+            WHEN COALESCE(p.carton_cost_price, 0) > 0 AND COALESCE(p.pcs_per_carton, 1) > 1 
+            THEN ROUND((p.stock::numeric / p.pcs_per_carton::numeric) * p.carton_cost_price, 2)
             ELSE ROUND(p.stock * COALESCE(p.cost_price, 0), 2)
           END AS cost_value,
           ROUND(p.stock * COALESCE(p.unit_price, p.price, 0), 2) AS retail_value,
           ROUND(
             (p.stock * COALESCE(p.unit_price, p.price, 0)) -
             (CASE 
-              WHEN COALESCE(p.pcs_per_carton, 1) > 1 
-              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * COALESCE(p.cost_price, 0)
+              WHEN COALESCE(p.carton_cost_price, 0) > 0 AND COALESCE(p.pcs_per_carton, 1) > 1 
+              THEN (p.stock::numeric / p.pcs_per_carton::numeric) * p.carton_cost_price
               ELSE p.stock * COALESCE(p.cost_price, 0)
             END), 2
           ) AS potential_profit,
@@ -541,7 +542,11 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "accounta
             WHEN COALESCE(p.unit_price, p.price, 0) > 0 THEN 
               ROUND((
                 (COALESCE(p.unit_price, p.price, 0) - 
-                 (CASE WHEN COALESCE(p.pcs_per_carton, 1) > 1 THEN COALESCE(p.cost_price, 0) / p.pcs_per_carton::numeric ELSE COALESCE(p.cost_price, 0) END)
+                 (CASE 
+                    WHEN COALESCE(p.carton_cost_price, 0) > 0 AND COALESCE(p.pcs_per_carton, 1) > 1 
+                    THEN p.carton_cost_price / p.pcs_per_carton::numeric 
+                    ELSE COALESCE(p.cost_price, 0) 
+                  END)
                 ) / COALESCE(p.unit_price, p.price, 0)
               ) * 100, 2)
             ELSE 0 
