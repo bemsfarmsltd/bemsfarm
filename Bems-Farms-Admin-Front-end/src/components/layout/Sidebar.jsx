@@ -663,11 +663,6 @@ export default function Sidebar() {
                   <span>Restock Calendar</span>
                 </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/inventory/debulk" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Debulk &amp; Unbundle</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/inventory/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Stock Transfer</span>
                   </NavLink>

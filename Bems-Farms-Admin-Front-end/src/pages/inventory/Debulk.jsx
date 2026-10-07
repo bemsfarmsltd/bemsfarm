@@ -317,7 +317,7 @@ export default function Debulk() {
               className={`btn ${activeTab === 'studio' ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'}`}
               onClick={() => setActiveTab('studio')}
             >
-              <i className="ri-tools-line me-1"></i> Conversion Studio
+              <i className="ri-lock-2-line me-1"></i> Status &amp; Overview
             </button>
             <button
               type="button"
@@ -403,378 +403,76 @@ export default function Debulk() {
         </div>
       </div>
 
-      {/* ── TAB 1: CONVERSION STUDIO ── */}
+      {/* ── TAB 1: CONVERSION STUDIO (LOCKED & AUTOMATED) ── */}
       {activeTab === 'studio' && (
-        <>
-          <div className="alert border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center gap-3 p-3" style={{ background: '#f0fdf4', borderLeft: '4px solid #10b981' }}>
-            <div className="rounded-circle bg-success text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 36, height: 36 }}>
-              <i className="ri-magic-line fs-18"></i>
-            </div>
-            <div className="fs-13">
-              <strong className="text-dark">Automated Single-Row De-Bulking Active:</strong> Products configured with <strong>Pieces Per Carton</strong> automatically manage carton and loose piece balances in real-time. Whenever loose pieces are sold at the POS counter or online, the system automatically de-bulks carton stock in real-time! Manual debulking below is only needed when unbundling legacy separate product rows.
-            </div>
+        <div className="card shadow-sm border-0 rounded-4 bg-white p-4 p-md-5 mb-4 text-center">
+          <div
+            className="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: 84, height: 84, background: '#fef3c7', color: '#d97706' }}
+          >
+            <i className="ri-lock-2-line" style={{ fontSize: 40 }}></i>
           </div>
 
-          <div className="row g-4 mb-4">
-          {/* Left Column: Interactive Form */}
-          <div className="col-12 col-xl-7">
-            <div className="card shadow-sm border-0 rounded-3 bg-white">
-              <div className="card-header bg-white border-bottom py-3 px-3 px-md-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div>
-                  <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                    <i className="ri-tools-line text-success"></i>
-                    Unbundle Configuration &amp; Item Verification
-                  </h6>
-                  <div className="text-muted fs-12">Pair the wholesale container with its individual retail piece</div>
+          <div
+            className="d-inline-flex align-items-center gap-1.5 badge px-3 py-1.5 rounded-pill fs-12 fw-bold mx-auto mb-3"
+            style={{ background: '#fef3c7', color: '#92400e' }}
+          >
+            <i className="ri-shield-keyhole-line"></i> Feature Locked &amp; Automated
+          </div>
+
+          <h4 className="fw-bold text-dark mb-2">Manual Debulking is Locked</h4>
+
+          <p className="text-muted fs-14 mx-auto mb-4" style={{ maxWidth: 660, lineHeight: 1.6 }}>
+            Bems Farms runs on <strong>Automated Single-Row Stock Architecture</strong>. Every product stores both carton and piece pricing, barcodes, and pack quantities under one unified record. Whenever full cartons or loose pieces are scanned at the POS counter or sold via customer invoices, inventory balances deduct from the central stock pool in real-time.
+          </p>
+
+          <div className="row g-3 justify-content-center mb-4 text-start" style={{ maxWidth: 760, margin: '0 auto' }}>
+            <div className="col-12 col-md-4">
+              <div className="p-3 rounded-3 border bg-light h-100">
+                <div className="fw-bold text-dark fs-13 mb-1 d-flex align-items-center gap-1.5">
+                  <i className="ri-checkbox-circle-fill text-success fs-16"></i> Real-Time POS Sync
                 </div>
-
-                {/* Barcode Scanner Gun Quick-Entry */}
-                <form onSubmit={handleBarcodeScanSubmit} className="d-flex align-items-center gap-1">
-                  <div className="input-group input-group-sm" style={{ width: 220 }}>
-                    <span className="input-group-text bg-white text-muted">
-                      <i className="ri-barcode-line text-success"></i>
-                    </span>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Scan Barcode / SKU..."
-                      value={barcodeScanInput}
-                      onChange={(e) => setBarcodeScanInput(e.target.value)}
-                    />
-                  </div>
-                </form>
+                <div className="text-muted fs-12">
+                  Loose pieces and cartons sold at checkout draw from unified stock automatically.
+                </div>
               </div>
+            </div>
 
-              <div className="card-body p-3 p-md-4">
-                <form onSubmit={handleRequestExecution}>
-                  {/* STEP 1: SOURCE CARTON */}
-                  <div className="p-3 rounded-3 mb-3 bg-light border">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-success text-white rounded-circle" style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
-                        <label className="fw-bold text-dark fs-13 mb-0">Select Bulk / Wholesale Item (To Open)</label>
-                      </div>
-                      {sourceProduct && (
-                        <span className={`badge ${sourceStock > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1`}>
-                          Available: <strong>{sourceStock}</strong> cartons
-                        </span>
-                      )}
-                    </div>
+            <div className="col-12 col-md-4">
+              <div className="p-3 rounded-3 border bg-light h-100">
+                <div className="fw-bold text-dark fs-13 mb-1 d-flex align-items-center gap-1.5">
+                  <i className="ri-checkbox-circle-fill text-success fs-16"></i> Precise Valuation
+                </div>
+                <div className="text-muted fs-12">
+                  Unit costs, retail values, and profit margins reconcile seamlessly without manual entries.
+                </div>
+              </div>
+            </div>
 
-                    <ProductSelect
-                      products={products}
-                      value={sourceProductId}
-                      onChange={(val) => {
-                        setSourceProductId(val)
-                        if (String(val) === String(targetProductId)) {
-                          setTargetProductId('')
-                        }
-                      }}
-                      placeholder="Search or scan source carton (e.g. Eggs 30-Pack, Garri 50kg)..."
-                      required
-                    />
-
-                    {sourceProduct && (
-                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted flex-wrap">
-                        <span>Category: <strong className="text-dark">{sourceProduct.category || sourceProduct.category_name || 'General'}</strong></span>
-                        {sourceProduct.sku && <span>SKU: <code className="text-dark">{sourceProduct.sku}</code></span>}
-                        {sourceProduct.barcode && <span>Barcode: <code className="text-dark">{sourceProduct.barcode}</code></span>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* STEP 2: TARGET RETAIL PIECE */}
-                  <div className="p-3 rounded-3 mb-3 bg-light border">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-success text-white rounded-circle" style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
-                        <label className="fw-bold text-dark fs-13 mb-0">Select Retail Pieces Product (To Receive Units)</label>
-                      </div>
-                      {targetProduct && (
-                        <span className="badge bg-success-subtle text-success px-2 py-1">
-                          Current Shelf: <strong>{targetStock}</strong> pieces
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Filter Toggle pills for Target Product */}
-                    {sourceProduct && (
-                      <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
-                        <span className="fs-11 text-muted">
-                          {targetFilterMode === 'recommended' ? (
-                            <span className="text-success fw-medium">
-                              <i className="ri-check-line me-1"></i> Filtered to items related to "{sourceProduct.category || 'Source'}"
-                            </span>
-                          ) : (
-                            <span>Showing all products in catalog</span>
-                          )}
-                        </span>
-                        <div className="btn-group btn-group-sm">
-                          <button
-                            type="button"
-                            className={`btn btn-xs py-0 px-2 ${targetFilterMode === 'recommended' ? 'btn-success' : 'btn-outline-secondary'}`}
-                            onClick={() => setTargetFilterMode('recommended')}
-                          >
-                            Suggested Matches
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-xs py-0 px-2 ${targetFilterMode === 'all' ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                            onClick={() => setTargetFilterMode('all')}
-                          >
-                            Browse All
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <ProductSelect
-                      products={targetProductsList}
-                      value={targetProductId}
-                      onChange={(val) => setTargetProductId(val)}
-                      placeholder="Search or scan retail item (e.g. Single Egg, 1kg Garri)..."
-                      required
-                    />
-
-                    {targetProduct && (
-                      <div className="d-flex align-items-center gap-3 mt-2 pt-2 border-top fs-12 text-muted flex-wrap">
-                        <span>Category: <strong className="text-dark">{targetProduct.category || targetProduct.category_name || 'General'}</strong></span>
-                        {targetProduct.sku && <span>SKU: <code className="text-dark">{targetProduct.sku}</code></span>}
-                        {targetProduct.barcode && <span>Barcode: <code className="text-dark">{targetProduct.barcode}</code></span>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── SAFEGUARD COMPATIBILITY STATUS BANNER ── */}
-                  {sourceProduct && targetProduct && (
-                    <div className={`alert alert-${compatibility.severity} d-flex align-items-start gap-2 p-3 rounded-3 mb-3 border-0`}>
-                      <span className="fs-18 flex-shrink-0 mt-1">
-                        {compatibility.status === 'perfect' && <i className="ri-checkbox-circle-fill text-success" />}
-                        {compatibility.status === 'moderate' && <i className="ri-information-fill text-info" />}
-                        {compatibility.status === 'mismatch' && <i className="ri-alert-fill text-warning" />}
-                        {compatibility.status === 'error' && <i className="ri-close-circle-fill text-danger" />}
-                      </span>
-                      <div>
-                        <div className="fw-bold fs-13 mb-1">{compatibility.title}</div>
-                        <div className="fs-12 leading-relaxed">{compatibility.message}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STEP 3: QUANTITY & MULTIPLIER CONFIGURATION */}
-                  <div className="row g-3 mb-3">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-bold text-dark fs-13 mb-1 d-flex align-items-center justify-content-between">
-                        <span>Cartons to Open</span>
-                        <span className="text-muted fs-11">Bulk Quantity</span>
-                      </label>
-                      <div className="input-group input-group-sm">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => setCartonsToBreak(Math.max(1, countToBreak - 1))}
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          className={`form-control text-center fw-bold fs-14 ${isStockInsufficient ? 'is-invalid' : ''}`}
-                          min="1"
-                          max={sourceStock > 0 ? sourceStock : 9999}
-                          value={cartonsToBreak}
-                          onChange={(e) => setCartonsToBreak(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => setCartonsToBreak(countToBreak + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
-                      {isStockInsufficient && (
-                        <div className="text-danger fs-11 mt-1">
-                          Cannot exceed available stock ({sourceStock} available)
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-bold text-dark fs-13 mb-1 d-flex align-items-center justify-content-between">
-                        <span>Pieces Inside Each Carton</span>
-                        <span className="text-muted fs-11">Pack Multiplier</span>
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control form-control-sm text-center fw-bold fs-14"
-                        min="1"
-                        step="any"
-                        value={piecesPerCarton}
-                        onChange={(e) => setPiecesPerCarton(e.target.value)}
-                        required
-                      />
-                      <div className="d-flex gap-1 mt-1">
-                        {[12, 24, 30, 40, 50].map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            className="btn btn-xs btn-outline-secondary py-0 px-2 fs-10"
-                            onClick={() => setPiecesPerCarton(preset)}
-                          >
-                            {preset}x
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Warehouse & Notes Row */}
-                  <div className="row g-3 mb-4">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark fs-12 mb-1">Target Storage Location</label>
-                      <select
-                        className="form-select form-select-sm"
-                        value={warehouseId}
-                        onChange={(e) => setWarehouseId(e.target.value)}
-                      >
-                        <option value="">Default Farm Store / Retail Floor</option>
-                        {warehouses.map((w) => (
-                          <option key={w.id} value={w.id}>{w.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark fs-12 mb-1">Audit Reason / Note</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="e.g. Unboxed for retail shelf display"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Submit CTA */}
-                  <button
-                    type="submit"
-                    disabled={!sourceProductId || !targetProductId || isStockInsufficient || compatibility.status === 'error'}
-                    className="btn btn-success w-100 py-2 fw-bold text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
-                  >
-                    <i className="ri-shield-check-line fs-18"></i>
-                    Verify &amp; Execute Debulking ({countToBreak} Ctn &rarr; {piecesGained} Pcs)
-                  </button>
-                </form>
+            <div className="col-12 col-md-4">
+              <div className="p-3 rounded-3 border bg-light h-100">
+                <div className="fw-bold text-dark fs-13 mb-1 d-flex align-items-center gap-1.5">
+                  <i className="ri-checkbox-circle-fill text-success fs-16"></i> Zero Discrepancies
+                </div>
+                <div className="text-muted fs-12">
+                  Locks prevent duplicate row creation and human errors from manual breakdowns.
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column: High-Tech Conversion Pipeline & Activity */}
-          <div className="col-12 col-xl-5">
-            {/* 1. Live Interactive Pipeline Simulation */}
-            <div className="card shadow-sm border-0 rounded-3 bg-white p-3 p-md-4 mb-4">
-              <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                <i className="ri-equalizer-line text-success"></i>
-                Stock Balance Simulation
-              </h6>
-
-              <div className="p-3 rounded-3 border bg-light mb-3">
-                <div className="row g-2 align-items-center text-center">
-                  {/* Source Carton Node */}
-                  <div className="col-5">
-                    <div className="p-2 p-md-3 bg-white rounded-3 shadow-xs border">
-                      <div className="text-danger fw-bold fs-18">-{countToBreak}</div>
-                      <div className="text-truncate fw-semibold text-dark fs-12 mt-1" title={sourceProduct?.name}>
-                        {sourceProduct?.name || 'Bulk Carton'}
-                      </div>
-                      <div className="badge bg-danger-subtle text-danger fs-11 mt-2">
-                        {sourceStock} &rarr; <strong>{newSourceStock}</strong> ctn
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Conversion Flow Node */}
-                  <div className="col-2">
-                    <div
-                      className="rounded-circle d-inline-flex align-items-center justify-content-center shadow-xs"
-                      style={{ width: 32, height: 32, background: '#DCFCE7', color: '#166534' }}
-                    >
-                      <i className="ri-arrow-right-line fs-16"></i>
-                    </div>
-                    <div className="text-muted fs-10 mt-1 fw-bold">&times;{multiplier}</div>
-                  </div>
-
-                  {/* Target Pieces Node */}
-                  <div className="col-5">
-                    <div className="p-2 p-md-3 bg-white rounded-3 shadow-xs border">
-                      <div className="text-success fw-bold fs-18">+{piecesGained}</div>
-                      <div className="text-truncate fw-semibold text-dark fs-12 mt-1" title={targetProduct?.name}>
-                        {targetProduct?.name || 'Retail Pieces'}
-                      </div>
-                      <div className="badge bg-success-subtle text-success fs-11 mt-2">
-                        {targetStock} &rarr; <strong>{newTargetStock}</strong> pcs
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Conversion Rules Reminder */}
-              <div className="bg-white p-3 rounded-3 border fs-12 text-muted">
-                <div className="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
-                  <i className="ri-information-line text-success"></i>
-                  Safeguards Guarantee:
-                </div>
-                <ul className="mb-0 ps-3 fs-11 leading-relaxed">
-                  <li>Wholesale cartons are permanently decremented upon unboxing.</li>
-                  <li>Retail piece counts are immediately visible for checkout at the POS.</li>
-                  <li>Cost price and accounting inventory balances remain 100% synchronized.</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 2. Recent Debulk Log Preview */}
-            <div className="card shadow-sm border-0 rounded-3 bg-white p-3 p-md-4">
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <h6 className="fw-bold text-dark mb-0">Recent Debulking Operations</h6>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-link text-success p-0 fw-bold fs-12 text-decoration-none"
-                  onClick={() => setActiveTab('ledger')}
-                >
-                  View All &rarr;
-                </button>
-              </div>
-
-              {movements.slice(0, 4).length === 0 ? (
-                <div className="text-center py-4 text-muted fs-12">
-                  No debulking recorded yet. Conversions will appear here.
-                </div>
-              ) : (
-                <div className="d-flex flex-column gap-2">
-                  {movements.slice(0, 4).map((m) => (
-                    <div key={m.id} className="p-2 rounded border bg-light d-flex align-items-center justify-content-between fs-12">
-                      <div>
-                        <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: 200 }}>
-                          {m.product_name}
-                        </div>
-                        <div className="text-muted fs-10">
-                          {new Date(m.created_at).toLocaleDateString()} &bull; {m.reference || 'DEBULK'}
-                        </div>
-                      </div>
-                      <span className="badge bg-danger-subtle text-danger fw-bold">
-                        -{m.quantity} ctn
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <Link to="/inventory/valuation" className="btn btn-success fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-1.5">
+              <i className="ri-funds-line"></i> View Stock Valuation
+            </Link>
+            <Link to="/products" className="btn btn-outline-secondary fw-semibold px-4 py-2 d-flex align-items-center gap-1.5">
+              <i className="ri-shopping-bag-3-line"></i> Products Catalog
+            </Link>
+            <Link to="/inventory/stock-in" className="btn btn-outline-secondary fw-semibold px-4 py-2 d-flex align-items-center gap-1.5">
+              <i className="ri-inbox-archive-line"></i> Restock Products
+            </Link>
           </div>
         </div>
-        </>
       )}
 
       {/* ── TAB 2: AUDIT LEDGER (FULL SCREEN HISTORY) ── */}

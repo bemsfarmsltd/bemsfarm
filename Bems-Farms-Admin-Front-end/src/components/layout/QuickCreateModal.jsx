@@ -61,20 +61,7 @@ export const CREATE_ACTIONS = [
     keywords: ['transfer', 'warehouse transfer', 'branch reload', 'relocate', 'farm to store', 'vehicle stock'],
     description: 'Transfer stock between farm central storage, cold rooms, retail outlet shelves, or mobile dispatch delivery vans.',
   },
-  {
-    id: 'debulk',
-    title: 'Debulk Bulk Bags into Retail Units',
-    category: 'Inventory & Restock',
-    categoryKey: 'inventory',
-    badge: 'Processing',
-    badgeCls: 'bg-purple-50 text-purple-700 border-purple-200',
-    icon: 'ri-layout-grid-line',
-    iconBg: '#F3E8FF',
-    iconColor: '#7E22CE',
-    path: '/inventory/debulk',
-    keywords: ['debulk', 'repack', 'bag breakdown', 'wholesale to retail', 'packaging', 'tuber sack', 'grains sack'],
-    description: 'Transform bulk wholesale farm sacks (e.g., 50kg/100kg bag of rice, garri, beans) into retail packaged sizes (1kg, 2kg, 5kg).',
-  },
+
   {
     id: 'purchase-schedule',
     title: 'Procurement & Restock Calendar Plan',
