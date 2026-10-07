@@ -1093,12 +1093,14 @@ router.post(
 
       // Always auto-register batch entry in batch_management for newly created products
       const initialQty = parseInt(stock_quantity || stock || 0);
-      const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}`;
-      const defaultExp = expiry_date || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const sessionBatchNo = `BATCH-${new Date().toISOString().slice(0, 10)}`;
+      const whRes = await client.query("SELECT id FROM warehouses WHERE status = 'active' ORDER BY id ASC LIMIT 1");
+      const defaultWh = whRes.rows[0]?.id || 1;
+      const defaultExp = expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       await client.query(
-        `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-         VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-        [product.id, batchNo, initialQty, cost_price ? parseFloat(cost_price) : null, defaultExp]
+        `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())`,
+        [product.id, defaultWh, sessionBatchNo, initialQty, cost_price ? parseFloat(cost_price) : null, defaultExp]
       ).catch(() => {});
 
       // Save additional images
@@ -1213,7 +1215,9 @@ router.post(
 
     let imported = 0;
     let updated = 0;
-    const errors = [];
+    const sessionBatchNo = `BATCH-${new Date().toISOString().slice(0, 10)}`;
+    const whRes = await pool.query("SELECT id FROM warehouses WHERE status = 'active' ORDER BY id ASC LIMIT 1");
+    const defaultWh = whRes.rows[0]?.id || 1;
 
     // Cache categories, brands, and units to avoid repetitive queries & deduplicate
     const categoriesMap = new Map();
@@ -1460,13 +1464,26 @@ router.post(
             }
 
             if (existingProduct.id && (incomingStock > 0 || expiryDate)) {
-              const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${existingProduct.id}-${Date.now().toString().slice(-4)}`;
               const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-              await pool.query(
-                `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-                 VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-                [existingProduct.id, batchNo, incomingStock, costPrice, effectiveExp]
-              ).catch(() => {});
+              const effectiveCost = costPrice !== null ? costPrice : existingProduct.cost_price;
+              const existB = await pool.query(
+                "SELECT id FROM batch_management WHERE product_id = $1 AND status = 'active' ORDER BY id DESC LIMIT 1",
+                [existingProduct.id]
+              );
+              if (existB.rows.length) {
+                await pool.query(
+                  `UPDATE batch_management 
+                   SET batch_no = $1, quantity = $2, cost_price = $3, expiry_date = $4, updated_at = NOW() 
+                   WHERE id = $5`,
+                  [sessionBatchNo, incomingStock, effectiveCost, effectiveExp, existB.rows[0].id]
+                );
+              } else {
+                await pool.query(
+                  `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())`,
+                  [existingProduct.id, defaultWh, sessionBatchNo, incomingStock, effectiveCost, effectiveExp]
+                );
+              }
             }
             updated++;
             continue;
@@ -1535,12 +1552,11 @@ router.post(
           }
 
           if (newProdId && (incomingStock > 0 || expiryDate)) {
-            const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${newProdId}-${Date.now().toString().slice(-4)}`;
             const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
             await pool.query(
-              `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
-               VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-              [newProdId, batchNo, incomingStock, costPrice, effectiveExp]
+              `INSERT INTO batch_management (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())`,
+              [newProdId, defaultWh, sessionBatchNo, incomingStock, costPrice, effectiveExp]
             ).catch(() => {});
           }
           imported++;
@@ -1766,6 +1782,23 @@ router.patch(
         unit_price: newUnitPrice,
         stock: newStock,
       });
+
+      // Keep active batch in sync with edited stock, expiry date, or cost price
+      if (newStock !== undefined || expiry_date !== undefined || cost_price !== undefined) {
+        await client.query(`
+          UPDATE batch_management
+          SET quantity = COALESCE($1, quantity),
+              expiry_date = COALESCE($2, expiry_date),
+              cost_price = COALESCE($3, cost_price),
+              updated_at = NOW()
+          WHERE product_id = $4 AND status = 'active'
+        `, [
+          newStock !== undefined ? newStock : null,
+          expiry_date || null,
+          cost_price !== undefined && cost_price !== '' ? parseFloat(cost_price) : null,
+          req.params.id
+        ]).catch(() => {});
+      }
 
       // Update Packaging Units if provided
       const { packaging_units } = req.body;
