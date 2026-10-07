@@ -412,6 +412,9 @@ export default function ProductsList() {
                       </td>
                       <td className="text-dark">
                         <div className="fw-bold">{formatNaira(p.price || p.unit_price)} <span className="fs-xs text-muted fw-normal">/{p.piece_unit_name || 'pc'}</span></div>
+                        {p.mid_price && p.pcs_per_mid_unit > 1 && (
+                          <div className="fs-xs fw-semibold" style={{ color: '#8b5cf6' }}>{formatNaira(p.mid_price)} <span className="text-muted fw-normal">/{p.mid_unit_name || 'row'} ({p.pcs_per_mid_unit}x)</span></div>
+                        )}
                         {p.carton_price && p.pcs_per_carton > 1 && (
                           <div className="fs-xs text-primary fw-semibold">{formatNaira(p.carton_price)} <span className="text-muted fw-normal">/{p.carton_unit_name || 'ctn'} ({p.pcs_per_carton}x)</span></div>
                         )}
@@ -422,7 +425,7 @@ export default function ProductsList() {
                       <td>
                         <div className="d-flex flex-column gap-1">
                           <span className="fw-bold text-dark fs-sm">
-                            {formatCartonStock(p.stock ?? p.stock_quantity ?? 0, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)}
+                            {formatCartonStock(p.stock ?? p.stock_quantity ?? 0, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name, p.pcs_per_mid_unit, p.mid_unit_name)}
                           </span>
                           <div className="d-flex align-items-center gap-1.5">
                             {isOutStock ? (

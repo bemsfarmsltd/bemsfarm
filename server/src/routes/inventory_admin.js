@@ -281,6 +281,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper", "ki
         COALESCE(p.cost_price, 0)          AS cost_price,
         p.pcs_per_carton, p.carton_price, p.carton_barcode,
         p.carton_unit_name, p.piece_unit_name,
+        p.pcs_per_mid_unit, p.mid_price, p.mid_barcode,
+        p.mid_unit_name, p.carton_cost_price,
         p.status, p.expiry_date,
         cat.name AS category,
         ''       AS brand,
@@ -413,7 +415,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
         SELECT p.id, p.name, p.sku, p.stock, p.low_stock_threshold,
                cat.name AS category, p.image_url,
                p.pcs_per_carton, p.carton_price, p.carton_barcode,
-               p.carton_unit_name, p.piece_unit_name
+               p.carton_unit_name, p.piece_unit_name,
+               p.pcs_per_mid_unit, p.mid_price, p.mid_barcode,
+               p.mid_unit_name, p.carton_cost_price
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 0)
@@ -424,7 +428,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
       pool.query(`
         SELECT p.id, p.name, p.sku, cat.name AS category, p.image_url,
                p.pcs_per_carton, p.carton_price, p.carton_barcode,
-               p.carton_unit_name, p.piece_unit_name
+               p.carton_unit_name, p.piece_unit_name,
+               p.pcs_per_mid_unit, p.mid_price, p.mid_barcode,
+               p.mid_unit_name, p.carton_cost_price
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.stock = 0 AND p.status = 'active'
@@ -435,7 +441,9 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
         SELECT p.id, p.name, p.sku, p.expiry_date, p.stock,
                cat.name AS category,
                p.pcs_per_carton, p.carton_price, p.carton_barcode,
-               p.carton_unit_name, p.piece_unit_name
+               p.carton_unit_name, p.piece_unit_name,
+               p.pcs_per_mid_unit, p.mid_price, p.mid_barcode,
+               p.mid_unit_name, p.carton_cost_price
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
         WHERE p.expiry_date IS NOT NULL
@@ -448,6 +456,7 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
         SELECT b.id, b.batch_no, b.quantity, b.expiry_date,
                p.name AS product_name, p.sku,
                p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name,
+               p.pcs_per_mid_unit, p.mid_unit_name,
                (b.expiry_date - CURRENT_DATE) AS days_left
         FROM batch_management b
         JOIN products p ON b.product_id = p.id
@@ -1022,6 +1031,8 @@ router.get("/warehouses/:id/products", requireRole("superadmin", "manager", "adm
         COALESCE(p.cost_price, 0) AS cost_price,
         p.pcs_per_carton, p.carton_price, p.carton_barcode,
         p.carton_unit_name, p.piece_unit_name,
+        p.pcs_per_mid_unit, p.mid_price, p.mid_barcode,
+        p.mid_unit_name, p.carton_cost_price,
         p.status,
         c.name AS category
       FROM products p
@@ -1593,6 +1604,7 @@ router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storeke
         li.notes, li.status, li.created_at,
         p.name AS product_name, p.sku, c.name AS category_name,
         p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name, p.carton_barcode,
+        p.pcs_per_mid_unit, p.mid_unit_name, p.mid_barcode,
         w.name AS warehouse_name,
         r.name AS reported_by_name,
         a.name AS approved_by_name
@@ -1629,7 +1641,7 @@ router.post(
       const mult = parseInt(multiplier, 10) > 0 ? parseInt(multiplier, 10) : 1;
       const effectiveQty = parseInt(quantity, 10) * mult;
 
-      const prod = await client.query("SELECT unit_price, price, carton_price, pcs_per_carton FROM products WHERE id=$1", [parseInt(product_id)]);
+      const prod = await client.query("SELECT unit_price, price, carton_price, pcs_per_carton, mid_price, pcs_per_mid_unit FROM products WHERE id=$1", [parseInt(product_id)]);
       const unitValue = parseFloat(prod.rows[0]?.unit_price || prod.rows[0]?.price || 0);
       const estValue  = unitValue * effectiveQty;
 

@@ -72,24 +72,47 @@ const TIER_COLOR = {
 const fmt = n => '₦' + Math.round(n || 0).toLocaleString()
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 
-export function formatCartonStock(totalStock, pcsPerCarton = 1, cartonName = 'Carton', pieceName = 'Pc') {
+export function format3TierStock(totalStock, pcsPerCarton = 1, cartonName = 'Carton', pcsPerMid = 1, midName = 'Row', pieceName = 'Pc') {
   const stock = Math.max(0, parseInt(totalStock || 0))
-  const mult = Math.max(1, parseInt(pcsPerCarton || 1))
-  if (mult <= 1) {
-    return `${stock} ${stock === 1 ? pieceName : pieceName + 's'}`
-  }
-  const cartons = Math.floor(stock / mult)
-  const pcs = stock % mult
-  const cPlural = cartons === 1 ? cartonName : `${cartonName}s`
-  const pPlural = pcs === 1 ? pieceName : `${pieceName}s`
+  const ctnMult = Math.max(1, parseInt(pcsPerCarton || 1))
+  const midMult = Math.max(1, parseInt(pcsPerMid || 1))
 
-  if (cartons > 0 && pcs > 0) {
-    return `${cartons} ${cPlural}, ${pcs} ${pPlural}`
+  // 3-tier: Carton > Mid > Piece
+  if (ctnMult > 1 && midMult > 1 && ctnMult > midMult) {
+    const cartons = Math.floor(stock / ctnMult)
+    const remainder = stock % ctnMult
+    const mids = Math.floor(remainder / midMult)
+    const pcs = remainder % midMult
+    const parts = []
+    if (cartons > 0) parts.push(`${cartons} ${cartons === 1 ? cartonName : cartonName + 's'}`)
+    if (mids > 0) parts.push(`${mids} ${mids === 1 ? midName : midName + 's'}`)
+    if (pcs > 0 || parts.length === 0) parts.push(`${pcs} ${pcs === 1 ? pieceName : pieceName + 's'}`)
+    return parts.join(', ')
   }
-  if (cartons > 0 && pcs === 0) {
-    return `${cartons} ${cPlural}`
+
+  // 2-tier: Carton > Piece
+  if (ctnMult > 1) {
+    const cartons = Math.floor(stock / ctnMult)
+    const pcs = stock % ctnMult
+    if (cartons > 0 && pcs > 0) return `${cartons} ${cartons === 1 ? cartonName : cartonName + 's'}, ${pcs} ${pcs === 1 ? pieceName : pieceName + 's'}`
+    if (cartons > 0) return `${cartons} ${cartons === 1 ? cartonName : cartonName + 's'}`
+    return `${pcs} ${pcs === 1 ? pieceName : pieceName + 's'}`
   }
-  return `${pcs} ${pPlural}`
+
+  // 2-tier: Mid > Piece
+  if (midMult > 1) {
+    const mids = Math.floor(stock / midMult)
+    const pcs = stock % midMult
+    if (mids > 0 && pcs > 0) return `${mids} ${mids === 1 ? midName : midName + 's'}, ${pcs} ${pcs === 1 ? pieceName : pieceName + 's'}`
+    if (mids > 0) return `${mids} ${mids === 1 ? midName : midName + 's'}`
+    return `${pcs} ${pcs === 1 ? pieceName : pieceName + 's'}`
+  }
+
+  return `${stock} ${stock === 1 ? pieceName : pieceName + 's'}`
+}
+
+export function formatCartonStock(totalStock, pcsPerCarton = 1, cartonName = 'Carton', pieceName = 'Pc', pcsPerMid = 1, midName = 'Row') {
+  return format3TierStock(totalStock, pcsPerCarton, cartonName, pcsPerMid, midName, pieceName)
 }
 
 // Audio Synthesizer for POS Scan & Actions
@@ -806,18 +829,35 @@ export default function POS() {
         bc[String(p.id)] = p
         bc[`BF-${p.id}`] = p
       }
+      // Mid-tier Barcode indexing
+      if (p.mid_barcode) {
+        const cleanMB = String(p.mid_barcode).trim().toUpperCase()
+        const midPkg = (p.packaging_units || []).find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_mid_unit)) || {
+          id: `mid-${p.id}`,
+          unit_name: p.mid_unit_name || 'Row',
+          multiplier: p.pcs_per_mid_unit || 1,
+          price: p.mid_price || (p.price * (p.pcs_per_mid_unit || 1))
+        }
+        const pkgObj = { ...p, selectedPackagingUnit: midPkg }
+        bc[cleanMB] = pkgObj
+        bc[cleanMB.replace(/^BF-/, '')] = pkgObj
+        bc['BF-' + cleanMB.replace(/^BF-/, '')] = pkgObj
+      }
+
       // Carton Barcode indexing
       if (p.carton_barcode) {
         const cleanCB = String(p.carton_barcode).trim().toUpperCase()
-        const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
+        const cartonPkg = (p.packaging_units || []).find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_carton)) ||
+                          (p.packaging_units || []).find(u => u.multiplier > 1 && (!p.pcs_per_mid_unit || u.multiplier !== p.pcs_per_mid_unit)) || {
           id: `carton-${p.id}`,
           unit_name: p.carton_unit_name || 'Carton',
           multiplier: p.pcs_per_carton || 1,
-          price: p.carton_price
+          price: p.carton_price || (p.price * (p.pcs_per_carton || 1))
         }
         const pkgObj = { ...p, selectedPackagingUnit: cartonPkg }
         bc[cleanCB] = pkgObj
         bc[cleanCB.replace(/^BF-/, '')] = pkgObj
+        bc['BF-' + cleanCB.replace(/^BF-/, '')] = pkgObj
       }
 
       // Packaging Units Barcodes & SKUs
@@ -2560,7 +2600,7 @@ export default function POS() {
                       {/* Card Header Status */}
                       <div className="pos-tile-top">
                         <span className={`pos-stock-tag ${p.stock <= 0 ? 'bg-danger-subtle text-danger border-danger-subtle' : (isLowStock ? 'low-warning' : '')}`}>
-                          {p.stock <= 0 ? 'Out of Stock (0)' : formatCartonStock(p.stock, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name)}
+                          {p.stock <= 0 ? 'Out of Stock (0)' : formatCartonStock(p.stock, p.pcs_per_carton, p.carton_unit_name, p.piece_unit_name, p.pcs_per_mid_unit, p.mid_unit_name)}
                         </span>
                         {inCart && (
                           <span className="pos-tile-counter">{inCart.qty}</span>
@@ -2593,16 +2633,26 @@ export default function POS() {
 
                       {/* Price & Action Footer */}
                       <div className="pos-tile-footer">
-                        {p.pcs_per_carton > 1 && (p.carton_price || p.packaging_units?.length > 0) ? (
+                        {(Number(p.pcs_per_carton) > 1 || Number(p.pcs_per_mid_unit) > 1 || (p.packaging_units && p.packaging_units.length > 0)) ? (
                           <div className="pos-tile-dual-actions w-100" onClick={e => e.stopPropagation()}>
-                            <div className="d-flex justify-content-between align-items-center mb-1 text-muted" style={{ fontSize: 11 }}>
-                              <span className="fw-bold text-success fs-14">{fmt(p.price)}<span className="fs-10 text-muted">/{p.piece_unit_name || 'pc'}</span></span>
-                              <span className="fw-bold text-primary fs-12">{fmt(p.carton_price || p.packaging_units[0]?.price)}<span className="fs-10 text-muted">/{p.carton_unit_name || 'ctn'} ({p.pcs_per_carton}x)</span></span>
+                            <div className="d-flex justify-content-between align-items-center mb-1 text-muted flex-wrap" style={{ fontSize: 10, gap: '2px 4px' }}>
+                              <span className="fw-bold text-success fs-12">{fmt(p.price)}<span className="fs-9 text-muted">/{p.piece_unit_name || 'pc'}</span></span>
+                              {Number(p.pcs_per_mid_unit) > 1 && (
+                                <span className="fw-bold fs-11" style={{ color: '#8b5cf6' }}>{fmt(p.mid_price || (p.price * p.pcs_per_mid_unit))}<span className="fs-9 text-muted">/{p.mid_unit_name || 'row'}</span></span>
+                              )}
+                              {Number(p.pcs_per_carton) > 1 && (
+                                <span className="fw-bold text-primary fs-11">{fmt(p.carton_price || (p.price * p.pcs_per_carton))}<span className="fs-9 text-muted">/{p.carton_unit_name || 'ctn'}</span></span>
+                              )}
                             </div>
                             <div className="d-flex gap-1">
                               {(() => {
-                                const availableCartons = Math.floor((p.stock || 0) / (p.pcs_per_carton || 1))
-                                const hasLoosePieces = (p.stock || 0) > 0
+                                const stockVal = Math.max(0, p.stock || 0)
+                                const hasLoosePieces = stockVal > 0
+                                const hasMidTier = Number(p.pcs_per_mid_unit) > 1
+                                const availableRows = hasMidTier ? Math.floor(stockVal / Number(p.pcs_per_mid_unit)) : 0
+                                const hasRows = availableRows > 0
+                                const hasCartonTier = Number(p.pcs_per_carton) > 1
+                                const availableCartons = hasCartonTier ? Math.floor(stockVal / Number(p.pcs_per_carton)) : 0
                                 const hasCartons = availableCartons > 0
 
                                 return (
@@ -2618,31 +2668,60 @@ export default function POS() {
                                         }
                                         addProductToCart(p, null)
                                       }}
-                                      title={`Add 1 ${p.piece_unit_name || 'Piece'} (${p.stock || 0} in stock)`}
+                                      title={`Add 1 ${p.piece_unit_name || 'Piece'} (${stockVal} in stock)`}
                                     >
-                                      <i className="ri-add-line"></i> {p.piece_unit_name || 'Piece'}
+                                      <i className="ri-add-line"></i> {p.piece_unit_name || 'Pc'}
                                     </button>
-                                    <button
-                                      type="button"
-                                      disabled={!hasCartons}
-                                      className={`btn btn-sm ${hasCartons ? 'btn-outline-primary' : 'btn-light text-muted opacity-50'} flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1`}
-                                      onClick={() => {
-                                        if (!hasCartons) {
-                                          showToast(`Cannot add Carton: Only ${p.stock || 0} loose pieces in stock (${p.pcs_per_carton} needed for 1 carton). Sell as loose pieces!`, 'warning', '⚠️')
-                                          return
-                                        }
-                                        const cartonPkg = (p.packaging_units || []).find(u => u.multiplier > 1) || {
-                                          id: `carton-${p.id}`,
-                                          unit_name: p.carton_unit_name || 'Carton',
-                                          multiplier: p.pcs_per_carton,
-                                          price: p.carton_price
-                                        }
-                                        addProductToCart(p, cartonPkg)
-                                      }}
-                                      title={hasCartons ? `Add 1 ${p.carton_unit_name || 'Carton'} (${availableCartons} ctn available)` : `No full cartons (${p.stock || 0} loose pieces in stock)`}
-                                    >
-                                      <i className="ri-archive-line"></i> {p.carton_unit_name || 'Carton'} {hasCartons ? `(${availableCartons})` : '(0)'}
-                                    </button>
+
+                                    {hasMidTier && (
+                                      <button
+                                        type="button"
+                                        disabled={!hasRows}
+                                        className={`btn btn-sm ${hasRows ? 'btn-outline-warning' : 'btn-light text-muted opacity-50'} flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1`}
+                                        style={hasRows ? { borderColor: '#8b5cf6', color: '#8b5cf6' } : {}}
+                                        onClick={() => {
+                                          if (!hasRows) {
+                                            showToast(`Cannot add ${p.mid_unit_name || 'Row'}: Only ${stockVal} pieces in stock (${p.pcs_per_mid_unit} needed). Sell as loose pieces!`, 'warning', '⚠️')
+                                            return
+                                          }
+                                          const midPkg = (p.packaging_units || []).find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_mid_unit)) || {
+                                            id: `mid-${p.id}`,
+                                            unit_name: p.mid_unit_name || 'Row',
+                                            multiplier: p.pcs_per_mid_unit,
+                                            price: p.mid_price || (p.price * p.pcs_per_mid_unit)
+                                          }
+                                          addProductToCart(p, midPkg)
+                                        }}
+                                        title={hasRows ? `Add 1 ${p.mid_unit_name || 'Row'} (${availableRows} available)` : `No full rows (${stockVal} pcs in stock)`}
+                                      >
+                                        <i className="ri-stack-line"></i> {p.mid_unit_name || 'Row'} {hasRows ? `(${availableRows})` : '(0)'}
+                                      </button>
+                                    )}
+
+                                    {hasCartonTier && (
+                                      <button
+                                        type="button"
+                                        disabled={!hasCartons}
+                                        className={`btn btn-sm ${hasCartons ? 'btn-outline-primary' : 'btn-light text-muted opacity-50'} flex-fill py-1 px-1 fw-bold fs-11 d-flex align-items-center justify-content-center gap-1`}
+                                        onClick={() => {
+                                          if (!hasCartons) {
+                                            showToast(`Cannot add Carton: Only ${stockVal} pieces in stock (${p.pcs_per_carton} needed). Sell as loose pieces!`, 'warning', '⚠️')
+                                            return
+                                          }
+                                          const cartonPkg = (p.packaging_units || []).find(u => parseFloat(u.multiplier) === parseFloat(p.pcs_per_carton)) ||
+                                                            (p.packaging_units || []).find(u => u.multiplier > 1 && (!p.pcs_per_mid_unit || u.multiplier !== p.pcs_per_mid_unit)) || {
+                                            id: `carton-${p.id}`,
+                                            unit_name: p.carton_unit_name || 'Carton',
+                                            multiplier: p.pcs_per_carton,
+                                            price: p.carton_price || (p.price * p.pcs_per_carton)
+                                          }
+                                          addProductToCart(p, cartonPkg)
+                                        }}
+                                        title={hasCartons ? `Add 1 ${p.carton_unit_name || 'Carton'} (${availableCartons} available)` : `No full cartons (${stockVal} pcs in stock)`}
+                                      >
+                                        <i className="ri-archive-line"></i> {p.carton_unit_name || 'Ctn'} {hasCartons ? `(${availableCartons})` : '(0)'}
+                                      </button>
+                                    )}
                                   </>
                                 )
                               })()}

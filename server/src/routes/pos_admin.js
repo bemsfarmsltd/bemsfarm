@@ -352,7 +352,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     let prodRows = { rows: [] };
     if (validProductIds.length > 0) {
       prodRows = await client.query(
-        "SELECT id, name, unit_price, price, stock, stock_quantity, cost_price, pcs_per_carton, carton_price, carton_barcode, carton_unit_name, piece_unit_name, track_inventory FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
+        "SELECT id, name, unit_price, price, stock, stock_quantity, cost_price, pcs_per_carton, carton_price, carton_barcode, carton_unit_name, pcs_per_mid_unit, mid_price, mid_barcode, mid_unit_name, carton_cost_price, piece_unit_name, track_inventory FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
         [validProductIds]
       );
     }
@@ -380,8 +380,23 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         const p = productsById.get(productId);
         const pkg = item.packaging_unit_id ? pkgUnitsMap.get(parseInt(item.packaging_unit_id)) : null;
         const multiplier = pkg ? parseFloat(pkg.multiplier) : (parseFloat(item.multiplier) || 1);
-        const unit_price = pkg ? parseFloat(pkg.price) : (item.unit_price ? parseFloat(item.unit_price) : parseFloat(p.unit_price || p.price || 0));
-        const packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || item.packaging_name || null);
+        let unit_price = pkg ? parseFloat(pkg.price) : null;
+        let packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || item.packaging_name || null);
+
+        // If unit_price wasn't in product_packaging_units, check direct 3-tier definitions
+        if (unit_price == null) {
+          if (p.pcs_per_carton && multiplier === parseFloat(p.pcs_per_carton) && p.carton_price) {
+            unit_price = parseFloat(p.carton_price);
+            packaging_unit_name = packaging_unit_name || p.carton_unit_name || 'Carton';
+          } else if (p.pcs_per_mid_unit && multiplier === parseFloat(p.pcs_per_mid_unit) && p.mid_price) {
+            unit_price = parseFloat(p.mid_price);
+            packaging_unit_name = packaging_unit_name || p.mid_unit_name || 'Row';
+          } else if (item.unit_price) {
+            unit_price = parseFloat(item.unit_price);
+          } else {
+            unit_price = parseFloat(p.unit_price || p.price || 0);
+          }
+        }
 
         let availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
         const effectiveNeeded = quantity * multiplier;
@@ -635,6 +650,38 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         } catch (logErr) {
           await client.query("ROLLBACK TO SAVEPOINT pos_inv_log_sp").catch(() => {});
           console.warn("POS inventory_transactions log warning:", logErr.message);
+        }
+
+        // Deduct from batch_management active batch(es) FIFO to keep consignment batches aligned
+        try {
+          await client.query("SAVEPOINT pos_batch_sp");
+          let remainingBatchDeduct = effectiveDeduction;
+          const activeBatchesRes = await client.query(
+            `SELECT id, quantity FROM batch_management
+             WHERE product_id = $1 AND status = 'active' AND COALESCE(quantity, 0) > 0
+             ORDER BY expiry_date ASC NULLS LAST, id ASC
+             FOR UPDATE`,
+            [item.product_id]
+          );
+          for (const b of activeBatchesRes.rows) {
+            if (remainingBatchDeduct <= 0) break;
+            const bQty = parseFloat(b.quantity) || 0;
+            const deduct = Math.min(bQty, remainingBatchDeduct);
+            const newBQty = Math.max(0, bQty - deduct);
+            await client.query(
+              `UPDATE batch_management
+               SET quantity = $1,
+                   status = CASE WHEN $1 = 0 THEN 'depleted' ELSE 'active' END,
+                   updated_at = NOW()
+               WHERE id = $2`,
+              [newBQty, b.id]
+            );
+            remainingBatchDeduct -= deduct;
+          }
+          await client.query("RELEASE SAVEPOINT pos_batch_sp");
+        } catch (batchErr) {
+          await client.query("ROLLBACK TO SAVEPOINT pos_batch_sp").catch(() => {});
+          console.warn("POS batch_management deduction notice:", batchErr.message);
         }
 
         const itemCost = prodRes.rows[0]
