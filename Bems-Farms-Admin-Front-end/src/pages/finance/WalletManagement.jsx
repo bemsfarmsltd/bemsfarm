@@ -12,6 +12,39 @@ const DUTY_STATUS_CFG = {
   suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line' },
 }
 
+const SUPPORTED_NUBAN_BANKS = [
+  { code: '035', name: 'Wema Bank (035)' },
+  { code: '50515', name: 'Moniepoint MFB (50515)' },
+  { code: '058', name: 'Guaranty Trust Bank - GTBank (058)' },
+  { code: '044', name: 'Access Bank (044)' },
+  { code: '057', name: 'Zenith Bank (057)' },
+  { code: '011', name: 'First Bank of Nigeria (011)' },
+  { code: '033', name: 'United Bank for Africa - UBA (033)' },
+  { code: '50211', name: 'Kuda Microfinance Bank (50211)' },
+  { code: '999992', name: 'OPay Digital Services (999992)' },
+  { code: '999991', name: 'PalmPay (999991)' },
+  { code: '214', name: 'First City Monument Bank - FCMB (214)' },
+  { code: '070', name: 'Fidelity Bank (070)' },
+  { code: '221', name: 'Stanbic IBTC Bank (221)' },
+  { code: '032', name: 'Union Bank of Nigeria (032)' },
+  { code: '232', name: 'Sterling Bank (232)' },
+  { code: '101', name: 'Providus Bank (101)' },
+  { code: '076', name: 'Polaris Bank (076)' },
+  { code: '082', name: 'Keystone Bank (082)' },
+  { code: '566', name: 'VFD Microfinance Bank (566)' },
+  { code: '100', name: 'Suntrust Bank (100)' },
+  { code: '301', name: 'Jaiz Bank (301)' },
+  { code: '302', name: 'TAJ Bank (302)' },
+  { code: '102', name: 'Titan Trust Bank (102)' },
+  { code: '107', name: 'Optimus Bank (107)' },
+  { code: '105', name: 'Premium Trust Bank (105)' },
+  { code: '526', name: 'Parallex Bank (526)' },
+  { code: '050', name: 'Ecobank Nigeria (050)' },
+  { code: '023', name: 'Citibank Nigeria (023)' },
+  { code: '068', name: 'Standard Chartered Bank (068)' },
+  { code: '215', name: 'Unity Bank (215)' },
+]
+
 export default function WalletManagement() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') || 'wallets'
@@ -102,7 +135,7 @@ export default function WalletManagement() {
   // Live Bank Resolution tool modal
   const [bankValidatorModal, setBankValidatorModal] = useState(false)
   const [valAccNum, setValAccNum] = useState('')
-  const [valBankName, setValBankName] = useState('Wema Bank')
+  const [valBankCode, setValBankCode] = useState('035')
   const [validatingBank, setValidatingBank] = useState(false)
   const [bankValidationResult, setBankValidationResult] = useState(null)
 
@@ -348,20 +381,25 @@ export default function WalletManagement() {
   // 10. Bank Name Validation Lookup
   const handleValidateBank = async (e) => {
     e.preventDefault()
-    if (!valAccNum || valAccNum.length !== 10) {
-      return toast.error('Please enter a 10-digit account number')
+    const cleanNum = (valAccNum || '').trim()
+    if (!cleanNum || cleanNum.length !== 10) {
+      return toast.error('Please enter a valid 10-digit account number')
     }
 
     setValidatingBank(true)
     setBankValidationResult(null)
     try {
+      const selectedBank = SUPPORTED_NUBAN_BANKS.find((b) => b.code === valBankCode) || { code: valBankCode, name: 'Wema Bank' }
       const res = await api.post('/admin/wallets/validate-bank', {
-        account_number: valAccNum,
-        bank_name: valBankName,
+        account_number: cleanNum,
+        bank_code: selectedBank.code,
+        bank_name: selectedBank.name,
       })
       setBankValidationResult(res.data)
+      toast.success(`Account Verified: ${res.data?.account_name || 'Success'}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not resolve account name')
+      const msg = err.response?.data?.message || err.message || 'Could not resolve account name'
+      toast.error(msg)
     } finally {
       setValidatingBank(false)
     }
@@ -2202,18 +2240,14 @@ export default function WalletManagement() {
                     <label className="form-label small font-weight-bold">Bank Name</label>
                     <select
                       className="form-select"
-                      value={valBankName}
-                      onChange={(e) => setValBankName(e.target.value)}
+                      value={valBankCode}
+                      onChange={(e) => setValBankCode(e.target.value)}
                     >
-                      <option value="Wema Bank">Wema Bank (035)</option>
-                      <option value="GTBank">Guaranty Trust Bank (058)</option>
-                      <option value="Access Bank">Access Bank (044)</option>
-                      <option value="Zenith Bank">Zenith Bank (057)</option>
-                      <option value="First Bank">First Bank of Nigeria (011)</option>
-                      <option value="UBA">United Bank for Africa (033)</option>
-                      <option value="Kuda Bank">Kuda Microfinance Bank (50211)</option>
-                      <option value="OPay">OPay Digital Services (999992)</option>
-                      <option value="PalmPay">PalmPay (999991)</option>
+                      {SUPPORTED_NUBAN_BANKS.map((b) => (
+                        <option key={b.code} value={b.code}>
+                          {b.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="mb-3">

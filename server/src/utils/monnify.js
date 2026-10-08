@@ -4,10 +4,25 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-const MONNIFY_BASE_URL =
-  process.env.MONNIFY_ENV === "live"
-    ? "https://api.monnify.com"
-    : "https://sandbox.monnify.com";
+function getMonnifyBaseUrl() {
+  if (process.env.MONNIFY_BASE_URL) {
+    return process.env.MONNIFY_BASE_URL.replace(/\/+$/, "");
+  }
+  const env = (process.env.MONNIFY_ENV || "").toLowerCase();
+  const apiKey = (process.env.MONNIFY_API_KEY || "").trim();
+  if (
+    env === "live" ||
+    env === "production" ||
+    env === "prod" ||
+    apiKey.startsWith("MK_PROD_") ||
+    (process.env.NODE_ENV === "production" && env !== "sandbox" && env !== "test")
+  ) {
+    return "https://api.monnify.com";
+  }
+  return "https://sandbox.monnify.com";
+}
+
+const MONNIFY_BASE_URL = getMonnifyBaseUrl();
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
@@ -27,9 +42,10 @@ async function getMonnifyToken() {
     throw new Error("Monnify credentials are not configured (MONNIFY_API_KEY / MONNIFY_SECRET_KEY)");
   }
 
+  const baseUrl = getMonnifyBaseUrl();
   const basic = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
   const { data } = await axios.post(
-    `${MONNIFY_BASE_URL}/api/v1/auth/login`,
+    `${baseUrl}/api/v1/auth/login`,
     {},
     { headers: { Authorization: `Basic ${basic}` } }
   );
@@ -75,8 +91,9 @@ async function createMonnifyReservedAccount({
   if (bvn) payload.bvn = bvn;
   if (nin) payload.nin = nin;
 
+  const baseUrl = getMonnifyBaseUrl();
   const { data } = await axios.post(
-    `${MONNIFY_BASE_URL}/api/v2/bank-transfer/reserved-accounts`,
+    `${baseUrl}/api/v2/bank-transfer/reserved-accounts`,
     payload,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -97,9 +114,10 @@ async function getMonnifyWalletBalance(accountNumber) {
     throw new Error("Monnify wallet account number is not configured");
   }
   const token = await getMonnifyToken();
+  const baseUrl = getMonnifyBaseUrl();
 
   const { data } = await axios.get(
-    `${MONNIFY_BASE_URL}/api/v2/disbursements/wallet-balance?accountNumber=${encodeURIComponent(acct)}`,
+    `${baseUrl}/api/v2/disbursements/wallet-balance?accountNumber=${encodeURIComponent(acct)}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -146,8 +164,9 @@ async function initiateMonnifyDisbursement({
     async: false,
   };
 
+  const baseUrl = getMonnifyBaseUrl();
   const { data } = await axios.post(
-    `${MONNIFY_BASE_URL}/api/v2/disbursements/single`,
+    `${baseUrl}/api/v2/disbursements/single`,
     payload,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -171,9 +190,10 @@ async function validateMonnifyBankAccount(accountNumber, bankCode) {
     throw new Error("Bank code is required for bank account validation");
   }
   const token = await getMonnifyToken();
+  const baseUrl = getMonnifyBaseUrl();
 
   const { data } = await axios.get(
-    `${MONNIFY_BASE_URL}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`,
+    `${baseUrl}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -190,13 +210,14 @@ async function validateMonnifyBankAccount(accountNumber, bankCode) {
  */
 async function verifyMonnifyTransaction(reference) {
   const token = await getMonnifyToken();
+  const baseUrl = getMonnifyBaseUrl();
   const cleanRef = String(reference || "").trim();
 
   // If reference looks like Monnify transaction reference (starts with MNFY or contains |)
   if (cleanRef.startsWith("MNFY") || cleanRef.includes("|")) {
     try {
       const { data } = await axios.get(
-        `${MONNIFY_BASE_URL}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
+        `${baseUrl}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (data?.requestSuccessful && data?.responseBody) {
@@ -210,7 +231,7 @@ async function verifyMonnifyTransaction(reference) {
   // Otherwise (or as fallback), query by merchant paymentReference (e.g. BF-...)
   try {
     const { data } = await axios.get(
-      `${MONNIFY_BASE_URL}/api/v1/merchant/transactions/query?paymentReference=${encodeURIComponent(cleanRef)}`,
+      `${baseUrl}/api/v1/merchant/transactions/query?paymentReference=${encodeURIComponent(cleanRef)}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (data?.requestSuccessful && data?.responseBody) {
@@ -220,7 +241,7 @@ async function verifyMonnifyTransaction(reference) {
     // If querying by paymentReference also 404s, try v2 transactions endpoint before giving up
     if (!cleanRef.startsWith("MNFY") && !cleanRef.includes("|")) {
       const { data } = await axios.get(
-        `${MONNIFY_BASE_URL}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
+        `${baseUrl}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (data?.requestSuccessful && data?.responseBody) {
@@ -252,6 +273,7 @@ function verifyMonnifyWebhookSignature(rawBody, signature) {
 }
 
 module.exports = {
+  getMonnifyBaseUrl,
   MONNIFY_BASE_URL,
   getMonnifyToken,
   createMonnifyReservedAccount,

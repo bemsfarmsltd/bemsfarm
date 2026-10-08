@@ -882,18 +882,19 @@ router.post("/validate-bank", async (req, res, next) => {
     }
     targetCode = targetCode || "058";
 
-    // Build list of candidate codes (e.g. NIP aliases for fintechs)
+    // Build list of candidate codes (e.g. NIP aliases for fintechs and zero-padding)
     const codeCandidates = [targetCode];
+    if (targetCode.length < 3) codeCandidates.push(targetCode.padStart(3, "0"));
     if (targetCode === "999992") codeCandidates.push("090110", "100004", "304");
     if (targetCode === "999991") codeCandidates.push("090175", "100033");
     if (targetCode === "50211") codeCandidates.push("090267");
-    if (targetCode === "50515") codeCandidates.push("090405");
+    if (targetCode === "50515") codeCandidates.push("090405", "120001");
 
     let resolvedName = null;
     let rawResult = null;
     let lastApiError = null;
 
-    for (const code of codeCandidates) {
+    for (const code of [...new Set(codeCandidates)]) {
       try {
         const monnifyRes = await validateMonnifyBankAccount(cleanAcc, code);
         if (monnifyRes?.accountName) {
@@ -903,7 +904,7 @@ router.post("/validate-bank", async (req, res, next) => {
           break;
         }
       } catch (apiErr) {
-        lastApiError = apiErr.message || "Account validation failed";
+        lastApiError = apiErr.response?.data?.responseMessage || apiErr.response?.data?.message || apiErr.message || "Account validation failed";
       }
     }
 
