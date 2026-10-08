@@ -8,6 +8,7 @@ const pool = require("../db/pool");
 const https = require("https");
 const { calculateRoadRoute, optimizeMultiStopRoute, calculateHaversineDistanceKm } = require("../services/routingService");
 const { calculateDeliveryPricing } = require("../services/pricingService");
+const nipostService = require("../services/nipostService");
 
 // Utility to make HTTPS request with User-Agent required by Nominatim
 function fetchJson(url) {
@@ -306,6 +307,63 @@ router.get("/zones", async (req, res, next) => {
   }
 });
 
+// ── NIPOST Digital Postcode Official Gateway Endpoints ─────────────
+
+// GET /api/locations/nipost/states (All 37 Nigerian States)
+router.get("/nipost/states", async (req, res) => {
+  try {
+    const result = await nipostService.getStates();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/locations/nipost/lgas?state=AB (Official LGAs in a State)
+router.get("/nipost/lgas", async (req, res) => {
+  try {
+    const { state } = req.query;
+    if (!state) return res.status(400).json({ success: false, error: "State code (e.g. AB, LA, FC) is required" });
+    const result = await nipostService.getLgasByState(state);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/locations/nipost/autocomplete?q=... (Segment-Aware Autocomplete)
+router.get("/nipost/autocomplete", async (req, res) => {
+  try {
+    const { q } = req.query;
+    const result = await nipostService.searchAutocomplete(q);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/locations/nipost/reverse?lat=...&lng=... (Reverse Geocode to Digital Postcode)
+router.get("/nipost/reverse", async (req, res) => {
+  try {
+    const { lat, lng, radius } = req.query;
+    const result = await nipostService.reverseGeocode(parseFloat(lat), parseFloat(lng), parseFloat(radius) || 150);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/locations/nipost/lookup?code=... (Postcode Lookup)
+router.get("/nipost/lookup", async (req, res) => {
+  try {
+    const { code, level } = req.query;
+    const result = await nipostService.lookupPostcode(code, parseInt(level) || 1);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ── GET /api/locations/search ────────────────────────────────────────
 // Instant address search & autocomplete powered by OpenStreetMap Nominatim with Progressive Fallback
 router.get("/search", async (req, res) => {
@@ -490,9 +548,28 @@ router.post("/verify", async (req, res, next) => {
     let detectedState = (state || "").trim();
     let detectedStreet = "";
     let detectedPostcode = "";
+    let nipostResult = null;
 
-    // 1. If GPS coordinates provided, reverse geocode via Nominatim
+    // 1. If GPS coordinates provided, reverse geocode via NIPOST (official Nigerian Postcode) + Nominatim
     if (finalLat && finalLng && !isNaN(finalLat) && !isNaN(finalLng)) {
+      // 1a. Call NIPOST Official Digital Postcode Gateway
+      try {
+        const nipostRes = await nipostService.reverseGeocode(finalLat, finalLng, 250);
+        if (nipostRes.success && nipostRes.data) {
+          nipostResult = nipostRes.data;
+          if (nipostResult.unit && nipostResult.unit.postcode) {
+            detectedPostcode = nipostResult.unit.postcode;
+          } else if (nipostResult.area) {
+            detectedPostcode = nipostResult.area;
+          }
+          if (nipostResult.unit?.state_name) detectedState = nipostResult.unit.state_name;
+          if (nipostResult.unit?.lga_name) detectedLGA = nipostResult.unit.lga_name;
+        }
+      } catch (nErr) {
+        console.warn("NIPOST reverse geocode error:", nErr.message);
+      }
+
+      // 1b. Reverse geocode via Nominatim for full road & street display name
       const revUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${finalLat}&lon=${finalLng}&zoom=18&addressdetails=1`;
       const revData = await fetchJson(revUrl);
 
@@ -500,9 +577,11 @@ router.post("/verify", async (req, res, next) => {
         const a = revData.address;
         detectedStreet = a.road || a.pedestrian || a.suburb || a.neighbourhood || "";
         detectedCity = a.city || a.town || a.village || a.county || a.state_district || detectedCity || "";
-        detectedLGA = a.county || a.state_district || a.suburb || detectedCity;
-        detectedState = a.state || detectedState || "";
-        detectedPostcode = a.postcode || a.postal_code || "";
+        detectedLGA = detectedLGA || a.county || a.state_district || a.suburb || detectedCity;
+        detectedState = detectedState || a.state || "";
+        if (!detectedPostcode) {
+          detectedPostcode = a.postcode || a.postal_code || "";
+        }
         if (!formattedAddress || formattedAddress.length < 5) {
           formattedAddress = revData.display_name || `${detectedStreet}, ${detectedCity}, ${detectedState}`.trim();
         }
@@ -527,7 +606,8 @@ router.post("/verify", async (req, res, next) => {
       }
     }
 
-    const postalCode = resolvePostalCode(detectedState, detectedCity || detectedLGA, detectedPostcode, formattedAddress || address || "");
+    const legacyPostalCode = resolvePostalCode(detectedState, detectedCity || detectedLGA, detectedPostcode, formattedAddress || address || "");
+    const postalCode = detectedPostcode || legacyPostalCode;
 
     // 3. Match against delivery zones
     const matchedZone = await matchDeliveryZone(
@@ -549,6 +629,11 @@ router.post("/verify", async (req, res, next) => {
       state: detectedState || "Abia",
       postal_code: postalCode,
       postcode: postalCode,
+      legacy_postal_code: legacyPostalCode,
+      digital_postcode: nipostResult?.unit?.postcode || nipostResult?.area || null,
+      digital_postcode_display: nipostResult?.unit?.display || null,
+      nipost_verified: Boolean(nipostResult?.found),
+      nipost_data: nipostResult || null,
       country: "Nigeria",
       zone: matchedZone ? {
         zone_id: matchedZone.zone_id,

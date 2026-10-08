@@ -267,6 +267,8 @@ export default function VerifiedLocationModal({
       state,
       postal_code: postalCode,
       postcode: postalCode,
+      digital_postcode: verifiedData?.digital_postcode || null,
+      digital_postcode_display: verifiedData?.digital_postcode_display || null,
       latitude: lat,
       longitude: lng,
       zone_id: zoneId,
@@ -507,6 +509,23 @@ export default function VerifiedLocationModal({
               <span className="truncate">
                 {verifiedData?.formatted_address || searchQuery || `${position[0].toFixed(5)}, ${position[1].toFixed(5)}`}
               </span>
+            </div>
+          )}
+
+          {verifiedData?.digital_postcode && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
+              <span className="text-base leading-none">🇳🇬</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-emerald-800">Official NIPOST Postcode:</span>
+                <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-900">
+                  {verifiedData.digital_postcode_display || verifiedData.digital_postcode}
+                </span>
+                {verifiedData.nipost_verified && (
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    Verified
+                  </span>
+                )}
+              </div>
             </div>
           )}
 

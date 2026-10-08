@@ -99,6 +99,8 @@ export default function AddressAutocomplete({
           state: res.data?.state || suggestion.state,
           postal_code: res.data?.postal_code || suggestion.postal_code || "440221",
           postcode: res.data?.postal_code || suggestion.postal_code || "440221",
+          digital_postcode: res.data?.digital_postcode || null,
+          digital_postcode_display: res.data?.digital_postcode_display || null,
           latitude: suggestion.latitude,
           longitude: suggestion.longitude,
           zone_id: res.data?.zone?.zone_id || "ZONE001",
