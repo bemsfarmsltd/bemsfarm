@@ -131,7 +131,7 @@ const docStorage = multer.diskStorage({
       else if (mime.includes("heic") || mime.includes("heif")) ext = ".heic";
       else ext = ".jpg";
     }
-    const docType = (req.body.doc_type || req.query.type || "DOC").toUpperCase().replace(/[^A-Z0-9_]/g, "");
+    const docType = ((req.body && req.body.doc_type) || (req.query && req.query.type) || "DOC").toUpperCase().replace(/[^A-Z0-9_]/g, "");
     const unique = `${docType}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     cb(null, unique);
   }
@@ -191,7 +191,7 @@ const uploadProofPhoto = async (req, res, next) => {
     }
 
     // 2. If base64 data was sent in JSON body { image_base64: "data:image/jpeg;base64,..." }
-    const { image_base64, filename } = req.body;
+    const { image_base64, filename } = req.body || {};
     if (image_base64 && typeof image_base64 === "string") {
       const matches = image_base64.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
       let ext = ".jpg";
@@ -244,7 +244,7 @@ const uploadProofPhoto = async (req, res, next) => {
 // Upload Driver License, NIN slip, Vehicle Registration, or Guarantor document
 const uploadKYCDocument = async (req, res, next) => {
   try {
-    const docType = (req.body.doc_type || req.query.type || "document").toLowerCase();
+    const docType = ((req.body && req.body.doc_type) || (req.query && req.query.type) || "document").toLowerCase();
 
     // 1. Multipart file upload
     const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['document', 'file', 'image', 'kyc'].includes(f.fieldname)) || req.files[0])) || null;
@@ -264,7 +264,7 @@ const uploadKYCDocument = async (req, res, next) => {
     }
 
     // 2. Base64 file upload
-    const { file_base64, image_base64, filename } = req.body;
+    const { file_base64, image_base64, filename } = req.body || {};
     const rawBase64 = file_base64 || image_base64;
 
     if (rawBase64 && typeof rawBase64 === "string") {
