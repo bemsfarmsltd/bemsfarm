@@ -240,11 +240,271 @@ const uploadProofPhoto = async (req, res, next) => {
   }
 };
 
+// Helper to normalize document field key
+function normalizeDocKey(rawKey) {
+  const k = String(rawKey || "").toLowerCase().trim();
+  if (k.includes("license_back")) return "driver_license_back";
+  if (k.includes("license_front")) return "driver_license_front";
+  if (k.includes("license") || k.includes("driving")) return "driver_license";
+  if (k.includes("vehicle") || k.includes("reg") || k.includes("car")) return "vehicle_registration";
+  if (k.includes("passport") || k.includes("avatar") || k.includes("profile") || k.includes("photo")) return "passport_photo";
+  if (k.includes("nin") || k.includes("national_id")) return "nin_slip";
+  if (k.includes("guarantor")) return "guarantor_form";
+  return k || "document";
+}
+
+// Helper to persist document to driver DB record
+async function persistDriverDocument(driverId, docType, fileUrl, extraBody = {}) {
+  if (!driverId) return null;
+  try {
+    const dRes = await pool.query(
+      "SELECT id, documents, avatar_url, license_number, nin_number, vehicle_plate, vehicle_type FROM drivers WHERE id = $1",
+      [driverId]
+    );
+    if (dRes.rows.length === 0) return null;
+
+    const currentDriver = dRes.rows[0];
+    let currentDocs = {};
+    if (typeof currentDriver.documents === "object" && currentDriver.documents !== null) {
+      currentDocs = { ...currentDriver.documents };
+    } else if (typeof currentDriver.documents === "string") {
+      try { currentDocs = JSON.parse(currentDriver.documents); } catch (e) { currentDocs = {}; }
+    }
+
+    const normKey = normalizeDocKey(docType);
+    currentDocs[normKey] = fileUrl;
+    if (normKey === "driver_license" && !currentDocs.driver_license_front) {
+      currentDocs.driver_license_front = fileUrl;
+    }
+
+    const updateFields = ["documents = $1::jsonb", "updated_at = NOW()"];
+    const updateParams = [JSON.stringify(currentDocs)];
+
+    if (normKey === "passport_photo") {
+      updateParams.push(fileUrl);
+      updateFields.push(`avatar_url = $${updateParams.length}`);
+    }
+    if (extraBody.license_number) {
+      updateParams.push(extraBody.license_number);
+      updateFields.push(`license_number = $${updateParams.length}`);
+    }
+    if (extraBody.nin_number) {
+      updateParams.push(extraBody.nin_number);
+      updateFields.push(`nin_number = $${updateParams.length}`);
+    }
+    if (extraBody.vehicle_plate) {
+      updateParams.push(extraBody.vehicle_plate);
+      updateFields.push(`vehicle_plate = $${updateParams.length}`);
+    }
+
+    // Check completeness
+    const hasLicense = Boolean(currentDocs.driver_license || currentDocs.driver_license_front || currentDriver.license_number || extraBody.license_number);
+    const hasVeh = Boolean(currentDocs.vehicle_registration || (currentDriver.vehicle_type && (currentDriver.vehicle_plate || extraBody.vehicle_plate)));
+    const hasPassport = Boolean(currentDocs.passport_photo || currentDriver.avatar_url || normKey === "passport_photo");
+    const hasNin = Boolean(currentDocs.nin_slip || currentDriver.nin_number || extraBody.nin_number);
+    const hasGuarantor = Boolean(currentDocs.guarantor_form);
+
+    if (hasLicense && hasVeh && hasPassport && hasNin && hasGuarantor) {
+      updateFields.push("onboarding_status = 'documents_submitted'");
+    }
+
+    updateParams.push(driverId);
+    await pool.query(
+      `UPDATE drivers SET ${updateFields.join(", ")} WHERE id = $${updateParams.length}::bigint`,
+      updateParams
+    );
+
+    return {
+      documents: currentDocs,
+      checklist: {
+        driver_license: hasLicense,
+        vehicle_registration: hasVeh,
+        passport_photo: hasPassport,
+        nin_slip: hasNin,
+        guarantor_form: hasGuarantor
+      }
+    };
+  } catch (err) {
+    console.warn("persistDriverDocument error:", err.message);
+    return null;
+  }
+}
+
+// ── GET /api/driver/documents & /api/driver/upload/document ───────────
+// Retrieve driver compliance documents, upload statuses, and verification checklist
+const getDriverDocuments = async (req, res, next) => {
+  try {
+    let driverId = req.driver?.id;
+
+    // Support query lookup if driver_id / id / phone is passed
+    if (!driverId && (req.query?.driver_id || req.query?.driverId || req.query?.id || req.query?.phone)) {
+      const lookupParam = req.query.driver_id || req.query.driverId || req.query.id || req.query.phone;
+      const lookupCol = req.query.phone ? "phone" : "id";
+      const lookupResult = await pool.query(
+        `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate, license_number, nin_number, status, onboarding_status, documents, compliance_notes FROM drivers WHERE ${lookupCol} = $1`,
+        [lookupParam]
+      );
+      if (lookupResult.rows.length > 0) {
+        req.driver = lookupResult.rows[0];
+        driverId = lookupResult.rows[0].id;
+      }
+    }
+
+    if (!driverId) {
+      return res.status(401).json({
+        status: "error",
+        success: false,
+        message: "Driver authorization required. Please provide Bearer token in Authorization header, ?token= query parameter, or ?driver_id= query parameter."
+      });
+    }
+
+    const driverResult = await pool.query(
+      `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate, license_number, nin_number, status, onboarding_status, documents, compliance_notes FROM drivers WHERE id = $1`,
+      [driverId]
+    );
+
+    if (driverResult.rows.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        success: false,
+        message: "Driver account not found"
+      });
+    }
+
+    const driver = driverResult.rows[0];
+    let docs = {};
+    if (typeof driver.documents === "object" && driver.documents !== null) {
+      docs = { ...driver.documents };
+    } else if (typeof driver.documents === "string") {
+      try { docs = JSON.parse(driver.documents); } catch (e) { docs = {}; }
+    }
+
+    const driverLicenseUrl = docs.driver_license || docs.driver_license_front || docs.license || null;
+    const vehicleRegUrl = docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || null;
+    const passportPhotoUrl = docs.passport_photo || docs.avatar_url || driver.avatar_url || null;
+    const ninSlipUrl = docs.nin_slip || docs.nin || null;
+    const guarantorFormUrl = docs.guarantor_form || docs.guarantor || null;
+
+    const checklist = {
+      driver_license: Boolean(driverLicenseUrl || driver.license_number),
+      vehicle_registration: Boolean(vehicleRegUrl || (driver.vehicle_type && driver.vehicle_plate)),
+      passport_photo: Boolean(passportPhotoUrl),
+      nin_slip: Boolean(ninSlipUrl || driver.nin_number),
+      guarantor_form: Boolean(guarantorFormUrl)
+    };
+
+    const documentsList = [
+      {
+        key: "driver_license",
+        title: "Driver's License",
+        category: "Identification",
+        status: checklist.driver_license ? "uploaded" : "missing",
+        url: driverLicenseUrl,
+        number: driver.license_number || null,
+        front_url: docs.driver_license_front || driverLicenseUrl,
+        back_url: docs.driver_license_back || null,
+        required: true
+      },
+      {
+        key: "vehicle_registration",
+        title: "Vehicle Registration",
+        category: "Vehicle Compliance",
+        status: checklist.vehicle_registration ? "uploaded" : "missing",
+        url: vehicleRegUrl,
+        plate_number: driver.vehicle_plate || null,
+        vehicle_type: driver.vehicle_type || null,
+        required: true
+      },
+      {
+        key: "passport_photo",
+        title: "Passport Photo / Profile Picture",
+        category: "Identification",
+        status: checklist.passport_photo ? "uploaded" : "missing",
+        url: passportPhotoUrl,
+        required: true
+      },
+      {
+        key: "nin_slip",
+        title: "National Identity Number (NIN) Slip",
+        category: "Government ID",
+        status: checklist.nin_slip ? "uploaded" : "missing",
+        url: ninSlipUrl,
+        nin_number: driver.nin_number || null,
+        required: true
+      },
+      {
+        key: "guarantor_form",
+        title: "Guarantor Form",
+        category: "Verification",
+        status: checklist.guarantor_form ? "uploaded" : "missing",
+        url: guarantorFormUrl,
+        required: true
+      }
+    ];
+
+    const missingDocuments = documentsList
+      .filter(d => d.required && d.status === "missing")
+      .map(d => d.key);
+
+    const isComplete = missingDocuments.length === 0;
+
+    const consolidatedDocs = {
+      driver_license: driverLicenseUrl,
+      driver_license_front: docs.driver_license_front || driverLicenseUrl,
+      driver_license_back: docs.driver_license_back || null,
+      vehicle_registration: vehicleRegUrl,
+      passport_photo: passportPhotoUrl,
+      nin_slip: ninSlipUrl,
+      guarantor_form: guarantorFormUrl,
+      ...docs
+    };
+
+    const responseData = {
+      driver_id: driver.id,
+      name: driver.name,
+      phone: driver.phone,
+      email: driver.email,
+      avatar_url: passportPhotoUrl,
+      status: driver.status,
+      onboarding_status: driver.onboarding_status,
+      is_verified: driver.status === "active",
+      license_number: driver.license_number,
+      nin_number: driver.nin_number,
+      vehicle_type: driver.vehicle_type,
+      vehicle_plate: driver.vehicle_plate,
+      documents: consolidatedDocs,
+      documents_list: documentsList,
+      checklist,
+      missing_documents: missingDocuments,
+      total_required: documentsList.filter(d => d.required).length,
+      uploaded_count: documentsList.filter(d => d.required && d.status === "uploaded").length,
+      is_complete: isComplete,
+      compliance_notes: driver.compliance_notes || null
+    };
+
+    return res.status(200).json({
+      status: "success",
+      success: true,
+      message: isComplete
+        ? "All compliance documents have been uploaded."
+        : `Pending ${missingDocuments.length} document(s): ${missingDocuments.join(", ")}.`,
+      data: responseData,
+      documents: consolidatedDocs,
+      checklist,
+      missing_documents: missingDocuments
+    });
+  } catch (err) {
+    console.error("getDriverDocuments error:", err.message);
+    next(err);
+  }
+};
+
 // ── POST /api/driver/upload/kyc & /api/driver/upload/document ─────────
 // Upload Driver License, NIN slip, Vehicle Registration, or Guarantor document
 const uploadKYCDocument = async (req, res, next) => {
   try {
     const docType = ((req.body && req.body.doc_type) || (req.query && req.query.type) || "document").toLowerCase();
+    const targetDriverId = req.driver?.id || req.body?.driver_id || req.query?.driver_id || req.body?.driverId || req.query?.driverId || null;
 
     // 1. Multipart file upload
     const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['document', 'file', 'image', 'kyc'].includes(f.fieldname)) || req.files[0])) || null;
@@ -252,14 +512,27 @@ const uploadKYCDocument = async (req, res, next) => {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const fileUrl = `${baseUrl}/uploads/documents/${file.filename}`;
 
+      // Persist to driver DB record if driver is identified
+      const persistResult = await persistDriverDocument(targetDriverId, docType, fileUrl, req.body || {});
+
       return res.status(201).json({
         status: "success",
+        success: true,
         message: "KYC document uploaded successfully",
         doc_type: docType,
         url: fileUrl,
         filename: file.filename,
         size: file.size,
-        mimetype: file.mimetype
+        mimetype: file.mimetype,
+        documents: persistResult?.documents || null,
+        checklist: persistResult?.checklist || null,
+        data: {
+          url: fileUrl,
+          doc_type: docType,
+          filename: file.filename,
+          documents: persistResult?.documents || null,
+          checklist: persistResult?.checklist || null
+        }
       });
     }
 
@@ -290,20 +563,34 @@ const uploadKYCDocument = async (req, res, next) => {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const fileUrl = `${baseUrl}/uploads/documents/${savedFilename}`;
 
+      // Persist to driver DB record if driver is identified
+      const persistResult = await persistDriverDocument(targetDriverId, docType, fileUrl, req.body || {});
+
       return res.status(201).json({
         status: "success",
+        success: true,
         message: "KYC document saved successfully",
         doc_type: docType,
         url: fileUrl,
         filename: savedFilename,
         size: buffer.length,
-        mimetype: mime
+        mimetype: mime,
+        documents: persistResult?.documents || null,
+        checklist: persistResult?.checklist || null,
+        data: {
+          url: fileUrl,
+          doc_type: docType,
+          filename: savedFilename,
+          documents: persistResult?.documents || null,
+          checklist: persistResult?.checklist || null
+        }
       });
     }
 
     return res.status(400).json({
       status: "error",
-      message: "No document file or base64 data provided in request"
+      success: false,
+      message: "No document file or base64 data provided in request. Please upload a file via multipart form-data or pass file_base64 in JSON."
     });
   } catch (err) {
     console.error("uploadKYCDocument error:", err.message);
@@ -438,5 +725,6 @@ module.exports = {
   uploadProofPhoto,
   uploadKYCDocument,
   uploadProfilePhoto,
+  getDriverDocuments,
 };
 

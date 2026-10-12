@@ -105,6 +105,8 @@ const optionalDriverProtect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     } else if (req.cookies?.driverToken || req.cookies?.token) {
       token = req.cookies.driverToken || req.cookies.token;
+    } else if (req.query?.token) {
+      token = req.query.token;
     }
 
     if (!token) {
@@ -114,7 +116,10 @@ const optionalDriverProtect = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded?.id) {
       const driverResult = await pool.query(
-        "SELECT id, name, email, phone, status, bank_name, account_number, account_name FROM drivers WHERE id = $1",
+        `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate,
+                license_number, nin_number, status, onboarding_status, documents,
+                compliance_notes, bank_name, account_number, account_name
+         FROM drivers WHERE id = $1`,
         [decoded.id]
       );
       if (driverResult.rows.length > 0) {

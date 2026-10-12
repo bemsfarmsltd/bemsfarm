@@ -101,9 +101,17 @@ router.post("/upload/avatar", driverProtect, driverUploadController.avatarUpload
 router.post("/upload/photo", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
 router.post("/upload/profile-photo", driverProtect, driverUploadController.avatarUploadMiddleware, driverUploadController.uploadProfilePhoto);
 
-// ── 2b. KYC & Document Uploads (Public or Authenticated) ─────────────
-router.post("/upload/kyc", driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
-router.post("/upload/document", driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
+// ── 2b. KYC & Documents (Upload & Retrieval) ─────────────────────────
+// Document retrieval endpoints (GET)
+router.get("/documents", optionalDriverProtect, driverUploadController.getDriverDocuments);
+router.get("/upload/document", optionalDriverProtect, driverUploadController.getDriverDocuments);
+router.get("/upload/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
+router.get("/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
+router.get("/kyc/documents", optionalDriverProtect, driverUploadController.getDriverDocuments);
+
+// Document upload endpoints (POST)
+router.post("/upload/kyc", optionalDriverProtect, driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
+router.post("/upload/document", optionalDriverProtect, driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
 
 // ── 2. Deliveries / Orders (Automated Mapping & Dispatch) ───────────
 router.get("/deliveries/available", driverProtect, driverDeliveryController.getAvailableDeliveries);

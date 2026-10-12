@@ -49,12 +49,102 @@
 							"path": ["onboarding", "submit"]
 						}
 					}
+				},
+				{
+					"name": "Get Driver Compliance Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/documents",
+							"host": ["{{baseUrl}}"],
+							"path": ["documents"]
+						},
+						"description": "Retrieves the current driver's uploaded compliance documents (driver license, vehicle registration, passport photo, NIN slip, guarantor form), verification checklist, and missing documents array. Also accessible at {{baseUrl}}/upload/document."
+					}
+				},
+				{
+					"name": "Upload KYC / Compliance Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "doc_type",
+									"value": "driver_license",
+									"type": "text",
+									"description": "driver_license, vehicle_registration, passport_photo, nin_slip, or guarantor_form"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "Image file (JPG, PNG, WEBP) or PDF"
+								},
+								{
+									"key": "license_number",
+									"value": "DL-12345678",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/upload/document",
+							"host": ["{{baseUrl}}"],
+							"path": ["upload", "document"]
+						},
+						"description": "Upload a driver compliance document (multipart form-data or JSON base64). Automatically attaches document to driver's profile in database and updates verification checklist."
+					}
 				}
 			]
 		},
 		{
 			"name": "2. Authentication & Duty Status",
 			"item": [
+				{
+					"name": "Register Driver (Courier Application)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Chidi Courier\",\n  \"phone\": \"08012345678\",\n  \"email\": \"chidi@example.com\",\n  \"password\": \"CourierPass123!\",\n  \"vehicle_type\": \"motorcycle\",\n  \"vehicle_plate\": \"ABJ-123-XY\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
 				{
 					"name": "Driver Login",
 					"event": [

@@ -1778,6 +1778,93 @@
           "response": []
         },
         {
+          "name": "GET /api/driver/documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "driver_id",
+                  "value": "",
+                  "description": "Optional driver ID if not using Bearer token"
+                }
+              ]
+            },
+            "description": "Retrieves driver compliance documents (driver license, vehicle registration, passport photo, NIN slip, guarantor form), verification checklist, and missing documents array.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/driver/upload/document",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver/upload/document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "driver",
+                "upload",
+                "document"
+              ],
+              "query": [
+                {
+                  "key": "driver_id",
+                  "value": "",
+                  "description": "Optional driver ID if not using Bearer token"
+                }
+              ]
+            },
+            "description": "GET alias to retrieve driver compliance documents and verification checklist.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "GET /api/driver/deliveries/available",
           "request": {
             "method": "GET",

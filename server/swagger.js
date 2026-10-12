@@ -26,4 +26,5 @@ const endpointsFiles = ['./src/index.js'];
 // Generate swagger.json
 swaggerAutogen(outputFile, endpointsFiles, doc).then(() => {
     console.log("Swagger documentation generated successfully.");
+    process.exit(0);
 });

@@ -28,3 +28,6 @@ npm-debug.log*
 *.zip
 CLIENT_API_SPECIFICATION.md
 scripts/generate_pdf.js
+
+# Local uploads
+server/uploads/
