@@ -1541,55 +1541,115 @@ export default function DriversManagement() {
                   <i className="ri-attachment-line text-emerald me-1"></i> Submitted Compliance Documents
                 </h6>
                 <div className="row g-3 mb-4">
-                  {[
-                    { key: 'drivers_license', title: "Driver's License", icon: '🪪' },
-                    { key: 'nin_slip', title: 'National ID / NIN Slip', icon: '📜' },
-                    { key: 'vehicle_registration', title: 'Vehicle Registration', icon: '🛵' },
-                    { key: 'passport_photo', title: 'Passport Photo', icon: '📸' },
-                    { key: 'guarantor_form', title: 'Guarantor Form / Letter', icon: '📝' },
-                  ].map((doc) => {
-                    const docUrl = selected.documents?.[doc.key]
-                    return (
-                      <div key={doc.key} className="col-sm-6 col-md-4">
-                        <div className="border rounded-3 p-3 text-center h-100 bg-light d-flex flex-column justify-content-between">
-                          <div>
-                            <div className="fs-24 mb-1">{doc.icon}</div>
-                            <div className="fw-bold fs-12 text-dark mb-2">{doc.title}</div>
-                          </div>
-                          {docUrl ? (
+                  {(() => {
+                    const resolveDocUrl = (driver, key) => {
+                      if (!driver) return null;
+                      const docs = (typeof driver.documents === 'object' && driver.documents !== null)
+                        ? driver.documents
+                        : (typeof driver.documents === 'string' ? (() => { try { return JSON.parse(driver.documents); } catch(e) { return {}; } })() : {});
+                      
+                      if (key === 'drivers_license' || key === 'driver_license') {
+                        return docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license || null;
+                      }
+                      if (key === 'driver_license_back') {
+                        return docs.driver_license_back || docs.license_back || null;
+                      }
+                      if (key === 'passport_photo') {
+                        return docs.passport_photo || docs.photo || docs.avatar || docs.avatar_url || driver.avatar_url || null;
+                      }
+                      if (key === 'vehicle_registration') {
+                        return docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || docs.vehicle_photo || docs.logbook || null;
+                      }
+                      if (key === 'nin_slip') {
+                        return docs.nin_slip || docs.nin || docs.nin_document || null;
+                      }
+                      if (key === 'guarantor_form') {
+                        return docs.guarantor_form || docs.guarantor || docs.guarantor_document || null;
+                      }
+                      return docs[key] || null;
+                    };
+
+                    const docItems = [
+                      { key: 'drivers_license', title: "Driver's License (Front)", icon: '🪪' },
+                      ...(resolveDocUrl(selected, 'driver_license_back') ? [{ key: 'driver_license_back', title: "Driver's License (Back)", icon: '🪪' }] : []),
+                      { key: 'nin_slip', title: 'National ID / NIN Slip', icon: '📜' },
+                      { key: 'vehicle_registration', title: 'Vehicle Registration', icon: '🛵' },
+                      { key: 'passport_photo', title: 'Passport Photo', icon: '📸' },
+                      { key: 'guarantor_form', title: 'Guarantor Form / Letter', icon: '📝' },
+                    ];
+
+                    return docItems.map((doc) => {
+                      const docUrl = resolveDocUrl(selected, doc.key);
+                      const isPdf = typeof docUrl === 'string' && docUrl.toLowerCase().includes('.pdf');
+                      return (
+                        <div key={doc.key} className="col-sm-6 col-md-4">
+                          <div className="border rounded-3 p-3 text-center h-100 bg-light d-flex flex-column justify-content-between shadow-xs">
                             <div>
-                              <div
-                                className="rounded overflow-hidden mb-2 border bg-white"
-                                style={{ height: 90, cursor: 'pointer' }}
-                                onClick={() => setViewingDocument({ title: doc.title, url: docUrl })}
-                              >
-                                <img
-                                  src={docUrl}
-                                  alt={doc.title}
-                                  className="w-100 h-100 object-fit-cover"
-                                  onError={(e) => {
-                                    e.target.style.display = 'none'
-                                    e.target.parentElement.innerHTML = '<span class="text-xs text-muted p-2 d-block">📄 PDF / File Attached</span>'
-                                  }}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary w-100 fs-11 fw-semibold"
-                                onClick={() => setViewingDocument({ title: doc.title, url: docUrl })}
-                              >
-                                <i className="ri-zoom-in-line me-1"></i> View Full Scan
-                              </button>
+                              <div className="fs-24 mb-1">{doc.icon}</div>
+                              <div className="fw-bold fs-12 text-dark mb-2">{doc.title}</div>
                             </div>
-                          ) : (
-                            <span className="badge bg-secondary-subtle text-secondary py-2 fs-11">
-                              Not Provided
-                            </span>
-                          )}
+                            {docUrl ? (
+                              <div>
+                                <div
+                                  className="rounded overflow-hidden mb-2 border bg-white position-relative d-flex align-items-center justify-content-center"
+                                  style={{ height: 100, cursor: 'pointer' }}
+                                  onClick={() => setViewingDocument({ title: doc.title, url: docUrl, isPdf })}
+                                  title="Click to view full document"
+                                >
+                                  {isPdf ? (
+                                    <div className="text-center p-2 text-danger">
+                                      <i className="ri-file-pdf-2-line fs-32 d-block mb-1"></i>
+                                      <span className="badge bg-danger-subtle text-danger fs-10 px-2 py-1 border border-danger-subtle">PDF Document</span>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={docUrl}
+                                      alt={doc.title}
+                                      className="w-100 h-100 object-fit-contain"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        if (e.target.parentElement) {
+                                          e.target.parentElement.innerHTML = `
+                                            <div class="text-center p-2 text-muted">
+                                              <i class="ri-file-shield-line fs-28 d-block mb-1 text-primary"></i>
+                                              <span class="fs-11 fw-semibold text-dark d-block">Document Attached</span>
+                                              <span class="fs-10 text-muted d-block text-truncate px-1" style="max-width: 130px;">${docUrl.split('/').pop()}</span>
+                                            </div>
+                                          `;
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                                <div className="d-flex gap-1">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary flex-fill fs-11 fw-semibold py-1"
+                                    onClick={() => setViewingDocument({ title: doc.title, url: docUrl, isPdf })}
+                                  >
+                                    <i className="ri-zoom-in-line me-1"></i> View Scan
+                                  </button>
+                                  <a
+                                    href={docUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-light border fs-11 py-1 px-2 text-dark"
+                                    title="Open file in new tab"
+                                  >
+                                    <i className="ri-external-link-line"></i>
+                                  </a>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="badge bg-secondary-subtle text-secondary py-2 fs-11">
+                                Not Provided
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Review Notes / Reason if Rejecting */}
@@ -1646,18 +1706,64 @@ export default function DriversManagement() {
               onClick={() => setViewingDocument(null)}
             >
               <div
-                style={{ background: '#fff', borderRadius: 16, maxWidth: 840, width: '100%', maxHeight: '90vh' }}
-                className="overflow-hidden p-3"
+                style={{ background: '#fff', borderRadius: 16, maxWidth: 900, width: '100%', maxHeight: '92vh' }}
+                className="overflow-hidden p-3 d-flex flex-column shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="d-flex justify-content-between align-items-center mb-2 px-2">
-                  <strong className="text-dark">{viewingDocument.title}</strong>
-                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setViewingDocument(null)}>
-                    ✕ Close
-                  </button>
+                <div className="d-flex justify-content-between align-items-center mb-2 px-2 pb-2 border-bottom">
+                  <div>
+                    <strong className="text-dark fs-15 me-2">{viewingDocument.title}</strong>
+                    <span className="fs-11 text-muted font-monospace">{viewingDocument.url?.split('/').pop()}</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <a
+                      href={viewingDocument.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-sm btn-primary fs-12 fw-semibold px-2 py-1"
+                    >
+                      <i className="ri-external-link-line me-1"></i> Open in New Tab
+                    </a>
+                    <button className="btn btn-sm btn-outline-secondary fs-12 py-1" onClick={() => setViewingDocument(null)}>
+                      ✕ Close
+                    </button>
+                  </div>
                 </div>
-                <div className="text-center bg-dark rounded p-2" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-                  <img src={viewingDocument.url} alt={viewingDocument.title} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+
+                <div
+                  className="text-center bg-dark rounded p-2 flex-grow-1 d-flex align-items-center justify-content-center position-relative"
+                  style={{ minHeight: 400, maxHeight: '76vh', overflow: 'auto' }}
+                >
+                  {viewingDocument.isPdf || viewingDocument.url?.toLowerCase().includes('.pdf') ? (
+                    <iframe
+                      src={viewingDocument.url}
+                      title={viewingDocument.title}
+                      style={{ width: '100%', height: '72vh', border: 'none', borderRadius: 8, background: '#fff' }}
+                    />
+                  ) : (
+                    <img
+                      src={viewingDocument.url}
+                      alt={viewingDocument.title}
+                      style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.parentElement) {
+                          e.target.parentElement.innerHTML = `
+                            <div class="p-5 text-center text-white">
+                              <i class="ri-file-search-line fs-48 text-warning d-block mb-3"></i>
+                              <h6 class="fw-bold text-white mb-2">Unable to render direct image preview</h6>
+                              <p class="text-white-50 fs-12 mb-3" style="max-width: 440px; margin: 0 auto;">
+                                The file may be in an external or secured format. You can open and inspect it directly in a dedicated tab.
+                              </p>
+                              <a href="${viewingDocument.url}" target="_blank" rel="noopener noreferrer" class="btn btn-light btn-sm fw-bold px-3 py-2">
+                                <i class="ri-external-link-line me-1"></i> Open Document in New Tab
+                              </a>
+                            </div>
+                          `;
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
