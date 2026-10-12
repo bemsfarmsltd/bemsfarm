@@ -510,7 +510,7 @@ const uploadKYCDocument = async (req, res, next) => {
     const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['document', 'file', 'image', 'kyc'].includes(f.fieldname)) || req.files[0])) || null;
     if (file) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const fileUrl = `${baseUrl}/uploads/documents/${file.filename}`;
+      const fileUrl = `${baseUrl}/api/driver/documents/file/${file.filename}`;
 
       // Persist to driver DB record if driver is identified
       const persistResult = await persistDriverDocument(targetDriverId, docType, fileUrl, req.body || {});
@@ -561,7 +561,7 @@ const uploadKYCDocument = async (req, res, next) => {
       fs.writeFileSync(filePath, buffer);
 
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const fileUrl = `${baseUrl}/uploads/documents/${savedFilename}`;
+      const fileUrl = `${baseUrl}/api/driver/documents/file/${savedFilename}`;
 
       // Persist to driver DB record if driver is identified
       const persistResult = await persistDriverDocument(targetDriverId, docType, fileUrl, req.body || {});
@@ -715,6 +715,35 @@ const uploadProfilePhoto = async (req, res, next) => {
   }
 };
 
+// ── GET /api/driver/documents/file/:filename & /api/driver/file/:filename ──
+// Serves uploaded driver documents with cross-origin access and robust fallback search
+const serveDocumentFile = (req, res) => {
+  const rawFile = req.params.filename || req.params[0] || req.query.file || "";
+  const filename = path.basename(rawFile);
+  if (!filename || filename === "." || filename === "/") {
+    return res.status(400).json({ status: "error", message: "Invalid document filename" });
+  }
+
+  const searchDirs = [
+    path.join(__dirname, "../../uploads/documents"),
+    path.join(__dirname, "../../uploads/avatars"),
+    path.join(__dirname, "../../uploads/proofs"),
+    path.join(__dirname, "../../uploads"),
+  ];
+
+  for (const dir of searchDirs) {
+    const candidate = path.join(dir, filename);
+    if (fs.existsSync(candidate)) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.sendFile(candidate);
+    }
+  }
+
+  return res.status(404).json({ status: "error", message: `Document file '${filename}' not found` });
+};
+
 module.exports = {
   upload,
   uploadDoc,
@@ -726,5 +755,6 @@ module.exports = {
   uploadKYCDocument,
   uploadProfilePhoto,
   getDriverDocuments,
+  serveDocumentFile,
 };
 

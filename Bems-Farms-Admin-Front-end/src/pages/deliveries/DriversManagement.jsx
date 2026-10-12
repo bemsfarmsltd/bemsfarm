@@ -1548,25 +1548,33 @@ export default function DriversManagement() {
                         ? driver.documents
                         : (typeof driver.documents === 'string' ? (() => { try { return JSON.parse(driver.documents); } catch(e) { return {}; } })() : {});
                       
+                      let rawUrl = null;
                       if (key === 'drivers_license' || key === 'driver_license') {
-                        return docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license || null;
+                        rawUrl = docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license || null;
+                      } else if (key === 'driver_license_back') {
+                        rawUrl = docs.driver_license_back || docs.license_back || null;
+                      } else if (key === 'passport_photo') {
+                        rawUrl = docs.passport_photo || docs.photo || docs.avatar || docs.avatar_url || driver.avatar_url || null;
+                      } else if (key === 'vehicle_registration') {
+                        rawUrl = docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || docs.vehicle_photo || docs.logbook || null;
+                      } else if (key === 'nin_slip') {
+                        rawUrl = docs.nin_slip || docs.nin || docs.nin_document || null;
+                      } else if (key === 'guarantor_form') {
+                        rawUrl = docs.guarantor_form || docs.guarantor || docs.guarantor_document || null;
+                      } else {
+                        rawUrl = docs[key] || null;
                       }
-                      if (key === 'driver_license_back') {
-                        return docs.driver_license_back || docs.license_back || null;
+
+                      if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+                      // Automatically normalize production URLs so LiteSpeed reverse proxy routes to Node.js
+                      if (rawUrl.includes('/uploads/documents/') || (rawUrl.includes('api.bemsfarms.com') && rawUrl.includes('/uploads/'))) {
+                        const filename = rawUrl.split('/').pop().split('?')[0];
+                        if (filename) {
+                          return `https://api.bemsfarms.com/api/driver/documents/file/${filename}`;
+                        }
                       }
-                      if (key === 'passport_photo') {
-                        return docs.passport_photo || docs.photo || docs.avatar || docs.avatar_url || driver.avatar_url || null;
-                      }
-                      if (key === 'vehicle_registration') {
-                        return docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || docs.vehicle_photo || docs.logbook || null;
-                      }
-                      if (key === 'nin_slip') {
-                        return docs.nin_slip || docs.nin || docs.nin_document || null;
-                      }
-                      if (key === 'guarantor_form') {
-                        return docs.guarantor_form || docs.guarantor || docs.guarantor_document || null;
-                      }
-                      return docs[key] || null;
+                      return rawUrl;
                     };
 
                     const docItems = [

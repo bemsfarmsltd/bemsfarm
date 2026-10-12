@@ -90,7 +90,7 @@ const register = async (req, res, next) => {
     if (Array.isArray(req.files) && req.files.length > 0) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
       for (const file of req.files) {
-        const fileUrl = `${baseUrl}/uploads/documents/${file.filename}`;
+        const fileUrl = `${baseUrl}/api/driver/documents/file/${file.filename}`;
         const field = (file.fieldname || "").toLowerCase();
         if (field.includes("license_front") || field === "driver_license_front") {
           docs.driver_license_front = fileUrl;

@@ -108,6 +108,8 @@ router.get("/upload/document", optionalDriverProtect, driverUploadController.get
 router.get("/upload/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
 router.get("/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
 router.get("/kyc/documents", optionalDriverProtect, driverUploadController.getDriverDocuments);
+router.get("/documents/file/:filename", driverUploadController.serveDocumentFile);
+router.get("/file/:filename", driverUploadController.serveDocumentFile);
 
 // Document upload endpoints (POST)
 router.post("/upload/kyc", optionalDriverProtect, driverUploadController.docUploadMiddleware, driverUploadController.uploadKYCDocument);
