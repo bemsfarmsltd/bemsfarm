@@ -83,47 +83,60 @@ const register = async (req, res, next) => {
       return res.status(400).json({ message: "Password must be at least 6 characters long" });
     }
 
-    // ── Item 20: Documents are COMPULSORY during initial driver registration ──
-    const docs = (typeof documents === "object" && documents !== null) ? documents : {};
-    const licenseDoc = (docs && (docs.driver_license || docs.drivers_license || docs.driver_license_front || docs.license)) || req.body.driver_license || req.body.drivers_license;
-    const ninDoc = (docs && (docs.nin_slip || docs.nin || docs.nin_document)) || req.body.nin_slip || req.body.nin_document;
-    const vehicleDoc = (docs && (docs.vehicle_registration || docs.vehicle_reg || docs.vehicle_document || docs.logbook)) || req.body.vehicle_registration || req.body.vehicle_reg;
-    const passportDoc = (avatar_url || (docs && (docs.passport_photo || docs.photo || docs.avatar)) || req.body.passport_photo || req.body.photo || "").trim();
+    // ── Documents handling (supports JSON body, nested documents object, and multipart uploads) ──
+    const docs = (typeof documents === "object" && documents !== null) ? { ...documents } : {};
+
+    // Check files uploaded via multer multipart/form-data
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      for (const file of req.files) {
+        const fileUrl = `${baseUrl}/uploads/documents/${file.filename}`;
+        const field = (file.fieldname || "").toLowerCase();
+        if (field.includes("license_front") || field === "driver_license_front") {
+          docs.driver_license_front = fileUrl;
+          docs.driver_license = docs.driver_license || fileUrl;
+        } else if (field.includes("license_back") || field === "driver_license_back") {
+          docs.driver_license_back = fileUrl;
+        } else if (field.includes("license")) {
+          docs.driver_license = docs.driver_license || fileUrl;
+        } else if (field.includes("vehicle") || field.includes("logbook")) {
+          docs.vehicle_registration = fileUrl;
+        } else if (field.includes("nin")) {
+          docs.nin_slip = fileUrl;
+        } else if (field.includes("passport") || field.includes("photo") || field.includes("avatar") || field.includes("selfie")) {
+          docs.passport_photo = fileUrl;
+        }
+      }
+    }
+
+    const licenseFrontDoc = (docs && (docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license)) || req.body.driver_license_front || req.body.driver_license || req.body.drivers_license || null;
+    const licenseBackDoc = (docs && (docs.driver_license_back || docs.license_back)) || req.body.driver_license_back || null;
+    const licenseDoc = licenseFrontDoc || licenseBackDoc || (docs && docs.driver_license) || null;
+    const ninDoc = (docs && (docs.nin_slip || docs.nin || docs.nin_document)) || req.body.nin_slip || req.body.nin_document || null;
+    const vehicleDoc = (docs && (docs.vehicle_registration || docs.vehicle_reg || docs.vehicle_document || docs.vehicle_photo || docs.logbook)) || req.body.vehicle_registration || req.body.vehicle_reg || req.body.vehicle_photo || null;
+    const passportDoc = (avatar_url || (docs && (docs.passport_photo || docs.photo || docs.avatar || docs.selfie)) || req.body.passport_photo || req.body.photo || req.body.avatar || req.body.selfie || "").trim() || null;
 
     const missingDocs = [];
-    if (!license_number || !license_number.trim() || !licenseDoc) {
-      missingDocs.push("Driver's License (license number AND scanned document/photo are compulsory)");
+    if (!licenseDoc && !license_number) {
+      missingDocs.push("Driver's License (license number or scanned document)");
     }
-    if (!nin_number || !nin_number.trim() || !ninDoc) {
-      missingDocs.push("National Identity / NIN (11-digit NIN number AND NIN slip/card scan are compulsory)");
-    }
-    if (!vehicle_plate || !vehicle_plate.trim() || !vehicleDoc) {
-      missingDocs.push("Vehicle Registration (license plate number AND vehicle registration paper are compulsory)");
+    if (!vehicleDoc && !vehicle_plate) {
+      missingDocs.push("Vehicle Registration (plate number or document)");
     }
     if (!passportDoc) {
-      missingDocs.push("Driver Passport Photograph (clear face photo or selfie is compulsory)");
+      missingDocs.push("Driver Passport Photograph (clear face photo or selfie)");
     }
 
-    if (missingDocs.length > 0) {
-      return res.status(400).json({
-        code: "MANDATORY_DOCUMENTS_REQUIRED",
-        message: "Compliance documents are compulsory during initial registration. All 4 verification items must be provided before your application can be submitted.",
-        missing_documents: missingDocs,
-        required_items: {
-          license: "license_number and documents.driver_license (or driver_license)",
-          nin: "nin_number and documents.nin_slip (or nin_slip)",
-          vehicle: "vehicle_plate and documents.vehicle_registration (or vehicle_registration)",
-          passport: "avatar_url or documents.passport_photo (or passport_photo)",
-        },
-      });
-    }
+    const initialOnboardingStatus = missingDocs.length === 0 ? "documents_submitted" : "pending_verification";
 
     const consolidatedDocuments = {
       ...docs,
-      driver_license: licenseDoc,
-      nin_slip: ninDoc,
-      vehicle_registration: vehicleDoc,
-      passport_photo: passportDoc,
+      ...(licenseDoc ? { driver_license: licenseDoc } : {}),
+      ...(licenseFrontDoc ? { driver_license_front: licenseFrontDoc } : {}),
+      ...(licenseBackDoc ? { driver_license_back: licenseBackDoc } : {}),
+      ...(vehicleDoc ? { vehicle_registration: vehicleDoc } : {}),
+      ...(passportDoc ? { passport_photo: passportDoc } : {}),
+      ...(ninDoc ? { nin_slip: ninDoc } : {}),
     };
 
     await client.query("BEGIN");
@@ -200,7 +213,7 @@ const register = async (req, res, next) => {
         updated_at
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, 'pending', 'pending_verification', false,
+        $1, $2, $3, $4, $5, $6, 'pending', $22, false,
         $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
         $20::jsonb, 700.00, 5.0, 0, 0.00,
         $21, NOW(), NOW()
@@ -229,6 +242,7 @@ const register = async (req, res, next) => {
         passportDoc || avatar_url || null,
         JSON.stringify(consolidatedDocuments),
         `Self-service registered on ${new Date().toISOString().slice(0, 10)}. Awaiting admin verification.`,
+        initialOnboardingStatus,
       ]
     );
 
@@ -282,10 +296,14 @@ const register = async (req, res, next) => {
       [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${newDriver.name.toUpperCase()}`, newDriver.id]
     );
 
+    const token = generateDriverToken(newDriver);
+
     res.status(201).json({
       status: "success",
-      message: "Application submitted successfully! Our compliance team will review your credentials and you will receive an approval notification on your email within the next 2 working days.",
-      review_timeline: "1-2 business days",
+      message: missingDocs.length === 0
+        ? "Driver registered successfully! All compliance documents received and under review. You can log in anytime to check your approval status."
+        : "Driver account created successfully! Please upload your remaining compliance documents to complete verification.",
+      token,
       driver: {
         id: newDriver.id,
         name: newDriver.name,
@@ -299,14 +317,19 @@ const register = async (req, res, next) => {
         onboarding_status: newDriver.onboarding_status,
         is_available: false,
         is_on_delivery: false,
+        is_verified: false,
       },
       verification: {
-        status: "pending",
-        onboarding_status: "pending_verification",
+        status: newDriver.status,
+        onboarding_status: newDriver.onboarding_status,
         is_verified: false,
-        can_login: false,
+        can_login: true,
         can_accept_orders: false,
-        message: "Your application is under review. You will receive an approval email within 2 working days with instructions to sign in.",
+        missing_documents: missingDocs,
+        documents_complete: missingDocs.length === 0,
+        message: missingDocs.length === 0
+          ? "Your documents have been submitted. Our compliance team will review your application within 1-2 business days."
+          : "Your account is created. Please upload the missing compliance documents via the app or KYC upload endpoint.",
       },
     });
   } catch (err) {
@@ -438,26 +461,16 @@ const login = async (req, res, next) => {
 
     const isVerified = isDriverApproved(driver);
 
-    // Strict Compliance Gatekeeper: Driver CANNOT log in until approved by admin
-    if (!isVerified) {
-      const driverStatus = String(driver.status || "").toLowerCase().trim();
-      const onboardingStatus = String(driver.onboarding_status || "").toLowerCase().trim();
+    // Check if account was explicitly rejected
+    const driverStatus = String(driver.status || "").toLowerCase().trim();
+    const onboardingStatus = String(driver.onboarding_status || "").toLowerCase().trim();
 
-      if (driverStatus === "rejected" || onboardingStatus === "rejected") {
-        return res.status(403).json({
-          code: "ACCOUNT_REJECTED",
-          message: "Your driver application was reviewed and could not be approved. " + (driver.compliance_notes ? `Notes: ${driver.compliance_notes}` : "Please contact Bems Farms dispatch operations for assistance."),
-          status: "rejected",
-          onboarding_status: "rejected",
-        });
-      }
-
+    if (driverStatus === "rejected" || onboardingStatus === "rejected") {
       return res.status(403).json({
-        code: "ACCOUNT_PENDING_APPROVAL",
-        message: "Your driver application is currently under compliance review. You will receive an email notification within the next 2 working days once your account is approved. Once approved, you can sign in using your registered email and password.",
-        status: driver.status,
-        onboarding_status: driver.onboarding_status || "pending_verification",
-        review_timeline: "1-2 business days",
+        code: "ACCOUNT_REJECTED",
+        message: "Your driver application was reviewed and could not be approved. " + (driver.compliance_notes ? `Notes: ${driver.compliance_notes}` : "Please contact Bems Farms dispatch operations for assistance."),
+        status: "rejected",
+        onboarding_status: "rejected",
       });
     }
 
@@ -517,12 +530,13 @@ const getVerificationStatus = async (req, res, next) => {
       driver_license_uploaded: Boolean(
         driver.license_number || documents.driver_license_front || documents.driver_license || documents.license
       ),
-      nin_verified: Boolean(
-        driver.nin_number || documents.nin_slip || documents.nin
-      ),
-      vehicle_registered: Boolean(driver.vehicle_type && driver.vehicle_plate),
+      vehicle_registered: Boolean(driver.vehicle_type && (driver.vehicle_plate || documents.vehicle_registration)),
       payout_bank_added: Boolean(driver.bank_name && driver.account_number),
     };
+
+    if (driver.nin_number || documents.nin_slip || documents.nin) {
+      checklist.nin_verified = true;
+    }
 
     const completedCount = Object.values(checklist).filter(Boolean).length;
     const totalChecklist = Object.keys(checklist).length;

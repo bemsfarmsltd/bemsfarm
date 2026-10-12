@@ -45,8 +45,8 @@ router.get("/", (req, res) => {
 });
 
 // ── 0. Driver Onboarding & Self-Service Registration ───────────────
-router.post("/auth/register", driverAuthController.register);
-router.post("/register", driverAuthController.register);
+router.post("/auth/register", driverUploadController.docUploadMiddleware, driverAuthController.register);
+router.post("/register", driverUploadController.docUploadMiddleware, driverAuthController.register);
 router.get("/auth/status", driverProtect, driverAuthController.getVerificationStatus);
 router.get("/auth/verification", driverProtect, driverAuthController.getVerificationStatus);
 router.get("/onboarding/verify", driverOnboardingController.verifyToken);
