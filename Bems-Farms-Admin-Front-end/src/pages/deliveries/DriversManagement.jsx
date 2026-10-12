@@ -1744,7 +1744,15 @@ export default function DriversManagement() {
                     <img
                       src={viewingDocument.url}
                       alt={viewingDocument.title}
-                      style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '74vh',
+                        objectFit: 'contain',
+                        borderRadius: 8,
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                        background: '#fff',
+                        display: 'block',
+                      }}
                       onError={(e) => {
                         e.target.style.display = 'none';
                         if (e.target.parentElement) {
