@@ -729,19 +729,75 @@ const serveDocumentFile = (req, res) => {
     path.join(__dirname, "../../uploads/avatars"),
     path.join(__dirname, "../../uploads/proofs"),
     path.join(__dirname, "../../uploads"),
+    path.join(process.cwd(), "uploads/documents"),
+    path.join(process.cwd(), "uploads/avatars"),
+    path.join(process.cwd(), "uploads/proofs"),
+    path.join(process.cwd(), "uploads"),
+    path.join(process.cwd(), "server/uploads/documents"),
+    path.join(process.cwd(), "server/uploads/avatars"),
+    path.join(process.cwd(), "server/uploads/proofs"),
+    path.join(process.cwd(), "server/uploads"),
+    path.join(process.cwd(), "../uploads/documents"),
+    path.join(process.cwd(), "../uploads"),
+    path.join(process.cwd(), "public_html/uploads/documents"),
+    path.join(process.cwd(), "public_html/uploads"),
   ];
 
   for (const dir of searchDirs) {
-    const candidate = path.join(dir, filename);
-    if (fs.existsSync(candidate)) {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-      res.setHeader("Cache-Control", "public, max-age=86400");
-      return res.sendFile(candidate);
+    try {
+      const candidate = path.join(dir, filename);
+      if (fs.existsSync(candidate)) {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.sendFile(candidate);
+      }
+    } catch (_) {}
+  }
+
+  return res.status(404).json({
+    status: "error",
+    message: `Document file '${filename}' not found`,
+    searched_dirs: searchDirs.filter(d => {
+      try { return fs.existsSync(d); } catch (e) { return false; }
+    })
+  });
+};
+
+// Diagnostic helper to locate uploaded files on Hostinger disk
+const debugDisk = (req, res) => {
+  const dirs = [
+    path.join(__dirname, "../../uploads/documents"),
+    path.join(__dirname, "../../uploads/avatars"),
+    path.join(__dirname, "../../uploads/proofs"),
+    path.join(__dirname, "../../uploads"),
+    path.join(process.cwd(), "uploads/documents"),
+    path.join(process.cwd(), "uploads"),
+    path.join(process.cwd(), "server/uploads/documents"),
+    path.join(process.cwd(), "server/uploads"),
+    path.join(process.cwd(), "../uploads/documents"),
+    path.join(process.cwd(), "../uploads"),
+  ];
+
+  const results = {};
+  for (const d of dirs) {
+    try {
+      if (fs.existsSync(d)) {
+        results[d] = fs.readdirSync(d).slice(0, 50);
+      } else {
+        results[d] = "[DIR_NOT_FOUND]";
+      }
+    } catch (e) {
+      results[d] = `[ERROR: ${e.message}]`;
     }
   }
 
-  return res.status(404).json({ status: "error", message: `Document file '${filename}' not found` });
+  res.json({
+    status: "success",
+    cwd: process.cwd(),
+    __dirname,
+    directories: results
+  });
 };
 
 module.exports = {
@@ -756,5 +812,6 @@ module.exports = {
   uploadProfilePhoto,
   getDriverDocuments,
   serveDocumentFile,
+  debugDisk,
 };
 
