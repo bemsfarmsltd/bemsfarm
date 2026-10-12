@@ -258,7 +258,7 @@ async function persistDriverDocument(driverId, docType, fileUrl, extraBody = {})
   if (!driverId) return null;
   try {
     const dRes = await pool.query(
-      "SELECT id, documents, avatar_url, license_number, nin_number, vehicle_plate, vehicle_type FROM drivers WHERE id = $1",
+      "SELECT id, name, phone, email, documents, avatar_url, license_number, nin_number, vehicle_plate, vehicle_type FROM drivers WHERE id = $1",
       [driverId]
     );
     if (dRes.rows.length === 0) return null;
@@ -313,6 +313,20 @@ async function persistDriverDocument(driverId, docType, fileUrl, extraBody = {})
       `UPDATE drivers SET ${updateFields.join(", ")} WHERE id = $${updateParams.length}::bigint`,
       updateParams
     );
+
+    // Send Document Received email notification to driver
+    if (currentDriver.email) {
+      try {
+        const emailService = require("../services/emailService");
+        emailService.sendDriverDocumentsSubmittedEmail({
+          email: currentDriver.email,
+          name: currentDriver.name,
+          phone: currentDriver.phone,
+          docType: normKey,
+          isComplete: hasLicense && hasVeh && hasPassport && hasNin && hasGuarantor,
+        }).catch((err) => console.warn("[persistDriverDocument] Email notice:", err.message));
+      } catch (_) {}
+    }
 
     return {
       documents: currentDocs,

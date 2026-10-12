@@ -525,9 +525,28 @@ const requestWithdrawal = async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    const payoutRecord = insertResult.rows[0];
+
+    // Send Withdrawal Confirmation Email to Driver
+    if (driver.email) {
+      try {
+        const emailService = require("../services/emailService");
+        emailService.sendDriverPayoutRequestedEmail({
+          email: driver.email,
+          name: driver.name,
+          phone: driver.phone,
+          amount: withdrawAmount,
+          bankName: targetBank,
+          accountNumber: targetAccNumber,
+          payoutRef: payoutRef,
+          remainingBalance: availableBalance - withdrawAmount,
+        }).catch((err) => console.warn("[driver-withdrawal] Email send error:", err.message));
+      } catch (_) {}
+    }
+
     res.status(201).json({
       message: "Withdrawal request submitted successfully. It will be reviewed and processed by admin.",
-      payout: insertResult.rows[0],
+      payout: payoutRecord,
       remaining_available_balance: availableBalance - withdrawAmount,
     });
   } catch (err) {

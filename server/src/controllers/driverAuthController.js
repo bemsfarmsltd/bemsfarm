@@ -296,6 +296,39 @@ const register = async (req, res, next) => {
       [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${newDriver.name.toUpperCase()}`, newDriver.id]
     );
 
+    // Send Driver Registration Confirmation Email & Admin Alert
+    if (newDriver.email) {
+      try {
+        const emailService = require("../services/emailService");
+        emailService.sendDriverRegistrationSuccessEmail({
+          email: newDriver.email,
+          name: newDriver.name,
+          phone: newDriver.phone,
+          vehicle_type: newDriver.vehicle_type,
+          vehicle_plate: newDriver.vehicle_plate,
+          zone_name: primary_zone_id || null,
+          hasDocuments: missingDocs.length === 0,
+          missingDocs,
+        }).catch((err) => console.warn("[driver-register] Driver registration email error:", err.message));
+
+        emailService.sendAdminAlertEmail({
+          type: "order_delivery",
+          title: `New Driver Registered: ${newDriver.name}`,
+          message: `Driver ${newDriver.name} (${newDriver.phone}, ${newDriver.email}) registered and is awaiting compliance verification.`,
+          link: "/deliveries/drivers",
+          data: {
+            "Driver Name": newDriver.name,
+            "Phone (Login ID)": newDriver.phone,
+            "Email": newDriver.email,
+            "Vehicle": `${newDriver.vehicle_type} (${newDriver.vehicle_plate || "No Plate"})`,
+            "Status": "Pending Compliance Review",
+          },
+        }).catch((err) => console.warn("[driver-register] Admin alert email error:", err.message));
+      } catch (e) {
+        console.warn("[driver-register] Email trigger notice:", e.message);
+      }
+    }
+
     res.status(201).json({
       status: "success",
       message: missingDocs.length === 0
@@ -1001,6 +1034,17 @@ const resetPassword = async (req, res, next) => {
       `,
       [hashedPassword, record.driver_id]
     );
+
+    if (record.email) {
+      try {
+        const emailService = require("../services/emailService");
+        emailService.sendDriverPasswordChangedEmail({
+          email: record.email,
+          name: record.name,
+          phone: record.phone,
+        }).catch((e) => console.warn("[resetPassword] Email error:", e.message));
+      } catch (_) {}
+    }
 
     res.json({
       success: true,

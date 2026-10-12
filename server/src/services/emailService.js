@@ -13,47 +13,89 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { Resend } = require("resend");
+const nodemailer = require("nodemailer");
 
-const IS_TEST = !process.env.RESEND_API_KEY;
-const resend = IS_TEST ? null : new Resend(process.env.RESEND_API_KEY);
+const hasResend = Boolean(process.env.RESEND_API_KEY);
+const resend = hasResend ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.EMAIL_FROM || "onboarding@resend.dev";
+
+let nodemailerTransport = null;
+if (process.env.SMTP_HOST || process.env.SMTP_USER || process.env.EMAIL_USER) {
+  try {
+    nodemailerTransport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.hostinger.com",
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: Number(process.env.SMTP_PORT || 465) === 465,
+      auth: {
+        user: process.env.SMTP_USER || process.env.EMAIL_USER,
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
+      },
+    });
+    console.log(`✅ Nodemailer SMTP transport initialized (${process.env.SMTP_HOST || "smtp.hostinger.com"})`);
+  } catch (e) {
+    console.warn("⚠️ Nodemailer setup warning:", e.message);
+  }
+}
+
+const IS_TEST = !hasResend && !nodemailerTransport;
 
 if (IS_TEST) {
   console.log(
-    "⚠️  Email in TEST MODE — RESEND_API_KEY not set. Emails will be logged only.",
+    "⚠️  Email in TEST MODE — neither RESEND_API_KEY nor SMTP credentials are set. Emails will be logged only.",
   );
-} else {
+} else if (hasResend) {
   console.log(`✅ Resend email ready — sending from: ${FROM}`);
 }
 
 // ── Core send helper ──────────────────────────────────────────────────────────
 async function sendMail({ to, subject, html, attachments }) {
   const recipientDisplay = Array.isArray(to) ? to.join(", ") : to;
-  if (IS_TEST) {
-    console.log(`📧 [EMAIL TEST] To: ${recipientDisplay} | Subject: ${subject}`);
-    return { status: "test" };
-  }
-  try {
-    const payload = {
-      from: `BemsFarms 🌿 <${FROM}>`,
-      to,
-      subject,
-      html,
-    };
-    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-      payload.attachments = attachments;
+
+  // 1. Try Resend if configured
+  if (resend) {
+    try {
+      const payload = {
+        from: `BemsFarms 🌿 <${FROM}>`,
+        to,
+        subject,
+        html,
+      };
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        payload.attachments = attachments;
+      }
+      const { data, error } = await resend.emails.send(payload);
+      if (!error && data?.id) {
+        console.log(`✅ [Resend] Email sent to ${recipientDisplay} — ID: ${data.id}`);
+        return { status: "sent", provider: "resend", id: data.id };
+      }
+      if (error) {
+        console.warn(`⚠️ Resend error to ${recipientDisplay}:`, error);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Resend exception to ${recipientDisplay}:`, err.message);
     }
-    const { data, error } = await resend.emails.send(payload);
-    if (error) {
-      console.error(`❌ Resend error to ${recipientDisplay}:`, error);
-      return { status: "failed", error };
-    }
-    console.log(`✅ Email sent to ${recipientDisplay} — ID: ${data?.id}`);
-    return { status: "sent", id: data?.id };
-  } catch (err) {
-    console.error(`❌ Email failed to ${recipientDisplay}:`, err.message);
-    return { status: "failed", error: err.message };
   }
+
+  // 2. Fallback to Nodemailer SMTP if configured
+  if (nodemailerTransport) {
+    try {
+      const info = await nodemailerTransport.sendMail({
+        from: `BemsFarms 🌿 <${process.env.SMTP_USER || process.env.EMAIL_USER || FROM}>`,
+        to,
+        subject,
+        html,
+        attachments,
+      });
+      console.log(`✅ [SMTP] Email sent to ${recipientDisplay} — MessageId: ${info.messageId}`);
+      return { status: "sent", provider: "smtp", id: info.messageId };
+    } catch (err) {
+      console.warn(`⚠️ Nodemailer SMTP failed to ${recipientDisplay}:`, err.message);
+    }
+  }
+
+  // 3. Fallback / Test mode: Log email cleanly
+  console.log(`📧 [EMAIL LOGGED] To: ${recipientDisplay} | Subject: ${subject}`);
+  return { status: "test", recipient: recipientDisplay, subject };
 }
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -840,6 +882,218 @@ async function sendDriverStatementEmail({
   });
 }
 
+// ── Additional Driver Lifecycle Emails ──────────────────────────────────────
+
+async function sendDriverRegistrationSuccessEmail({
+  email,
+  name,
+  phone,
+  vehicle_type,
+  vehicle_plate,
+  zone_name,
+  hasDocuments,
+  missingDocs = [],
+}) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  const loginUrl = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/driver` : "https://www.bemsfarms.com/driver";
+
+  return sendMail({
+    to: email,
+    subject: "🌿 BemsFarms — Driver Registration Received & Under Review",
+    html: `<div style="${emailStyles}">
+      ${header("Application Submitted Successfully! 🚛")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Thank you for applying to join the <strong>BemsFarms Logistics &amp; Delivery Fleet</strong>! Your driver profile and onboarding details have been successfully received and are now under compliance verification.
+      </p>
+
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #15803D; text-transform: uppercase; letter-spacing: 1px;">Application Summary</div>
+        <table style="width: 100%; margin-top: 10px; font-size: 13px; color: #1F2937; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 4px 0; color: #6B7280; width: 140px;"><strong>Full Name:</strong></td>
+            <td style="padding: 4px 0; font-weight: 600;">${name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #6B7280;"><strong>Phone (Login ID):</strong></td>
+            <td style="padding: 4px 0; font-family: monospace; font-weight: 600;">${phone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #6B7280;"><strong>Registered Email:</strong></td>
+            <td style="padding: 4px 0;">${email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #6B7280;"><strong>Vehicle Details:</strong></td>
+            <td style="padding: 4px 0;">${(vehicle_type || "Vehicle").toUpperCase()} ${vehicle_plate ? `· ${vehicle_plate}` : ""}</td>
+          </tr>
+          ${zone_name ? `<tr>
+            <td style="padding: 4px 0; color: #6B7280;"><strong>Coverage Zone:</strong></td>
+            <td style="padding: 4px 0;">${zone_name}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding: 4px 0; color: #6B7280;"><strong>Application Status:</strong></td>
+            <td style="padding: 4px 0;"><span style="background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">⏳ Under Compliance Review</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
+        <div style="font-size: 13px; font-weight: 700; color: #1B4332; margin-bottom: 6px;">What Happens Next?</div>
+        <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563; line-height: 1.7;">
+          <li>Our compliance team will review your submitted credentials and identity documents.</li>
+          <li>You will receive an <strong>approval email notification</strong> as soon as your account is activated and ready for order dispatches.</li>
+          <li>For security, unapproved accounts cannot log in. Once approved, you can log in using your phone number <strong>${phone}</strong> and the password you selected.</li>
+        </ol>
+      </div>
+
+      ${missingDocs && missingDocs.length > 0 ? `
+      <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 14px 18px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #B45309; text-transform: uppercase;">Pending Compliance Items:</div>
+        <ul style="margin: 6px 0 0 0; padding-left: 18px; font-size: 12px; color: #92400E;">
+          ${missingDocs.map((d) => `<li>${d}</li>`).join("")}
+        </ul>
+      </div>
+      ` : ""}
+
+      <p style="color: #6B7280; font-size: 12px; line-height: 1.6; margin-top: 24px;">
+        Need help or have questions? Contact BemsFarms Dispatch Operations at <a href="mailto:dispatch@bemsfarms.com" style="color: #15803D;">dispatch@bemsfarms.com</a> or reply to this email.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverDocumentsSubmittedEmail({ email, name, phone, docType, isComplete }) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  return sendMail({
+    to: email,
+    subject: `📄 BemsFarms — Document Received (${docType || "Compliance Document"})`,
+    html: `<div style="${emailStyles}">
+      ${header("Document Received 📄")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        We have received your submitted compliance file: <strong>${docType || "Document"}</strong>.
+      </p>
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
+        <div style="font-size: 13px; color: #166534; font-weight: 600;">
+          Status: ${isComplete ? "All required documents received! Awaiting final administrator review." : "Document stored. Pending remaining onboarding requirements."}
+        </div>
+      </div>
+      <p style="color: #6B7280; font-size: 12px; line-height: 1.6;">
+        Our compliance team reviews files within 24–48 hours. You will receive an email once your verification status is updated.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverPayoutRequestedEmail({
+  email,
+  name,
+  phone,
+  amount,
+  bankName,
+  accountNumber,
+  payoutRef,
+  remainingBalance,
+}) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  return sendMail({
+    to: email,
+    subject: `💸 BemsFarms — Withdrawal Request Received (₦${Number(amount).toLocaleString()})`,
+    html: `<div style="${emailStyles}">
+      ${header("Withdrawal Request Submitted 💸")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Your withdrawal request has been received and queued for disbursement settlement.
+      </p>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Transaction Details</div>
+        <table style="width: 100%; margin-top: 10px; font-size: 13px; color: #1E293B; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 4px 0; color: #64748B;">Amount Requested:</td>
+            <td style="padding: 4px 0; font-weight: 800; font-size: 16px; color: #15803D;">₦${Number(amount).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #64748B;">Reference:</td>
+            <td style="padding: 4px 0; font-family: monospace;">${payoutRef || "—"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; color: #64748B;">Destination Bank:</td>
+            <td style="padding: 4px 0; font-weight: 600;">${bankName || "Bank"} (${accountNumber || "—"})</td>
+          </tr>
+          ${remainingBalance !== undefined ? `<tr>
+            <td style="padding: 4px 0; color: #64748B;">Remaining Balance:</td>
+            <td style="padding: 4px 0; font-weight: 600;">₦${Number(remainingBalance).toLocaleString()}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding: 4px 0; color: #64748B;">Status:</td>
+            <td style="padding: 4px 0;"><span style="background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">Pending Processing</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="color: #6B7280; font-size: 12px; line-height: 1.6;">
+        Funds are typically disbursed within 24 hours to your verified Nigerian commercial bank account.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverPasswordChangedEmail({ email, name, phone }) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  return sendMail({
+    to: email,
+    subject: "🔒 BemsFarms — Driver Password Changed Successfully",
+    html: `<div style="${emailStyles}">
+      ${header("Password Changed 🔒")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        The password for your BemsFarms driver courier account (${phone || email}) was successfully updated.
+      </p>
+      <div style="background: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 8px; padding: 14px 18px; margin: 20px 0;">
+        <p style="font-size: 13px; color: #991B1B; margin: 0; line-height: 1.6;">
+          ⚠️ If you did not make this change, please immediately contact BemsFarms dispatch operations to protect your account.
+        </p>
+      </div>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverStatusChangedEmail({ email, name, status, reason }) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  return sendMail({
+    to: email,
+    subject: `🔔 BemsFarms — Driver Account Status Update: ${String(status).toUpperCase()}`,
+    html: `<div style="${emailStyles}">
+      ${header(`Account Status Update: ${String(status).toUpperCase()}`)}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Your BemsFarms driver account status has been updated to: <strong>${status}</strong>.
+      </p>
+      ${reason ? `
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Notes from Operations:</div>
+        <p style="font-size: 13px; color: #1E293B; margin: 6px 0 0 0;">${reason}</p>
+      </div>` : ""}
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendMail,
   sendWelcomeEmail,
@@ -857,4 +1111,9 @@ module.exports = {
   sendDriverSecurityVerificationEmail,
   sendDriverStatementEmail,
   sendAdminAlertEmail,
+  sendDriverRegistrationSuccessEmail,
+  sendDriverDocumentsSubmittedEmail,
+  sendDriverPayoutRequestedEmail,
+  sendDriverPasswordChangedEmail,
+  sendDriverStatusChangedEmail,
 };
