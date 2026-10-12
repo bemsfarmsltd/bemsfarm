@@ -90,6 +90,20 @@ const driverProtect = async (req, res, next) => {
       return res.status(403).json({ message: "Driver account is suspended. Please contact administrator." });
     }
 
+    const onboarding = String(driver.onboarding_status || "").toLowerCase().trim();
+    if (status === "rejected" || onboarding === "rejected") {
+      return res.status(403).json({ message: "Driver application was not approved. Please contact dispatch." });
+    }
+
+    if (status === "pending" || ["pending_verification", "documents_submitted", "invited"].includes(onboarding)) {
+      if (!req.path.includes("/documents") && !req.path.includes("/upload") && !req.path.includes("/kyc") && !req.path.includes("/status")) {
+        return res.status(403).json({
+          code: "ACCOUNT_PENDING_APPROVAL",
+          message: "Driver account is awaiting admin approval before deliveries can be accessed.",
+        });
+      }
+    }
+
     req.driver = driver;
     next();
   } catch (err) {

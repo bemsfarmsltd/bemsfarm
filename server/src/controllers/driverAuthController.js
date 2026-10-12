@@ -296,14 +296,12 @@ const register = async (req, res, next) => {
       [internalWalletNum, "Bems Farms Internal Wallet", `BEMS - ${newDriver.name.toUpperCase()}`, newDriver.id]
     );
 
-    const token = generateDriverToken(newDriver);
-
     res.status(201).json({
       status: "success",
       message: missingDocs.length === 0
-        ? "Driver registered successfully! All compliance documents received and under review. You can log in anytime to check your approval status."
-        : "Driver account created successfully! Please upload your remaining compliance documents to complete verification.",
-      token,
+        ? "Driver application submitted successfully! Our compliance team will review your credentials. You cannot log in until an administrator approves your account."
+        : "Driver application created! Please ensure all compliance documents are submitted for admin approval.",
+      token: null,
       driver: {
         id: newDriver.id,
         name: newDriver.name,
@@ -323,13 +321,11 @@ const register = async (req, res, next) => {
         status: newDriver.status,
         onboarding_status: newDriver.onboarding_status,
         is_verified: false,
-        can_login: true,
+        can_login: false,
         can_accept_orders: false,
         missing_documents: missingDocs,
         documents_complete: missingDocs.length === 0,
-        message: missingDocs.length === 0
-          ? "Your documents have been submitted. Our compliance team will review your application within 1-2 business days."
-          : "Your account is created. Please upload the missing compliance documents via the app or KYC upload endpoint.",
+        message: "Your application is awaiting administrator verification and approval before access is granted.",
       },
     });
   } catch (err) {
@@ -471,6 +467,17 @@ const login = async (req, res, next) => {
         message: "Your driver application was reviewed and could not be approved. " + (driver.compliance_notes ? `Notes: ${driver.compliance_notes}` : "Please contact Bems Farms dispatch operations for assistance."),
         status: "rejected",
         onboarding_status: "rejected",
+      });
+    }
+
+    // Strict block: Do not allow unapproved / pending drivers to log in
+    if (!isVerified) {
+      return res.status(403).json({
+        code: "ACCOUNT_PENDING_APPROVAL",
+        message: "Your driver account is pending review and has not yet been approved by dispatch. You cannot log in until an administrator verifies and approves your application.",
+        status: driver.status,
+        onboarding_status: driver.onboarding_status || "pending_verification",
+        can_login: false,
       });
     }
 
