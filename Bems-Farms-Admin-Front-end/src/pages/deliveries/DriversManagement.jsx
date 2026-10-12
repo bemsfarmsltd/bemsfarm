@@ -1721,7 +1721,9 @@ export default function DriversManagement() {
                 <div className="d-flex justify-content-between align-items-center mb-2 px-2 pb-2 border-bottom">
                   <div>
                     <strong className="text-dark fs-15 me-2">{viewingDocument.title}</strong>
-                    <span className="fs-11 text-muted font-monospace">{viewingDocument.url?.split('/').pop()}</span>
+                    <span className="fs-11 text-muted font-monospace">
+                      {viewingDocument.url?.startsWith('data:') ? 'High-Res Audit Scan' : viewingDocument.url?.split('/').pop()}
+                    </span>
                   </div>
                   <div className="d-flex align-items-center gap-2">
                     <a
