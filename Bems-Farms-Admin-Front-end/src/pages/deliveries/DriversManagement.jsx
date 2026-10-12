@@ -942,6 +942,21 @@ export default function DriversManagement() {
                                 <i className="ri-eye-line" />
                               </button>
 
+                              {isPendingReview && (
+                                <button
+                                  className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-sm px-2.5"
+                                  title="Approve Compliance & Activate Driver"
+                                  style={{ background: '#059669', borderColor: '#059669' }}
+                                  onClick={() => {
+                                    setSelected(driver)
+                                    handleComplianceDecision('approve')
+                                  }}
+                                >
+                                  <i className="ri-checkbox-circle-line" />
+                                  <span>Approve</span>
+                                </button>
+                              )}
+
                               <button
                                 className="btn btn-sm btn-outline-primary"
                                 title="Edit Driver Details"
@@ -1424,18 +1439,20 @@ export default function DriversManagement() {
                 background: '#fff',
                 borderRadius: 20,
                 width: '100%',
-                maxWidth: 780,
+                maxWidth: 840,
                 maxHeight: '92vh',
-                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
               }}
-              className="shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 border-bottom bg-light-subtle d-flex justify-content-between align-items-center">
+              <div className="p-3.5 px-4 border-bottom bg-light-subtle d-flex justify-content-between align-items-center flex-shrink-0">
                 <div className="d-flex align-items-center gap-3">
                   <div
                     className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold fs-18"
-                    style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}
+                    style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}
                   >
                     🛡️
                   </div>
@@ -1448,12 +1465,24 @@ export default function DriversManagement() {
                     </div>
                   </div>
                 </div>
-                <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}>
-                  <i className="ri-close-line" />
-                </button>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm text-white fw-bold d-flex align-items-center gap-1.5 shadow-sm px-3 py-1.5"
+                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)', borderRadius: 8, border: 'none' }}
+                    disabled={saving}
+                    onClick={() => handleComplianceDecision('approve')}
+                  >
+                    <i className="ri-checkbox-circle-line fs-14"></i>
+                    <span>Approve Driver</span>
+                  </button>
+                  <button className="btn btn-sm btn-outline-secondary rounded-circle" onClick={closeModal}>
+                    <i className="ri-close-line" />
+                  </button>
+                </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 flex-grow-1" style={{ overflowY: 'auto' }}>
                 {/* Candidate Information Card */}
                 <div className="bg-light p-3.5 rounded-3 mb-4 border">
                   <div className="row g-3 fs-13">
@@ -1673,27 +1702,40 @@ export default function DriversManagement() {
                     onChange={(e) => setComplianceRejectNotes(e.target.value)}
                   />
                 </div>
+              </div>
 
-                {/* Action Buttons */}
-                <div className="d-flex gap-3 pt-3 border-top">
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger flex-fill py-2.5 fw-bold fs-13"
-                    disabled={saving}
-                    onClick={() => handleComplianceDecision('reject')}
-                  >
-                    <i className="ri-close-circle-line me-1"></i> Request Document Re-upload
-                  </button>
+              {/* Sticky Action Footer */}
+              <div
+                className="p-3.5 px-4 border-top bg-white d-flex gap-3 align-items-center flex-shrink-0"
+                style={{
+                  boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.06)',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-outline-danger py-2.5 px-3 fw-bold fs-13"
+                  style={{ minWidth: 200, borderRadius: 10 }}
+                  disabled={saving}
+                  onClick={() => handleComplianceDecision('reject')}
+                >
+                  <i className="ri-close-circle-line me-1"></i> Request Document Re-upload
+                </button>
 
-                  <button
-                    type="button"
-                    className="btn btn-emerald-solid flex-fill py-2.5 fw-bold fs-13 text-white shadow-sm"
-                    disabled={saving}
-                    onClick={() => handleComplianceDecision('approve')}
-                  >
-                    <i className="ri-checkbox-circle-line me-1"></i> Approve Compliance &amp; Activate Driver
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="btn flex-fill py-2.5 px-4 fw-bold fs-14 text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
+                  style={{
+                    background: 'linear-gradient(135deg, #059669, #10b981)',
+                    border: 'none',
+                    borderRadius: 10,
+                    minHeight: 46,
+                  }}
+                  disabled={saving}
+                  onClick={() => handleComplianceDecision('approve')}
+                >
+                  <i className="ri-checkbox-circle-line fs-18"></i>
+                  <span>Approve Compliance &amp; Activate Driver</span>
+                </button>
               </div>
             </div>
           )}
