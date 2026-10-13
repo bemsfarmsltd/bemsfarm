@@ -659,11 +659,11 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
 
     if (status) {
       if (status === "active") {
-        where.push(`dr.status = 'active' AND COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(da.is_on_delivery, false) = false`);
+        where.push(`dr.status = 'active' AND COALESCE(da.is_available, dr.is_available, false) = true AND NOT EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered', 'cancelled'))`);
       } else if (status === "off_duty") {
-        where.push(`(COALESCE(da.is_available, dr.is_available, false) = false OR dr.status = 'off_duty') AND dr.status NOT IN ('suspended', 'pending')`);
+        where.push(`(COALESCE(da.is_available, dr.is_available, false) = false OR dr.status = 'off_duty') AND dr.status NOT IN ('suspended', 'pending') AND NOT EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered', 'cancelled'))`);
       } else if (status === "on_delivery") {
-        where.push(`COALESCE(da.is_on_delivery, false) = true`);
+        where.push(`EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered', 'cancelled'))`);
       } else {
         params.push(status);
         where.push(`dr.status = $${params.length}`);
@@ -683,13 +683,13 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       SELECT
         dr.*,
         COALESCE(da.is_available, dr.is_available, false) AS is_available,
-        COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+        (COALESCE(da.is_on_delivery, false) = true AND EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled'))) AS is_on_delivery,
         GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) AS last_telemetry_at,
         true AS is_telemetry_fresh,
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
-          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled')) THEN 'on_delivery'
           WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
           ELSE 'off_duty'
         END AS status,
@@ -746,17 +746,22 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         COUNT(*)                                                                                     AS total,
         COUNT(*) FILTER (WHERE status = 'suspended')                                                 AS suspended,
         COUNT(*) FILTER (WHERE status = 'pending' OR onboarding_status IN ('pending_verification','documents_submitted')) AS pending_compliance,
-        COUNT(*) FILTER (WHERE status = 'active' AND id IN (SELECT driver_id FROM driver_availability WHERE is_on_delivery = true)) AS on_delivery,
+        COUNT(*) FILTER (WHERE status != 'suspended' AND onboarding_status = 'approved' AND id IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))) AS on_delivery,
         COUNT(*) FILTER (
-          WHERE status = 'active' 
+          WHERE status != 'suspended' AND onboarding_status = 'approved'
+          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))
           AND id IN (
             SELECT da.driver_id 
             FROM driver_availability da 
-            WHERE da.is_available = true AND da.is_on_delivery = false
+            WHERE da.is_available = true
           )
         ) AS active,
         0 AS no_signal,
-        COUNT(*) FILTER (WHERE status = 'active' AND id NOT IN (SELECT driver_id FROM driver_availability WHERE is_available = true)) AS off_duty
+        COUNT(*) FILTER (
+          WHERE status != 'suspended' AND onboarding_status = 'approved'
+          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))
+          AND id NOT IN (SELECT driver_id FROM driver_availability WHERE is_available = true)
+        ) AS off_duty
       FROM drivers
     `);
 

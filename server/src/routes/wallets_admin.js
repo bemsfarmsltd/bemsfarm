@@ -118,18 +118,18 @@ router.get("/summary", async (req, res, next) => {
         dr.vehicle_type,
         dr.vehicle_plate,
         COALESCE(da.is_available, false) AS is_available,
-        COALESCE(da.is_on_delivery, false) AS is_on_delivery,
+        (COALESCE(da.is_on_delivery, false) = true AND EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled'))) AS is_on_delivery,
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification', 'documents_submitted') THEN 'pending'
-          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled')) THEN 'on_delivery'
           WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
           ELSE 'off_duty'
         END AS duty_status,
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification', 'documents_submitted') THEN 'pending'
-          WHEN COALESCE(da.is_on_delivery, false) = true THEN 'on_delivery'
+          WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled')) THEN 'on_delivery'
           WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
           ELSE 'off_duty'
         END AS driver_status,
