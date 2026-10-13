@@ -17,12 +17,19 @@ const updateLocation = async (req, res, next) => {
       recorded_at,
     } = req.body;
 
-    if (latitude === undefined || longitude === undefined) {
+    const coords = req.body.coords || req.body.position || req.body.location || {};
+    const rawLat = latitude ?? req.body.lat ?? coords.latitude ?? coords.lat;
+    const rawLng = longitude ?? req.body.lng ?? coords.longitude ?? coords.lng;
+    const rawHeading = heading ?? req.body.head ?? coords.heading;
+    const rawSpeed = speed ?? coords.speed;
+    const rawAccuracy = accuracy ?? coords.accuracy;
+
+    if (rawLat === undefined || rawLat === null || rawLng === undefined || rawLng === null) {
       return res.status(400).json({ message: "latitude and longitude are required" });
     }
 
-    const lat = parseFloat(latitude);
-    const lng = parseFloat(longitude);
+    const lat = parseFloat(rawLat);
+    const lng = parseFloat(rawLng);
 
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       return res.status(400).json({ message: "Invalid latitude or longitude values" });
@@ -78,9 +85,9 @@ const updateLocation = async (req, res, next) => {
         driverId,
         lat,
         lng,
-        heading !== undefined ? parseFloat(heading) : null,
-        speed !== undefined ? parseFloat(speed) : null,
-        accuracy !== undefined ? parseFloat(accuracy) : null,
+        rawHeading !== undefined && rawHeading !== null ? parseFloat(rawHeading) : null,
+        rawSpeed !== undefined && rawSpeed !== null ? parseFloat(rawSpeed) : null,
+        rawAccuracy !== undefined && rawAccuracy !== null ? parseFloat(rawAccuracy) : null,
         targetOrderId ? String(targetOrderId) : null,
         targetDeliveryId ? parseInt(targetDeliveryId, 10) : null,
         deviceTimestamp,
@@ -110,8 +117,9 @@ const updateLocation = async (req, res, next) => {
         delivery_id: targetDeliveryId,
         latitude: lat,
         longitude: lng,
-        heading: heading !== undefined ? parseFloat(heading) : null,
-        speed: speed !== undefined ? parseFloat(speed) : null,
+        heading: rawHeading !== undefined && rawHeading !== null ? parseFloat(rawHeading) : null,
+        speed: rawSpeed !== undefined && rawSpeed !== null ? parseFloat(rawSpeed) : null,
+        accuracy: rawAccuracy !== undefined && rawAccuracy !== null ? parseFloat(rawAccuracy) : null,
         timestamp: deviceTimestamp.toISOString(),
         recorded_at: serverRecordedAt.toISOString(),
       });
@@ -140,11 +148,13 @@ const updateLocation = async (req, res, next) => {
 const recordHeartbeat = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
-    const { latitude, longitude } = req.body || {};
+    const bodyCoords = req.body?.coords || req.body?.position || req.body?.location || {};
+    const rawLat = req.body?.latitude ?? req.body?.lat ?? bodyCoords.latitude ?? bodyCoords.lat;
+    const rawLng = req.body?.longitude ?? req.body?.lng ?? bodyCoords.longitude ?? bodyCoords.lng;
 
-    if (latitude !== undefined && longitude !== undefined) {
-      const lat = parseFloat(latitude);
-      const lng = parseFloat(longitude);
+    if (rawLat !== undefined && rawLat !== null && rawLng !== undefined && rawLng !== null) {
+      const lat = parseFloat(rawLat);
+      const lng = parseFloat(rawLng);
       if (!isNaN(lat) && !isNaN(lng)) {
         await pool.query(
           "INSERT INTO driver_locations (driver_id, latitude, longitude, recorded_at) VALUES ($1, $2, $3, NOW())",

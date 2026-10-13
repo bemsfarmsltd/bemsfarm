@@ -1620,6 +1620,23 @@ const updateDeliveryStatus = async (req, res, next) => {
 
     await client.query("COMMIT");
 
+    // If request contains location coordinates, also record location telemetry
+    const statusBodyCoords = req.body?.coords || req.body?.position || req.body?.location || {};
+    const statusRawLat = req.body?.latitude ?? req.body?.lat ?? statusBodyCoords.latitude ?? statusBodyCoords.lat;
+    const statusRawLng = req.body?.longitude ?? req.body?.lng ?? statusBodyCoords.longitude ?? statusBodyCoords.lng;
+    if (statusRawLat != null && statusRawLng != null) {
+      const lat = parseFloat(statusRawLat);
+      const lng = parseFloat(statusRawLng);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        pool.query(
+          `INSERT INTO driver_locations (driver_id, latitude, longitude, order_id, delivery_id, recorded_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [driverId, lat, lng, actualOrderId, delivery.id]
+        ).catch(() => {});
+        pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [driverId]).catch(() => {});
+      }
+    }
+
     // Asynchronously notify customer across all channels (In-App Notification, SMS, Email)
     (async () => {
       try {
@@ -1831,6 +1848,23 @@ const acceptDelivery = async (req, res, next) => {
     });
 
     await client.query("COMMIT");
+
+    // If request contains location coordinates, also record location telemetry
+    const bodyCoords = req.body?.coords || req.body?.position || req.body?.location || {};
+    const rawLat = req.body?.latitude ?? req.body?.lat ?? bodyCoords.latitude ?? bodyCoords.lat;
+    const rawLng = req.body?.longitude ?? req.body?.lng ?? bodyCoords.longitude ?? bodyCoords.lng;
+    if (rawLat != null && rawLng != null) {
+      const lat = parseFloat(rawLat);
+      const lng = parseFloat(rawLng);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        pool.query(
+          `INSERT INTO driver_locations (driver_id, latitude, longitude, order_id, delivery_id, recorded_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [driverId, lat, lng, delivery.actual_order_id, delivery.id]
+        ).catch(() => {});
+        pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [driverId]).catch(() => {});
+      }
+    }
 
     try {
       const { broadcastDeliveryUpdated, broadcastOrderUpdated } = require("../services/socketService");

@@ -67,6 +67,46 @@ function initSocketService(httpServer, allowedOrigins = []) {
       }
     });
 
+    // Receive real-time location telemetry from connected driver apps
+    socket.on("driver:location", async (payload) => {
+      try {
+        const id = payload?.driver_id || payload?.driverId || driverId;
+        const coords = payload?.coords || payload?.position || payload || {};
+        const lat = parseFloat(payload?.latitude ?? payload?.lat ?? coords?.latitude ?? coords?.lat);
+        const lng = parseFloat(payload?.longitude ?? payload?.lng ?? coords?.longitude ?? coords?.lng);
+        if (!isNaN(lat) && !isNaN(lng) && id) {
+          const pool = require("../db/pool");
+          await pool.query(
+            `INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+            [
+              id,
+              lat,
+              lng,
+              payload?.heading ? parseFloat(payload.heading) : null,
+              payload?.speed ? parseFloat(payload.speed) : null,
+              payload?.accuracy ? parseFloat(payload.accuracy) : null,
+              payload?.order_id || payload?.orderId || null,
+              payload?.delivery_id || payload?.deliveryId || null,
+            ]
+          ).catch(() => {});
+          await pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [id]).catch(() => {});
+          broadcastDriverLocation({
+            driver_id: parseInt(id, 10),
+            latitude: lat,
+            longitude: lng,
+            heading: payload?.heading ? parseFloat(payload.heading) : null,
+            speed: payload?.speed ? parseFloat(payload.speed) : null,
+            accuracy: payload?.accuracy ? parseFloat(payload.accuracy) : null,
+            order_id: payload?.order_id || payload?.orderId || null,
+            recorded_at: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.warn("[socketService] Error handling driver:location socket:", err.message);
+      }
+    });
+
     socket.on("disconnect", (reason) => {
       // Clean disconnect
     });

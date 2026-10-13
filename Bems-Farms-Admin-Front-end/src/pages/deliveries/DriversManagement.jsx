@@ -3026,7 +3026,7 @@ export default function DriversManagement() {
                       <p className="text-muted fs-12 mb-3" style={{ maxWidth: 420 }}>
                         {selected.name} has not transmitted GPS coordinates yet. The courier must open the Bems Courier App and enable GPS location permissions to transmit their live location.
                       </p>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 flex-wrap justify-content-center">
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-primary"
@@ -3034,6 +3034,28 @@ export default function DriversManagement() {
                           disabled={loadingLocation}
                         >
                           <i className={`ri-refresh-line me-1 ${loadingLocation ? 'ri-spin' : ''}`} /> Re-check GPS Fix
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success"
+                          onClick={async () => {
+                            try {
+                              await api.post(`/admin/deliveries/drivers/${selected.id}/location`, {
+                                latitude: 5.5245,
+                                longitude: 7.4912,
+                                heading: 0,
+                                speed: 0,
+                                accuracy: 5
+                              })
+                              toast.success(`Pinned ${selected.name} to Central Operations Hub`)
+                              refreshDriverLocation(selected.id)
+                              fetchDrivers()
+                            } catch (err) {
+                              toast.error('Failed to set location override')
+                            }
+                          }}
+                        >
+                          <i className="ri-map-pin-2-line me-1" /> Pin to Central Hub (Override)
                         </button>
                         {selected.phone && (
                           <a href={`tel:${selected.phone}`} className="btn btn-sm btn-success text-white">
