@@ -2095,61 +2095,12 @@ router.post(
 router.post(
   "/drivers/:id/set-password",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { password } = req.body;
-
-      if (!password || password.trim().length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters long" });
-      }
-
-      const driverRes = await pool.query(
-        "SELECT id, name, email, phone FROM drivers WHERE id = $1",
-        [id]
-      );
-      if (driverRes.rows.length === 0) {
-        return res.status(404).json({ message: "Driver not found" });
-      }
-      const driver = driverRes.rows[0];
-
-      const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-      await pool.query(
-        `
-        INSERT INTO driver_auth (driver_id, password_hash, reset_token, reset_token_expires, failed_attempts, locked_until, created_at)
-        VALUES ($1, $2, NULL, NULL, 0, NULL, NOW())
-        ON CONFLICT (driver_id)
-        DO UPDATE SET 
-          password_hash = EXCLUDED.password_hash, 
-          reset_token = NULL, 
-          reset_token_expires = NULL, 
-          failed_attempts = 0, 
-          locked_until = NULL
-        `,
-        [id, hashedPassword]
-      );
-
-      if (driver.email) {
-        try {
-          const emailService = require("../services/emailService");
-          await emailService.sendDriverPasswordChangedEmail({
-            email: driver.email,
-            name: driver.name,
-            phone: driver.phone,
-          });
-        } catch (mailErr) {
-          console.warn("Failed to dispatch password changed notification:", mailErr.message);
-        }
-      }
-
-      res.json({
-        success: true,
-        message: `Password for ${driver.name} has been successfully updated.`,
-      });
-    } catch (err) {
-      next(err);
-    }
+  async (req, res) => {
+    return res.status(403).json({
+      success: false,
+      message:
+        "Direct password override by administrators is disabled for driver account security. Please use 'Send Password Reset Link' so the driver can reset their password securely.",
+    });
   }
 );
 

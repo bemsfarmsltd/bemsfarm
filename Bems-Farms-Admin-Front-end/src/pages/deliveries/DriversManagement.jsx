@@ -133,9 +133,7 @@ export default function DriversManagement() {
   const [onboardedCredentials, setOnboardedCredentials] = useState(null)
   const [updatingPassword, setUpdatingPassword] = useState(false)
   const [resendingLoginEmail, setResendingLoginEmail] = useState(false)
-  const [customPassword, setCustomPassword] = useState('')
-  const [showSetCustomPassword, setShowSetCustomPassword] = useState(false)
-  const [settingPassword, setSettingPassword] = useState(false)
+
   const [deleting, setDeleting] = useState(false)
   const [statementData, setStatementData] = useState(null)
   const [loadingStatement, setLoadingStatement] = useState(false)
@@ -422,26 +420,7 @@ export default function DriversManagement() {
     }
   }
 
-  async function handleSetDirectPassword() {
-    if (!selected || !customPassword.trim()) return
-    if (customPassword.trim().length < 6) {
-      toast.error('Password must be at least 6 characters')
-      return
-    }
-    setSettingPassword(true)
-    try {
-      await api.post(`/admin/deliveries/drivers/${selected.id}/set-password`, {
-        password: customPassword.trim(),
-      })
-      toast.success(`Password for ${selected.name} successfully updated to: ${customPassword.trim()}`)
-      setCustomPassword('')
-      setShowSetCustomPassword(false)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update driver password')
-    } finally {
-      setSettingPassword(false)
-    }
-  }
+
 
   async function suspendDriver() {
     try {
@@ -2164,59 +2143,7 @@ export default function DriversManagement() {
                         <span>{updatingPassword ? 'Sending Reset Link…' : 'Send Password Reset Link'}</span>
                       </button>
 
-                      {/* Direct Set Password Option */}
-                      {!showSetCustomPassword ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-dark w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
-                          onClick={() => setShowSetCustomPassword(true)}
-                        >
-                          <i className="ri-key-2-line" />
-                          <span>Set Password Directly…</span>
-                        </button>
-                      ) : (
-                        <div className="border rounded-2 p-2.5 bg-white shadow-xs">
-                          <label className="form-label fw-bold text-dark fs-11 mb-1">
-                            Set New Driver Password (Min 6 chars)
-                          </label>
-                          <div className="input-group input-group-sm mb-2">
-                            <input
-                              type="text"
-                              className="form-control font-monospace"
-                              placeholder="e.g. Ebuka2026! or PIN"
-                              value={customPassword}
-                              onChange={(e) => setCustomPassword(e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-outline-secondary"
-                              onClick={() => setCustomPassword(Math.floor(100000 + Math.random() * 900000).toString())}
-                            >
-                              PIN
-                            </button>
-                          </div>
-                          <div className="d-flex gap-1.5">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-secondary flex-fill"
-                              onClick={() => {
-                                setShowSetCustomPassword(false)
-                                setCustomPassword('')
-                              }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-success flex-fill fw-bold"
-                              disabled={settingPassword || !customPassword.trim()}
-                              onClick={handleSetDirectPassword}
-                            >
-                              {settingPassword ? 'Saving…' : 'Apply Password'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
+
 
                       {selected.onboarding_status === 'invited' && (
                         <button
