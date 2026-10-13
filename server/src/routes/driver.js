@@ -84,9 +84,13 @@ router.get("/onboarding/zones", async (req, res, next) => {
 
 // ── 1. Driver Authentication & Availability ─────────────────────────
 router.post("/auth/login", driverAuthController.login);
+router.post("/login", driverAuthController.login);
 router.post("/auth/forgot-password", driverAuthController.forgotPassword);
+router.post("/forgot-password", driverAuthController.forgotPassword);
 router.post("/auth/reset-password", driverAuthController.resetPassword);
+router.post("/reset-password", driverAuthController.resetPassword);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
+router.get("/me", driverProtect, driverAuthController.getMe);
 router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/profile", driverProtect, driverAuthController.updateProfile);
 router.put("/profile", driverProtect, driverAuthController.updateProfile);

@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.driver_auth (
     id BIGSERIAL PRIMARY KEY,
     driver_id BIGINT NOT NULL UNIQUE REFERENCES public.drivers(id) ON DELETE CASCADE,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     last_login TIMESTAMP WITHOUT TIME ZONE,
     failed_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP WITHOUT TIME ZONE,

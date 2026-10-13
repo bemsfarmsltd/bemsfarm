@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.bemsfarms.driver",
+    "sha256_cert_fingerprints": [
+      "14:6D:E9:7F:0F:52:EA:CB:77:43:03:7E:6F:E1:9F:88:5A:F6:FE:09:A6:49:EE:4B:91:02:13:95:67:9A:8C:7D"
+    ]
+  }
+}]

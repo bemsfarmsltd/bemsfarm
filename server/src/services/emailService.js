@@ -521,7 +521,10 @@ async function sendDriverInvitationEmail({ email, name, inviteUrl, temporaryPin,
   });
 }
 
-async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin }) {
+async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin, appDeepLink }) {
+  const directAppUrl = appDeepLink || "bemsdriver://login";
+  const webLaunchUrl = loginUrl || "https://bemsfarms.com/driver/login";
+
   return sendMail({
     to: email,
     subject: "🎉 Congratulations! Your BemsFarms Driver Account is Approved & Active",
@@ -538,7 +541,7 @@ async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin
         <div style="font-size: 12px; font-weight: 700; color: #065F46; text-transform: uppercase; letter-spacing: 1px;">Account Status</div>
         <div style="font-size: 18px; font-weight: 800; color: #065F46; margin-top: 4px;">✅ Active &amp; Ready for Delivery Dispatches</div>
         <p style="font-size: 13px; color: #047857; margin: 6px 0 0 0;">
-          Your account is fully activated. You are now eligible to receive real-time order delivery dispatches with automated navigation across your assigned zone.
+          Your driver account is fully activated. Open the <strong>BemsFarms Driver App</strong> on your mobile device to toggle online and start receiving doorstep delivery dispatches.
         </p>
       </div>
 
@@ -546,15 +549,23 @@ async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin
         <div style="font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; margin-bottom: 8px;">Your Driver Sign-In Details:</div>
         <div style="font-size: 14px; color: #111827; margin-bottom: 4px;"><strong>Email / Phone:</strong> <span style="font-family: monospace; font-size: 15px;">${email || phone}</span></div>
         <p style="font-size: 13px; color: #6B7280; margin: 6px 0 0 0;">
-          Use the password you created during self-service registration to log in. Upon login, your driver commission wallet is automatically initialized.
+          Use the password you created during registration to log into your driver mobile app. Upon sign-in, your commission wallet is automatically initialized.
         </p>
       </div>
 
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${loginUrl || "https://www.bemsfarms.com/driver"}" style="background: linear-gradient(135deg, #059669, #10B981); color: #ffffff; padding: 16px 36px;
+      <div style="text-align: center; margin: 30px 0 10px;">
+        <a href="${directAppUrl}" style="background: linear-gradient(135deg, #059669, #10B981); color: #ffffff; padding: 16px 36px;
           border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
           display: inline-block; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
-          Sign In to Your Driver Account →
+          📱 Open BemsFarms Driver App →
+        </a>
+      </div>
+      <div style="text-align: center; margin: 0 0 24px;">
+        <p style="color: #6B7280; font-size: 12px; margin: 6px 0 4px;">
+          If the button above does not open your app directly, tap below:
+        </p>
+        <a href="${webLaunchUrl}" style="color: #059669; font-size: 13px; font-weight: 700; text-decoration: underline;">
+          Launch Driver App via Web Bridge →
         </a>
       </div>
 
@@ -590,7 +601,7 @@ async function sendDriverRejectionEmail({ email, name, reasonNotes, reuploadUrl 
         <a href="${reuploadUrl}" style="background: linear-gradient(135deg, #DC2626, #EF4444); color: #ffffff; padding: 16px 36px;
           border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
           display: inline-block; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">
-          Re-Upload Documents Now →
+          Re-Upload Documents in App →
         </a>
       </div>
 
@@ -605,6 +616,7 @@ async function sendDriverRejectionEmail({ email, name, reasonNotes, reuploadUrl 
 async function sendDriverPasswordResetEmail(driver, resetToken) {
   const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
   const resetUrl = `${domain}/driver/reset-password?token=${encodeURIComponent(resetToken)}`;
+  const directAppResetUrl = `bemsdriver://reset-password?token=${encodeURIComponent(resetToken)}`;
 
   return sendMail({
     to: driver.email,
@@ -616,16 +628,77 @@ async function sendDriverPasswordResetEmail(driver, resetToken) {
         A request has been made to reset the password for your <strong>BemsFarms Driver Courier Account</strong> (${driver.phone || driver.email}).
       </p>
       <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-        <p style="font-size: 13px; color: #166534; font-weight: 700; margin: 0 0 10px; text-transform: uppercase;">Your Password Reset Token / Code:</p>
-        <p style="font-size: 32px; font-weight: 900; color: #14532D; margin: 0; letter-spacing: 4px;">${resetToken}</p>
+        <p style="font-size: 13px; color: #166534; font-weight: 700; margin: 0 0 10px; text-transform: uppercase;">Your 6-Digit Verification Code:</p>
+        <p style="font-size: 36px; font-weight: 900; color: #14532D; margin: 0; letter-spacing: 6px;">${resetToken}</p>
+        <p style="font-size: 12px; color: #15803D; margin: 8px 0 0;">Enter this code directly in your BemsFarms Driver App</p>
       </div>
-      <div style="text-align: center; margin: 24px 0;">
-        <a href="${resetUrl}" style="background: #143C2D; color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 14px; font-weight: 700; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(20,60,45,0.25);">
-          Set New Password Securely →
+      <div style="text-align: center; margin: 28px 0 10px;">
+        <a href="${directAppResetUrl}" style="background: #143C2D; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 15px; font-weight: 800; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(20,60,45,0.25);">
+          📱 Open Driver App to Set Password →
+        </a>
+      </div>
+      <div style="text-align: center; margin: 0 0 20px;">
+        <p style="color: #6B7280; font-size: 12px; margin: 4px 0;">
+          If the button above does not open your app directly, tap below:
+        </p>
+        <a href="${resetUrl}" style="color: #143C2D; font-size: 13px; font-weight: 700; text-decoration: underline;">
+          Launch Driver App via Web Bridge →
         </a>
       </div>
       <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
-        This password reset link and code will expire in <strong>1 hour</strong>. If you did not request this, you can safely ignore this email.
+        This password reset code will expire in <strong>1 hour</strong>. If you did not request this, you can safely ignore this email.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverLoginCredentialsEmail({ email, name, phone, loginUrl, resetUrl, appDeepLink, appResetDeepLink }) {
+  const directAppUrl = appDeepLink || "bemsdriver://login";
+  const webLaunchUrl = loginUrl || process.env.FRONTEND_URL || "https://bemsfarms.com/driver/login";
+  const directResetUrl = appResetDeepLink || (resetUrl ? `bemsdriver://reset-password?token=${encodeURIComponent(resetUrl.split("token=")[1] || "")}` : null);
+
+  return sendMail({
+    to: email,
+    subject: "🚚 BemsFarms Driver Account — Sign-In Details & App Access",
+    html: `<div style="${emailStyles}">
+      ${header("Driver Account Sign-In Details 🚚")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">Hello <strong>${name}</strong>,</p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Here are your official login details and account access instructions for the <strong>BemsFarms Dispatch Fleet</strong>.
+      </p>
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-left: 4px solid #16A34A; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 1px;">Sign-In Credentials</div>
+        <div style="margin-top: 10px; font-size: 14px; color: #1F2937;">
+          <p style="margin: 6px 0;"><strong>Registered Phone:</strong> <span style="font-family: monospace; font-size: 15px; font-weight: 600;">${phone || "N/A"}</span></p>
+          <p style="margin: 6px 0;"><strong>Registered Email:</strong> <span style="font-family: monospace; font-size: 15px; font-weight: 600;">${email}</span></p>
+          <p style="margin: 8px 0 0 0; color: #4B5563; font-size: 13px;">Use either your phone number or email address with your password to log into the <strong>Driver Mobile App</strong>.</p>
+        </div>
+      </div>
+      <div style="text-align: center; margin: 30px 0 10px;">
+        <a href="${directAppUrl}" style="background: linear-gradient(135deg, #16A34A, #15803D); color: #ffffff; padding: 16px 36px;
+          border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 15px;
+          display: inline-block; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);">
+          📱 Open BemsFarms Driver App →
+        </a>
+      </div>
+      <div style="text-align: center; margin: 0 0 20px;">
+        <p style="color: #6B7280; font-size: 12px; margin: 4px 0;">
+          If the button above does not open your app directly, tap below:
+        </p>
+        <a href="${webLaunchUrl}" style="color: #16A34A; font-size: 13px; font-weight: 700; text-decoration: underline;">
+          Launch Driver App via Web Bridge →
+        </a>
+      </div>
+      ${resetUrl ? `
+      <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 18px; margin: 16px 0; text-align: center;">
+        <p style="font-size: 13px; color: #6B7280; margin: 0 0 8px;">Need to set or reset your password?</p>
+        <a href="${directResetUrl || resetUrl}" style="color: #16A34A; font-weight: 700; text-decoration: underline; font-size: 13px;">
+          Set or reset your password in Driver App →
+        </a>
+      </div>` : ""}
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        For dispatch support or route questions, contact BemsFarms Operations anytime.
       </p>
       ${footer}
     </div>`,
@@ -1108,6 +1181,7 @@ module.exports = {
   sendDriverApprovedEmail,
   sendDriverRejectionEmail,
   sendDriverPasswordResetEmail,
+  sendDriverLoginCredentialsEmail,
   sendDriverSecurityVerificationEmail,
   sendDriverStatementEmail,
   sendAdminAlertEmail,

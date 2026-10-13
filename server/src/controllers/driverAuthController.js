@@ -373,14 +373,31 @@ const register = async (req, res, next) => {
 // ── POST /api/driver/auth/login ─────────────────────────────────────
 const login = async (req, res, next) => {
   try {
-    const { emailOrPhone, email, phone, password } = req.body;
-    const identifier = (emailOrPhone || email || phone || "").trim();
+    const rawIdentifier = (
+      req.body.emailOrPhone ||
+      req.body.email ||
+      req.body.phone ||
+      req.body.identifier ||
+      req.body.username ||
+      ""
+    ).toString().trim();
 
-    if (!identifier || !password) {
+    const rawPassword = (
+      req.body.password ||
+      req.body.pin ||
+      req.body.driverPin ||
+      req.body.pass ||
+      ""
+    ).toString();
+
+    if (!rawIdentifier || !rawPassword) {
       return res.status(400).json({ message: "Phone number/email and password are required" });
     }
 
-    // Find driver by email or phone
+    const cleanDigits = rawIdentifier.replace(/\D/g, "");
+    const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : "";
+
+    // Find driver by email or phone (supports 0-prefix, +234, 234, spaces, and raw digits)
     const driverResult = await pool.query(
       `
       SELECT 
@@ -418,10 +435,13 @@ const login = async (req, res, next) => {
         COALESCE(da.is_on_delivery, false) AS is_on_delivery
       FROM drivers d
       LEFT JOIN driver_availability da ON d.id = da.driver_id
-      WHERE LOWER(d.email) = LOWER($1) OR d.phone = $1 OR d.phone = $2
+      WHERE LOWER(TRIM(d.email)) = LOWER($1) 
+         OR d.phone = $1 
+         OR d.phone = $2
+         OR ($3 != '' AND RIGHT(REGEXP_REPLACE(d.phone, '\\D', '', 'g'), 10) = $3)
       LIMIT 1
       `,
-      [identifier, identifier.replace(/\s+/g, "")]
+      [rawIdentifier, rawIdentifier.replace(/\s+/g, ""), last10]
     );
 
     if (driverResult.rows.length === 0) {
@@ -455,7 +475,16 @@ const login = async (req, res, next) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, authRecord.password_hash);
+    let isMatch = false;
+    if (authRecord.password_hash) {
+      isMatch = (await bcrypt.compare(rawPassword, authRecord.password_hash)) ||
+                (await bcrypt.compare(rawPassword.trim(), authRecord.password_hash));
+    }
+    if (!isMatch && authRecord.pin_hash) {
+      isMatch = (await bcrypt.compare(rawPassword, authRecord.pin_hash)) ||
+                (await bcrypt.compare(rawPassword.trim(), authRecord.pin_hash));
+    }
+
     if (!isMatch) {
       await pool.query(
         "UPDATE driver_auth SET failed_attempts = failed_attempts + 1 WHERE id = $1",
@@ -466,7 +495,7 @@ const login = async (req, res, next) => {
 
     // Successful login - reset failed attempts and update last_login
     await pool.query(
-      "UPDATE driver_auth SET failed_attempts = 0, last_login = NOW() WHERE id = $1",
+      "UPDATE driver_auth SET failed_attempts = 0, locked_until = NULL, last_login = NOW() WHERE id = $1",
       [authRecord.id]
     );
 
@@ -949,9 +978,17 @@ const forgotPassword = async (req, res, next) => {
       return res.status(400).json({ message: "Phone number or email is required" });
     }
 
+    const cleanDigits = identifier.replace(/\D/g, "");
+    const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : "";
+
     const driverResult = await pool.query(
-      "SELECT id, name, email, phone FROM drivers WHERE LOWER(email) = LOWER($1) OR phone = $1 OR phone = $2 LIMIT 1",
-      [identifier, identifier.replace(/\s+/g, "")]
+      `SELECT id, name, email, phone FROM drivers 
+       WHERE LOWER(TRIM(email)) = LOWER($1) 
+          OR phone = $1 
+          OR phone = $2 
+          OR ($3 != '' AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $3)
+       LIMIT 1`,
+      [identifier, identifier.replace(/\s+/g, ""), last10]
     );
 
     if (driverResult.rows.length === 0) {
@@ -971,7 +1008,11 @@ const forgotPassword = async (req, res, next) => {
       INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
       VALUES ($1, $2, $3, NOW())
       ON CONFLICT (driver_id)
-      DO UPDATE SET reset_token = $2, reset_token_expires = $3
+      DO UPDATE SET 
+        reset_token = EXCLUDED.reset_token, 
+        reset_token_expires = EXCLUDED.reset_token_expires,
+        failed_attempts = 0,
+        locked_until = NULL
       `,
       [driver.id, resetToken, expiresAt]
     );

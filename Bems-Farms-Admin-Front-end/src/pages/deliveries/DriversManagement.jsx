@@ -132,6 +132,10 @@ export default function DriversManagement() {
   const [saving, setSaving] = useState(false)
   const [onboardedCredentials, setOnboardedCredentials] = useState(null)
   const [updatingPassword, setUpdatingPassword] = useState(false)
+  const [resendingLoginEmail, setResendingLoginEmail] = useState(false)
+  const [customPassword, setCustomPassword] = useState('')
+  const [showSetCustomPassword, setShowSetCustomPassword] = useState(false)
+  const [settingPassword, setSettingPassword] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [statementData, setStatementData] = useState(null)
   const [loadingStatement, setLoadingStatement] = useState(false)
@@ -402,6 +406,40 @@ export default function DriversManagement() {
       toast.error(err.response?.data?.message || 'Failed to send password reset link')
     } finally {
       setUpdatingPassword(false)
+    }
+  }
+
+  async function handleResendLoginEmail() {
+    if (!selected) return
+    setResendingLoginEmail(true)
+    try {
+      const res = await api.post(`/admin/deliveries/drivers/${selected.id}/resend-login-email`)
+      toast.success(res.data?.message || `Sign-in credentials email sent to ${selected.email || selected.name}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to resend login email')
+    } finally {
+      setResendingLoginEmail(false)
+    }
+  }
+
+  async function handleSetDirectPassword() {
+    if (!selected || !customPassword.trim()) return
+    if (customPassword.trim().length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+    setSettingPassword(true)
+    try {
+      await api.post(`/admin/deliveries/drivers/${selected.id}/set-password`, {
+        password: customPassword.trim(),
+      })
+      toast.success(`Password for ${selected.name} successfully updated to: ${customPassword.trim()}`)
+      setCustomPassword('')
+      setShowSetCustomPassword(false)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update driver password')
+    } finally {
+      setSettingPassword(false)
     }
   }
 
@@ -2098,22 +2136,99 @@ export default function DriversManagement() {
                     <div className="d-flex align-items-center justify-content-between mb-1.5">
                       <span className="fw-bold small text-dark">
                         <i className="ri-shield-keyhole-line me-1 text-primary" />
-                        Driver Password &amp; Account Security
+                        Driver Login &amp; Account Security
                       </span>
                       <span className="badge bg-success-subtle text-success fs-xs">Self-Service Protected</span>
                     </div>
                     <p className="text-muted mb-2.5" style={{ fontSize: 11, lineHeight: 1.5 }}>
-                      For privacy and security, driver passwords cannot be viewed or typed by administrators. You can trigger an official password reset link directly to the driver's email.
+                      Send official login instructions, account credentials overview, or a secure password reset link directly to the driver's verified email.
                     </p>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
-                      disabled={!selected.email || updatingPassword}
-                      onClick={handleSendPasswordResetLink}
-                    >
-                      <i className="ri-mail-send-line" />
-                      <span>{updatingPassword ? 'Sending Reset Link…' : `Send Password Reset Email to ${selected.email || 'Driver'}`}</span>
-                    </button>
+                    <div className="d-flex flex-column gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                        disabled={!selected.email || resendingLoginEmail || updatingPassword}
+                        onClick={handleResendLoginEmail}
+                      >
+                        <i className="ri-mail-send-line" />
+                        <span>{resendingLoginEmail ? 'Sending Login Email…' : `Resend Login Email to ${selected.email || 'Driver'}`}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                        disabled={!selected.email || updatingPassword || resendingLoginEmail}
+                        onClick={handleSendPasswordResetLink}
+                      >
+                        <i className="ri-lock-password-line" />
+                        <span>{updatingPassword ? 'Sending Reset Link…' : 'Send Password Reset Link'}</span>
+                      </button>
+
+                      {/* Direct Set Password Option */}
+                      {!showSetCustomPassword ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-dark w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                          onClick={() => setShowSetCustomPassword(true)}
+                        >
+                          <i className="ri-key-2-line" />
+                          <span>Set Password Directly…</span>
+                        </button>
+                      ) : (
+                        <div className="border rounded-2 p-2.5 bg-white shadow-xs">
+                          <label className="form-label fw-bold text-dark fs-11 mb-1">
+                            Set New Driver Password (Min 6 chars)
+                          </label>
+                          <div className="input-group input-group-sm mb-2">
+                            <input
+                              type="text"
+                              className="form-control font-monospace"
+                              placeholder="e.g. Ebuka2026! or PIN"
+                              value={customPassword}
+                              onChange={(e) => setCustomPassword(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              onClick={() => setCustomPassword(Math.floor(100000 + Math.random() * 900000).toString())}
+                            >
+                              PIN
+                            </button>
+                          </div>
+                          <div className="d-flex gap-1.5">
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-outline-secondary flex-fill"
+                              onClick={() => {
+                                setShowSetCustomPassword(false)
+                                setCustomPassword('')
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-success flex-fill fw-bold"
+                              disabled={settingPassword || !customPassword.trim()}
+                              onClick={handleSetDirectPassword}
+                            >
+                              {settingPassword ? 'Saving…' : 'Apply Password'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selected.onboarding_status === 'invited' && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-warning w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                          onClick={() => handleResendInvite(selected)}
+                        >
+                          <i className="ri-user-received-line" />
+                          <span>Resend Onboarding Invitation Link</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="d-flex flex-wrap gap-2 pt-2">

@@ -31,6 +31,8 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const CommercePolicyPage = lazy(() => import("./pages/CommercePolicyPage"));
 const DriverOnboardingPage = lazy(() => import("./pages/driver/DriverOnboardingPage"));
 const DriverStatementPage = lazy(() => import("./pages/driver/DriverStatementPage"));
+const DriverResetPasswordPage = lazy(() => import("./pages/driver/DriverResetPasswordPage"));
+const DriverLoginPage = lazy(() => import("./pages/driver/DriverLoginPage"));
 const VerifyDocumentPage = lazy(() => import("./pages/VerifyDocumentPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
@@ -105,6 +107,9 @@ function App() {
         <Route path="/returns-policy" element={<CommercePolicyPage />} />
         <Route path="/driver/onboarding" element={<DriverOnboardingPage />} />
         <Route path="/driver/statement" element={<DriverStatementPage />} />
+        <Route path="/driver/reset-password" element={<DriverResetPasswordPage />} />
+        <Route path="/driver" element={<DriverLoginPage />} />
+        <Route path="/driver/login" element={<DriverLoginPage />} />
 
         <Route
           path="/returns"

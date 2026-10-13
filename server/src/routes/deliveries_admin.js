@@ -947,7 +947,8 @@ router.patch(
           email: driver.email,
           name: driver.name,
           phone: driver.phone,
-          loginUrl: `${baseUrl}/driver`,
+          loginUrl: `${baseUrl}/driver/login`,
+          appDeepLink: "bemsdriver://login",
         }).catch((e) => console.error("Driver approval email failed:", e.message));
 
         return res.json({
@@ -2004,7 +2005,11 @@ router.post(
         INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
         VALUES ($1, $2, $3, NOW())
         ON CONFLICT (driver_id)
-        DO UPDATE SET reset_token = $2, reset_token_expires = $3
+        DO UPDATE SET 
+          reset_token = EXCLUDED.reset_token, 
+          reset_token_expires = EXCLUDED.reset_token_expires,
+          failed_attempts = 0,
+          locked_until = NULL
         `,
         [id, resetToken, expiresAt]
       );
@@ -2015,6 +2020,137 @@ router.post(
       res.json({
         success: true,
         message: `Password reset link & code successfully sent to ${driver.email}`,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── POST /api/admin/deliveries/drivers/:id/resend-login-email ───────────
+// Resend official driver login credentials & account access instructions
+router.post(
+  "/drivers/:id/resend-login-email",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const driverRes = await pool.query(
+        "SELECT id, name, email, phone, status, onboarding_status, vehicle_type FROM drivers WHERE id = $1",
+        [id]
+      );
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+      if (!driver.email) {
+        return res.status(400).json({ message: "Driver has no email address configured to receive login instructions." });
+      }
+
+      const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
+      const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");
+      const emailService = require("../services/emailService");
+
+      // Generate a fresh reset token so the driver can also set or reset password if needed
+      const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours
+
+      await pool.query(
+        `
+        INSERT INTO driver_auth (driver_id, reset_token, reset_token_expires, created_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (driver_id)
+        DO UPDATE SET 
+          reset_token = EXCLUDED.reset_token, 
+          reset_token_expires = EXCLUDED.reset_token_expires,
+          failed_attempts = 0,
+          locked_until = NULL
+        `,
+        [id, resetToken, expiresAt]
+      );
+
+      const resetUrl = `${baseUrl}/driver/reset-password?token=${encodeURIComponent(resetToken)}`;
+      const loginUrl = `${baseUrl}/driver/login`;
+      const appDeepLink = "bemsdriver://login";
+      const appResetDeepLink = `bemsdriver://reset-password?token=${encodeURIComponent(resetToken)}`;
+
+      await emailService.sendDriverLoginCredentialsEmail({
+        email: driver.email,
+        name: driver.name,
+        phone: driver.phone,
+        loginUrl,
+        resetUrl,
+        appDeepLink,
+        appResetDeepLink,
+      });
+
+      res.json({
+        success: true,
+        message: `Driver sign-in details & access email sent successfully to ${driver.email}`,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── POST /api/admin/deliveries/drivers/:id/set-password ─────────────
+// Admin directly sets/overrides driver password
+router.post(
+  "/drivers/:id/set-password",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+
+      if (!password || password.trim().length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
+      const driverRes = await pool.query(
+        "SELECT id, name, email, phone FROM drivers WHERE id = $1",
+        [id]
+      );
+      if (driverRes.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      const driver = driverRes.rows[0];
+
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
+      await pool.query(
+        `
+        INSERT INTO driver_auth (driver_id, password_hash, reset_token, reset_token_expires, failed_attempts, locked_until, created_at)
+        VALUES ($1, $2, NULL, NULL, 0, NULL, NOW())
+        ON CONFLICT (driver_id)
+        DO UPDATE SET 
+          password_hash = EXCLUDED.password_hash, 
+          reset_token = NULL, 
+          reset_token_expires = NULL, 
+          failed_attempts = 0, 
+          locked_until = NULL
+        `,
+        [id, hashedPassword]
+      );
+
+      if (driver.email) {
+        try {
+          const emailService = require("../services/emailService");
+          await emailService.sendDriverPasswordChangedEmail({
+            email: driver.email,
+            name: driver.name,
+            phone: driver.phone,
+          });
+        } catch (mailErr) {
+          console.warn("Failed to dispatch password changed notification:", mailErr.message);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Password for ${driver.name} has been successfully updated.`,
       });
     } catch (err) {
       next(err);
