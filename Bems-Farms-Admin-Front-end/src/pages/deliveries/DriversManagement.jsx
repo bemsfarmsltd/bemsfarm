@@ -1070,8 +1070,16 @@ export default function DriversManagement() {
                                 {cfg.label}
                               </span>
 
-                              {/* Live / Last known GPS coordinates */}
-                              {driver.current_lat != null && driver.current_lng != null ? (
+                              {/* Live GPS coordinates (only when courier is on duty / on delivery) */}
+                              {driver.status === 'off_duty' ? (
+                                <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
+                                  <i className="ri-moon-line fs-11 text-muted" /> Location Inactive (Shift Ended)
+                                </span>
+                              ) : driver.status === 'suspended' ? (
+                                <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
+                                  <i className="ri-forbid-line fs-11 text-danger" /> Tracking Suspended
+                                </span>
+                              ) : driver.current_lat != null && driver.current_lng != null ? (
                                 <button
                                   type="button"
                                   className="btn btn-xs p-0 border-0 bg-transparent text-start d-inline-flex align-items-center gap-1 mt-0.5"
