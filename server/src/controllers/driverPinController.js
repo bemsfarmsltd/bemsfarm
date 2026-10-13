@@ -7,9 +7,14 @@ if (!JWT_SECRET) {
   throw new Error("FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is not defined!");
 }
 
-// Helper: validate 6-digit numeric PIN
-function isValid6DigitPin(pin) {
-  return typeof pin === "string" && /^\d{6}$/.test(pin.trim());
+// Helper: validate 4-digit numeric PIN
+function isValid4DigitPin(pin) {
+  return typeof pin === "string" && /^\d{4}$/.test(pin.trim());
+}
+
+// Flexible check for verification (allows 4-digit, or legacy 6-digit if set prior)
+function isValidPin(pin) {
+  return typeof pin === "string" && /^\d{4,6}$/.test(pin.trim());
 }
 
 // ── GET /api/driver/pin/status ─────────────────────────────────────────
@@ -73,10 +78,10 @@ const setupPin = async (req, res, next) => {
     const cleanConfirm = rawConfirm ? String(rawConfirm).trim() : "";
     const cleanCurrent = rawCurrent ? String(rawCurrent).trim() : "";
 
-    if (!isValid6DigitPin(cleanPin)) {
+    if (!isValid4DigitPin(cleanPin)) {
       return res.status(400).json({
         success: false,
-        message: "PIN must be exactly 6 numeric digits (e.g. 123456)",
+        message: "PIN must be exactly 4 numeric digits (e.g. 1234)",
       });
     }
 
@@ -165,11 +170,11 @@ const verifyPin = async (req, res, next) => {
 
     const cleanPin = rawPin ? String(rawPin).trim() : "";
 
-    if (!isValid6DigitPin(cleanPin)) {
+    if (!isValidPin(cleanPin)) {
       return res.status(400).json({
         success: false,
         valid: false,
-        message: "PIN must be exactly 6 numeric digits",
+        message: "PIN must be exactly 4 numeric digits",
       });
     }
 
@@ -199,7 +204,7 @@ const verifyPin = async (req, res, next) => {
         valid: false,
         has_pin: false,
         needs_setup: true,
-        message: "Security PIN is not set up yet. Please create your 6-digit PIN.",
+        message: "Security PIN is not set up yet. Please create your 4-digit PIN.",
       });
     }
 
@@ -330,10 +335,10 @@ const resetPinWithPassword = async (req, res, next) => {
       });
     }
 
-    if (!isValid6DigitPin(cleanPin)) {
+    if (!isValid4DigitPin(cleanPin)) {
       return res.status(400).json({
         success: false,
-        message: "New PIN must be exactly 6 numeric digits",
+        message: "New PIN must be exactly 4 numeric digits (e.g. 1234)",
       });
     }
 
@@ -520,10 +525,10 @@ const verifyAndUnlockPayout = async (req, res, next) => {
     // 3. Optional New PIN setup
     let newPinHash = null;
     if (cleanPin) {
-      if (!isValid6DigitPin(cleanPin)) {
+      if (!isValid4DigitPin(cleanPin)) {
         return res.status(400).json({
           success: false,
-          message: "New PIN must be exactly 6 numeric digits.",
+          message: "New PIN must be exactly 4 numeric digits (e.g. 1234).",
         });
       }
       if (cleanConfirm && cleanConfirm !== cleanPin) {

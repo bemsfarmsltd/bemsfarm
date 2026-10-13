@@ -519,7 +519,7 @@ export default function DriverOnboardingPage() {
                       <label className="block text-xs font-semibold text-gray-300 mb-1.5">Driver App PIN / Password</label>
                       <input
                         type="password"
-                        placeholder="e.g. 6-digit PIN"
+                        placeholder="e.g. 4-digit PIN"
                         className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}

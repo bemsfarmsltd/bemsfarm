@@ -2573,16 +2573,16 @@ export default function DriversManagement() {
                         <input
                           type="text"
                           className="form-control font-monospace"
-                          placeholder="e.g. 648291"
+                          placeholder="e.g. 4829"
                           value={form.password}
                           onChange={(e) => setField('password', e.target.value)}
                         />
                         <button
                           type="button"
                           className="btn btn-outline-primary"
-                          onClick={() => setField('password', Math.floor(100000 + Math.random() * 900000).toString())}
+                          onClick={() => setField('password', Math.floor(1000 + Math.random() * 9000).toString())}
                         >
-                          Generate PIN
+                          Generate 4-Digit PIN
                         </button>
                       </div>
                       <span className="text-muted fs-xs mt-1 d-block">

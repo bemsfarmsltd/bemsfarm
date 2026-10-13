@@ -77,7 +77,7 @@ sequenceDiagram
 | `name` | `VARCHAR(255)` | Full legal name. |
 | `phone` | `VARCHAR(50) UNIQUE` | Login phone number (format: `08012345678` or `+234...`). |
 | `email` | `VARCHAR(255) UNIQUE` | Contact email address for invitations and notifications. |
-| `password` | `VARCHAR(255)` | Bcrypt-hashed password / 6-digit PIN. |
+| `password` | `VARCHAR(255)` | Bcrypt-hashed password / 4-digit PIN. |
 | `vehicle_type` | `VARCHAR(50)` | `motorcycle`, `bicycle`, `car`, `van`, `truck`. |
 | `vehicle_plate` | `VARCHAR(50)` | Official vehicle registration plate number. |
 | `license_number` | `VARCHAR(100)` | National Driver's License ID number. |
@@ -123,7 +123,7 @@ sequenceDiagram
   "vehicle_type": "motorcycle",
   "zone_id": 1,
   "commission_per_delivery": 500,
-  "password": "PIN" // Optional. If omitted, a random 6-digit PIN is auto-generated
+  "password": "PIN" // Optional. If omitted, a random 4-digit PIN is auto-generated
 }
 ```
 

@@ -844,7 +844,7 @@ router.post(
 
       const inviteToken = crypto.randomBytes(32).toString("hex");
       const inviteExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-      const tempPin = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit PIN
+      const tempPin = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit PIN
       const hashedPin = await bcrypt.hash(tempPin, 10);
 
       const insertRes = await client.query(
