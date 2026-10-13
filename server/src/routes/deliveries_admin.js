@@ -948,7 +948,6 @@ router.patch(
           name: driver.name,
           phone: driver.phone,
           loginUrl: `${baseUrl}/driver/login`,
-          appDeepLink: "bemsdriver://login",
         }).catch((e) => console.error("Driver approval email failed:", e.message));
 
         return res.json({
@@ -2070,10 +2069,8 @@ router.post(
         [id, resetToken, expiresAt]
       );
 
-      const resetUrl = `${baseUrl}/driver/reset-password?token=${encodeURIComponent(resetToken)}`;
+      const resetUrl = `${baseUrl}/driver/reset-password?token=${encodeURIComponent(resetToken)}${driver.phone ? `&phone=${encodeURIComponent(driver.phone)}` : ""}`;
       const loginUrl = `${baseUrl}/driver/login`;
-      const appDeepLink = "bemsdriver://login";
-      const appResetDeepLink = `bemsdriver://reset-password?token=${encodeURIComponent(resetToken)}`;
 
       await emailService.sendDriverLoginCredentialsEmail({
         email: driver.email,
@@ -2081,8 +2078,6 @@ router.post(
         phone: driver.phone,
         loginUrl,
         resetUrl,
-        appDeepLink,
-        appResetDeepLink,
       });
 
       res.json({
