@@ -545,6 +545,23 @@ const login = async (req, res, next) => {
 
     const token = generateDriverToken(driver);
 
+    // If login request contains location coordinates, also record location telemetry
+    const loginCoords = req.body?.coords || req.body?.position || req.body?.location || {};
+    const loginLat = req.body?.latitude ?? req.body?.lat ?? loginCoords.latitude ?? loginCoords.lat;
+    const loginLng = req.body?.longitude ?? req.body?.lng ?? loginCoords.longitude ?? loginCoords.lng;
+    if (loginLat != null && loginLng != null) {
+      const lat = parseFloat(loginLat);
+      const lng = parseFloat(loginLng);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        pool.query(
+          `INSERT INTO driver_locations (driver_id, latitude, longitude, recorded_at)
+           VALUES ($1, $2, $3, NOW())`,
+          [driver.id, lat, lng]
+        ).catch(() => {});
+        pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [driver.id]).catch(() => {});
+      }
+    }
+
     res.json({
       token,
       driver: {
@@ -935,6 +952,29 @@ const toggleAvailability = async (req, res, next) => {
       "UPDATE drivers SET is_available = $1, status = CASE WHEN status = 'suspended' THEN 'suspended' ELSE $2 END, updated_at = NOW() WHERE id = $3",
       [is_available, newStatus, driverId]
     );
+
+    // If request contains location coordinates, also record location telemetry
+    const bodyCoords = req.body?.coords || req.body?.position || req.body?.location || {};
+    const rawLat = req.body?.latitude ?? req.body?.lat ?? bodyCoords.latitude ?? bodyCoords.lat;
+    const rawLng = req.body?.longitude ?? req.body?.lng ?? bodyCoords.longitude ?? bodyCoords.lng;
+    if (rawLat != null && rawLng != null) {
+      const lat = parseFloat(rawLat);
+      const lng = parseFloat(rawLng);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        await pool.query(
+          `INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, recorded_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())`,
+          [
+            driverId,
+            lat,
+            lng,
+            req.body?.heading ? parseFloat(req.body.heading) : null,
+            req.body?.speed ? parseFloat(req.body.speed) : null
+          ]
+        ).catch(() => {});
+        await pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [driverId]).catch(() => {});
+      }
+    }
 
     // Broadcast live telemetry
     try {
