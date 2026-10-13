@@ -937,9 +937,30 @@ const requestAccountStatement = async (req, res, next) => {
       payoutParams
     );
 
-    // Fallback if ledger has 0 records
-    let baseEvents = [...ledgerRes.rows];
-    if (baseEvents.length === 0) {
+    // 3. Combine events with complete deduplication so no activity is omitted or duplicated
+    const existingRefs = new Set();
+    const allEvents = [];
+
+    // Push all ledger entries (adjustments, delivery commissions, approved payouts)
+    for (const row of ledgerRes.rows) {
+      if (row.reference) existingRefs.add(String(row.reference).trim());
+      allEvents.push(row);
+    }
+
+    // Add bank payouts from driver_payouts if not already in ledger
+    for (const p of payoutsRes.rows) {
+      const ref = p.reference ? String(p.reference).trim() : null;
+      const gwRef = p.gateway_reference ? String(p.gateway_reference).trim() : null;
+      if ((ref && existingRefs.has(ref)) || (gwRef && existingRefs.has(gwRef))) {
+        continue;
+      }
+      if (ref) existingRefs.add(ref);
+      if (gwRef) existingRefs.add(gwRef);
+      allEvents.push(p);
+    }
+
+    // Add any legacy commissions from driver_commissions that might not be in ledger
+    try {
       let commDateWhere = "";
       const commParams = [driverId];
       if (startDate) {
@@ -972,12 +993,19 @@ const requestAccountStatement = async (req, res, next) => {
         `,
         commParams
       );
-      baseEvents = commissionsRes.rows;
-    }
 
-    const allEvents = [...baseEvents, ...payoutsRes.rows].sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    );
+      for (const c of commissionsRes.rows) {
+        const ref = c.reference ? String(c.reference).trim() : null;
+        if (ref && existingRefs.has(ref)) {
+          continue;
+        }
+        if (ref) existingRefs.add(ref);
+        allEvents.push(c);
+      }
+    } catch (_) {}
+
+    // Sort all events chronologically
+    allEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Calculate opening balance before startDate
     let openingBalance = 0;
@@ -1005,6 +1033,21 @@ const requestAccountStatement = async (req, res, next) => {
     let totalCredits = 0;
     let totalDebits = 0;
 
+    const CATEGORY_DISPLAY_TITLES = {
+      bonus: "Performance Bonus",
+      fuel_allowance: "Fuel & Maintenance Stipend",
+      tip_reimbursement: "Tip Reimbursement",
+      manual_credit: "Other Credit Adjustment",
+      penalty: "Shortage / Damage Penalty",
+      cash_discrepancy: "Cash Collection Discrepancy",
+      administrative_fee: "Administrative Fee",
+      manual_debit: "Other Debit Deduction",
+      withdrawal: "Bank Payout / Withdrawal",
+      delivery_commission: "Delivery Drop Commission",
+      delivery_drop: "Delivery Drop Commission",
+      refund_payout: "Payout Reversal / Refund",
+    };
+
     const statementWithBalances = allEvents.map((ev, index) => {
       const amt = parseFloat(ev.amount) || 0;
       const isCredit = ev.type === 'credit';
@@ -1016,14 +1059,38 @@ const requestAccountStatement = async (req, res, next) => {
         totalDebits += amt;
       }
 
-      const cleanDesc = String(ev.description || '')
-        .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
-        .replace(/\s*\(Customer Fee.*?\)/gi, '')
-        .trim();
+      const catKey = String(ev.category || "").toLowerCase();
+      const title = CATEGORY_DISPLAY_TITLES[catKey] || (isCredit ? "Credit Adjustment" : "Debit Deduction");
+
+      let rawDesc = String(ev.description || "").trim();
+      rawDesc = rawDesc.replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, "").trim();
+
+      let reason = "";
+      if (/^Zone Delivery Drop:\s*/i.test(rawDesc)) {
+        reason = `Zone: ${rawDesc.replace(/^Zone Delivery Drop:\s*/i, "").trim()}`;
+      } else if (rawDesc) {
+        const catRegex = new RegExp(`^${title}[:\\s—-]+`, "i");
+        if (catRegex.test(rawDesc)) {
+          reason = rawDesc.replace(catRegex, "").trim();
+        } else if (/^reason:\s*/i.test(rawDesc)) {
+          reason = rawDesc.replace(/^reason:\s*/i, "").trim();
+        } else {
+          reason = rawDesc;
+        }
+      }
+
+      if (!reason && catKey === "withdrawal") {
+        reason = ev.bank_name ? `Disbursement to ${ev.bank_name} (${ev.account_number || ""})`.trim() : "Bank Account Disbursement";
+      } else if (!reason && isCredit && (catKey === "delivery_commission" || catKey === "delivery_drop")) {
+        reason = "Delivery drop commission credited to wallet";
+      }
 
       return {
         ...ev,
-        description: cleanDesc,
+        title,
+        reason,
+        category: catKey,
+        description: rawDesc || reason || title,
         delivery_fee: undefined,
         amount: amt,
         running_balance: runningBalance,

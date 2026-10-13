@@ -76,6 +76,66 @@ function cleanStatementDescription(desc) {
   return cleaned;
 }
 
+function formatTransactionDescriptionHtml(ev) {
+  const isCredit = ev.type === 'credit';
+  const catKey = String(ev.category || '').toLowerCase();
+  const CATEGORY_NAMES = {
+    bonus: 'Performance Bonus',
+    fuel_allowance: 'Fuel & Maintenance Stipend',
+    tip_reimbursement: 'Tip Reimbursement',
+    manual_credit: 'Other Credit Adjustment',
+    penalty: 'Shortage / Damage Penalty',
+    cash_discrepancy: 'Cash Collection Discrepancy',
+    administrative_fee: 'Administrative Fee',
+    manual_debit: 'Other Debit Deduction',
+    withdrawal: 'Bank Payout / Withdrawal',
+    refund_payout: 'Payout Reversal / Refund',
+    delivery_commission: 'Delivery Commission Drop',
+    delivery_drop: 'Delivery Commission Drop',
+  };
+
+  const title = ev.title || CATEGORY_NAMES[catKey] || (isCredit ? 'Credit Adjustment' : 'Debit Deduction');
+  let reason = ev.reason || '';
+
+  if (!reason) {
+    let rawDesc = String(ev.description || '').trim();
+    rawDesc = rawDesc.replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '').trim();
+    if (/^Zone Delivery Drop:\s*/i.test(rawDesc)) {
+      reason = `Zone: ${rawDesc.replace(/^Zone Delivery Drop:\s*/i, '').trim()}`;
+    } else if (rawDesc) {
+      const catRegex = new RegExp(`^${title}[:\\s—-]+`, 'i');
+      if (catRegex.test(rawDesc)) {
+        reason = rawDesc.replace(catRegex, '').trim();
+      } else if (/^reason:\s*/i.test(rawDesc)) {
+        reason = rawDesc.replace(/^reason:\s*/i, '').trim();
+      } else {
+        reason = rawDesc;
+      }
+    }
+  }
+
+  const tagHtml = ev.order_id 
+    ? `<span class="bems-doc-tag" style="background:#e0f2fe;color:#0369a1;margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;">Order #${String(ev.order_id).replace(/^Order\s*#?/i, '')}</span>` 
+    : '';
+
+  const reasonHtml = reason && reason.toLowerCase() !== title.toLowerCase()
+    ? `<div style="font-size:9.5px;color:#4b5563;margin-top:2px;line-height:1.25;"><span style="font-weight:600;color:#374151;">Reason:</span> ${reason}</div>`
+    : '';
+
+  const authHtml = ev.performed_by_name
+    ? `<div style="font-size:8.5px;color:#6b7280;margin-top:1px;font-style:italic;">Authorized by: ${ev.performed_by_name}</div>`
+    : '';
+
+  return `
+    <div style="font-weight:700;color:#0f3622;font-size:11px;">
+      <span>${title}</span>
+      ${tagHtml}
+    </div>
+    ${reasonHtml}
+    ${authHtml}
+  `;
+}
+
 function generateSecurityCode(ref, amount) {
   const seed = (String(ref) + String(amount || 0)).toUpperCase().replace(/[^A-Z0-9]/g, '');
   let hash1 = 0x811c9dc5;
@@ -213,8 +273,7 @@ function renderDriverStatementHtml({
           <td class="mono">${String(startIndex + idx + 1).padStart(2, '0')}</td>
           <td class="mono" style="font-size:10.5px;">${formatDate(ev.date)}</td>
           <td class="it">
-            <b>${cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
-            ${tagHtml}
+            ${formatTransactionDescriptionHtml(ev)}
           </td>
           <td class="mono" style="font-size:10px;color:#0f3622;font-weight:600;">${ev.reference || '—'}</td>
           <td class="c">

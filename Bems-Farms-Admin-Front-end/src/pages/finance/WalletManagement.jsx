@@ -1870,14 +1870,14 @@ export default function WalletManagement() {
                       <button
                         type="button"
                         className={`btn flex-fill ${adjustForm.type === 'credit' ? 'btn-success' : 'btn-outline-secondary'}`}
-                        onClick={() => setAdjustForm({ ...adjustForm, type: 'credit' })}
+                        onClick={() => setAdjustForm({ ...adjustForm, type: 'credit', category: 'bonus' })}
                       >
                         <i className="ri-arrow-down-circle-line"></i> Credit (Bonus/Stipend)
                       </button>
                       <button
                         type="button"
                         className={`btn flex-fill ${adjustForm.type === 'debit' ? 'btn-danger' : 'btn-outline-secondary'}`}
-                        onClick={() => setAdjustForm({ ...adjustForm, type: 'debit' })}
+                        onClick={() => setAdjustForm({ ...adjustForm, type: 'debit', category: 'penalty' })}
                       >
                         <i className="ri-arrow-up-circle-line"></i> Debit (Penalty/Deduction)
                       </button>

@@ -1041,6 +1041,24 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
       balanceAfter = currentAvailable - numAmount;
     }
 
+    // Category title lookup for double-entry and audit clarity
+    const CATEGORY_TITLES = {
+      bonus: "Performance Bonus",
+      fuel_allowance: "Fuel & Maintenance Stipend",
+      tip_reimbursement: "Tip Reimbursement",
+      manual_credit: "Other Credit Adjustment",
+      penalty: "Shortage / Damage Penalty",
+      cash_discrepancy: "Cash Collection Discrepancy",
+      administrative_fee: "Administrative Fee",
+      manual_debit: "Other Debit Deduction",
+    };
+
+    const effectiveCategory = category && category !== "manual_adjustment"
+      ? category
+      : (type === "credit" ? "bonus" : "penalty");
+    const categoryTitle = CATEGORY_TITLES[effectiveCategory] || (type === "credit" ? "Credit Adjustment" : "Debit Deduction");
+    const cleanReason = description.trim();
+
     await client.query(
       "UPDATE drivers SET total_earnings = $1, updated_at = NOW() WHERE id = $2",
       [newEarned, id]
@@ -1060,20 +1078,41 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
       [
         id,
         type,
-        category,
+        effectiveCategory,
         numAmount,
         balanceBefore,
         balanceAfter,
         adjRef,
-        description.trim(),
+        cleanReason,
         req.user.id,
       ]
     );
 
+    // Side B: Central Company Double-Entry Ledger Entry
+    try {
+      await client.query(
+        `
+        INSERT INTO transactions (
+          reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
+        )
+        VALUES ($1, CURRENT_DATE, CURRENT_TIME, $2, 'driver_wallet_adjustment', $3, $4, 'completed', $5, NOW())
+        `,
+        [
+          adjRef,
+          type === "credit" ? "debit" : "credit", // Company book opposite side
+          `Driver Wallet ${type === "credit" ? "Credit (Bonus/Stipend)" : "Debit (Penalty)"}: ${driver.name} - ${categoryTitle}. Reason: ${cleanReason}`,
+          numAmount,
+          driver.wallet_account_number || `DRV-${id}`,
+        ]
+      );
+    } catch (txnErr) {
+      console.warn("transactions table insert notice (driver adjust):", txnErr.message);
+    }
+
     await client.query("COMMIT");
 
     res.status(201).json({
-      message: `Driver wallet successfully ${type === "credit" ? "credited" : "debited"} with ₦${numAmount.toLocaleString()}`,
+      message: `Driver wallet successfully ${type === "credit" ? "credited" : "debited"} with ₦${numAmount.toLocaleString()} (${categoryTitle})`,
       ledger: ledgerEntry.rows[0],
       new_available_balance: balanceAfter,
     });
@@ -1233,9 +1272,30 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
       [id]
     );
 
-    // If ledger has 0 records, fall back to driver_commissions so there's always data if commissions were logged
-    let baseEvents = [...ledgerRes.rows];
-    if (baseEvents.length === 0) {
+    // 3. Combine events with complete deduplication so no activity is omitted or duplicated
+    const existingRefs = new Set();
+    const allEventsChronological = [];
+
+    // Push all ledger entries (adjustments, delivery commissions, approved payouts)
+    for (const row of ledgerRes.rows) {
+      if (row.reference) existingRefs.add(String(row.reference).trim());
+      allEventsChronological.push(row);
+    }
+
+    // Add bank payouts from driver_payouts if not already in ledger
+    for (const p of payoutsRes.rows) {
+      const ref = p.reference ? String(p.reference).trim() : null;
+      const gwRef = p.gateway_reference ? String(p.gateway_reference).trim() : null;
+      if ((ref && existingRefs.has(ref)) || (gwRef && existingRefs.has(gwRef))) {
+        continue;
+      }
+      if (ref) existingRefs.add(ref);
+      if (gwRef) existingRefs.add(gwRef);
+      allEventsChronological.push(p);
+    }
+
+    // Add any legacy commissions from driver_commissions that might not be in ledger
+    try {
       const commissionsRes = await pool.query(
         `
         SELECT 
@@ -1259,13 +1319,19 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         `,
         [id]
       );
-      baseEvents = commissionsRes.rows;
-    }
 
-    // Combine all events and sort chronologically
-    const allEventsChronological = [...baseEvents, ...payoutsRes.rows].sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    );
+      for (const c of commissionsRes.rows) {
+        const ref = c.reference ? String(c.reference).trim() : null;
+        if (ref && existingRefs.has(ref)) {
+          continue;
+        }
+        if (ref) existingRefs.add(ref);
+        allEventsChronological.push(c);
+      }
+    } catch (_) {}
+
+    // Sort all events chronologically
+    allEventsChronological.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     // Support duration filtering (OPay / Moniepoint style date ranges)
     const { startDate, endDate, start_date, end_date } = req.query;
@@ -1302,6 +1368,21 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
     let totalDebits = 0;
     let periodDrops = 0;
 
+    const CATEGORY_DISPLAY_TITLES = {
+      bonus: "Performance Bonus",
+      fuel_allowance: "Fuel & Maintenance Stipend",
+      tip_reimbursement: "Tip Reimbursement",
+      manual_credit: "Other Credit Adjustment",
+      penalty: "Shortage / Damage Penalty",
+      cash_discrepancy: "Cash Collection Discrepancy",
+      administrative_fee: "Administrative Fee",
+      manual_debit: "Other Debit Deduction",
+      withdrawal: "Bank Payout / Withdrawal",
+      delivery_commission: "Delivery Drop Commission",
+      delivery_drop: "Delivery Drop Commission",
+      refund_payout: "Payout Reversal / Refund",
+    };
+
     const statementWithBalances = periodEvents.map((ev, index) => {
       const amt = parseFloat(ev.amount) || 0;
       const isCredit = ev.type === 'credit';
@@ -1316,14 +1397,38 @@ router.get("/drivers/:id/statement", async (req, res, next) => {
         totalDebits += amt;
       }
 
-      const cleanDesc = String(ev.description || '')
-        .replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '')
-        .replace(/\s*\(Customer Fee.*?\)/gi, '')
-        .trim();
+      const catKey = String(ev.category || "").toLowerCase();
+      const title = CATEGORY_DISPLAY_TITLES[catKey] || (isCredit ? "Credit Adjustment" : "Debit Deduction");
+      
+      let rawDesc = String(ev.description || "").trim();
+      rawDesc = rawDesc.replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, "").trim();
+
+      let reason = "";
+      if (/^Zone Delivery Drop:\s*/i.test(rawDesc)) {
+        reason = `Zone: ${rawDesc.replace(/^Zone Delivery Drop:\s*/i, "").trim()}`;
+      } else if (rawDesc) {
+        const catRegex = new RegExp(`^${title}[:\\s—-]+`, "i");
+        if (catRegex.test(rawDesc)) {
+          reason = rawDesc.replace(catRegex, "").trim();
+        } else if (/^reason:\s*/i.test(rawDesc)) {
+          reason = rawDesc.replace(/^reason:\s*/i, "").trim();
+        } else {
+          reason = rawDesc;
+        }
+      }
+
+      if (!reason && catKey === "withdrawal") {
+        reason = ev.bank_name ? `Disbursement to ${ev.bank_name} (${ev.account_number || ""})`.trim() : "Bank Account Disbursement";
+      } else if (!reason && isCredit && (catKey === "delivery_commission" || catKey === "delivery_drop")) {
+        reason = "Delivery drop commission credited to wallet";
+      }
 
       return {
         ...ev,
-        description: cleanDesc,
+        title,
+        reason,
+        category: catKey,
+        description: rawDesc || reason || title,
         delivery_fee: undefined,
         amount: amt,
         running_balance: runningBalance,

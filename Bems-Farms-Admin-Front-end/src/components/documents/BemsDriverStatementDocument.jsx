@@ -44,6 +44,70 @@ function cleanStatementDescription(desc) {
   return cleaned
 }
 
+function formatTransactionDescription(ev) {
+  const isCredit = ev.type === 'credit'
+  const catKey = String(ev.category || '').toLowerCase()
+  const CATEGORY_NAMES = {
+    bonus: 'Performance Bonus',
+    fuel_allowance: 'Fuel & Maintenance Stipend',
+    tip_reimbursement: 'Tip Reimbursement',
+    manual_credit: 'Other Credit Adjustment',
+    penalty: 'Shortage / Damage Penalty',
+    cash_discrepancy: 'Cash Collection Discrepancy',
+    administrative_fee: 'Administrative Fee',
+    manual_debit: 'Other Debit Deduction',
+    withdrawal: 'Bank Payout / Withdrawal',
+    refund_payout: 'Payout Reversal / Refund',
+    delivery_commission: 'Delivery Drop Commission',
+    delivery_drop: 'Delivery Drop Commission',
+  }
+
+  const title = ev.title || CATEGORY_NAMES[catKey] || (isCredit ? 'Credit Adjustment' : 'Debit Deduction')
+  let reason = ev.reason || ''
+
+  if (!reason) {
+    let rawDesc = String(ev.description || '').trim()
+    rawDesc = rawDesc.replace(/\s*\([^)]*Customer Fee[^)]*\)/gi, '').trim()
+    if (/^Zone Delivery Drop:\s*/i.test(rawDesc)) {
+      reason = `Zone: ${rawDesc.replace(/^Zone Delivery Drop:\s*/i, '').trim()}`
+    } else if (rawDesc) {
+      const catRegex = new RegExp(`^${title}[:\\s—-]+`, 'i')
+      if (catRegex.test(rawDesc)) {
+        reason = rawDesc.replace(catRegex, '').trim()
+      } else if (/^reason:\s*/i.test(rawDesc)) {
+        reason = rawDesc.replace(/^reason:\s*/i, '').trim()
+      } else {
+        reason = rawDesc
+      }
+    }
+  }
+
+  const hasDistinctReason = reason && reason.toLowerCase() !== title.toLowerCase()
+
+  return (
+    <>
+      <div style={{ fontWeight: 700, color: '#0f3622', fontSize: '11px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+        <span>{title}</span>
+        {ev.order_id && (
+          <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 4, fontSize: '9px', padding: '1px 5px', borderRadius: '4px' }}>
+            Order #{String(ev.order_id).replace(/^Order\s*#?/i, '')}
+          </span>
+        )}
+      </div>
+      {hasDistinctReason && (
+        <div style={{ fontSize: '9.5px', color: '#4b5563', marginTop: '2px', lineHeight: '1.25' }}>
+          <span style={{ fontWeight: 600, color: '#374151' }}>Reason:</span> {reason}
+        </div>
+      )}
+      {ev.performed_by_name && (
+        <div style={{ fontSize: '8.5px', color: '#6b7280', marginTop: '1px', fontStyle: 'italic' }}>
+          Authorized by: {ev.performed_by_name}
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * Generate a deterministic security code from reference and balance
  */
@@ -508,12 +572,7 @@ export default function BemsDriverStatementDocument({
                       <td className="mono">{String(idx + 1).padStart(2, '0')}</td>
                       <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                       <td className="it">
-                        <b>{cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
-                        {ev.order_id && (
-                          <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 6 }}>
-                            Order #{String(ev.order_id).replace(/^Order\s*#?/i, '')}
-                          </span>
-                        )}
+                        {formatTransactionDescription(ev)}
                       </td>
                       <td className="mono" style={{ fontSize: 10, color: '#0f3622', fontWeight: 600 }}>
                         {ev.reference || '—'}
@@ -699,12 +758,7 @@ export default function BemsDriverStatementDocument({
                         <td className="mono">{String(priorRowsCount + idx + 1).padStart(2, '0')}</td>
                         <td className="mono" style={{ fontSize: 10.5 }}>{formatDate(ev.date)}</td>
                         <td className="it">
-                          <b>{cleanStatementDescription(ev.description) || (isCredit ? 'Delivery Drop Commission' : 'Bank Withdrawal')}</b>
-                          {ev.order_id && (
-                            <span className="bems-doc-tag" style={{ background: '#e0f2fe', color: '#0369a1', marginLeft: 6 }}>
-                              Order #{String(ev.order_id).replace(/^Order\s*#?/i, '')}
-                            </span>
-                          )}
+                          {formatTransactionDescription(ev)}
                         </td>
                         <td className="mono" style={{ fontSize: 10, color: '#0f3622', fontWeight: 600 }}>
                           {ev.reference || '—'}

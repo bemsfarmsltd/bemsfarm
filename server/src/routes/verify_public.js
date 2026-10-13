@@ -487,21 +487,37 @@ router.get("/document", async (req, res, next) => {
 
       // Fetch ledger events
       const ledgerRes = await pool.query(
-        `SELECT id, created_at AS date, description, reference, type, amount, balance_after AS running_balance 
+        `SELECT id, created_at AS date, description, reference, type, category, amount, balance_after AS running_balance 
          FROM driver_wallet_ledger 
          WHERE driver_id = $1 
          ORDER BY created_at ASC`,
         [drv.id]
       );
       const payoutRes = await pool.query(
-        `SELECT id, created_at AS date, 'Bank Withdrawal Settlement' AS description, payout_ref AS reference, 'debit' AS type, amount, status 
+        `SELECT id, created_at AS date, 'Bank Withdrawal Settlement' AS description, payout_ref AS reference, 'debit' AS type, 'withdrawal' AS category, amount, status 
          FROM driver_payouts 
          WHERE driver_id = $1 AND status IN ('paid', 'approved') 
          ORDER BY created_at ASC`,
         [drv.id]
       );
 
-      const events = [...ledgerRes.rows, ...payoutRes.rows].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const existingRefs = new Set();
+      const events = [];
+
+      for (const row of ledgerRes.rows) {
+        if (row.reference) existingRefs.add(String(row.reference).trim());
+        events.push(row);
+      }
+
+      for (const p of payoutRes.rows) {
+        const ref = p.reference ? String(p.reference).trim() : null;
+        if (ref && existingRefs.has(ref)) continue;
+        if (ref) existingRefs.add(ref);
+        events.push(p);
+      }
+
+      events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
       let running = 0;
       const statementEvents = events.map(ev => {
         const amt = parseFloat(ev.amount) || 0;
