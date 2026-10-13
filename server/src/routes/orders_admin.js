@@ -193,7 +193,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, recorded_at,
-          (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+          (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 
@@ -1467,7 +1467,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, recorded_at,
-          (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+          (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 

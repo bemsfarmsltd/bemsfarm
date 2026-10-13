@@ -96,7 +96,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, recorded_at,
-          (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+          (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 
@@ -133,7 +133,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
       LEFT JOIN driver_availability da ON dr.id = da.driver_id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, recorded_at,
-               (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+               (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
         FROM driver_locations WHERE driver_id = dr.id ORDER BY recorded_at DESC LIMIT 1
       ) dl ON true
       WHERE dr.status = 'active'
@@ -713,8 +713,9 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
-          WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled')) THEN 'on_delivery'
-          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'active'
+          WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived')) THEN 'on_delivery'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(dl.is_gps_live, false) = true THEN 'active'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(dl.is_gps_live, false) = false THEN 'no_signal'
           ELSE 'off_duty'
         END AS status,
         dr.primary_zone_id AS zone_id,
@@ -754,7 +755,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, accuracy, recorded_at,
-               (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+               (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 
@@ -2012,7 +2013,7 @@ router.get("/drivers/:id/location", requireRole("superadmin", "manager", "admin"
     // Latest location
     const latestRes = await pool.query(
       `SELECT id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at,
-              (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+              (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
        FROM driver_locations
        WHERE driver_id = $1
        ORDER BY recorded_at DESC

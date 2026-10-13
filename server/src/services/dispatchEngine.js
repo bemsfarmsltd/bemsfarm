@@ -196,7 +196,7 @@ async function autoAssignClosestDriver(
         LEFT JOIN orders o2 ON (o2.id::text = del.order_id OR o2.order_ref = del.order_id)
         LEFT JOIN driver_availability da ON d.id = da.driver_id
         LEFT JOIN LATERAL (
-          SELECT latitude, longitude FROM driver_locations WHERE driver_id = d.id ORDER BY recorded_at DESC LIMIT 1
+          SELECT latitude, longitude FROM driver_locations WHERE driver_id = d.id AND recorded_at >= NOW() - INTERVAL '2 minutes' ORDER BY recorded_at DESC LIMIT 1
         ) dl ON true
         WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty')
           AND COALESCE(da.is_available, d.is_available, true) = true
@@ -262,7 +262,7 @@ async function autoAssignClosestDriver(
           SELECT latitude, longitude, recorded_at
           FROM driver_locations
           WHERE driver_id = d.id
-            AND recorded_at >= NOW() - INTERVAL '30 minutes'
+            AND recorded_at >= NOW() - INTERVAL '2 minutes'
           ORDER BY recorded_at DESC
           LIMIT 1
         ) dl ON true

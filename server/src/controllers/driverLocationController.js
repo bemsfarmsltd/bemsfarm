@@ -17,6 +17,10 @@ const updateLocation = async (req, res, next) => {
       recorded_at,
     } = req.body;
 
+    if (req.body.enabled === false || req.body.active === false || req.body.status === 'off' || req.body.status === 'disabled' || req.body.tracking === false) {
+      return stopLocation(req, res, next);
+    }
+
     const coords = req.body.coords || req.body.position || req.body.location || {};
     const rawLat = latitude ?? req.body.lat ?? coords.latitude ?? coords.lat;
     const rawLng = longitude ?? req.body.lng ?? coords.longitude ?? coords.lng;
@@ -78,7 +82,7 @@ const updateLocation = async (req, res, next) => {
       INSERT INTO driver_locations (
         driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, "timestamp", recorded_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       RETURNING id, driver_id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, "timestamp", recorded_at
       `,
       [
@@ -91,7 +95,6 @@ const updateLocation = async (req, res, next) => {
         targetOrderId ? String(targetOrderId) : null,
         targetDeliveryId ? parseInt(targetDeliveryId, 10) : null,
         deviceTimestamp,
-        serverRecordedAt,
       ]
     );
 
@@ -192,7 +195,38 @@ const recordHeartbeat = async (req, res, next) => {
   }
 };
 
+// ── POST /api/driver/location/stop & DELETE /api/driver/location ───────
+// Explicitly stop tracking when driver disables location in app
+const stopLocation = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    await pool.query("UPDATE drivers SET last_location_at = NULL WHERE id = $1", [driverId]);
+    await pool.query("DELETE FROM driver_locations WHERE driver_id = $1", [driverId]);
+    try {
+      const { broadcastDriverTelemetry, broadcastDriverLocation } = require("../services/socketService");
+      broadcastDriverTelemetry({
+        driver_id: driverId,
+        is_gps_live: false,
+        status: "location_off",
+        last_ping_at: null,
+      });
+      broadcastDriverLocation({
+        driver_id: driverId,
+        latitude: null,
+        longitude: null,
+        is_gps_live: false,
+        recorded_at: null
+      });
+    } catch (_) {}
+    res.json({ success: true, message: "Location tracking stopped" });
+  } catch (err) {
+    console.error("Driver stopLocation error:", err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   updateLocation,
   recordHeartbeat,
+  stopLocation,
 };

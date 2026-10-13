@@ -772,7 +772,7 @@ export default function DeliveryMap() {
                 const dLat = safeNum(del.driver_lat, null)
                 const dLng = safeNum(del.driver_lng, null)
                 const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
-                const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 30 * 60 * 1000))
+                const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 2 * 60 * 1000))
                 const originCoords = hasDriverCoords ? [dLat, dLng] : HUBS[0].coords
                 const custCoords = getCustomerCoords(del)
                 const custLat = custCoords ? custCoords[0] : null
@@ -1038,7 +1038,7 @@ export default function DeliveryMap() {
               const custLng = custCoords ? custCoords[1] : null
 
               const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
-              const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 30 * 60 * 1000))
+              const isGpsLive = Boolean(del.is_gps_live ?? (del.driver_last_ping && (new Date() - new Date(del.driver_last_ping)) < 2 * 60 * 1000))
               const driverPos = hasDriverCoords ? [dLat, dLng] : null
               const customerPos = (custLat != null && custLng != null) ? [custLat, custLng] : null
               const centralHub = HUBS[0]
@@ -1297,7 +1297,7 @@ export default function DeliveryMap() {
             const dLat = safeNum(selected.driver_lat, null)
             const dLng = safeNum(selected.driver_lng, null)
             const hasDriverCoords = dLat != null && dLng != null && (dLat !== 0 || dLng !== 0)
-            const isGpsLive = Boolean(selected.is_gps_live ?? (selected.driver_last_ping && (new Date() - new Date(selected.driver_last_ping)) < 30 * 60 * 1000))
+            const isGpsLive = Boolean(selected.is_gps_live ?? (selected.driver_last_ping && (new Date() - new Date(selected.driver_last_ping)) < 2 * 60 * 1000))
             const originCoords = hasDriverCoords ? [dLat, dLng] : HUBS[0].coords
             const custCoords = getCustomerCoords(selected)
             const custLat = custCoords ? custCoords[0] : null

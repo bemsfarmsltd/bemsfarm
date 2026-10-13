@@ -782,7 +782,7 @@ router.get("/track/:code", async (req, res, next) => {
          SELECT dl.latitude, dl.longitude, dl.recorded_at
          FROM driver_locations dl
          WHERE dl.driver_id = dr.id
-           AND dl.recorded_at >= NOW() - INTERVAL '30 minutes'
+           AND dl.recorded_at >= NOW() - INTERVAL '2 minutes'
          ORDER BY dl.recorded_at DESC
          LIMIT 1
        ) location ON true
@@ -912,7 +912,7 @@ router.get("/:id", protect, async (req, res, next) => {
          SELECT dl.latitude, dl.longitude, dl.heading, dl.speed, dl.recorded_at
          FROM driver_locations dl
          WHERE dl.driver_id = dr.id
-           AND dl.recorded_at >= NOW() - INTERVAL '30 minutes'
+           AND dl.recorded_at >= NOW() - INTERVAL '2 minutes'
          ORDER BY dl.recorded_at DESC
          LIMIT 1
        ) loc ON true

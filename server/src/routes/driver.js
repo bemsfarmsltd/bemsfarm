@@ -164,6 +164,8 @@ router.get("/pod/:orderId", driverProtect, driverDeliveryController.getProofOfDe
 
 // ── 4. Location Telemetry & Heartbeat Ping ────────────────────────────
 router.post("/location", driverProtect, driverLocationController.updateLocation);
+router.post("/location/stop", driverProtect, driverLocationController.stopLocation);
+router.delete("/location", driverProtect, driverLocationController.stopLocation);
 router.post("/heartbeat", driverProtect, driverLocationController.recordHeartbeat);
 
 // ── 5. Wallet, Earnings & Withdrawals ─────────────────────────────────
