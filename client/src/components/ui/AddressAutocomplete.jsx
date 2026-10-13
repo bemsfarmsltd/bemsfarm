@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import VerifiedLocationModal from "./VerifiedLocationModal";
 import api from "../../services/api";
 
@@ -14,13 +14,18 @@ export default function AddressAutocomplete({
   initialLat = null,
   initialLng = null,
   showMapButton = true,
+  autoTriggerPin = true,
 }) {
   const [inputValue, setInputValue] = useState(value || "");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasVerifiedCoords, setHasVerifiedCoords] = useState(Boolean(initialLat && initialLng));
+  const [pinnedDetails, setPinnedDetails] = useState(null);
+
   const wrapperRef = useRef(null);
+  const searchTimerRef = useRef(null);
+  const autoPinTimerRef = useRef(null);
 
   // Sync internal value if external value changes
   useEffect(() => {
@@ -28,6 +33,15 @@ export default function AddressAutocomplete({
       setInputValue(value);
     }
   }, [value]);
+
+  // Sync verified coords if parent updates latitude / longitude
+  useEffect(() => {
+    const isPinned = Boolean(initialLat && initialLng);
+    setHasVerifiedCoords(isPinned);
+    if (!isPinned) {
+      setPinnedDetails(null);
+    }
+  }, [initialLat, initialLng]);
 
   // Click outside listener for suggestions dropdown
   useEffect(() => {
@@ -40,26 +54,99 @@ export default function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Free OpenStreetMap Nominatim search debounced
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      if (autoPinTimerRef.current) clearTimeout(autoPinTimerRef.current);
+    };
+  }, []);
+
+  // Auto-pin handler when an address is recognized
+  const autoPinLocation = useCallback(async (text, targetSuggestion = null) => {
+    if (!text || text.trim().length < 4) return;
+    try {
+      let suggestion = targetSuggestion;
+      if (!suggestion) {
+        const res = await api.get("/locations/search", { params: { q: text.trim() } });
+        const list = res.data?.results || [];
+        suggestion = list.length > 0 ? list[0] : (res.data?.closestMatch || null);
+      }
+
+      if (suggestion && suggestion.latitude && suggestion.longitude) {
+        // Verify zone with backend
+        const verifyRes = await api.post("/locations/verify", {
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude,
+          address: text,
+          city: suggestion.city,
+          state: suggestion.state,
+        });
+
+        const resolvedData = {
+          address: text,
+          street_address: text,
+          city: verifyRes.data?.city || suggestion.city || suggestion.lga,
+          lga: verifyRes.data?.lga || suggestion.lga || verifyRes.data?.city || suggestion.city,
+          state: verifyRes.data?.state || suggestion.state,
+          postal_code: verifyRes.data?.postal_code || suggestion.postal_code || "440221",
+          postcode: verifyRes.data?.postal_code || suggestion.postal_code || "440221",
+          digital_postcode: verifyRes.data?.digital_postcode || null,
+          digital_postcode_display: verifyRes.data?.digital_postcode_display || null,
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude,
+          zone_id: verifyRes.data?.zone?.zone_id || "ZONE001",
+          zone_name: verifyRes.data?.zone?.zone_name,
+          delivery_fee: (verifyRes.data?.zone?.delivery_fee !== undefined && verifyRes.data?.zone?.delivery_fee !== null && !isNaN(Number(verifyRes.data.zone.delivery_fee)))
+            ? Number(verifyRes.data.zone.delivery_fee)
+            : 1000,
+          verified: true,
+        };
+
+        setHasVerifiedCoords(true);
+        setPinnedDetails(resolvedData);
+
+        if (onPlaceSelected) {
+          onPlaceSelected(resolvedData);
+        }
+        return true;
+      }
+    } catch (err) {
+      console.warn("Auto-pin background lookup error:", err);
+    }
+    return false;
+  }, [onPlaceSelected]);
+
+  // Handle typing in the input
   const handleInputChange = (e) => {
     const text = e.target.value;
     setInputValue(text);
     setHasVerifiedCoords(false);
+    setPinnedDetails(null);
 
     if (onChange) {
       onChange(e);
     }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (autoPinTimerRef.current) clearTimeout(autoPinTimerRef.current);
 
     if (!text || text.trim().length < 3) {
       setSuggestions([]);
       return;
     }
 
-    const timer = setTimeout(async () => {
+    // 1. Debounced dropdown suggestions search
+    searchTimerRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await api.get("/locations/search", { params: { q: text } });
-        setSuggestions(res.data?.results || []);
+        const res = await api.get("/locations/search", { params: { q: text.trim() } });
+        let list = res.data?.results || [];
+        // If results array is empty but backend resolved a closest match area (e.g. Umuahia, Abia), show it!
+        if (list.length === 0 && res.data?.closestMatch) {
+          list = [res.data.closestMatch];
+        }
+        setSuggestions(list);
       } catch (err) {
         // silent catch
       } finally {
@@ -67,68 +154,38 @@ export default function AddressAutocomplete({
       }
     }, 350);
 
-    return () => clearTimeout(timer);
+    // 2. Proactive Auto-Pin Trigger:
+    // If the customer has typed a substantial address (>= 8 chars) and pauses for 750ms,
+    // trigger auto-pinning immediately so the system doesn't stay idle!
+    if (autoTriggerPin && text.trim().length >= 8) {
+      autoPinTimerRef.current = setTimeout(async () => {
+        const success = await autoPinLocation(text.trim());
+        // If auto-resolution in the background couldn't find coordinates,
+        // trigger the interactive pin map modal so customer is smoothly prompted to pin their doorstep!
+        if (!success && text.trim().length >= 12) {
+          setIsModalOpen(true);
+        }
+      }, 750);
+    }
   };
 
   const handleSelectSuggestion = async (suggestion) => {
     const address = suggestion.display_name;
     setInputValue(address);
     setSuggestions([]);
-    setHasVerifiedCoords(true);
 
     if (onChange) {
       onChange({ target: { value: address } });
     }
 
-    // Verify zone on backend
-    try {
-      const res = await api.post("/locations/verify", {
-        latitude: suggestion.latitude,
-        longitude: suggestion.longitude,
-        address,
-        city: suggestion.city,
-        state: suggestion.state,
-      });
-
-      if (onPlaceSelected) {
-        onPlaceSelected({
-          address,
-          street_address: address,
-          city: res.data?.city || suggestion.city || suggestion.lga,
-          lga: res.data?.lga || suggestion.lga || res.data?.city || suggestion.city,
-          state: res.data?.state || suggestion.state,
-          postal_code: res.data?.postal_code || suggestion.postal_code || "440221",
-          postcode: res.data?.postal_code || suggestion.postal_code || "440221",
-          digital_postcode: res.data?.digital_postcode || null,
-          digital_postcode_display: res.data?.digital_postcode_display || null,
-          latitude: suggestion.latitude,
-          longitude: suggestion.longitude,
-          zone_id: res.data?.zone?.zone_id || "ZONE001",
-          zone_name: res.data?.zone?.zone_name,
-          delivery_fee: (res.data?.zone?.delivery_fee !== undefined && res.data?.zone?.delivery_fee !== null && !isNaN(Number(res.data.zone.delivery_fee))) ? Number(res.data.zone.delivery_fee) : 1000,
-          verified: true,
-        });
-      }
-    } catch (e) {
-      if (onPlaceSelected) {
-        onPlaceSelected({
-          address,
-          city: suggestion.city || suggestion.lga,
-          lga: suggestion.lga || suggestion.city,
-          state: suggestion.state,
-          postal_code: suggestion.postal_code || "440221",
-          postcode: suggestion.postal_code || "440221",
-          latitude: suggestion.latitude,
-          longitude: suggestion.longitude,
-          verified: true,
-        });
-      }
-    }
+    await autoPinLocation(address, suggestion);
   };
 
   const handleLocationConfirmed = (locationData) => {
     setInputValue(locationData.address);
     setHasVerifiedCoords(true);
+    setPinnedDetails(locationData);
+    setIsModalOpen(false);
 
     if (onChange) {
       onChange({ target: { value: locationData.address } });
@@ -142,9 +199,23 @@ export default function AddressAutocomplete({
     if (e.key === "Enter") {
       e.preventDefault();
       setSuggestions([]);
-      if (inputValue && inputValue.trim().length >= 2) {
+      if (inputValue && inputValue.trim().length >= 3) {
         setIsModalOpen(true);
       }
+    }
+  };
+
+  // When customer leaves the address input field (onBlur)
+  const handleBlur = () => {
+    // If an address was typed but coordinates haven't been pinned yet,
+    // immediately trigger pinning so customer is never stuck
+    if (inputValue && inputValue.trim().length >= 6 && !hasVerifiedCoords) {
+      autoPinLocation(inputValue.trim()).then((pinned) => {
+        if (!pinned && autoTriggerPin) {
+          // Open map modal so customer can confirm doorstep location
+          setIsModalOpen(true);
+        }
+      });
     }
   };
 
@@ -156,21 +227,25 @@ export default function AddressAutocomplete({
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className={`${className} ${showMapButton ? "pr-28" : "pr-8"}`}
-          style={style}
+          style={{
+            ...style,
+            borderColor: hasVerifiedCoords ? "#16a34a" : (style?.borderColor || "#D1D5DB"),
+          }}
           required={required}
           disabled={disabled}
         />
 
-        {/* Verification Status Badge / Clear Icon */}
+        {/* Verification Status Badge & Map Pin Trigger Button */}
         <div className="absolute right-2 flex items-center gap-1.5 z-10">
           {hasVerifiedCoords && (
             <span 
-              className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5" 
-              title="GPS Coordinates Verified"
+              className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5" 
+              title="Doorstep GPS Coordinates Verified"
             >
-              ✓
+              ✓ Pinned
             </span>
           )}
 
@@ -178,15 +253,57 @@ export default function AddressAutocomplete({
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="px-2.5 py-1 text-[11px] font-semibold bg-green-50 hover:bg-green-100 text-green-800 border border-green-200 rounded-lg shadow-sm flex items-center gap-1 transition whitespace-nowrap"
-              title="Pin your exact location on the map"
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg shadow-sm flex items-center gap-1 transition whitespace-nowrap cursor-pointer ${
+                hasVerifiedCoords 
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 animate-pulse"
+              }`}
+              title="Pin your exact doorstep location on map"
             >
               <span>📍</span>
-              <span className="hidden sm:inline">Pin Map</span>
+              <span>{hasVerifiedCoords ? "Adjust Pin" : "Pin Map"}</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Proactive Pin & Verification Notification Bar */}
+      {hasVerifiedCoords ? (
+        <div className="mt-1.5 flex items-center justify-between px-3 py-1.5 bg-emerald-50/80 border border-emerald-200 rounded-lg text-[11px] text-emerald-900 animate-fadeIn">
+          <div className="flex items-center gap-1.5">
+            <span className="text-emerald-700 font-bold">✓ Location Pinned</span>
+            <span className="text-emerald-700/80">
+              {pinnedDetails?.city ? `(${pinnedDetails.city}, ${pinnedDetails.state})` : "Doorstep GPS verified"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="text-emerald-800 hover:text-emerald-950 font-bold underline transition ml-2 cursor-pointer"
+          >
+            Change Pin on Map
+          </button>
+        </div>
+      ) : isSearching ? (
+        <div className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[11px] text-gray-600">
+          <span className="animate-spin text-emerald-700">⟳</span>
+          <span>Searching map &amp; detecting delivery zone…</span>
+        </div>
+      ) : inputValue && inputValue.trim().length >= 5 ? (
+        <div className="mt-1.5 flex items-center justify-between px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 animate-fadeIn">
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className="animate-bounce">📍</span>
+            <span>Click to pin your doorstep for dispatch routing</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-md shadow-xs transition ml-2 cursor-pointer"
+          >
+            Pin on Map →
+          </button>
+        </div>
+      ) : null}
 
       {/* Live Suggestions Dropdown */}
       {suggestions.length > 0 && (
@@ -195,25 +312,27 @@ export default function AddressAutocomplete({
             <button
               key={idx}
               type="button"
-              className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-green-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition"
+              className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-emerald-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition cursor-pointer"
               onClick={() => handleSelectSuggestion(item)}
             >
               <span className="text-sm mt-0.5">📍</span>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900 truncate">{item.display_name}</div>
-                <div className="text-[10px] text-gray-500">{item.city ? `${item.city}, ` : ''}{item.state}</div>
+                <div className="text-[10px] text-gray-500">
+                  {item.city ? `${item.city}, ` : ''}{item.state} {item.reason ? `• ${item.reason}` : ''}
+                </div>
               </div>
             </button>
           ))}
           <button
             type="button"
-            className="w-full py-2 bg-green-50 text-green-800 font-bold text-xs text-center border-t border-green-100 hover:bg-green-100 transition flex items-center justify-center gap-1"
+            className="w-full py-2 bg-emerald-50 text-emerald-800 font-bold text-xs text-center border-t border-emerald-100 hover:bg-emerald-100 transition flex items-center justify-center gap-1 cursor-pointer"
             onClick={() => {
               setSuggestions([]);
               setIsModalOpen(true);
             }}
           >
-            <span>🗺️ Don't see your address? Pin on Map</span>
+            <span>🗺️ Don't see exact building? Pin on Map</span>
           </button>
         </div>
       )}

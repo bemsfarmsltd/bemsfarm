@@ -467,8 +467,40 @@ export default function CheckoutPage() {
 
   const setField = (field) => (e) => {
     const val = e.target.value;
+    let detectedState = null;
+    let detectedCity = null;
+
     setForm((f) => {
       const updated = { ...f, [field]: val };
+
+      // Proactively extract state and city as the customer enters address
+      if (field === "address" && val && val.trim().length >= 4) {
+        const lower = val.toLowerCase();
+        for (const st of NIGERIAN_STATES) {
+          const cleanSt = st.toLowerCase().replace(" (fct)", "").trim();
+          const regex = new RegExp(`\\b${cleanSt}(\\s+state)?\\b`, "i");
+          if (regex.test(lower)) {
+            updated.state = st;
+            detectedState = st;
+            break;
+          }
+        }
+        const commonCities = [
+          "Umuahia", "Aba", "Ikeja", "Lekki", "Victoria Island", "Ikoyi", "Yaba", "Surulere",
+          "Port Harcourt", "Enugu", "Owerri", "Awka", "Onitsha", "Benin City", "Asaba",
+          "Warri", "Calabar", "Uyo", "Ibadan", "Abeokuta", "Akure", "Osogbo", "Ilorin",
+          "Kaduna", "Zaria", "Kano", "Jos", "Abuja", "Garki", "Wuse", "Maitama", "Kubwa", "Gwarinpa"
+        ];
+        for (const ct of commonCities) {
+          const regex = new RegExp(`\\b${ct}\\b`, "i");
+          if (regex.test(lower)) {
+            updated.city = ct;
+            detectedCity = ct;
+            break;
+          }
+        }
+      }
+
       if (field === "state" || field === "city" || field === "address") {
         const previousAuto = resolveNigerianPostalCode(f.state, f.city, "", f.address);
         if (!f.postalCode || f.postalCode === previousAuto || f.postalCode === "440221") {
@@ -479,8 +511,8 @@ export default function CheckoutPage() {
     });
 
     if (field === "state" || field === "city" || field === "address") {
-      const targetState = field === "state" ? val : form.state;
-      const targetCity = field === "city" ? val : form.city;
+      const targetState = detectedState || (field === "state" ? val : form.state);
+      const targetCity = detectedCity || (field === "city" ? val : form.city);
       const targetAddress = field === "address" ? val : form.address;
       resolveDeliveryZone(form.latitude, form.longitude, targetAddress, targetCity, targetState);
     }
@@ -1471,6 +1503,9 @@ export default function CheckoutPage() {
                     <AddressAutocomplete
                       value={form.address}
                       onChange={setField("address")}
+                      initialLat={form.latitude}
+                      initialLng={form.longitude}
+                      autoTriggerPin={true}
                       onPlaceSelected={(place) => {
                         const matchedState = normalizeNigerianState(place.state);
                         const autoPostal = place.postal_code || place.postcode || resolveNigerianPostalCode(matchedState || place.state, place.city || place.lga, "", place.address);
