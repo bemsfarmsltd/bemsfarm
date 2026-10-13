@@ -29,29 +29,55 @@ async function logOrderAudit(clientOrPool, {
       normalizedActorType = 'kitchen';
     }
 
-    try {
-      await executor.query(
-        `INSERT INTO order_audit_logs 
-         (order_id, actor_id, actor_name, actor_role, action, previous_state, new_state, metadata, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-        [
-          String(order_id),
-          actor_id,
-          actor_name,
-          actor_role,
-          action,
-          previous_state,
-          new_state,
-          JSON.stringify(metadata || {})
-        ]
-      );
-    } catch (auditErr) {
-      console.warn("[logOrderAudit] order_audit_logs warning:", auditErr.message);
+    const isTransaction = Boolean(clientOrPool && clientOrPool !== pool && typeof clientOrPool.release === 'function');
+
+    if (isTransaction) {
+      try {
+        await executor.query("SAVEPOINT audit_logs_sp");
+        await executor.query(
+          `INSERT INTO order_audit_logs 
+           (order_id, actor_id, actor_name, actor_role, action, previous_state, new_state, metadata, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+          [
+            String(order_id),
+            actor_id,
+            actor_name,
+            actor_role,
+            action,
+            previous_state,
+            new_state,
+            JSON.stringify(metadata || {})
+          ]
+        );
+        await executor.query("RELEASE SAVEPOINT audit_logs_sp");
+      } catch (auditErr) {
+        await executor.query("ROLLBACK TO SAVEPOINT audit_logs_sp").catch(() => {});
+        console.warn("[logOrderAudit] order_audit_logs warning:", auditErr.message);
+      }
+    } else {
+      try {
+        await executor.query(
+          `INSERT INTO order_audit_logs 
+           (order_id, actor_id, actor_name, actor_role, action, previous_state, new_state, metadata, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+          [
+            String(order_id),
+            actor_id,
+            actor_name,
+            actor_role,
+            action,
+            previous_state,
+            new_state,
+            JSON.stringify(metadata || {})
+          ]
+        );
+      } catch (auditErr) {
+        console.warn("[logOrderAudit] order_audit_logs warning:", auditErr.message);
+      }
     }
 
     // Record to order_tracking_events using the SAME executor (prevents foreign-key deadlock with FOR UPDATE)
     // Protected by SAVEPOINT so it never aborts an outer transaction
-    const isTransaction = clientOrPool && typeof clientOrPool.query === 'function';
     if (isTransaction) {
       try {
         await executor.query("SAVEPOINT tracking_event_sp");

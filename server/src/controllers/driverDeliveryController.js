@@ -1803,13 +1803,20 @@ const acceptDelivery = async (req, res, next) => {
     );
 
     if (updateDa.rowCount === 0) {
-      await client.query(
-        `
-        INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, response_at, created_at)
-        VALUES ($1, $2, 'manual', 'accepted', NOW(), NOW())
-        `,
-        [delivery.id, driverId]
-      ).catch(() => {});
+      try {
+        await client.query("SAVEPOINT da_accept_sp");
+        await client.query(
+          `
+          INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, response_at, created_at)
+          VALUES ($1, $2, 'manual', 'accepted', NOW(), NOW())
+          `,
+          [delivery.id, driverId]
+        );
+        await client.query("RELEASE SAVEPOINT da_accept_sp");
+      } catch (err) {
+        await client.query("ROLLBACK TO SAVEPOINT da_accept_sp").catch(() => {});
+        console.warn("[acceptDelivery] delivery_assignments insert fallback warning:", err.message);
+      }
     }
 
     await logOrderAudit(client, {
@@ -1973,13 +1980,20 @@ const declineDelivery = async (req, res, next) => {
     );
 
     if (updateDa.rowCount === 0) {
-      await client.query(
-        `
-        INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, rejection_reason, response_at, created_at)
-        VALUES ($1, $2, 'direct', 'rejected', $3, NOW(), NOW())
-        `,
-        [delivery.id, driverId, fullReason]
-      ).catch(() => {});
+      try {
+        await client.query("SAVEPOINT da_decline_sp");
+        await client.query(
+          `
+          INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, driver_response, rejection_reason, response_at, created_at)
+          VALUES ($1, $2, 'manual', 'rejected', $3, NOW(), NOW())
+          `,
+          [delivery.id, driverId, fullReason]
+        );
+        await client.query("RELEASE SAVEPOINT da_decline_sp");
+      } catch (err) {
+        await client.query("ROLLBACK TO SAVEPOINT da_decline_sp").catch(() => {});
+        console.warn("[declineDelivery] delivery_assignments insert fallback warning:", err.message);
+      }
     }
 
     // Ensure order reflects that no driver is assigned and is awaiting next courier confirmation
