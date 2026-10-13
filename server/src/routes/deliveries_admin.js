@@ -715,7 +715,8 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
           WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
           WHEN EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived')) THEN 'on_delivery'
           WHEN COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(dl.is_gps_live, false) = true THEN 'active'
-          WHEN COALESCE(da.is_available, dr.is_available, false) = true AND COALESCE(dl.is_gps_live, false) = false THEN 'no_signal'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true AND GREATEST(dr.last_location_at, da.last_ping_at, da.last_toggled_at) >= NOW() - INTERVAL '30 minutes' THEN 'acquiring_gps'
+          WHEN COALESCE(da.is_available, dr.is_available, false) = true THEN 'no_signal'
           ELSE 'off_duty'
         END AS status,
         dr.primary_zone_id AS zone_id,
@@ -755,7 +756,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       LEFT JOIN LATERAL (
         SELECT latitude, longitude, heading, speed, accuracy, recorded_at,
-               (recorded_at >= NOW() - INTERVAL '2 minutes') AS is_gps_live
+               (recorded_at >= NOW() - INTERVAL '5 minutes') AS is_gps_live
         FROM driver_locations 
         WHERE driver_id = dr.id 
         ORDER BY recorded_at DESC 
@@ -780,20 +781,19 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         COUNT(*)                                                                                     AS total,
         COUNT(*) FILTER (WHERE status = 'suspended')                                                 AS suspended,
         COUNT(*) FILTER (WHERE status = 'pending' OR onboarding_status IN ('pending_verification','documents_submitted')) AS pending_compliance,
-        COUNT(*) FILTER (WHERE status != 'suspended' AND onboarding_status = 'approved' AND id IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))) AS on_delivery,
+        COUNT(*) FILTER (WHERE status != 'suspended' AND onboarding_status = 'approved' AND id IN (SELECT driver_id FROM deliveries WHERE status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))) AS on_delivery,
         COUNT(*) FILTER (
           WHERE status != 'suspended' AND onboarding_status = 'approved'
-          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))
+          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))
           AND id IN (
             SELECT da.driver_id 
             FROM driver_availability da 
             WHERE da.is_available = true
           )
         ) AS active,
-        0 AS no_signal,
         COUNT(*) FILTER (
           WHERE status != 'suspended' AND onboarding_status = 'approved'
-          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status NOT IN ('delivered','cancelled'))
+          AND id NOT IN (SELECT driver_id FROM deliveries WHERE status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))
           AND id NOT IN (SELECT driver_id FROM driver_availability WHERE is_available = true)
         ) AS off_duty
       FROM drivers

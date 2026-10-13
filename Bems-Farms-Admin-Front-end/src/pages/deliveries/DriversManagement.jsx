@@ -106,12 +106,13 @@ function formatRelativeTime(dateStr) {
 }
 
 const STATUS_CFG = {
-  active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
-  no_signal:   { label: 'No Signal / Location Off', color: '#d97706', bg: '#fef3c7', icon: 'ri-wifi-off-line' },
-  on_delivery: { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
-  off_duty:    { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
-  pending:     { label: 'Pending Review', color: '#d97706', bg: '#fef3c7', icon: 'ri-time-line'          },
-  suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
+  active:        { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
+  acquiring_gps: { label: 'Online (Acquiring GPS)', color: '#0284c7', bg: '#e0f2fe', icon: 'ri-radar-line' },
+  no_signal:     { label: 'No Signal / Offline', color: '#d97706', bg: '#fef3c7', icon: 'ri-wifi-off-line' },
+  on_delivery:   { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
+  off_duty:      { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
+  pending:       { label: 'Pending Review', color: '#d97706', bg: '#fef3c7', icon: 'ri-time-line'          },
+  suspended:     { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
 }
 
 const ONBOARDING_STATUS_CFG = {
@@ -324,7 +325,13 @@ export default function DriversManagement() {
 
   useEffect(() => {
     const t = setTimeout(load, 250)
-    return () => clearTimeout(t)
+    const pollTimer = setInterval(() => {
+      load(true)
+    }, 8000)
+    return () => {
+      clearTimeout(t)
+      clearInterval(pollTimer)
+    }
   }, [load])
 
   useEffect(() => {
@@ -1070,7 +1077,7 @@ export default function DriversManagement() {
                                 {cfg.label}
                               </span>
 
-                              {/* Live GPS coordinates (only when courier is on duty / on delivery and streaming) */}
+                              {/* Live GPS coordinates & telemetry indicator */}
                               {driver.status === 'off_duty' ? (
                                 <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
                                   <i className="ri-moon-line fs-11 text-muted" /> Location Inactive (Shift Ended)
@@ -1079,24 +1086,6 @@ export default function DriversManagement() {
                                 <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
                                   <i className="ri-forbid-line fs-11 text-danger" /> Tracking Suspended
                                 </span>
-                              ) : driver.status === 'no_signal' || !driver.is_gps_live ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-xs p-0 border-0 bg-transparent text-start d-inline-flex align-items-center gap-1 mt-0.5"
-                                  onClick={() => openModal('location', driver)}
-                                  title="GPS Inactive / Location Off - click to view last recorded coordinates"
-                                  style={{ cursor: 'pointer' }}
-                                >
-                                  <i className="ri-map-pin-user-line text-warning fs-12" />
-                                  <span className="text-warning-emphasis fs-10 fw-semibold">
-                                    Location Off / GPS Offline
-                                  </span>
-                                  {(driver.last_gps_at || driver.last_telemetry_at) && (
-                                    <span className="text-muted fs-9">
-                                      ({formatRelativeTime(driver.last_gps_at || driver.last_telemetry_at)})
-                                    </span>
-                                  )}
-                                </button>
                               ) : driver.current_lat != null && driver.current_lng != null ? (
                                 <button
                                   type="button"
@@ -1105,14 +1094,24 @@ export default function DriversManagement() {
                                   title="Click to view exact present GPS location on interactive map"
                                   style={{ cursor: 'pointer' }}
                                 >
-                                  <i className="ri-map-pin-2-fill text-success fs-12" />
+                                  <i className={`ri-map-pin-${driver.is_gps_live ? '2-fill text-success' : 'line text-primary'} fs-12`} />
                                   <span className="font-monospace fw-bold text-dark fs-10">
                                     {Number(driver.current_lat).toFixed(4)}°, {Number(driver.current_lng).toFixed(4)}°
                                   </span>
-                                  <span className="badge bg-success-subtle text-success py-0 px-1 fs-9 fw-bold border border-success-subtle">
-                                    LIVE
-                                  </span>
+                                  {driver.is_gps_live ? (
+                                    <span className="badge bg-success-subtle text-success py-0 px-1 fs-9 fw-bold border border-success-subtle">
+                                      LIVE
+                                    </span>
+                                  ) : (
+                                    <span className="badge bg-info-subtle text-info-emphasis py-0 px-1 fs-9 border border-info-subtle">
+                                      {formatRelativeTime(driver.last_gps_at || driver.last_telemetry_at)}
+                                    </span>
+                                  )}
                                 </button>
+                              ) : driver.status === 'acquiring_gps' ? (
+                                <span className="text-info fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
+                                  <i className="ri-radar-line text-info fs-11" /> Signal Connected · Acquiring GPS fix...
+                                </span>
                               ) : (
                                 <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
                                   <i className="ri-map-pin-line text-muted fs-11" /> No GPS fix yet
