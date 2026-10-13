@@ -1,9 +1,109 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
+
+// ─── Fix Leaflet default marker icons in Vite ─────────────────────────────────
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+// Leaflet Map Invalidation & Dynamic Re-centering Controller
+function MapCenterController({ center, zoom = 15 }) {
+  const map = useMap()
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize()
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [map])
+
+  useEffect(() => {
+    if (center && Array.isArray(center) && center[0] != null && center[1] != null && center[0] !== 0 && center[1] !== 0) {
+      map.setView(center, zoom, { animate: true })
+    }
+  }, [center, zoom, map])
+  return null
+}
+
+function createCourierPinIcon(driverName, vehicleType = 'motorcycle', isLive = true, heading = 0) {
+  const iconClass =
+    vehicleType === 'car' ? 'ri-car-fill' :
+    vehicleType === 'van' ? 'ri-truck-fill' :
+    vehicleType === 'tricycle' ? 'ri-e-bike-2-fill' :
+    'ri-riding-line'
+
+  const pulseRing = isLive
+    ? `<span style="position:absolute;inset:-6px;border-radius:50%;background:rgba(22,163,74,0.35);animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite;"></span>`
+    : ''
+
+  const rotation = (heading != null && heading !== 0) ? `transform: rotate(${heading}deg);` : ''
+
+  return L.divIcon({
+    className: 'custom-live-driver-pin',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -24],
+    html: `
+      <div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">
+        ${pulseRing}
+        <div style="width:38px;height:38px;border-radius:50%;background:${isLive ? '#16a34a' : '#475569'};display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.3);border:2.5px solid #ffffff;z-index:2;${rotation}">
+          <i class="${iconClass}" style="font-size:18px;"></i>
+        </div>
+      </div>
+    `,
+  })
+}
+
+function createCustomerPinIcon(customerName = 'Customer') {
+  return L.divIcon({
+    className: 'custom-customer-dest-pin',
+    iconSize: [36, 46],
+    iconAnchor: [18, 44],
+    popupAnchor: [0, -44],
+    html: `
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:36px;height:36px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 12px rgba(239,68,68,0.4);border:2px solid #fff;">
+          <i class="ri-home-4-fill" style="font-size:16px;"></i>
+        </div>
+        <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #ef4444;margin-top:-2px;"></div>
+      </div>
+    `,
+  })
+}
+
+function createHubPinIcon() {
+  return L.divIcon({
+    className: 'custom-hub-pin',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20],
+    html: `
+      <div style="width:36px;height:36px;border-radius:10px;background:#166534;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 10px rgba(22,101,52,0.4);border:2px solid #fff;">
+        <i class="ri-plant-fill" style="font-size:18px;"></i>
+      </div>
+    `,
+  })
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return 'Never'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return 'Unknown'
+  const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diffSec < 45) return 'Just now'
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
+  return `${Math.floor(diffSec / 86400)}d ago`
+}
 
 const STATUS_CFG = {
   active:      { label: 'Online & Ready', color: '#16a34a', bg: '#dcfce7', icon: 'ri-signal-tower-fill' },
@@ -138,6 +238,10 @@ export default function DriversManagement() {
   const [statementData, setStatementData] = useState(null)
   const [loadingStatement, setLoadingStatement] = useState(false)
 
+  // Driver Live GPS Tracking State
+  const [locationData, setLocationData] = useState(null)
+  const [loadingLocation, setLoadingLocation] = useState(false)
+
   // Driver Payouts & Wallets State
   const [payouts, setPayouts] = useState([])
   const [payoutLoading, setPayoutLoading] = useState(false)
@@ -175,10 +279,32 @@ export default function DriversManagement() {
 
   // Live auto-refresh when drivers send heartbeat, GPS updates, or assignments change
   useRealtimeEvent('driver:telemetry', () => load(true))
-  useRealtimeEvent('driver:location', () => load(true))
+  useRealtimeEvent('driver:location', (evt) => {
+    load(true)
+    if (activeModal === 'location' && selected && (!evt?.driver_id || Number(evt.driver_id) === Number(selected.id))) {
+      api.get(`/admin/deliveries/drivers/${selected.id}/location`)
+        .then((res) => setLocationData(res.data))
+        .catch(() => {})
+    }
+  })
   useRealtimeEvent('delivery:updated', () => load(true))
   useRealtimeEvent('emergency:sos', () => load(true))
   useRealtimeEvent('window:focused', () => load(true))
+
+  const refreshDriverLocation = useCallback((driverId) => {
+    if (!driverId) return
+    setLoadingLocation(true)
+    api.get(`/admin/deliveries/drivers/${driverId}/location`)
+      .then((res) => {
+        setLocationData(res.data)
+        toast.success('Live GPS coordinates updated')
+      })
+      .catch((err) => {
+        console.error('Failed to refresh driver location:', err)
+        toast.error('Failed to refresh GPS telemetry')
+      })
+      .finally(() => setLoadingLocation(false))
+  }, [])
 
   const loadPayouts = useCallback(async () => {
     setPayoutLoading(true)
@@ -221,6 +347,18 @@ export default function DriversManagement() {
     setComplianceRejectNotes('')
     setViewingDocument(null)
 
+    if (type === 'location' && driver) {
+      setLoadingLocation(true)
+      setLocationData(null)
+      api.get(`/admin/deliveries/drivers/${driver.id}/location`)
+        .then((res) => setLocationData(res.data))
+        .catch((err) => {
+          console.error('Failed to load driver live location:', err)
+          toast.error('Failed to load driver GPS coordinates')
+        })
+        .finally(() => setLoadingLocation(false))
+    }
+
     if (type === 'add') {
       setForm({
         ...BLANK_FORM,
@@ -259,6 +397,7 @@ export default function DriversManagement() {
   const closeModal = () => {
     setActiveModal(null)
     setSelected(null)
+    setLocationData(null)
     setViewingDocument(null)
     setPayoutActionModal(null)
     setTargetPayout(null)
@@ -930,16 +1069,41 @@ export default function DriversManagement() {
                                 <i className={cfg.icon} />
                                 {cfg.label}
                               </span>
+
+                              {/* Live / Last known GPS coordinates */}
+                              {driver.current_lat != null && driver.current_lng != null ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-xs p-0 border-0 bg-transparent text-start d-inline-flex align-items-center gap-1 mt-0.5"
+                                  onClick={() => openModal('location', driver)}
+                                  title="Click to view exact present GPS location on interactive map"
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  <i className="ri-map-pin-2-fill text-success fs-12" />
+                                  <span className="font-monospace fw-bold text-dark fs-10">
+                                    {Number(driver.current_lat).toFixed(4)}°, {Number(driver.current_lng).toFixed(4)}°
+                                  </span>
+                                  {driver.is_gps_live ? (
+                                    <span className="badge bg-success-subtle text-success py-0 px-1 fs-9 fw-bold border border-success-subtle">
+                                      LIVE
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted fs-9">
+                                      ({formatRelativeTime(driver.last_gps_at || driver.last_telemetry_at)})
+                                    </span>
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
+                                  <i className="ri-map-pin-line text-muted fs-11" /> No GPS fix yet
+                                </span>
+                              )}
+
                               {driver.status === 'no_signal' && (
                                 <span className="text-muted fs-10 fst-italic">
                                   {driver.last_telemetry_at
                                     ? `Last ping: ${new Date(driver.last_telemetry_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                                     : 'No recent ping'}
-                                </span>
-                              )}
-                              {driver.status === 'active' && (
-                                <span className="text-success fs-10 fw-medium">
-                                  <i className="ri-check-line me-0.5"></i>GPS Fresh (&lt;5m)
                                 </span>
                               )}
                               {driver.current_order && (
@@ -951,6 +1115,15 @@ export default function DriversManagement() {
                           {/* Actions */}
                           <td className="text-end pe-4">
                             <div className="d-flex gap-1.5 justify-content-end">
+                              <button
+                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                title="View Driver Exact Present Location & Live GPS Map"
+                                onClick={() => openModal('location', driver)}
+                                style={{ borderColor: '#86efac', color: '#16a34a' }}
+                              >
+                                <i className="ri-map-pin-user-line" />
+                              </button>
+
                               <button
                                 className="btn btn-sm btn-outline-secondary"
                                 title="View Full Profile & Compliance"
@@ -1943,6 +2116,80 @@ export default function DriversManagement() {
                     ))}
                   </div>
 
+                  {/* Present GPS Telemetry & Live Location Card */}
+                  <div className="border rounded-3 p-3 mb-4 bg-light-subtle shadow-xs">
+                    <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                      <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
+                        <i className="ri-map-pin-user-line text-success fs-16" />
+                        Driver Exact Present Location &amp; Telemetry
+                      </span>
+                      {selected.current_lat != null && selected.current_lng != null ? (
+                        <span className={`badge ${selected.is_gps_live ? 'bg-success text-white' : 'bg-secondary-subtle text-secondary border'} fs-11`}>
+                          {selected.is_gps_live ? '● Live GPS Streaming' : 'Saved Telemetry Fix'}
+                        </span>
+                      ) : (
+                        <span className="badge bg-warning-subtle text-warning-emphasis fs-11">No GPS Fix</span>
+                      )}
+                    </div>
+
+                    {selected.current_lat != null && selected.current_lng != null ? (
+                      <div>
+                        <div className="row g-2 mb-2.5">
+                          <div className="col-7">
+                            <div className="text-muted fs-11 text-uppercase fw-semibold">Exact GPS Coordinates</div>
+                            <div className="fw-bold font-monospace text-dark fs-13 mt-0.5">
+                              {Number(selected.current_lat).toFixed(5)}°, {Number(selected.current_lng).toFixed(5)}°
+                            </div>
+                            <div className="text-muted fs-11 mt-0.5">
+                              {selected.zone ? `Zone: ${selected.zone}` : 'Assigned Territory'}
+                            </div>
+                          </div>
+                          <div className="col-5 text-end">
+                            <div className="text-muted fs-11 text-uppercase fw-semibold">Last Recorded Ping</div>
+                            <div className="fw-semibold text-dark fs-12 font-monospace mt-0.5">
+                              {selected.last_gps_at ? formatRelativeTime(selected.last_gps_at) : 'Recent'}
+                            </div>
+                            {selected.current_speed != null && (
+                              <div className="text-primary fs-11 fw-medium mt-0.5">
+                                Speed: {selected.current_speed} km/h
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="d-flex flex-wrap gap-2 pt-2 border-top">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 px-3 py-1.5 shadow-sm"
+                            onClick={() => {
+                              closeModal()
+                              setTimeout(() => openModal('location', selected), 100)
+                            }}
+                          >
+                            <i className="ri-map-pin-line" />
+                            <span>Track on Interactive Map</span>
+                          </button>
+
+                          <a
+                            href={`https://www.google.com/maps?q=${selected.current_lat},${selected.current_lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 py-1.5"
+                          >
+                            <i className="ri-google-fill" />
+                            <span>Open in Google Maps</span>
+                            <i className="ri-external-link-line fs-11" />
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-white rounded border text-muted fs-12">
+                        <i className="ri-information-line me-1 text-primary" />
+                        No live GPS signal received yet. The courier needs to be logged into the Bems Courier app with location enabled.
+                      </div>
+                    )}
+                  </div>
+
                   {/* Driver Wallet & Payout Account Summary */}
                   <div className="border rounded-3 p-3.5 mb-4 bg-light-subtle">
                     <div className="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
@@ -2568,6 +2815,355 @@ export default function DriversManagement() {
               </div>
             </div>
           )}
+
+          {/* ── 7. DRIVER LIVE GPS LOCATION & TELEMETRY MODAL ──────── */}
+          {activeModal === 'location' && selected && (() => {
+            const loc = locationData?.current_location || null
+            const activeLat = loc?.latitude ?? selected.current_lat ?? null
+            const activeLng = loc?.longitude ?? selected.current_lng ?? null
+            const activeHeading = loc?.heading ?? selected.current_heading ?? 0
+            const activeSpeed = loc?.speed ?? selected.current_speed ?? null
+            const activeAccuracy = loc?.accuracy ?? selected.current_accuracy ?? null
+            const activeRecordedAt = loc?.recorded_at ?? selected.last_gps_at ?? selected.last_telemetry_at ?? null
+            const hasLiveGps = Boolean(loc?.is_gps_live ?? selected.is_gps_live ?? false)
+            const hasCoordinates = activeLat != null && activeLng != null && !isNaN(Number(activeLat)) && !isNaN(Number(activeLng)) && Number(activeLat) !== 0 && Number(activeLng) !== 0
+            const coords = hasCoordinates ? [Number(activeLat), Number(activeLng)] : null
+
+            const trailCoords = Array.isArray(locationData?.trail)
+              ? locationData.trail
+                  .filter((t) => t.latitude != null && t.longitude != null && !isNaN(Number(t.latitude)) && !isNaN(Number(t.longitude)))
+                  .map((t) => [Number(t.latitude), Number(t.longitude)])
+              : []
+
+            const activeDelivery = locationData?.active_delivery || null
+            const custLat = activeDelivery?.customer_lat ? Number(activeDelivery.customer_lat) : null
+            const custLng = activeDelivery?.customer_lng ? Number(activeDelivery.customer_lng) : null
+            const activeDeliveryCustCoords = (custLat != null && custLng != null && custLat !== 0 && custLng !== 0) ? [custLat, custLng] : null
+
+            return (
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 20,
+                  width: '100%',
+                  maxWidth: 880,
+                  maxHeight: '92vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                }}
+                className="shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div
+                  style={{
+                    background: '#0f172a',
+                    padding: '18px 24px',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold fs-16"
+                      style={{
+                        width: 46,
+                        height: 46,
+                        background: hasLiveGps ? '#16a34a33' : '#334155',
+                        border: `2px solid ${hasLiveGps ? '#22c55e' : '#64748b'}`,
+                        color: hasLiveGps ? '#4ade80' : '#cbd5e1',
+                      }}
+                    >
+                      {selected.name ? selected.name.split(' ').map((n) => n[0]).join('') : 'DR'}
+                    </div>
+                    <div>
+                      <div className="d-flex align-items-center gap-2">
+                        <h5 className="mb-0 fw-bold text-white fs-16">{selected.name}</h5>
+                        {hasLiveGps ? (
+                          <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fs-10 d-inline-flex align-items-center gap-1">
+                            <span className="spinner-grow spinner-grow-sm text-success" style={{ width: 6, height: 6 }} />
+                            LIVE GPS STREAMING
+                          </span>
+                        ) : (
+                          <span className="badge rounded-pill bg-secondary-subtle text-light border border-secondary px-2 py-0.5 fs-10">
+                            LAST KNOWN FIX
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-white-50 fs-11 mt-0.5 d-flex align-items-center gap-2">
+                        <span>{selected.phone}</span>
+                        <span>•</span>
+                        <span className="text-capitalize">{selected.vehicle_type || 'Motorcycle'} ({selected.vehicle_plate || 'No plate'})</span>
+                        <span>•</span>
+                        <span>Zone: {selected.zone || 'Central Area'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 px-2.5 py-1"
+                      onClick={() => refreshDriverLocation(selected.id)}
+                      disabled={loadingLocation}
+                      title="Poll and refresh GPS telemetry now"
+                    >
+                      <i className={`ri-refresh-line ${loadingLocation ? 'ri-spin' : ''}`} />
+                      <span className="fs-12">Refresh</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-light rounded-circle p-1 d-flex align-items-center justify-content-center"
+                      style={{ width: 32, height: 32 }}
+                      onClick={closeModal}
+                    >
+                      <i className="ri-close-line fs-18" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Map View */}
+                <div style={{ position: 'relative', height: 420, width: '100%', background: '#f1f5f9' }}>
+                  {hasCoordinates ? (
+                    <MapContainer
+                      center={coords}
+                      zoom={15}
+                      style={{ height: '100%', width: '100%' }}
+                      scrollWheelZoom={true}
+                    >
+                      <MapCenterController center={coords} zoom={15} />
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+
+                      {/* Accuracy radius ring */}
+                      {activeAccuracy != null && activeAccuracy > 0 && (
+                        <Circle
+                          center={coords}
+                          radius={Math.min(activeAccuracy, 150)}
+                          pathOptions={{ fillColor: '#22c55e', fillOpacity: 0.12, color: '#16a34a', weight: 1, dashArray: '4, 4' }}
+                        />
+                      )}
+
+                      {/* Courier Pin */}
+                      <Marker
+                        position={coords}
+                        icon={createCourierPinIcon(selected.name, selected.vehicle_type, hasLiveGps, activeHeading)}
+                      >
+                        <Popup>
+                          <div style={{ minWidth: 180, padding: 4 }}>
+                            <strong className="fs-13 d-block text-dark">{selected.name}</strong>
+                            <div className="text-muted fs-11">{selected.phone}</div>
+                            <div className="fs-11 mt-1 font-monospace text-primary fw-semibold">
+                              {Number(activeLat).toFixed(5)}°, {Number(activeLng).toFixed(5)}°
+                            </div>
+                            {activeSpeed != null && (
+                              <div className="fs-11 fw-medium text-dark mt-0.5">
+                                Speed: {activeSpeed} km/h
+                              </div>
+                            )}
+                            <div className="text-muted fs-10 mt-1">
+                              Recorded: {activeRecordedAt ? new Date(activeRecordedAt).toLocaleTimeString() : 'Recent'}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+
+                      {/* Breadcrumb Trail */}
+                      {trailCoords.length > 1 && (
+                        <Polyline
+                          positions={trailCoords}
+                          pathOptions={{ color: '#0284c7', weight: 3, opacity: 0.7, dashArray: '6, 6' }}
+                        />
+                      )}
+
+                      {/* Active Delivery Customer Destination Pin */}
+                      {activeDeliveryCustCoords && (
+                        <>
+                          <Marker
+                            position={activeDeliveryCustCoords}
+                            icon={createCustomerPinIcon(activeDelivery.customer_name)}
+                          >
+                            <Popup>
+                              <div style={{ minWidth: 180, padding: 4 }}>
+                                <span className="badge bg-danger text-white fs-10 mb-1">Active Drop Destination</span>
+                                <strong className="fs-13 d-block">{activeDelivery.customer_name}</strong>
+                                <div className="text-muted fs-11">{activeDelivery.delivery_address}</div>
+                                <div className="text-primary fs-11 fw-semibold mt-1">Order #{activeDelivery.order_id}</div>
+                              </div>
+                            </Popup>
+                          </Marker>
+                          <Polyline
+                            positions={[coords, activeDeliveryCustCoords]}
+                            pathOptions={{ color: '#16a34a', weight: 3, opacity: 0.8 }}
+                          />
+                        </>
+                      )}
+
+                      {/* Central Operations Hub */}
+                      <Marker position={[5.5245, 7.4912]} icon={createHubPinIcon()}>
+                        <Popup>
+                          <div style={{ padding: 4 }}>
+                            <strong className="fs-12 d-block">Bems Farms Central Hub</strong>
+                            <span className="text-muted fs-11">Fulfillment & Operations Depot (Umuahia)</span>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  ) : (
+                    <div className="h-100 d-flex flex-column align-items-center justify-content-center p-4 text-center bg-light">
+                      <div
+                        className="rounded-circle d-flex align-items-center justify-content-center mb-3 text-muted"
+                        style={{ width: 64, height: 64, background: '#e2e8f0' }}
+                      >
+                        <i className="ri-map-pin-off-line fs-28" />
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1">No GPS Telemetry Signal Received</h6>
+                      <p className="text-muted fs-12 mb-3" style={{ maxWidth: 420 }}>
+                        {selected.name} has not transmitted GPS coordinates yet. The courier must open the Bems Courier App and enable GPS location permissions to transmit their live location.
+                      </p>
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => refreshDriverLocation(selected.id)}
+                          disabled={loadingLocation}
+                        >
+                          <i className={`ri-refresh-line me-1 ${loadingLocation ? 'ri-spin' : ''}`} /> Re-check GPS Fix
+                        </button>
+                        {selected.phone && (
+                          <a href={`tel:${selected.phone}`} className="btn btn-sm btn-success text-white">
+                            <i className="ri-phone-line me-1" /> Call Driver ({selected.phone})
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Telemetry Metrics & Status HUD */}
+                <div className="p-3 bg-white border-top">
+                  <div className="row g-2 mb-3">
+                    <div className="col-6 col-md-3">
+                      <div className="border rounded-2 p-2.5 bg-light-subtle h-100">
+                        <div className="text-muted fs-10 text-uppercase fw-bold mb-1 d-flex align-items-center justify-content-between">
+                          <span>Exact Coordinates</span>
+                          {hasCoordinates && (
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 text-primary text-decoration-none fs-10"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${activeLat}, ${activeLng}`)
+                                toast.success('Coordinates copied to clipboard!')
+                              }}
+                              title="Copy Lat, Lng"
+                            >
+                              <i className="ri-file-copy-line" /> Copy
+                            </button>
+                          )}
+                        </div>
+                        <div className="fw-bold font-monospace text-dark fs-12">
+                          {hasCoordinates ? `${Number(activeLat).toFixed(5)}°, ${Number(activeLng).toFixed(5)}°` : '—'}
+                        </div>
+                        <div className="text-muted fs-10 mt-0.5">
+                          {hasCoordinates ? 'WGS84 High Precision' : 'GPS Offline'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-6 col-md-3">
+                      <div className="border rounded-2 p-2.5 bg-light-subtle h-100">
+                        <div className="text-muted fs-10 text-uppercase fw-bold mb-1">Speed &amp; Movement</div>
+                        <div className="fw-bold text-dark fs-12">
+                          {activeSpeed != null ? `${activeSpeed} km/h` : (hasCoordinates ? '0 km/h (Stationary)' : '—')}
+                        </div>
+                        <div className="text-muted fs-10 mt-0.5">
+                          {activeSpeed > 0 ? 'Moving on Route' : (hasCoordinates ? 'Stationary / Idling' : 'No telemetry')}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-6 col-md-3">
+                      <div className="border rounded-2 p-2.5 bg-light-subtle h-100">
+                        <div className="text-muted fs-10 text-uppercase fw-bold mb-1">Heading / Accuracy</div>
+                        <div className="fw-bold text-dark fs-12 d-flex align-items-center gap-1">
+                          <span>{activeHeading != null ? `${activeHeading}°` : 'Facing 0°'}</span>
+                          {activeAccuracy != null && (
+                            <span className="badge bg-secondary-subtle text-secondary py-0 px-1 font-monospace fs-9">
+                              ±{Math.round(activeAccuracy)}m
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted fs-10 mt-0.5">
+                          {activeAccuracy != null && activeAccuracy <= 15 ? 'High Accuracy GPS' : 'Standard fix'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="col-6 col-md-3">
+                      <div className="border rounded-2 p-2.5 bg-light-subtle h-100">
+                        <div className="text-muted fs-10 text-uppercase fw-bold mb-1">Last Telemetry Ping</div>
+                        <div className="fw-bold text-dark fs-12">
+                          {activeRecordedAt ? formatRelativeTime(activeRecordedAt) : 'Never'}
+                        </div>
+                        <div className="text-muted fs-10 mt-0.5 font-monospace">
+                          {activeRecordedAt ? new Date(activeRecordedAt).toLocaleTimeString() : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* External Map & Dispatch Quick Actions */}
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top">
+                    <div className="d-flex align-items-center gap-2">
+                      {hasCoordinates && (
+                        <a
+                          href={`https://www.google.com/maps?q=${activeLat},${activeLng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 fw-medium"
+                        >
+                          <i className="ri-google-fill" />
+                          <span>Open in Google Maps</span>
+                          <i className="ri-external-link-line fs-11" />
+                        </a>
+                      )}
+                      <Link
+                        to={`/deliveries/map?driverId=${selected.id}`}
+                        className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 fw-medium"
+                      >
+                        <i className="ri-map-2-line" />
+                        <span>Open in Fleet Dispatch Map</span>
+                      </Link>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      {selected.phone && (
+                        <a
+                          href={`tel:${selected.phone}`}
+                          className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                        >
+                          <i className="ri-phone-line" />
+                          <span>Call ({selected.phone})</span>
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-dark px-3"
+                        onClick={closeModal}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Official Driver Statement of Account Modal */}
           {/* Official Driver Statement of Account Modal */}

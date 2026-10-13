@@ -206,8 +206,10 @@ function MapCameraController({ target, bounds }) {
 export default function DeliveryMap() {
   const [searchParams] = useSearchParams()
   const urlOrderId = searchParams.get('orderId')
+  const urlDriverId = searchParams.get('driverId')
 
   const [deliveries, setDeliveries] = useState([])
+  const [fleetCouriers, setFleetCouriers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected]   = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -230,10 +232,12 @@ export default function DeliveryMap() {
     try {
       const res = await api.get('/admin/deliveries/active')
       const list = res.data.deliveries || []
+      const fleetList = res.data.fleet || []
       setDeliveries(list)
+      setFleetCouriers(fleetList)
       setLastUpdated(new Date())
 
-      // Auto-select requested order from URL or first active delivery if none selected
+      // Auto-select requested order or driver from URL, or first active delivery if none selected
       setSelected(prev => {
         if (urlOrderId) {
           const match = list.find(d =>
@@ -242,6 +246,15 @@ export default function DeliveryMap() {
             String(d.delivery_ref || '').toLowerCase() === urlOrderId.toLowerCase()
           )
           if (match) return match
+        }
+        if (urlDriverId) {
+          const match = list.find(d => String(d.driver_id || '').toLowerCase() === urlDriverId.toLowerCase())
+          if (match) return match
+          // If courier is in fleet (idle/between orders), fly camera directly to their GPS coordinates
+          const fleetDriver = fleetList.find(f => String(f.id).toLowerCase() === urlDriverId.toLowerCase())
+          if (fleetDriver && fleetDriver.driver_lat && fleetDriver.driver_lng) {
+            setFlyTarget([Number(fleetDriver.driver_lat), Number(fleetDriver.driver_lng)])
+          }
         }
         if (prev) {
           const updated = list.find(d => d.id === prev.id)
@@ -263,7 +276,7 @@ export default function DeliveryMap() {
         toast.success('Live GPS positions refreshed')
       }
     }
-  }, [urlOrderId])
+  }, [urlOrderId, urlDriverId])
 
   useEffect(() => {
     load()
@@ -1191,6 +1204,57 @@ export default function DeliveryMap() {
                 </Fragment>
               )
             })}
+
+            {/* ── Standby / Available Fleet Couriers with Live GPS (Not currently delivering) ── */}
+            {fleetCouriers
+              .filter(f => {
+                const lat = safeNum(f.driver_lat, null)
+                const lng = safeNum(f.driver_lng, null)
+                if (lat == null || lng == null || lat === 0 || lng === 0) return false
+                return !deliveries.some(d => String(d.driver_id) === String(f.id))
+              })
+              .map(driver => {
+                const pos = [Number(driver.driver_lat), Number(driver.driver_lng)]
+                const dColor = colorFor(driver.id)
+                const isLive = Boolean(driver.is_gps_live)
+                return (
+                  <Marker
+                    key={`fleet-${driver.id}`}
+                    position={pos}
+                    icon={driverIcon(driver.name, dColor, isLive, driver.driver_heading || 0, isLive)}
+                    eventHandlers={{
+                      click: () => setFlyTarget(pos),
+                    }}
+                  >
+                    <Popup>
+                      <div style={{ minWidth: 220, fontFamily: 'inherit' }}>
+                        <div style={{ background: dColor, padding: '10px 12px', color: '#fff' }}>
+                          <div className="fw-bold fs-13 d-flex align-items-center justify-content-between">
+                            <span><i className="ri-riding-line me-1" />{driver.name}</span>
+                            <span className="badge bg-white text-dark fs-9">{isLive ? 'LIVE' : 'IDLE'}</span>
+                          </div>
+                          <div style={{ fontSize: 11, opacity: 0.9 }}>
+                            {driver.vehicle_type || 'Motorcycle'} · {driver.vehicle_plate || 'No plate'}
+                          </div>
+                        </div>
+                        <div style={{ padding: '10px 12px' }}>
+                          <div className="text-muted fs-11 font-monospace mb-1">
+                            {pos[0].toFixed(5)}°, {pos[1].toFixed(5)}°
+                          </div>
+                          <div className="text-success fs-11 fw-semibold mb-2">
+                            ● Available for Dispatch
+                          </div>
+                          {driver.phone && (
+                            <a href={`tel:${driver.phone}`} className="btn btn-xs btn-primary w-100">
+                              <i className="ri-phone-line me-1" />Call Courier ({driver.phone})
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              })}
           </MapContainer>
 
           {/* ── Top-Right Map Telemetry Overlay ──────────────────────────────── */}

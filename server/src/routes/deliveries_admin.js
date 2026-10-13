@@ -122,7 +122,24 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         AND (d.accepted_at IS NOT NULL OR o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' OR d.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))
     `);
 
-    res.json({ deliveries: rows.rows, stats: stats.rows[0] });
+    // All active fleet couriers with their latest GPS telemetry
+    const fleet = await pool.query(`
+      SELECT dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate,
+             COALESCE(da.is_available, dr.is_available, false) AS is_available,
+             dl.latitude AS driver_lat, dl.longitude AS driver_lng, dl.heading AS driver_heading,
+             dl.speed AS driver_speed, dl.recorded_at AS driver_last_ping,
+             COALESCE(dl.is_gps_live, false) AS is_gps_live
+      FROM drivers dr
+      LEFT JOIN driver_availability da ON dr.id = da.driver_id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading, speed, recorded_at,
+               (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+        FROM driver_locations WHERE driver_id = dr.id ORDER BY recorded_at DESC LIMIT 1
+      ) dl ON true
+      WHERE dr.status = 'active'
+    `);
+
+    res.json({ deliveries: rows.rows, fleet: fleet.rows, stats: stats.rows[0] });
   } catch (err) {
     console.error("GET /admin/deliveries/active:", err.message);
     next(err);
@@ -684,8 +701,15 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         dr.*,
         COALESCE(da.is_available, dr.is_available, false) AS is_available,
         (COALESCE(da.is_on_delivery, false) = true AND EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled'))) AS is_on_delivery,
-        GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) AS last_telemetry_at,
-        true AS is_telemetry_fresh,
+        GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at, dl.recorded_at) AS last_telemetry_at,
+        COALESCE(GREATEST(dr.last_location_at, da.last_ping_at, dl.recorded_at) >= NOW() - INTERVAL '5 minutes', false) AS is_telemetry_fresh,
+        dl.latitude AS current_lat,
+        dl.longitude AS current_lng,
+        dl.heading AS current_heading,
+        dl.speed AS current_speed,
+        dl.accuracy AS current_accuracy,
+        dl.recorded_at AS last_gps_at,
+        COALESCE(dl.is_gps_live, false) AS is_gps_live,
         CASE
           WHEN dr.status = 'suspended' THEN 'suspended'
           WHEN dr.status = 'pending' OR dr.onboarding_status = 'pending_verification' OR dr.onboarding_status = 'documents_submitted' THEN 'pending'
@@ -728,8 +752,17 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id
       LEFT JOIN deliveries d ON d.driver_id = dr.id
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading, speed, accuracy, recorded_at,
+               (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+        FROM driver_locations 
+        WHERE driver_id = dr.id 
+        ORDER BY recorded_at DESC 
+        LIMIT 1
+      ) dl ON true
       ${whereClause}
-      GROUP BY dr.id, da.is_available, da.is_on_delivery, da.last_ping_at, da.last_toggled_at, dz.zone_name, dz.driver_earning_fee
+      GROUP BY dr.id, da.is_available, da.is_on_delivery, da.last_ping_at, da.last_toggled_at, dz.zone_name, dz.driver_earning_fee,
+               dl.latitude, dl.longitude, dl.heading, dl.speed, dl.accuracy, dl.recorded_at, dl.is_gps_live
       ORDER BY 
         CASE 
           WHEN dr.status = 'pending' OR dr.onboarding_status IN ('pending_verification','documents_submitted') THEN 0 
@@ -1954,10 +1987,80 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
   }
 });
 
+// ── GET /api/admin/deliveries/drivers/:id/location ──────────────────
+// Returns driver's latest GPS position, recent location history trail, and active delivery details
+router.get("/drivers/:id/location", requireRole("superadmin", "manager", "admin", "delivery_manager", "cashier"), async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const driverRes = await pool.query(
+      `SELECT dr.id, dr.name, dr.phone, dr.email, dr.vehicle_type, dr.vehicle_plate, dr.status,
+              dr.avatar_url,
+              COALESCE(da.is_available, dr.is_available, false) AS is_available,
+              (COALESCE(da.is_on_delivery, false) = true AND EXISTS (SELECT 1 FROM deliveries d_act WHERE d_act.driver_id = dr.id AND d_act.status NOT IN ('delivered','cancelled'))) AS is_on_delivery,
+              GREATEST(dr.last_location_at, da.last_ping_at, dr.last_toggled_at, da.last_toggled_at) AS last_telemetry_at,
+              dz.zone_name AS zone
+       FROM drivers dr
+       LEFT JOIN driver_availability da ON dr.id = da.driver_id
+       LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id
+       WHERE dr.id = $1`,
+      [id]
+    );
+    if (!driverRes.rows.length) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    // Latest location
+    const latestRes = await pool.query(
+      `SELECT id, latitude, longitude, heading, speed, accuracy, order_id, delivery_id, recorded_at,
+              (recorded_at >= NOW() - INTERVAL '30 minutes') AS is_gps_live
+       FROM driver_locations
+       WHERE driver_id = $1
+       ORDER BY recorded_at DESC
+       LIMIT 1`,
+      [id]
+    );
+
+    // Recent trail / breadcrumbs (up to 40 recent points)
+    const trailRes = await pool.query(
+      `SELECT latitude, longitude, heading, speed, recorded_at
+       FROM driver_locations
+       WHERE driver_id = $1
+       ORDER BY recorded_at DESC
+       LIMIT 40`,
+      [id]
+    );
+
+    // Active delivery if any
+    const activeDelRes = await pool.query(
+      `SELECT d.id, d.delivery_ref, d.status, d.order_id, d.eta_minutes, d.delivery_address,
+              COALESCE(o.latitude, ua.latitude) AS customer_lat,
+              COALESCE(o.longitude, ua.longitude) AS customer_lng,
+              COALESCE(NULLIF(o.customer_name, ''), NULLIF(c.name, ''), 'Customer') AS customer_name,
+              COALESCE(NULLIF(o.customer_phone, ''), NULLIF(c.phone, ''), '—') AS customer_phone
+       FROM deliveries d
+       JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+       LEFT JOIN users c ON (c.id = o.user_id OR c.id = o.customer_id)
+       LEFT JOIN LATERAL (
+         SELECT latitude, longitude FROM user_addresses WHERE user_id = c.id ORDER BY is_default DESC, created_at DESC LIMIT 1
+       ) ua ON true
+       WHERE d.driver_id = $1 AND d.status NOT IN ('delivered', 'cancelled')
+       LIMIT 1`,
+      [id]
+    );
+
+    res.json({
+      driver: driverRes.rows[0],
+      current_location: latestRes.rows[0] || null,
+      trail: trailRes.rows.reverse(), // chronologically ordered
+      active_delivery: activeDelRes.rows[0] || null,
+    });
+  } catch (err) {
+    console.error("GET /drivers/:id/location error:", err.message);
+    next(err);
+  }
+});
+
 // ── POST /api/admin/deliveries/drivers/:id/location ─────────────────
-// No per-driver login exists yet (drivers aren't linked to a users row), so
-// this can't verify a driver is reporting only their own location — but it
-// must at least require staff auth instead of any authenticated account.
 router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   const { id } = req.params;
   const { latitude, longitude, heading = 0, speed = 0, accuracy = 0 } = req.body;
@@ -1969,12 +2072,41 @@ router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin
     if (!driver.rows.length) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    await pool.query(
+    const locRes = await pool.query(
       `INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, accuracy, recorded_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
       [id, latitude, longitude, heading, speed, accuracy]
     );
-    res.json({ success: true, message: "Driver location updated successfully" });
+
+    await pool.query("UPDATE drivers SET last_location_at = NOW() WHERE id = $1", [id]).catch(() => {});
+    await pool.query(
+      `INSERT INTO driver_availability (driver_id, is_available, last_ping_at)
+       VALUES ($1, true, NOW())
+       ON CONFLICT (driver_id) DO UPDATE SET last_ping_at = NOW()`,
+      [id]
+    ).catch(() => {});
+
+    try {
+      const { broadcastDriverLocation, broadcastDriverTelemetry } = require("../services/socketService");
+      broadcastDriverLocation({
+        driver_id: parseInt(id, 10),
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        heading: parseFloat(heading),
+        speed: parseFloat(speed),
+        accuracy: parseFloat(accuracy),
+        recorded_at: new Date().toISOString(),
+      });
+      broadcastDriverTelemetry({
+        driver_id: parseInt(id, 10),
+        is_available: true,
+        status: "active",
+        last_ping_at: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    res.json({ success: true, message: "Driver location updated successfully", location: locRes.rows[0] });
   } catch (err) {
     next(err);
   }
