@@ -1315,20 +1315,46 @@ router.post(
           const cartonPrice = rawCartonPrice && !isNaN(parseFloat(rawCartonPrice)) ? parseFloat(rawCartonPrice) : null;
           const cartonBarcode = row.carton_barcode?.trim() || null;
 
-          // 6. Cost Prices (Carton Cost -> Auto-divide to Piece Cost)
-          const rawCartonCost = String(row.carton_cost_price ?? (pcsPerCarton > 1 && row.cost_price ? row.cost_price : "") ?? "").replace(/[^0-9.]/g, "");
-          const cartonCostPrice = (rawCartonCost && !isNaN(parseFloat(rawCartonCost))) ? parseFloat(rawCartonCost) : null;
+          // 6. Cost Prices (Option A: Explicit piece_cost_price + carton_cost_price + smart batch-cost detection)
+          const rawPieceCost = String(row.piece_cost_price ?? row.piece_cost ?? "").replace(/[^0-9.]/g, "");
+          let explicitPieceCost = (rawPieceCost && !isNaN(parseFloat(rawPieceCost))) ? parseFloat(rawPieceCost) : null;
+
+          const rawCartonCost = String(row.carton_cost_price ?? row.carton_cost ?? "").replace(/[^0-9.]/g, "");
+          let cartonCostPrice = (rawCartonCost && !isNaN(parseFloat(rawCartonCost))) ? parseFloat(rawCartonCost) : null;
+
+          // If generic cost_price was passed
+          if (explicitPieceCost === null && cartonCostPrice === null && row.cost_price) {
+            const rawCp = String(row.cost_price).replace(/[^0-9.]/g, "");
+            if (rawCp && !isNaN(parseFloat(rawCp))) {
+              const cpVal = parseFloat(rawCp);
+              if (pcsPerCarton > 1 && cpVal > unitPrice) {
+                cartonCostPrice = cpVal;
+              } else {
+                explicitPieceCost = cpVal;
+              }
+            }
+          }
 
           let pieceCostPrice = null;
-          if (cartonCostPrice !== null) {
+          if (explicitPieceCost !== null) {
+            pieceCostPrice = explicitPieceCost;
+            if (cartonCostPrice === null && pcsPerCarton > 1) {
+              cartonCostPrice = parseFloat((explicitPieceCost * pcsPerCarton).toFixed(2));
+            }
+          } else if (cartonCostPrice !== null) {
             if (pcsPerCarton > 1) {
               pieceCostPrice = parseFloat((cartonCostPrice / pcsPerCarton).toFixed(4));
             } else {
-              pieceCostPrice = cartonCostPrice;
+              // No carton defined (pcsPerCarton <= 1).
+              // Smart Detection: Check if carton_cost_price is actually the total batch purchase cost
+              // e.g. ₦18,000 for 4 tubs of yam sold at ₦4,800/pc (18,000 > 4,800 and 18,000 <= 4,800 * 4 * 1.5)
+              if (incomingStock > 1 && unitPrice > 0 && cartonCostPrice > unitPrice && cartonCostPrice <= (unitPrice * incomingStock * 1.5)) {
+                pieceCostPrice = parseFloat((cartonCostPrice / incomingStock).toFixed(4));
+              } else {
+                // Single piece/drum purchase cost (e.g. ₦58,000 for 25L drum sold at ₦62,000)
+                pieceCostPrice = cartonCostPrice;
+              }
             }
-          } else if (row.cost_price) {
-            const rawCp = String(row.cost_price).replace(/[^0-9.]/g, "");
-            pieceCostPrice = rawCp && !isNaN(parseFloat(rawCp)) ? parseFloat(rawCp) : null;
           }
 
           const midCostPrice = (pieceCostPrice !== null && pcsPerMidUnit && pcsPerMidUnit > 1)
