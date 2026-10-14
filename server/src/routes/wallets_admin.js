@@ -457,6 +457,11 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
       }
     }
 
+    const updatedNotes = [
+      payout.notes || '',
+      `Disbursed via ${disbursement_method}${notes ? ` - ${notes}` : ''}`
+    ].filter(Boolean).join(' | ');
+
     const updated = await client.query(
       `
       UPDATE driver_payouts
@@ -468,11 +473,11 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
         disbursement_method = $3,
         bank_response_code = '00',
         session_id = $4,
-        notes = CONCAT(COALESCE(notes, ''), ' | Disbursed via ', $3::text, CASE WHEN $5::text != '' THEN CONCAT(' - ', $5::text) ELSE '' END)
+        notes = $5
       WHERE id = $6
       RETURNING *
       `,
-      [req.user.id, gatewayRef, disbursement_method, sessionId, notes || "", id]
+      [req.user.id, gatewayRef, disbursement_method, sessionId, updatedNotes, id]
     );
 
     await client.query(
@@ -615,6 +620,7 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
     await client.query("BEGIN");
 
     const batchRef = batch_reference || `BATCH-PAY-${Date.now().toString(36).toUpperCase()}`;
+    const batchNoteSuffix = ` | Batch: ${batchRef}${notes ? ` - ${notes}` : ''}`;
 
     const updateRes = await client.query(
       `
@@ -624,13 +630,13 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
         processed_at = NOW(),
         processed_by = $1,
         disbursement_method = $2,
-        gateway_reference = CONCAT($3::text, '-', id),
+        gateway_reference = CONCAT($3, '-', id::text),
         bank_response_code = '00',
-        notes = CONCAT(COALESCE(notes, ''), ' | Batch: ', $3::text, CASE WHEN $4::text != '' THEN CONCAT(' - ', $4::text) ELSE '' END)
+        notes = COALESCE(notes, '') || $4
       WHERE id = ANY($5::int[]) AND status IN ('pending', 'approved')
       RETURNING *
       `,
-      [req.user.id, disbursement_method, batchRef, notes || "", payout_ids]
+      [req.user.id, disbursement_method, batchRef, batchNoteSuffix, payout_ids]
     );
 
     for (const payout of updateRes.rows) {
