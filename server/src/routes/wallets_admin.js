@@ -462,6 +462,12 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
       `Disbursed via ${disbursement_method}${notes ? ` - ${notes}` : ''}`
     ].filter(Boolean).join(' | ');
 
+    let adminUserId = null;
+    if (req.user?.id) {
+      const uCheck = await client.query("SELECT id FROM users WHERE id = $1", [req.user.id]);
+      if (uCheck.rows.length > 0) adminUserId = uCheck.rows[0].id;
+    }
+
     const updated = await client.query(
       `
       UPDATE driver_payouts
@@ -477,11 +483,11 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
       WHERE id = $6
       RETURNING *
       `,
-      [req.user.id, gatewayRef, disbursement_method, sessionId, updatedNotes, id]
+      [adminUserId, gatewayRef, disbursement_method, sessionId, updatedNotes, id]
     );
 
     await client.query(
-      "UPDATE driver_commissions SET status = 'paid', updated_at = NOW() WHERE driver_id = $1 AND status = 'pending'",
+      "UPDATE driver_commissions SET status = 'paid', paid_at = NOW() WHERE driver_id = $1 AND status = 'pending'",
       [payout.driver_id]
     );
 
@@ -500,17 +506,17 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
         Math.max(0, driver.total_earnings - payout.amount),
         gatewayRef,
         `Bank Payout Disbursed to ${payout.bank_name || 'Bank'} (${payout.account_number})`,
-        req.user.id,
+        adminUserId,
       ]
     );
 
-    // Double-Entry Ledger Side B: Central Company Accounts Debit
+    // Double-Entry Ledger Side B: Central Company Accounts Debit (valid type 'expense')
     await client.query(
       `
       INSERT INTO transactions (
         reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
       )
-      VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'debit', 'driver_payout', $2, $3, 'completed', $4, NOW())
+      VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())
       `,
       [
         gatewayRef,
@@ -622,6 +628,12 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
     const batchRef = batch_reference || `BATCH-PAY-${Date.now().toString(36).toUpperCase()}`;
     const batchNoteSuffix = ` | Batch: ${batchRef}${notes ? ` - ${notes}` : ''}`;
 
+    let adminUserId = null;
+    if (req.user?.id) {
+      const uCheck = await client.query("SELECT id FROM users WHERE id = $1", [req.user.id]);
+      if (uCheck.rows.length > 0) adminUserId = uCheck.rows[0].id;
+    }
+
     const updateRes = await client.query(
       `
       UPDATE driver_payouts
@@ -636,7 +648,7 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
       WHERE id = ANY($5::int[]) AND status IN ('pending', 'approved')
       RETURNING *
       `,
-      [req.user.id, disbursement_method, batchRef, batchNoteSuffix, payout_ids]
+      [adminUserId, disbursement_method, batchRef, batchNoteSuffix, payout_ids]
     );
 
     for (const payout of updateRes.rows) {
@@ -657,16 +669,16 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
           Math.max(0, currentEarned - payout.amount),
           `${batchRef}-${payout.id}`,
           `Batch Payout to ${payout.bank_name || 'Bank'} (${payout.account_number})`,
-          req.user.id,
+          adminUserId,
         ]
       );
 
-      // Ledger Side B: Company Accounts
+      // Ledger Side B: Company Accounts (type 'expense')
       await client.query(
         `INSERT INTO transactions (
           reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
         )
-        VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'debit', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
+        VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
         [
           `${batchRef}-${payout.id}`,
           `Batch Driver Payout (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
@@ -679,7 +691,7 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
     const affectedDriverIds = [...new Set(updateRes.rows.map((p) => p.driver_id))];
     if (affectedDriverIds.length > 0) {
       await client.query(
-        `UPDATE driver_commissions SET status = 'paid', updated_at = NOW() WHERE driver_id = ANY($1::int[]) AND status = 'pending'`,
+        `UPDATE driver_commissions SET status = 'paid', paid_at = NOW() WHERE driver_id = ANY($1::int[]) AND status = 'pending'`,
         [affectedDriverIds]
       );
     }

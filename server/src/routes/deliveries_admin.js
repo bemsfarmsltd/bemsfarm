@@ -2315,7 +2315,7 @@ router.patch("/payouts/:id", requireRole("superadmin", "manager", "admin"), asyn
     // If marked as paid, reconcile corresponding pending commissions
     if (status === "paid") {
       await pool.query(
-        `UPDATE driver_commissions SET status = 'paid', updated_at = NOW() WHERE driver_id = $1 AND status = 'pending'`,
+        `UPDATE driver_commissions SET status = 'paid', paid_at = NOW() WHERE driver_id = $1 AND status = 'pending'`,
         [payout.driver_id]
       );
     }
