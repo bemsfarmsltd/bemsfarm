@@ -142,7 +142,7 @@ async function initiateMonnifyDisbursement({
   sourceAccountNumber,
 }) {
   const token = await getMonnifyToken();
-  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT;
+  const sourceAcct = sourceAccountNumber || process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8066038256";
   if (!sourceAcct) {
     throw new Error("Source wallet account number is not configured");
   }

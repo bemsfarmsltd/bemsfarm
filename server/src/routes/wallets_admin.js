@@ -233,7 +233,7 @@ router.get("/summary", async (req, res, next) => {
     const totalVirtualAccounts = list.filter((d) => !!d.wallet_account_number).length;
 
     let monnifyReserve = 0.00;
-    if (process.env.MONNIFY_WALLET_ACCOUNT_NUMBER) {
+    if (process.env.MONNIFY_WALLET_ACCOUNT_NUMBER || process.env.MONNIFY_WALLET_ACCOUNT || "8066038256") {
       try {
         const { getMonnifyWalletBalance } = require("../utils/monnify");
         const liveBal = await getMonnifyWalletBalance();
