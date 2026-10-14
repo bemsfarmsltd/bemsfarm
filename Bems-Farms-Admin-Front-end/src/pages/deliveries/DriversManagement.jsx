@@ -236,6 +236,7 @@ export default function DriversManagement() {
   const [resendingLoginEmail, setResendingLoginEmail] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
+  const [unlockingPayout, setUnlockingPayout] = useState(false)
   const [statementData, setStatementData] = useState(null)
   const [loadingStatement, setLoadingStatement] = useState(false)
 
@@ -601,6 +602,35 @@ export default function DriversManagement() {
       load()
     } catch {
       toast.error('Failed to reinstate driver')
+    }
+  }
+
+  async function handleUnlockPayout(driver) {
+    if (!driver) return
+    const confirmMsg = `Unlock payouts and unfreeze wallet for ${driver.name}? This will clear failed PIN attempts and restore withdrawal privileges.`
+    if (!window.confirm(confirmMsg)) return
+
+    setUnlockingPayout(true)
+    try {
+      const res = await api.patch(`/admin/deliveries/drivers/${driver.id}/unlock-payout`, {
+        notes: 'Manually unlocked via Dispatch Admin Dashboard',
+      })
+      toast.success(res.data?.message || `Payout access restored for ${driver.name}`)
+      await load()
+      setSelected((prev) => (prev && prev.id === driver.id ? {
+        ...prev,
+        payout_locked: false,
+        payout_locked_reason: null,
+        payout_locked_at: null,
+        wallet_is_frozen: false,
+        wallet_frozen_reason: null,
+        pin_failed_attempts: 0,
+        pin_locked_until: null,
+      } : prev))
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to unlock driver payout')
+    } finally {
+      setUnlockingPayout(false)
     }
   }
 
@@ -1077,6 +1107,15 @@ export default function DriversManagement() {
                                 {cfg.label}
                               </span>
 
+                              {Boolean(driver.payout_locked || driver.wallet_is_frozen || (driver.pin_failed_attempts >= 5)) && (
+                                <span
+                                  className="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 text-xs fw-bold d-inline-flex align-items-center gap-1 mt-0.5"
+                                  title={driver.payout_locked_reason || driver.wallet_frozen_reason || 'Payouts locked due to failed PIN attempts'}
+                                >
+                                  <i className="ri-lock-2-line" /> Payout Locked
+                                </span>
+                              )}
+
                               {/* Live GPS coordinates & telemetry indicator */}
                               {driver.status === 'off_duty' ? (
                                 <span className="text-muted fs-10 fst-italic d-inline-flex align-items-center gap-1 mt-0.5">
@@ -1150,6 +1189,18 @@ export default function DriversManagement() {
                               >
                                 <i className="ri-eye-line" />
                               </button>
+
+                              {Boolean(driver.payout_locked || driver.wallet_is_frozen || (driver.pin_failed_attempts >= 5)) && (
+                                <button
+                                  className="btn btn-sm btn-warning text-dark fw-bold d-inline-flex align-items-center gap-1 shadow-sm px-2.5"
+                                  title="Unlock Payout & Reset PIN Lock"
+                                  disabled={unlockingPayout}
+                                  onClick={() => handleUnlockPayout(driver)}
+                                >
+                                  <i className="ri-lock-unlock-line" />
+                                  <span>Unlock</span>
+                                </button>
+                              )}
 
                               {isPendingReview && (
                                 <button
@@ -2216,8 +2267,39 @@ export default function DriversManagement() {
                         <i className="ri-wallet-3-line text-emerald fs-16" />
                         Driver Internal Earnings Wallet &amp; Payouts
                       </span>
-                      <span className="badge bg-emerald-subtle text-emerald fs-11">Internal Wallet Active</span>
+                      {selected.payout_locked || selected.wallet_is_frozen ? (
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle fs-11">
+                          <i className="ri-lock-2-line me-1" />Payouts Restricted / Locked
+                        </span>
+                      ) : (
+                        <span className="badge bg-emerald-subtle text-emerald fs-11">Internal Wallet Active</span>
+                      )}
                     </div>
+
+                    {/* Security Payout Lock Alert Banner */}
+                    {(selected.payout_locked || selected.wallet_is_frozen || (selected.pin_failed_attempts >= 5)) && (
+                      <div className="alert alert-danger border-danger d-flex align-items-center justify-content-between p-3 mb-3 rounded-2 shadow-xs">
+                        <div>
+                          <div className="fw-bold text-dark fs-13 d-flex align-items-center gap-1.5">
+                            <i className="ri-error-warning-fill text-danger fs-16" />
+                            Payouts &amp; Cashouts Locked
+                          </div>
+                          <div className="text-muted fs-11 mt-0.5">
+                            {selected.payout_locked_reason || selected.wallet_frozen_reason || 'Security lock active: Exceeded maximum PIN attempts.'}
+                            {selected.pin_failed_attempts > 0 && ` (${selected.pin_failed_attempts} failed PIN attempt${selected.pin_failed_attempts === 1 ? '' : 's'})`}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger text-white fw-bold d-flex align-items-center gap-1 shadow-sm px-3 py-1.5"
+                          disabled={unlockingPayout}
+                          onClick={() => handleUnlockPayout(selected)}
+                        >
+                          <i className="ri-lock-unlock-line" />
+                          <span>{unlockingPayout ? 'Unlocking…' : 'Unlock Payouts'}</span>
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Internal Wallet Details */}
                     <div className="bg-white p-2.5 rounded-2 border mb-2.5 d-flex align-items-center justify-content-between">

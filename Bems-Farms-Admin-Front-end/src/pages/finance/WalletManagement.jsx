@@ -182,8 +182,12 @@ export default function WalletManagement() {
   // 1. Manual Adjust (Bonus/Penalty)
   const handleAdjustSubmit = async (e) => {
     e.preventDefault()
-    if (!adjustForm.amount || parseFloat(adjustForm.amount) <= 0) {
-      return toast.error('Please enter a valid amount')
+    const num = parseFloat(adjustForm.amount)
+    if (!num || isNaN(num) || num <= 0) {
+      return toast.error('Please enter a valid positive amount')
+    }
+    if (num > 999999999.99) {
+      return toast.error('Adjustment amount cannot exceed ₦999,999,999.99')
     }
     if (!adjustForm.description.trim()) {
       return toast.error('Audit description is required')
@@ -221,10 +225,10 @@ export default function WalletManagement() {
 
   // 2. Freeze / Unfreeze
   const handleToggleFreeze = async (driver) => {
-    const isFreezing = !driver.wallet_is_frozen
+    const isFreezing = !(driver.wallet_is_frozen || driver.payout_locked)
     const promptMsg = isFreezing
       ? `Are you sure you want to FREEZE ${driver.name}'s wallet? This will block all payout withdrawals.`
-      : `Unfreeze ${driver.name}'s wallet?`
+      : `Unfreeze wallet and unlock payout withdrawals for ${driver.name}? This will clear failed PIN attempts and restore cashouts.`
 
     if (!window.confirm(promptMsg)) return
 
@@ -790,6 +794,9 @@ export default function WalletManagement() {
                               {driver.wallet_is_frozen && (
                                 <span className="badge bg-danger" style={{ fontSize: 9 }}>FROZEN</span>
                               )}
+                              {driver.payout_locked && !driver.wallet_is_frozen && (
+                                <span className="badge bg-warning text-dark" style={{ fontSize: 9 }}>PAYOUT LOCKED</span>
+                              )}
                             </div>
                             <div className="text-muted small">{driver.phone} &bull; {driver.email || 'No email'}</div>
                           </div>
@@ -894,6 +901,10 @@ export default function WalletManagement() {
                             <span className="badge bg-danger text-white px-2 py-0.5" style={{ fontSize: 10 }}>
                               <i className="ri-lock-2-line me-1"></i>Wallet Frozen
                             </span>
+                          ) : driver.payout_locked ? (
+                            <span className="badge bg-warning text-dark border border-warning px-2 py-0.5" style={{ fontSize: 10 }} title={driver.payout_locked_reason}>
+                              <i className="ri-lock-2-line me-1"></i>Payout Locked
+                            </span>
                           ) : (
                             <span className="badge bg-light text-muted border px-2 py-0.5" style={{ fontSize: 10 }}>
                               <i className="ri-wallet-3-line me-1"></i>Wallet Active
@@ -924,11 +935,11 @@ export default function WalletManagement() {
                           </button>
                           <button
                             type="button"
-                            className={`btn btn-sm px-2 ${driver.wallet_is_frozen ? 'btn-danger' : 'btn-outline-danger'}`}
-                            title={driver.wallet_is_frozen ? 'Unfreeze Wallet' : 'Freeze Wallet'}
+                            className={`btn btn-sm px-2 ${driver.wallet_is_frozen || driver.payout_locked ? 'btn-warning text-dark fw-bold' : 'btn-outline-danger'}`}
+                            title={driver.wallet_is_frozen || driver.payout_locked ? 'Unlock Payouts & Unfreeze Wallet' : 'Freeze Wallet'}
                             onClick={() => handleToggleFreeze(driver)}
                           >
-                            <i className={driver.wallet_is_frozen ? 'ri-lock-unlock-line' : 'ri-lock-2-line'}></i>
+                            <i className={driver.wallet_is_frozen || driver.payout_locked ? 'ri-lock-unlock-line' : 'ri-lock-2-line'}></i>
                           </button>
                           <button
                             type="button"
@@ -1888,6 +1899,9 @@ export default function WalletManagement() {
                     <label className="form-label small font-weight-bold">Amount (₦)</label>
                     <input
                       type="number"
+                      step="any"
+                      min="1"
+                      max="999999999"
                       className="form-control"
                       placeholder="e.g. 5000"
                       value={adjustForm.amount}

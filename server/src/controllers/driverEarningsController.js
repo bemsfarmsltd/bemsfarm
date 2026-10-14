@@ -362,7 +362,8 @@ const requestWithdrawal = async (req, res, next) => {
       } else if (providedPin) {
         const isMatch = await bcrypt.compare(String(providedPin).trim(), driver.pin_hash);
         if (!isMatch) {
-          const currentAttempts = (parseInt(driver.pin_failed_attempts, 10) || 0) + 1;
+          const isLockoutExpired = Boolean(driver.pin_locked_until && new Date(driver.pin_locked_until) <= new Date());
+          const currentAttempts = (isLockoutExpired ? 0 : (parseInt(driver.pin_failed_attempts, 10) || 0)) + 1;
           if (currentAttempts >= 5) {
             await client.query(
               `UPDATE drivers 

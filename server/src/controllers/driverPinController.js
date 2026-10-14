@@ -225,7 +225,9 @@ const verifyPin = async (req, res, next) => {
     const isValid = await bcrypt.compare(cleanPin, row.pin_hash);
 
     if (!isValid) {
-      const currentAttempts = parseInt(row.pin_failed_attempts, 10) || 0;
+      // If previous lockout timer has expired, reset counter to start fresh
+      const isLockoutExpired = Boolean(row.pin_locked_until && new Date(row.pin_locked_until) <= new Date());
+      const currentAttempts = isLockoutExpired ? 0 : (parseInt(row.pin_failed_attempts, 10) || 0);
       const newAttempts = currentAttempts + 1;
 
       if (newAttempts >= 5) {

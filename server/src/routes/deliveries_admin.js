@@ -1493,6 +1493,9 @@ router.patch(
              payout_locked_reason = NULL,
              payout_locked_at = NULL,
              wallet_is_frozen = false,
+             wallet_frozen_reason = NULL,
+             pin_failed_attempts = 0,
+             pin_locked_until = NULL,
              updated_at = NOW()
          WHERE id = $1
          RETURNING *`,

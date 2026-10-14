@@ -140,6 +140,11 @@ router.get("/summary", async (req, res, next) => {
         COALESCE(dr.wallet_account_name, CONCAT('BEMS - ', UPPER(dr.name))) AS wallet_account_name,
         COALESCE(dr.wallet_is_frozen, false) AS wallet_is_frozen,
         dr.wallet_frozen_reason,
+        COALESCE(dr.payout_locked, false) AS payout_locked,
+        dr.payout_locked_reason,
+        dr.payout_locked_at,
+        COALESCE(dr.pin_failed_attempts, 0) AS pin_failed_attempts,
+        dr.pin_locked_until,
         dr.bank_name,
         dr.account_number,
         dr.account_name,
@@ -386,18 +391,65 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
     let monnifyPayoutResult = null;
     if (disbursement_method === "monnify_transfer" || disbursement_method === "monnify") {
       try {
+        // Accurately resolve destination bank code for Monnify transfer
+        let destinationBankCode = null;
+
+        const bankAcctRes = await client.query(
+          `SELECT bank_code FROM driver_bank_accounts 
+           WHERE driver_id = $1 AND account_number = $2 
+           ORDER BY is_default DESC LIMIT 1`,
+          [payout.driver_id, payout.account_number]
+        );
+        if (bankAcctRes.rows.length > 0 && bankAcctRes.rows[0].bank_code) {
+          destinationBankCode = bankAcctRes.rows[0].bank_code;
+        }
+
+        if (!destinationBankCode && payout.bank_name) {
+          const bName = payout.bank_name.toLowerCase();
+          if (bName.includes("opay")) destinationBankCode = "999992";
+          else if (bName.includes("palmpay")) destinationBankCode = "999991";
+          else if (bName.includes("kuda")) destinationBankCode = "50211";
+          else if (bName.includes("moniepoint")) destinationBankCode = "50515";
+          else if (bName.includes("gtbank") || bName.includes("guaranty")) destinationBankCode = "058";
+          else if (bName.includes("access")) destinationBankCode = "044";
+          else if (bName.includes("zenith")) destinationBankCode = "057";
+          else if (bName.includes("uba") || bName.includes("united bank")) destinationBankCode = "033";
+          else if (bName.includes("first bank")) destinationBankCode = "011";
+          else if (bName.includes("stanbic")) destinationBankCode = "221";
+          else if (bName.includes("fidelity")) destinationBankCode = "070";
+          else if (bName.includes("fcmb")) destinationBankCode = "214";
+          else if (bName.includes("sterling")) destinationBankCode = "232";
+          else if (bName.includes("union")) destinationBankCode = "032";
+          else if (bName.includes("polaris")) destinationBankCode = "076";
+          else if (bName.includes("wema")) destinationBankCode = "035";
+        }
+
+        if (!destinationBankCode) {
+          const defaultBankRes = await client.query(
+            `SELECT bank_code FROM driver_bank_accounts WHERE driver_id = $1 AND is_default = true LIMIT 1`,
+            [payout.driver_id]
+          );
+          if (defaultBankRes.rows.length > 0 && defaultBankRes.rows[0].bank_code) {
+            destinationBankCode = defaultBankRes.rows[0].bank_code;
+          }
+        }
+
+        if (!destinationBankCode) {
+          destinationBankCode = "058";
+        }
+
         const { initiateMonnifyDisbursement } = require("../utils/monnify");
         monnifyPayoutResult = await initiateMonnifyDisbursement({
           amount: parseFloat(payout.amount),
           reference: gatewayRef,
           narration: `Bems Farms Payout - ${driver.name}`,
-          destinationBankCode: payout.bank_code || "058",
+          destinationBankCode: destinationBankCode,
           destinationAccountNumber: payout.account_number,
         });
       } catch (monErr) {
         console.error("❌ Live Monnify disbursement failed:", monErr.message);
         await client.query("ROLLBACK");
-        return res.status(502).json({
+        return res.status(400).json({
           message: `Disbursement transfer failed via Monnify: ${monErr.message}. The payout remains pending and funds have not been deducted.`,
         });
       }
@@ -990,6 +1042,9 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
     if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
       return res.status(400).json({ message: "A valid positive adjustment amount is required" });
     }
+    if (numAmount > 999999999.99) {
+      return res.status(400).json({ message: "Adjustment amount cannot exceed ₦999,999,999.99" });
+    }
     if (!["credit", "debit"].includes(type)) {
       return res.status(400).json({ message: "Type must be either 'credit' or 'debit'" });
     }
@@ -1039,6 +1094,11 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
       }
       newEarned = Math.max(0, currentEarned - numAmount);
       balanceAfter = currentAvailable - numAmount;
+    }
+
+    if (newEarned > 9999999999.99 || balanceAfter > 9999999999.99) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Adjustment would exceed maximum allowed wallet balance limit (₦9,999,999,999.99)" });
     }
 
     // Category title lookup for double-entry and audit clarity
@@ -1132,21 +1192,38 @@ router.patch("/drivers/:id/freeze", requireRole("superadmin", "manager", "admin"
     const { id } = req.params;
     const { is_frozen, reason } = req.body;
 
+    const willFreeze = !!is_frozen;
+
     const result = await pool.query(
       `
       UPDATE drivers
       SET 
         wallet_is_frozen = $1,
         wallet_frozen_reason = CASE WHEN $1 = true THEN COALESCE($2, 'Frozen by administration') ELSE NULL END,
+        payout_locked = CASE WHEN $1 = true THEN true ELSE false END,
+        payout_locked_reason = CASE WHEN $1 = true THEN COALESCE($2, 'Frozen by administration') ELSE NULL END,
+        payout_locked_at = CASE WHEN $1 = true THEN NOW() ELSE NULL END,
+        pin_failed_attempts = CASE WHEN $1 = true THEN pin_failed_attempts ELSE 0 END,
+        pin_locked_until = CASE WHEN $1 = true THEN pin_locked_until ELSE NULL END,
         updated_at = NOW()
       WHERE id = $3
-      RETURNING id, name, wallet_is_frozen, wallet_frozen_reason
+      RETURNING id, name, wallet_is_frozen, wallet_frozen_reason, payout_locked, payout_locked_reason, pin_failed_attempts
       `,
-      [!!is_frozen, reason || null, id]
+      [willFreeze, reason || null, id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Driver not found" });
+    }
+
+    if (!willFreeze) {
+      // Clear security lockout on driver credentials as well
+      await pool.query(
+        `UPDATE driver_auth 
+         SET failed_attempts = 0, locked_until = NULL, reset_token = NULL 
+         WHERE driver_id = $1`,
+        [id]
+      );
     }
 
     res.json({
