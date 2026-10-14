@@ -445,12 +445,14 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
           narration: `Bems Farms Payout - ${driver.name}`,
           destinationBankCode: destinationBankCode,
           destinationAccountNumber: payout.account_number,
+          destinationAccountName: payout.account_name || driver.name || "Driver Beneficiary",
         });
       } catch (monErr) {
-        console.error("❌ Live Monnify disbursement failed:", monErr.message);
+        const errorDetail = monErr.response?.data?.responseMessage || monErr.message;
+        console.error("❌ Live Monnify disbursement failed:", errorDetail);
         await client.query("ROLLBACK");
         return res.status(400).json({
-          message: `Disbursement transfer failed via Monnify: ${monErr.message}. The payout remains pending and funds have not been deducted.`,
+          message: `Disbursement transfer failed via Monnify: ${errorDetail}. The payout remains pending and funds have not been deducted.`,
         });
       }
     }

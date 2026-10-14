@@ -139,6 +139,7 @@ async function initiateMonnifyDisbursement({
   narration,
   destinationBankCode,
   destinationAccountNumber,
+  destinationAccountName,
   sourceAccountNumber,
 }) {
   const token = await getMonnifyToken();
@@ -159,23 +160,36 @@ async function initiateMonnifyDisbursement({
     narration: narration || "Bems Farms Driver Earnings Payout",
     destinationBankCode: destinationBankCode,
     destinationAccountNumber: destinationAccountNumber,
+    destinationAccountName: destinationAccountName || "Driver Beneficiary",
     currency: "NGN",
     sourceAccountNumber: sourceAcct,
     async: false,
   };
 
   const baseUrl = getMonnifyBaseUrl();
-  const { data } = await axios.post(
-    `${baseUrl}/api/v2/disbursements/single`,
-    payload,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  try {
+    const { data } = await axios.post(
+      `${baseUrl}/api/v2/disbursements/single`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-  if (!data?.requestSuccessful || !data?.responseBody) {
-    throw new Error(data?.responseMessage || "Monnify payout disbursement failed");
+    if (!data?.requestSuccessful || !data?.responseBody) {
+      throw new Error(data?.responseMessage || "Monnify payout disbursement failed");
+    }
+
+    return data.responseBody;
+  } catch (err) {
+    const errMsg =
+      err.response?.data?.responseMessage ||
+      err.response?.data?.message ||
+      err.message ||
+      "Monnify payout disbursement failed";
+    const enhancedErr = new Error(errMsg);
+    enhancedErr.responseCode = err.response?.data?.responseCode;
+    enhancedErr.status = err.response?.status;
+    throw enhancedErr;
   }
-
-  return data.responseBody;
 }
 
 /**
