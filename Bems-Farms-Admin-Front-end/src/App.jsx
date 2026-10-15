@@ -228,8 +228,8 @@ function App() {
 
               {/* ── Deliveries ── */}
               <Route element={<ProtectedRoute allowedRoles={DELIVERY_ROLES} />}>
-                <Route path="/deliveries"             element={<FleetCommand />} />
-                <Route path="/deliveries/fleet"       element={<FleetCommand />} />
+                <Route path="/deliveries"             element={<Navigate to="/orders" replace />} />
+                <Route path="/deliveries/fleet"       element={<Navigate to="/orders" replace />} />
                 <Route path="/deliveries/active"      element={<ActiveDeliveries />} />
                 <Route path="/deliveries/auto-assign" element={<AutoAssignTelemetry />} />
                 <Route path="/deliveries/map"         element={<DeliveryMap />} />

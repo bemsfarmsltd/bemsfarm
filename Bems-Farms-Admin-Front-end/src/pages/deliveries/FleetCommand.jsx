@@ -13,10 +13,10 @@ function timeSince(ts) {
   return new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
-export default function FleetCommand() {
+export default function FleetCommand({ isModal = false, orderId = null, onClose = null }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const orderParam = searchParams.get('order')
+  const orderParam = orderId || searchParams.get('order')
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({ drivers: [], kpis: {}, zones: [], orders: [] })
@@ -175,13 +175,13 @@ export default function FleetCommand() {
   // Real delivery zones from database
   const zones = data?.zones || []
 
-  return (
+  const pageContent = (
     <div style={{
-      minHeight: '100vh',
+      minHeight: isModal ? 'auto' : '100vh',
       backgroundColor: '#F3F4F6',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       color: '#0F172A',
-      padding: '24px 32px 48px',
+      padding: isModal ? '20px 24px 32px' : '24px 32px 48px',
       boxSizing: 'border-box',
     }}>
       {/* ── Top Bar / Header ── */}
@@ -263,24 +263,26 @@ export default function FleetCommand() {
           borderRadius: 14,
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
         }}>
-          <Link
-            to="/orders"
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              background: '#F0FDF4',
-              color: '#15803D',
-              border: '1px solid #BBF7D0',
-              fontSize: 12,
-              fontWeight: 700,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>← Back to Orders</span>
-          </Link>
+          {!isModal && (
+            <Link
+              to="/orders"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: '#F0FDF4',
+                color: '#15803D',
+                border: '1px solid #BBF7D0',
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>← Back to Orders</span>
+            </Link>
+          )}
           <Link
             to="/deliveries/fleet"
             style={{
@@ -367,6 +369,31 @@ export default function FleetCommand() {
           >
             🔄
           </button>
+          {isModal && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: '#EF4444',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 10,
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)',
+                marginLeft: 6,
+              }}
+              title="Close Fleet Command Modal"
+            >
+              <i className="ri-close-line" style={{ fontSize: 16 }} />
+              <span>Close</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -1160,8 +1187,84 @@ export default function FleetCommand() {
               </table>
             )}
           </div>
+          {isModal && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: '1px solid #E2E8F0',
+            }}>
+              <div style={{ fontSize: 12, color: '#64748B' }}>
+                Bems Fleet Command · Live Vehicle & Courier Telemetry
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  background: '#0F172A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: 13,
+                }}
+              >
+                Close Fleet
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
+
+  if (isModal) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.72)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 1060,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && onClose) onClose()
+        }}
+      >
+        <div
+          style={{
+            background: '#F8FAFC',
+            borderRadius: 20,
+            width: '100%',
+            maxWidth: 1540,
+            height: '92vh',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {pageContent}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return pageContent
 }

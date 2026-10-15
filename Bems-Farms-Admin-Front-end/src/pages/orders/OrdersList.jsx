@@ -6,6 +6,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import AdminOrderMap from '../../components/ui/AdminOrderMap'
+import FleetCommand from '../deliveries/FleetCommand'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1108,14 +1109,15 @@ export default function OrdersList() {
                         >
                           <i className="ri-eye-line" />
                         </button>
-                        <Link
-                          to={`/deliveries/fleet?order=${encodeURIComponent(order.id)}`}
+                        <button
+                          type="button"
                           className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-xs px-2 py-1"
-                          style={{ fontSize: 11, whiteSpace: 'nowrap', textDecoration: 'none' }}
-                          title="Open Bems Fleet Command for this order"
+                          style={{ fontSize: 11, whiteSpace: 'nowrap' }}
+                          title="Open Fleet Command modal for this order"
+                          onClick={() => openModal('fleet', order)}
                         >
                           <i className="ri-truck-line" /> Fleet
-                        </Link>
+                        </button>
                         {!(order.invoice_printed || ['processing', 'packed_ready', 'packed', 'assigned', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived', 'delivered', 'completed', 'cancelled'].includes(order.status)) ? (
                           <button
                             className="btn btn-sm btn-success fw-bold px-2 py-1"
@@ -1241,7 +1243,17 @@ export default function OrdersList() {
           MODALS
       ════════════════════════════════════════════════ */}
 
-      {activeModal && selected && (
+      {/* ── FLEET COMMAND BIG MODAL (LIVE DATABASE STREAM) ── */}
+      {activeModal === 'fleet' && selected && (
+        <FleetCommand
+          isModal={true}
+          orderId={selected.id || selected.order_ref}
+          onClose={closeModal}
+        />
+      )}
+
+      {/* ── OTHER MODALS (VIEW, INVOICE, ASSIGN, ETC.) ── */}
+      {activeModal && activeModal !== 'fleet' && selected && (
         <div
           style={{
             position: 'fixed',
