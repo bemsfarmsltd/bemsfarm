@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
+import DriverDispatchConsole from './DriverDispatchConsole'
 
 // ─── Fix Leaflet default marker icons in Vite ─────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl
@@ -217,7 +218,42 @@ function StarRating({ rating }) {
 }
 
 export default function DriversManagement() {
-  const [tabMode, setTabMode] = useState('fleet') // 'fleet' | 'payouts'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
+  const driverIdFromUrl = searchParams.get('driverId')
+
+  const [tabMode, setTabMode] = useState(
+    tabFromUrl === 'chat' ? 'chat' : (tabFromUrl === 'payouts' ? 'payouts' : 'fleet')
+  ) // 'fleet' | 'payouts' | 'chat'
+  const [selectedChatDriverId, setSelectedChatDriverId] = useState(driverIdFromUrl || null)
+  const [chatUnreadCount, setChatUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (tabFromUrl && ['fleet', 'payouts', 'chat'].includes(tabFromUrl)) {
+      setTabMode(tabFromUrl)
+    }
+    if (driverIdFromUrl) {
+      setSelectedChatDriverId(driverIdFromUrl)
+    }
+  }, [tabFromUrl, driverIdFromUrl])
+
+  const loadChatUnread = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/customers/conversations/driver-inbox')
+      const convs = res.data?.conversations || []
+      const total = convs.reduce((acc, c) => acc + Number(c.unread_count || 0), 0)
+      setChatUnreadCount(total)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    loadChatUnread()
+    const t = setInterval(loadChatUnread, 8000)
+    return () => clearInterval(t)
+  }, [loadChatUnread])
+
+  useRealtimeEvent('support:driver_message', loadChatUnread)
+
   const [drivers, setDrivers] = useState([])
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
@@ -693,7 +729,7 @@ export default function DriversManagement() {
 
       {/* Primary Mode Tabs (Fleet vs Payouts) & Direct COD Shortcut */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-2 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 480, width: '100%' }}>
+        <div className="d-flex align-items-center gap-2 bg-light p-1.5 rounded-3 border" style={{ maxWidth: 760, width: '100%' }}>
           <button
             type="button"
             className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
@@ -704,7 +740,10 @@ export default function DriversManagement() {
               color: tabMode === 'fleet' ? '#ffffff' : '#334155',
               border: tabMode === 'fleet' ? '1px solid #15803d' : '1px solid #e2e8f0',
             }}
-            onClick={() => setTabMode('fleet')}
+            onClick={() => {
+              setTabMode('fleet')
+              setSearchParams({ tab: 'fleet' }, { replace: true })
+            }}
           >
             <i className="ri-truck-line fs-16" />
             <span>🚚 Fleet Directory ({drivers.length})</span>
@@ -724,12 +763,38 @@ export default function DriversManagement() {
               color: tabMode === 'payouts' ? '#ffffff' : '#334155',
               border: tabMode === 'payouts' ? '1px solid #1d4ed8' : '1px solid #e2e8f0',
             }}
-            onClick={() => setTabMode('payouts')}
+            onClick={() => {
+              setTabMode('payouts')
+              setSearchParams({ tab: 'payouts' }, { replace: true })
+            }}
           >
             <i className="ri-wallet-3-line fs-16" />
             <span>💳 Driver Wallets &amp; Payouts</span>
             {payoutStats.pendingCount > 0 && (
               <span className="badge bg-danger rounded-pill px-2 py-0.5 fs-10">{payoutStats.pendingCount}</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm flex-fill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 rounded-2 transition-all ${
+              tabMode === 'chat' ? 'btn-dark text-white shadow-sm' : 'btn-light text-dark'
+            }`}
+            style={{
+              backgroundColor: tabMode === 'chat' ? '#0f172a' : '#f8fafc',
+              color: tabMode === 'chat' ? '#ffffff' : '#334155',
+              border: tabMode === 'chat' ? '1px solid #0f172a' : '1px solid #e2e8f0',
+            }}
+            onClick={() => {
+              setTabMode('chat')
+              setSearchParams({ tab: 'chat' }, { replace: true })
+            }}
+          >
+            <i className="ri-chat-3-line fs-16" />
+            <span>💬 Courier Dispatch Chat</span>
+            {chatUnreadCount > 0 && (
+              <span className="badge rounded-pill px-2 py-0.5 fs-10" style={{ background: '#059669', color: '#ffffff' }}>
+                {chatUnreadCount} new
+              </span>
             )}
           </button>
         </div>
@@ -1183,6 +1248,19 @@ export default function DriversManagement() {
                               </button>
 
                               <button
+                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                title="Open Live Dispatch Chat with Courier"
+                                style={{ borderColor: '#86efac', color: '#059669', background: '#ecfdf5' }}
+                                onClick={() => {
+                                  setSelectedChatDriverId(driver.id)
+                                  setTabMode('chat')
+                                  setSearchParams({ tab: 'chat', driverId: driver.id }, { replace: true })
+                                }}
+                              >
+                                <i className="ri-chat-3-line" />
+                              </button>
+
+                              <button
                                 className="btn btn-sm btn-outline-secondary"
                                 title="View Full Profile & Compliance"
                                 onClick={() => openModal('profile', driver)}
@@ -1569,6 +1647,17 @@ export default function DriversManagement() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          VIEW 3: CENTRAL DRIVER DISPATCH & ALL-COURIER CHAT
+      ══════════════════════════════════════════════════════════════ */}
+      {tabMode === 'chat' && (
+        <div style={{ height: 'calc(100vh - 220px)', minHeight: 650, marginBottom: 24 }}>
+          <DriverDispatchConsole
+            initialDriverId={selectedChatDriverId}
+          />
+        </div>
       )}
 
       {/* ════════════════════════════════════════════════
@@ -2507,6 +2596,23 @@ export default function DriversManagement() {
                   </div>
 
                   <div className="d-flex flex-wrap gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm fw-bold text-white d-flex align-items-center gap-1 shadow-sm"
+                      style={{ background: '#059669', borderColor: '#059669' }}
+                      onClick={() => {
+                        const drvId = selected.id
+                        closeModal()
+                        setSelectedChatDriverId(drvId)
+                        setTabMode('chat')
+                        setSearchParams({ tab: 'chat', driverId: drvId }, { replace: true })
+                      }}
+                      title="Open Live Dispatch Chat with Courier"
+                    >
+                      <i className="ri-chat-3-line" />
+                      <span>Message Courier</span>
+                    </button>
+
                     <button
                       type="button"
                       className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1 shadow-sm"

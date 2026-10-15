@@ -773,8 +773,17 @@ export default function Sidebar() {
                 <NavLink to="/deliveries/zones" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Coverage Zones</span>
                 </NavLink>
-                <NavLink to="/deliveries/drivers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                <NavLink
+                  to="/deliveries/drivers"
+                  className={() => `dual-sub-link ${location.pathname.startsWith('/deliveries/drivers') && new URLSearchParams(location.search).get('tab') !== 'chat' ? 'active' : ''}`}
+                >
                   <span>Dispatch Drivers</span>
+                </NavLink>
+                <NavLink
+                  to="/deliveries/drivers?tab=chat"
+                  className={() => `dual-sub-link ${location.pathname.startsWith('/deliveries/drivers') && new URLSearchParams(location.search).get('tab') === 'chat' ? 'active' : ''}`}
+                >
+                  <span>Courier Dispatch Chat</span>
                 </NavLink>
               </>
             )}
