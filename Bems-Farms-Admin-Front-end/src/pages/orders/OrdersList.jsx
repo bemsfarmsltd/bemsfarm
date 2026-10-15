@@ -1081,15 +1081,6 @@ export default function OrdersList() {
                             {order.driver.bike && (
                               <div className="text-muted font-monospace" style={{ fontSize: 9 }}>{order.driver.bike}</div>
                             )}
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-success d-inline-flex align-items-center gap-1 py-0 px-1.5 mt-1"
-                              style={{ fontSize: 9.5, borderRadius: 5, fontWeight: 600 }}
-                              onClick={(e) => { e.stopPropagation(); openModal('fleet', order); }}
-                              title="Open 3D Fleet telemetry & courier details for this order"
-                            >
-                              <i className="ri-truck-line" /> Fleet Live
-                            </button>
                           </div>
                         ) : (
                           <div>
@@ -1097,66 +1088,18 @@ export default function OrdersList() {
                               <i className="ri-time-line me-1" />Offered: {order.driver.name}
                             </span>
                             <div className="text-muted mt-0.5" style={{ fontSize: 10 }}>Pending Acceptance</div>
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-info d-inline-flex align-items-center gap-1 py-0 px-1.5 mt-1"
-                              style={{ fontSize: 9.5, borderRadius: 5, fontWeight: 600 }}
-                              onClick={(e) => { e.stopPropagation(); openModal('fleet', order); }}
-                              title="View Fleet status for this order"
-                            >
-                              <i className="ri-truck-line" /> Fleet View
-                            </button>
                           </div>
                         )
                       ) : !isDelivery ? (
-                        <div>
-                          <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
-                          <div className="mt-1">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0 px-1.5"
-                              style={{ fontSize: 9.5, borderRadius: 5, fontWeight: 600 }}
-                              onClick={(e) => { e.stopPropagation(); openModal('fleet', order); }}
-                              title="Open Fleet Hub for this order"
-                            >
-                              <i className="ri-truck-line" /> Fleet Hub
-                            </button>
-                          </div>
-                        </div>
+                        <span className="text-muted" style={{ fontSize: 11 }}>— (In-Store POS)</span>
                       ) : ['paid', 'new_order', 'pending', 'confirmed', 'processing'].includes(order.status) ? (
-                        <div>
-                          <span className="badge bg-light text-secondary border" style={{ fontSize: 10 }}>
-                            <i className="ri-archive-line me-1" />In Packaging
-                          </span>
-                          <div className="mt-1">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-secondary d-inline-flex align-items-center gap-1 py-0 px-1.5"
-                              style={{ fontSize: 9.5, borderRadius: 5, fontWeight: 600 }}
-                              onClick={(e) => { e.stopPropagation(); openModal('fleet', order); }}
-                              title="Open Fleet logistics for this order"
-                            >
-                              <i className="ri-truck-line" /> Fleet Hub
-                            </button>
-                          </div>
-                        </div>
+                        <span className="badge bg-light text-secondary border" style={{ fontSize: 10 }}>
+                          <i className="ri-archive-line me-1" />In Packaging
+                        </span>
                       ) : (
-                        <div>
-                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 10 }}>
-                            <i className="ri-truck-line me-1" />Awaiting Courier
-                          </span>
-                          <div className="mt-1">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-warning d-inline-flex align-items-center gap-1 py-0 px-1.5"
-                              style={{ fontSize: 9.5, borderRadius: 5, fontWeight: 600 }}
-                              onClick={(e) => { e.stopPropagation(); openModal('fleet', order); }}
-                              title="Open Fleet dispatcher for this order"
-                            >
-                              <i className="ri-truck-line" /> Dispatch Fleet
-                            </button>
-                          </div>
-                        </div>
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: 10 }}>
+                          <i className="ri-truck-line me-1" />Awaiting Courier
+                        </span>
                       )}
                     </td>
                     <td>
@@ -1309,98 +1252,6 @@ export default function OrdersList() {
         </div>
       </div>
 
-      {/* ── Fleet Logistics Quick-Access Under Orders Table ── */}
-      {filtered.length > 0 && (
-        <div
-          className="card shadow-sm border-0 mt-3 p-3"
-          style={{
-            background: 'linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)',
-            borderRadius: 14,
-            border: '1px solid #E2E8F0',
-          }}
-        >
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2.5">
-            <div className="d-flex align-items-center gap-2.5">
-              <span
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 18,
-                  boxShadow: '0 4px 10px rgba(5, 150, 105, 0.25)',
-                }}
-              >
-                🚚
-              </span>
-              <div>
-                <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: 13.5 }}>Fleet Logistics & Vehicle Telemetry by Order</h6>
-                <p className="text-muted mb-0" style={{ fontSize: 11 }}>
-                  Click any order button below to launch 3D vehicle visualizer, live driver GPS, and instant courier dispatch
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/deliveries/fleet"
-              className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1.5 shadow-xs"
-              style={{ fontSize: 11.5, borderRadius: 8, padding: '6px 14px' }}
-            >
-              <i className="ri-dashboard-2-line" /> Open Central Fleet Command
-            </Link>
-          </div>
-
-          <div className="d-flex flex-wrap gap-2 pt-2 border-top">
-            {filtered.map((ord) => {
-              const hasDriver = Boolean(ord.driver?.name)
-              const cfg = getStatusCfg(ord.status)
-              return (
-                <button
-                  key={`fleet-bar-${ord.id}`}
-                  onClick={() => openModal('fleet', ord)}
-                  className="btn btn-sm bg-white border shadow-xs d-inline-flex align-items-center gap-2 py-1.5 px-3 rounded-3 text-start transition"
-                  style={{ fontSize: 12, minWidth: 230 }}
-                  title={`Open 3D Fleet telemetry for Order ${ord.id}`}
-                >
-                  <span
-                    className="badge rounded-pill"
-                    style={{
-                      fontSize: 10,
-                      background: hasDriver ? '#ECFDF5' : '#FEF3C7',
-                      color: hasDriver ? '#065F46' : '#92400E',
-                      border: `1px solid ${hasDriver ? '#A7F3D0' : '#FDE68A'}`,
-                    }}
-                  >
-                    <i className={hasDriver ? 'ri-e-bike-2-line me-1' : 'ri-time-line me-1'} />
-                    {hasDriver ? ord.driver.name : 'Awaiting Driver'}
-                  </span>
-                  <div className="d-flex flex-column" style={{ minWidth: 90 }}>
-                    <span className="font-monospace fw-bold text-dark" style={{ fontSize: 11 }}>{ord.id}</span>
-                    <span className="text-muted text-truncate" style={{ fontSize: 10, maxWidth: 110 }}>
-                      {ord.customer?.name}
-                    </span>
-                  </div>
-                  <span
-                    className="badge ms-auto"
-                    style={{
-                      fontSize: 9.5,
-                      background: cfg.bg,
-                      color: cfg.color,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {cfg.label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       {/* ════════════════════════════════════════════════
           MODALS
       ════════════════════════════════════════════════ */}
@@ -1444,13 +1295,6 @@ export default function OrdersList() {
                     >
                       <i className="ri-map-pin-2-line me-1" />Live Fleet Map
                     </Link>
-                    <button
-                      className="btn btn-sm btn-outline-success fw-bold d-inline-flex align-items-center gap-1"
-                      onClick={() => openModal('fleet', selected)}
-                      title="Open 3D Vehicle Fleet Command for this order"
-                    >
-                      <i className="ri-truck-line" /> Fleet View
-                    </button>
                     {(!selected.invoice_printed && !['delivered', 'cancelled', 'completed'].includes(selected.status)) ? (
                       <button className="btn btn-sm btn-success fw-bold" onClick={() => openModal('invoice', selected)} title="Print Warehouse Invoice & Packing List">
                         <i className="ri-file-text-line me-1" />Print Invoice
