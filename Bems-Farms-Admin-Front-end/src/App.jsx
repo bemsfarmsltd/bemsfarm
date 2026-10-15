@@ -57,6 +57,7 @@ import Invoices    from './pages/orders/Invoices'
 import Refunds     from './pages/orders/Refunds'
 
 // Deliveries
+import FleetCommand       from './pages/deliveries/FleetCommand'
 import ActiveDeliveries   from './pages/deliveries/ActiveDeliveries'
 import AutoAssignTelemetry from './pages/deliveries/AutoAssignTelemetry'
 import DeliveryZones      from './pages/deliveries/DeliveryZones'
@@ -227,7 +228,8 @@ function App() {
 
               {/* ── Deliveries ── */}
               <Route element={<ProtectedRoute allowedRoles={DELIVERY_ROLES} />}>
-                <Route path="/deliveries"             element={<Navigate to="/deliveries/active" replace />} />
+                <Route path="/deliveries"             element={<FleetCommand />} />
+                <Route path="/deliveries/fleet"       element={<FleetCommand />} />
                 <Route path="/deliveries/active"      element={<ActiveDeliveries />} />
                 <Route path="/deliveries/auto-assign" element={<AutoAssignTelemetry />} />
                 <Route path="/deliveries/map"         element={<DeliveryMap />} />

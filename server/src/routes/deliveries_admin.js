@@ -25,6 +25,111 @@ async function nextZoneId(client) {
   return `ZONE${String(row.rows[0].n).padStart(3, "0")}`;
 }
 
+// ── GET /api/admin/deliveries/fleet-command ────────────────────────
+// Unified Moveon-style Fleet Management & Real-time Telemetry command center
+router.get("/fleet-command", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    // 1. Fetch drivers and their active/latest deliveries and live GPS
+    const driversRes = await pool.query(`
+      SELECT 
+        dr.id, dr.name, dr.phone, dr.email, dr.vehicle_type, dr.vehicle_plate, dr.status AS driver_status,
+        COALESCE(dr.rating, 4.9) AS rating, COALESCE(dr.wallet_balance, 0) AS wallet_balance,
+        dl.latitude AS driver_lat, dl.longitude AS driver_lng, dl.heading AS driver_heading,
+        COALESCE(dl.speed, 0) AS driver_speed, dl.recorded_at AS driver_last_ping,
+        COALESCE(dl.is_gps_live, false) AS is_gps_live,
+        d.id AS delivery_id, d.delivery_ref, d.status AS delivery_status, d.eta_minutes, d.assigned_at, d.accepted_at,
+        COALESCE(NULLIF(d.delivery_address, ''), NULLIF(o.address, ''), 'Umuahia Metro Depot') AS delivery_address,
+        o.id AS order_id, o.order_ref, o.total AS order_total, o.payment_method, o.status AS order_status,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        (SELECT COUNT(*) FROM deliveries WHERE driver_id = dr.id AND status = 'delivered') AS completed_deliveries_count
+      FROM drivers dr
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading, speed, recorded_at,
+          (recorded_at >= NOW() - INTERVAL '3 minutes') AS is_gps_live
+        FROM driver_locations
+        WHERE driver_id = dr.id
+        ORDER BY recorded_at DESC
+        LIMIT 1
+      ) dl ON true
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM deliveries
+        WHERE driver_id = dr.id AND status NOT IN ('delivered', 'cancelled')
+        ORDER BY assigned_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) d ON true
+      LEFT JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+      WHERE dr.status != 'deleted'
+      ORDER BY 
+        CASE WHEN d.id IS NOT NULL THEN 1 ELSE 2 END,
+        dr.id ASC
+    `);
+
+    // 2. Fetch fleet KPIs
+    const statsRes = await pool.query(`
+      SELECT
+        COUNT(*) AS total_shipments,
+        COUNT(CASE WHEN status IN ('in_transit', 'out_for_delivery', 'picked_up', 'en_route') THEN 1 END) AS active_in_transit,
+        COUNT(CASE WHEN status IN ('assigned', 'awaiting_pickup') THEN 1 END) AS assigned_pending,
+        COUNT(CASE WHEN status = 'delivered' THEN 1 END) AS delivered_count,
+        COALESCE(SUM(delivery_fee), 0) AS total_revenue
+      FROM deliveries
+    `);
+
+    // 3. Fetch distribution by delivery zones
+    const zonesRes = await pool.query(`
+      SELECT 
+        dz.zone_id, dz.zone_name, dz.delivery_fee, dz.status,
+        COUNT(d.id) AS active_deliveries_count
+      FROM delivery_zones dz
+      LEFT JOIN deliveries d ON d.zone_id = dz.zone_id AND d.status NOT IN ('delivered', 'cancelled')
+      GROUP BY dz.zone_id, dz.zone_name, dz.delivery_fee, dz.status
+      ORDER BY active_deliveries_count DESC, dz.zone_id ASC
+      LIMIT 8
+    `);
+
+    // 4. Fetch orders stream for the dispatch table
+    const ordersRes = await pool.query(`
+      SELECT 
+        o.id AS order_id,
+        o.order_ref,
+        o.status,
+        o.total,
+        COALESCE(o.address, 'Farm Pick-up Point') AS delivery_address,
+        o.created_at,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        dr.id AS driver_id,
+        dr.name AS driver_name,
+        dr.phone AS driver_phone,
+        dr.vehicle_type,
+        dr.vehicle_plate,
+        d.id AS delivery_id,
+        d.delivery_ref,
+        d.status AS delivery_status,
+        d.eta_minutes
+      FROM orders o
+      LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+      LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+      LEFT JOIN drivers dr ON (d.driver_id = dr.id OR o.driver_id = dr.id)
+      ORDER BY o.created_at DESC
+      LIMIT 40
+    `);
+
+    res.json({
+      success: true,
+      drivers: driversRes.rows,
+      kpis: statsRes.rows[0],
+      zones: zonesRes.rows,
+      orders: ordersRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/deliveries/active ─────────────────────────────
 router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
