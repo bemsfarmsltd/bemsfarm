@@ -15,7 +15,7 @@ export default function Sidebar() {
     inventory: '/inventory/stock-in',
     products: '/products',
     orders: '/orders',
-    deliveries: '/deliveries/fleet',
+    deliveries: '/deliveries/active',
     customers: '/customers',
     finance: '/accounts/transactions',
     chef: '/chef-bems/conversations',
@@ -761,9 +761,6 @@ export default function Sidebar() {
             {/* 5. DELIVERIES */}
             {activeTab === 'deliveries' && (
               <>
-                <NavLink to="/deliveries/fleet" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Fleet Command Hub</span>
-                </NavLink>
                 <NavLink to="/deliveries/active" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Active Deliveries</span>
                 </NavLink>
