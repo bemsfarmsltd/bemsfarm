@@ -627,8 +627,8 @@ router.get('/drivers/:id/messages', requireRole('superadmin', 'manager', 'admin'
 router.post('/drivers/:id/messages', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
   try {
     const drv = await driverSupport.resolveDriver(req.params.id);
-    const { message, order_id, delivery_id } = req.body;
-    res.status(201).json(await driverSupport.sendDriverMessage(drv.id, message, req.user, { order_id, delivery_id }));
+    const { message, order_id, delivery_id, reply_to } = req.body;
+    res.status(201).json(await driverSupport.sendDriverMessage(drv.id, message, req.user, { order_id, delivery_id, reply_to }));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
     next(e);

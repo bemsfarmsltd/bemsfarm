@@ -15,12 +15,12 @@ const getMessages = async (req, res, next) => {
 const sendMessage = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
-    const { message, order_id, delivery_id, enable_ai = true } = req.body;
+    const { message, order_id, delivery_id, enable_ai = false, reply_to } = req.body;
     const result = await driverSupportService.sendDriverMessage(
       driverId,
       message,
       null, // sender is driver
-      { order_id, delivery_id, enable_ai }
+      { order_id, delivery_id, enable_ai, reply_to }
     );
     res.status(201).json({ success: true, ...result });
   } catch (err) {

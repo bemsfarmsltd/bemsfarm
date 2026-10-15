@@ -157,7 +157,7 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
     throw Object.assign(new Error("Message must contain 1–4,000 characters"), { status: 400 });
   }
 
-  const { order_id, delivery_id, enable_ai = true } = options;
+  const { order_id, delivery_id, enable_ai = false, reply_to } = options;
   let orderContext = null;
 
   // Detect explicit or text-embedded order/delivery references
@@ -171,6 +171,19 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
 
   if (resolvedId) {
     orderContext = await fetchOrderReferenceContext(resolvedId);
+  }
+
+  // Build combined metadata (order context + WhatsApp-style quoted reply reference)
+  const metadataObj = {
+    ...(orderContext || {}),
+  };
+  if (reply_to && typeof reply_to === "object") {
+    metadataObj.reply_to = {
+      id: reply_to.id || null,
+      sender_name: reply_to.sender_name || (reply_to.sender_type === "admin" ? "Dispatch Staff" : (reply_to.sender_type === "bot" ? "Dispatch AI" : "Courier")),
+      sender_type: reply_to.sender_type || "driver",
+      message: typeof reply_to.message === "string" ? reply_to.message.slice(0, 300) : "",
+    };
   }
 
   const db = await pool.connect();
@@ -216,7 +229,7 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
         message.trim(),
         orderContext?.order_id || null,
         orderContext?.delivery_id || null,
-        orderContext ? JSON.stringify(orderContext) : null,
+        Object.keys(metadataObj).length > 0 ? JSON.stringify(metadataObj) : null,
       ]
     );
 

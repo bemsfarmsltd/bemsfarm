@@ -219,7 +219,9 @@ async function generateDriverSupportReply(driver, messageText, orderContext) {
     return "🚨 Dispatch Manager Notified: Your message has been routed with highest priority to the live Logistics Admin console. A dispatch officer will message or call you right away.";
   }
 
-  return `Hello Rider ${driver?.name || ""}! 🛵 Bems Farms Driver Dispatch Support is active.\n\n${orderContext ? `Regarding Delivery #${orderContext.order_ref || orderContext.order_id}: ` : ""}You can ask about COD amounts, customer contact procedures, emergency roadside help, or weekly payouts. Type "dispatch" to page the central admin console.`;
+  // 3. Do NOT auto-reply with repetitive greetings in between messages!
+  // Return null so natural conversation flows between courier and dispatch without bot spam.
+  return null;
 }
 
 module.exports = {

@@ -39,6 +39,97 @@ function StaffAvatar({ name, size = 38 }) {
   )
 }
 
+// ─── WhatsApp-style Quoted Message Snippet ────────────────────────────────────
+function QuotedMessageSnippet({ replyTo, onDismiss = null, isInsideBubble = false, isAdminBubble = false, onClickOriginal = null }) {
+  if (!replyTo) return null
+
+  const isSenderAdmin = replyTo.sender_type === 'admin'
+  const isSenderBot = replyTo.sender_type === 'bot'
+  let accentColor = isSenderAdmin ? '#059669' : (isSenderBot ? '#0284c7' : '#16a34a')
+  if (isAdminBubble) {
+    accentColor = '#BBF7D0'
+  }
+
+  const authorName = replyTo.sender_name || (isSenderAdmin ? 'Fleet Dispatcher' : (isSenderBot ? 'Dispatch AI' : 'Courier'))
+
+  return (
+    <div
+      onClick={onClickOriginal}
+      style={{
+        display: 'flex',
+        alignItems: 'stretch',
+        background: isInsideBubble
+          ? (isAdminBubble ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.05)')
+          : '#F0FDF4',
+        borderLeft: `4px solid ${accentColor}`,
+        borderRadius: 8,
+        padding: '6px 10px',
+        marginBottom: isInsideBubble ? 6 : 8,
+        cursor: onClickOriginal ? 'pointer' : 'default',
+        transition: 'all 0.15s ease',
+        userSelect: 'none',
+        borderTop: isInsideBubble ? 'none' : '1px solid #BBF7D0',
+        borderRight: isInsideBubble ? 'none' : '1px solid #BBF7D0',
+        borderBottom: isInsideBubble ? 'none' : '1px solid #BBF7D0',
+      }}
+      title={onClickOriginal ? 'Click to jump to original message' : undefined}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 800,
+          color: isAdminBubble ? '#BBF7D0' : (isInsideBubble ? accentColor : '#166534'),
+          marginBottom: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+        }}>
+          <span>↩</span>
+          <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            {authorName}
+          </span>
+        </div>
+        <div style={{
+          fontSize: 12,
+          color: isAdminBubble ? 'rgba(255,255,255,0.92)' : (isInsideBubble ? 'inherit' : '#334155'),
+          opacity: 0.95,
+          lineHeight: 1.35,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: isInsideBubble ? 2 : 1,
+          WebkitBoxOrient: 'vertical',
+        }}>
+          {replyTo.message}
+        </div>
+      </div>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDismiss()
+          }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#64748B',
+            cursor: 'pointer',
+            fontSize: 15,
+            fontWeight: 800,
+            padding: '0 0 0 8px',
+            alignSelf: 'flex-start',
+            lineHeight: 1,
+          }}
+          title="Cancel reply"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Order Reference Banner ──────────────────────────────────────────────────
 function OrderReferenceBanner({ order, delivery, isAssigned = true }) {
   const [showItems, setShowItems] = useState(false)
@@ -157,8 +248,24 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [showAllHistory, setShowAllHistory] = useState(false)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [hoveredMsgId, setHoveredMsgId] = useState(null)
 
   const messagesFeedRef = useRef(null)
+
+  const scrollToMessage = (msgId) => {
+    if (!msgId) return
+    const el = document.getElementById(`order-msg-${msgId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.style.transition = 'background-color 0.4s ease'
+      const origBg = el.style.backgroundColor
+      el.style.backgroundColor = 'rgba(254, 240, 138, 0.45)'
+      setTimeout(() => {
+        el.style.backgroundColor = origBg
+      }, 1400)
+    }
+  }
 
   // 1. Fetch order details & assigned driver
   const loadOrderContext = useCallback(async () => {
@@ -225,8 +332,15 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
         message: text.trim(),
         order_id: orderData?.order?.order_ref || orderData?.order?.id || orderId,
         delivery_id: orderData?.delivery?.id,
+        reply_to: replyingTo ? {
+          id: replyingTo.id,
+          sender_name: replyingTo.sender_name || (replyingTo.sender_type === 'admin' ? (replyingTo.admin_name || 'Fleet Dispatcher') : (replyingTo.sender_type === 'bot' ? 'Dispatch AI' : (driver.name || 'Courier'))),
+          sender_type: replyingTo.sender_type,
+          message: replyingTo.message,
+        } : null,
       })
       setText('')
+      setReplyingTo(null)
       await loadMessages()
       setError('')
     } catch (err) {
@@ -491,18 +605,26 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
           const isAdmin = m.sender_type === 'admin'
           const isBot = m.sender_type === 'bot'
           const msgOrderRef = m.order_id || m.metadata?.order_ref
+          const replyMeta = m.metadata?.reply_to
+          const senderDisplayName = isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? 'Dispatch AI' : (driver.name || 'Courier'))
 
           return (
             <div
               key={m.id}
+              id={`order-msg-${m.id}`}
+              onMouseEnter={() => setHoveredMsgId(m.id)}
+              onMouseLeave={() => setHoveredMsgId(null)}
               style={{
                 display: 'flex',
                 justifyContent: isAdmin ? 'flex-end' : 'flex-start',
                 gap: 8,
+                padding: '2px 4px',
+                borderRadius: 12,
+                transition: 'background-color 0.2s',
               }}
             >
               {!isAdmin && <DriverAvatar name={isBot ? 'Dispatch AI' : (driver.name || 'Courier')} size={28} />}
-              <div style={{ maxWidth: '75%' }}>
+              <div style={{ maxWidth: '75%', position: 'relative' }}>
                 {msgOrderRef && showAllHistory && (
                   <div style={{
                     marginBottom: 4,
@@ -530,6 +652,14 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                   lineHeight: 1.5,
                   whiteSpace: 'pre-wrap',
                 }}>
+                  {replyMeta && (
+                    <QuotedMessageSnippet
+                      replyTo={replyMeta}
+                      isInsideBubble={true}
+                      isAdminBubble={isAdmin}
+                      onClickOriginal={() => scrollToMessage(replyMeta.id)}
+                    />
+                  )}
                   {m.message}
                 </div>
                 <div style={{
@@ -539,8 +669,39 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                   textAlign: isAdmin ? 'right' : 'left',
                   paddingLeft: isAdmin ? 0 : 4,
                   paddingRight: isAdmin ? 4 : 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isAdmin ? 'flex-end' : 'flex-start',
+                  gap: 8,
                 }}>
-                  {isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? '🤖 Dispatch AI' : (driver.name || 'Courier'))} · {timeSince(m.created_at)}
+                  <span>
+                    {isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? '🤖 Dispatch AI' : (driver.name || 'Courier'))} · {timeSince(m.created_at)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplyingTo({
+                        id: m.id,
+                        sender_name: senderDisplayName,
+                        sender_type: m.sender_type,
+                        message: m.message,
+                      })
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#059669',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      opacity: hoveredMsgId === m.id ? 1 : 0.6,
+                      transition: 'opacity 0.15s',
+                    }}
+                    title="Reply / Quote this message"
+                  >
+                    ↩ Reply
+                  </button>
                 </div>
               </div>
               {isAdmin && <StaffAvatar name={m.admin_name || 'Fleet Dispatch'} size={28} />}
@@ -551,52 +712,63 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
       </div>
 
       {/* ── Composer (Dedicated to This Order) ── */}
-      <form
-        onSubmit={sendMessage}
-        style={{
-          padding: '12px 18px',
-          borderTop: '1px solid #E2E8F0',
-          background: '#FFFFFF',
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-        }}
-      >
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          disabled={!driver}
-          placeholder={driver ? `Send dispatch instruction for Order #${orderData?.order?.order_ref || orderId} to Courier ${driver.name}…` : "Assign a courier above to send messages…"}
+      <div style={{
+        borderTop: '1px solid #E2E8F0',
+        background: '#FFFFFF',
+      }}>
+        {replyingTo && (
+          <div style={{ padding: '10px 18px 0' }}>
+            <QuotedMessageSnippet
+              replyTo={replyingTo}
+              onDismiss={() => setReplyingTo(null)}
+            />
+          </div>
+        )}
+        <form
+          onSubmit={sendMessage}
           style={{
-            flex: 1,
-            border: '1px solid #CBD5E1',
-            borderRadius: 10,
-            padding: '11px 16px',
-            fontSize: 13,
-            outline: 'none',
-            background: driver ? '#FFFFFF' : '#F8FAFC',
-          }}
-        />
-        <button
-          type="submit"
-          disabled={sending || !text.trim() || !driver}
-          style={{
-            background: '#059669',
-            border: 'none',
-            borderRadius: 10,
-            color: '#FFFFFF',
-            padding: '11px 22px',
-            cursor: sending || !text.trim() || !driver ? 'not-allowed' : 'pointer',
-            opacity: sending || !text.trim() || !driver ? 0.5 : 1,
-            fontWeight: 800,
-            fontSize: 13,
-            whiteSpace: 'nowrap',
+            padding: '12px 18px',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
           }}
         >
-          {sending ? 'Sending…' : '↑ Send'}
-        </button>
-      </form>
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={!driver}
+            placeholder={driver ? (replyingTo ? `Replying to ${replyingTo.sender_name}…` : `Send dispatch instruction for Order #${orderData?.order?.order_ref || orderId} to Courier ${driver.name}…`) : "Assign a courier above to send messages…"}
+            style={{
+              flex: 1,
+              border: '1px solid #CBD5E1',
+              borderRadius: 10,
+              padding: '11px 16px',
+              fontSize: 13,
+              outline: 'none',
+              background: driver ? '#FFFFFF' : '#F8FAFC',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={sending || !text.trim() || !driver}
+            style={{
+              background: '#059669',
+              border: 'none',
+              borderRadius: 10,
+              color: '#FFFFFF',
+              padding: '11px 22px',
+              cursor: sending || !text.trim() || !driver ? 'not-allowed' : 'pointer',
+              opacity: sending || !text.trim() || !driver ? 0.5 : 1,
+              fontWeight: 800,
+              fontSize: 13,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sending ? 'Sending…' : '↑ Send'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -809,7 +981,23 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
   const [activeDeliveries, setActiveDeliveries] = useState([])
   const [selectedDelivery, setSelectedDelivery] = useState(null)
   const [showMentionMenu, setShowMentionMenu] = useState(false)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [hoveredMsgId, setHoveredMsgId] = useState(null)
   const bottomRef = useRef(null)
+
+  const scrollToMessage = (msgId) => {
+    if (!msgId) return
+    const el = document.getElementById(`driver-msg-${msgId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.style.transition = 'background-color 0.4s ease'
+      const origBg = el.style.backgroundColor
+      el.style.backgroundColor = 'rgba(254, 240, 138, 0.45)'
+      setTimeout(() => {
+        el.style.backgroundColor = origBg
+      }, 1400)
+    }
+  }
 
   const load = useCallback(async () => {
     if (!driverId) return
@@ -855,6 +1043,8 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
     setText('')
     setError('')
     setSelectedDelivery(null)
+    setReplyingTo(null)
+    setHoveredMsgId(null)
 
     const poll = async () => {
       try {
@@ -883,10 +1073,17 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
         message: text,
         order_id: selectedDelivery?.order_ref || selectedDelivery?.order_id || selectedDelivery?.id || orderRef,
         delivery_id: selectedDelivery?.delivery_id || selectedDelivery?.id,
+        reply_to: replyingTo ? {
+          id: replyingTo.id,
+          sender_name: replyingTo.sender_name || (replyingTo.sender_type === 'admin' ? (replyingTo.admin_name || 'Fleet Dispatcher') : (replyingTo.sender_type === 'bot' ? 'Dispatch AI' : (driverName || 'Courier'))),
+          sender_type: replyingTo.sender_type,
+          message: replyingTo.message,
+        } : null,
       })
       setText('')
       setSelectedDelivery(null)
       setShowMentionMenu(false)
+      setReplyingTo(null)
       await load()
       setError('')
     } catch (err) {
@@ -1016,17 +1213,26 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
         {messages.map((m) => {
           const isAdmin = m.sender_type === 'admin'
           const isBot = m.sender_type === 'bot'
+          const replyMeta = m.metadata?.reply_to
+          const senderDisplayName = isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? 'Dispatch AI' : (driverName || 'Courier'))
+
           return (
             <div
               key={m.id}
+              id={`driver-msg-${m.id}`}
+              onMouseEnter={() => setHoveredMsgId(m.id)}
+              onMouseLeave={() => setHoveredMsgId(null)}
               style={{
                 display: 'flex',
                 justifyContent: isAdmin ? 'flex-end' : 'flex-start',
                 gap: 8,
+                padding: '2px 4px',
+                borderRadius: 12,
+                transition: 'background-color 0.2s',
               }}
             >
               {!isAdmin && <DriverAvatar name={isBot ? 'Dispatch AI' : (driverName || 'Courier')} size={28} />}
-              <div style={{ maxWidth: '75%' }}>
+              <div style={{ maxWidth: '75%', position: 'relative' }}>
                 {m.order_id && (
                   <div style={{
                     marginBottom: 4,
@@ -1054,6 +1260,14 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                   lineHeight: 1.5,
                   whiteSpace: 'pre-wrap',
                 }}>
+                  {replyMeta && (
+                    <QuotedMessageSnippet
+                      replyTo={replyMeta}
+                      isInsideBubble={true}
+                      isAdminBubble={isAdmin}
+                      onClickOriginal={() => scrollToMessage(replyMeta.id)}
+                    />
+                  )}
                   {m.message}
                 </div>
                 <div style={{
@@ -1063,8 +1277,39 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                   textAlign: isAdmin ? 'right' : 'left',
                   paddingLeft: isAdmin ? 0 : 4,
                   paddingRight: isAdmin ? 4 : 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isAdmin ? 'flex-end' : 'flex-start',
+                  gap: 8,
                 }}>
-                  {isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? '🤖 Dispatch AI' : (driverName || 'Courier'))} · {timeSince(m.created_at)}
+                  <span>
+                    {isAdmin ? (m.admin_name || 'Fleet Dispatcher') : (isBot ? '🤖 Dispatch AI' : (driverName || 'Courier'))} · {timeSince(m.created_at)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplyingTo({
+                        id: m.id,
+                        sender_name: senderDisplayName,
+                        sender_type: m.sender_type,
+                        message: m.message,
+                      })
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#059669',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      opacity: hoveredMsgId === m.id ? 1 : 0.6,
+                      transition: 'opacity 0.15s',
+                    }}
+                    title="Reply / Quote this message"
+                  >
+                    ↩ Reply
+                  </button>
                 </div>
               </div>
               {isAdmin && <StaffAvatar name={m.admin_name || 'Fleet Dispatch'} size={28} />}
@@ -1146,6 +1391,13 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
           gap: 6,
         }}
       >
+        {replyingTo && (
+          <QuotedMessageSnippet
+            replyTo={replyingTo}
+            onDismiss={() => setReplyingTo(null)}
+          />
+        )}
+
         {selectedDelivery && (
           <div style={{
             display: 'flex',
@@ -1185,7 +1437,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             onChange={handleInputChange}
             maxLength={4000}
             required
-            placeholder={`Type dispatch instruction to Courier ${driverName}… (Press Enter to send, Shift+Enter for newline)`}
+            placeholder={replyingTo ? `Replying to ${replyingTo.sender_name}… (Press Enter to send, Shift+Enter for newline)` : `Type dispatch instruction to Courier ${driverName}… (Press Enter to send, Shift+Enter for newline)`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
