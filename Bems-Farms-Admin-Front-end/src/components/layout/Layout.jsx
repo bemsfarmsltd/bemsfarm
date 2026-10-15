@@ -25,39 +25,7 @@ export default function Layout() {
     document.body.classList.remove('sidebar-condensed')
   }, [])
 
-  /* Fix footer: make it fixed to the bottom of the viewport, never scroll with content */
-  useEffect(() => {
-    const id = 'layout-footer-fix'
-    let style = document.getElementById(id)
-    if (!style) {
-      style = document.createElement('style')
-      style.id = id
-      document.head.appendChild(style)
-    }
-    style.textContent = `
-      /*
-       * The template already sets left:var(--dx-sidebar) for the footer.
-       * We just change position:absolute → position:fixed so it stays
-       * pinned to the bottom of the viewport on every page, no matter
-       * how long the content is.
-       */
-      .main-footer {
-        position: fixed !important;
-        bottom: 0 !important;
-        right: 0 !important;
-        z-index: 999 !important;
-        background: var(--dx-secondary-bg, #fff) !important;
-      }
 
-      /*
-       * Add bottom padding equal to the footer height (3.5rem) so page
-       * content is never hidden underneath the fixed footer.
-       */
-      .page-wrapper {
-        padding-bottom: calc(3.5rem + 0.5rem) !important;
-      }
-    `
-  }, [])
 
   /* Scroll page content to top on route change */
   useEffect(() => {

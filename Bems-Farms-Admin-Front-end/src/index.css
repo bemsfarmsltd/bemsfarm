@@ -53,23 +53,66 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 /* ── MAIN LAYOUT WRAPPER ─────────────────────────────────────────── */
-.main-wrapper {
-  background-color: #FAF8F5 !important;
+html, body, #root {
+  width: 100% !important;
+  max-width: 100% !important;
   min-height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+
+.wrapper,
+.main-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+  background-color: #FAF8F5 !important;
+  box-sizing: border-box !important;
+  position: relative !important;
 }
 
 .main-content {
   background-color: #FAF8F5 !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .page-content {
   background-color: #FAF8F5 !important;
   padding: 0.85rem 1.25rem 2rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
-.container-fluid {
+/* Ensure full-width fluid layouts across ALL pages and screen sizes */
+.container,
+.container-fluid,
+.container-sm,
+.container-md,
+.container-lg,
+.container-xl,
+.container-xxl {
+  width: 100% !important;
+  max-width: 100% !important;
   padding-left: 0.75rem !important;
   padding-right: 0.75rem !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.row {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* ── SIDEBAR (TWO-TIER: PERMANENT SUBPANEL + HOVER-EXPANDABLE RAIL) ─────── */
@@ -113,22 +156,74 @@ body.sidebar-condensed #main-sidebar {
   transform: translateX(-100%) !important;
 }
 
+/* ── PAGE-WRAPPER: ADAPTS 100% FLUIDLY TO SCREEN SIZE ─────────────── */
+.page-wrapper {
+  background-color: #FAF8F5 !important;
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+  padding-top: calc(3.5rem + 1rem) !important;
+  padding-bottom: calc(3.5rem + 1.5rem) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1), width 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 @media (min-width: 992px) {
   .page-wrapper {
     margin-left: 268px !important;
-    transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: calc(100% - 268px) !important;
+    max-width: calc(100% - 268px) !important;
   }
   body.rail-is-hovered .page-wrapper {
     margin-left: 415px !important;
+    width: calc(100% - 415px) !important;
+    max-width: calc(100% - 415px) !important;
   }
   body.no-subpanel .page-wrapper {
     margin-left: 68px !important;
+    width: calc(100% - 68px) !important;
+    max-width: calc(100% - 68px) !important;
   }
   body.no-subpanel.rail-is-hovered .page-wrapper {
     margin-left: 215px !important;
+    width: calc(100% - 215px) !important;
+    max-width: calc(100% - 215px) !important;
   }
   body.sidebar-condensed .page-wrapper {
     margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .page-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: calc(3.5rem + 0.75rem) !important;
+  }
+}
+
+/* Force override of GotPOS template padding on wide screens (stops template squeeze) */
+@media (min-width: 1200px) {
+  .page-wrapper,
+  body .page-wrapper,
+  [data-content-width=fluid] .page-wrapper {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+}
+@media (min-width: 1536px) {
+  .page-wrapper,
+  body .page-wrapper,
+  [data-content-width=fluid] .page-wrapper {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
   }
 }
 
@@ -150,6 +245,8 @@ body.sidebar-condensed #main-sidebar {
   top: 0 !important;
   left: 68px !important;
   right: 0 !important;
+  width: calc(100% - 68px) !important;
+  max-width: calc(100% - 68px) !important;
   background-color: #FFFFFF !important;
   border-bottom: 1px solid #E5E7EB !important;
   padding: 0 1.25rem !important;
@@ -158,15 +255,77 @@ body.sidebar-condensed #main-sidebar {
   align-items: center !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
   z-index: 1006 !important;
-  transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-sizing: border-box !important;
+  transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1), width 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 body.rail-is-hovered .main-topbar {
   left: 215px !important;
+  width: calc(100% - 215px) !important;
+  max-width: calc(100% - 215px) !important;
 }
 
 body.sidebar-condensed .main-topbar {
   left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 991.98px) {
+  .main-topbar {
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 0.75rem !important;
+  }
+}
+
+/* ── FIXED FLUID FOOTER ───────────────────────────────────────────── */
+.main-footer {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  left: 268px !important;
+  width: calc(100% - 268px) !important;
+  max-width: calc(100% - 268px) !important;
+  z-index: 999 !important;
+  background: #FFFFFF !important;
+  border-top: 1px solid #EFECE6 !important;
+  padding: 0.65rem 1.25rem !important;
+  box-sizing: border-box !important;
+  transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1), width 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.rail-is-hovered .main-footer {
+  left: 415px !important;
+  width: calc(100% - 415px) !important;
+  max-width: calc(100% - 415px) !important;
+}
+
+body.no-subpanel .main-footer {
+  left: 68px !important;
+  width: calc(100% - 68px) !important;
+  max-width: calc(100% - 68px) !important;
+}
+
+body.no-subpanel.rail-is-hovered .main-footer {
+  left: 215px !important;
+  width: calc(100% - 215px) !important;
+  max-width: calc(100% - 215px) !important;
+}
+
+body.sidebar-condensed .main-footer {
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 991.98px) {
+  .main-footer {
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 .main-topbar .sidebar-toggle {
@@ -694,11 +853,14 @@ a.link-custom-primary {
 
 /* ── CARDS & STATS (COMPACT LUXURY ELEVATION) ─────────────────────── */
 .card, .stats-card {
+  width: 100% !important;
+  max-width: 100% !important;
   background-color: #FFFFFF !important;
   border: 1px solid #EFECE6 !important;
   border-radius: 0.75rem !important;
   box-shadow: 0 2px 10px -2px rgba(20, 60, 45, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.02) !important;
   transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
 }
 
 .card:hover, .stats-card:hover {
@@ -713,19 +875,29 @@ a.link-custom-primary {
   font-family: 'Outfit', sans-serif !important;
   font-weight: 700 !important;
   font-size: 0.85rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .card-body {
   padding: 0.85rem 1rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* ── TABLES & DATA GRIDS ─────────────────────────────────────────── */
 .table-responsive {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   border-radius: 0.75rem !important;
-  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .table {
+  width: 100% !important;
+  max-width: 100% !important;
   margin-bottom: 0 !important;
   color: #0F172A !important;
 }

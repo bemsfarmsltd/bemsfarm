@@ -146,7 +146,7 @@ export default function SettingsAll() {
   }, [searchQuery])
 
   return (
-    <div className="container-fluid px-3 px-md-4 py-3 py-md-4" style={{ maxWidth: '1560px' }}>
+    <div className="container-fluid px-3 px-md-4 py-3 py-md-4">
       {/* Top Header Section */}
       <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3 mb-4">
         <div>
