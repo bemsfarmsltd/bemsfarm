@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import DriverDispatchConsole from './DriverDispatchConsole'
+import DeliveryMap from './DeliveryMap'
 
 function timeSince(ts) {
   if (!ts) return 'Never'
@@ -18,7 +19,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
   const [searchParams, setSearchParams] = useSearchParams()
   const orderParam = orderId || searchParams.get('order')
 
-  const [activeFleetTab, setActiveFleetTab] = useState('hub') // 'hub' | 'chat'
+  const [activeFleetTab, setActiveFleetTab] = useState('hub') // 'hub' | 'chat' | 'map'
   const [chatDriverId, setChatDriverId] = useState(null)
   const [unreadDriversCount, setUnreadDriversCount] = useState(0)
 
@@ -366,40 +367,45 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               </span>
             )}
           </button>
-          <Link
-            to="/deliveries/map"
+          <button
+            type="button"
+            onClick={() => setActiveFleetTab('map')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 16px',
               borderRadius: 10,
-              background: 'transparent',
-              color: '#475569',
+              background: activeFleetTab === 'map' ? '#2563EB' : 'transparent',
+              color: activeFleetTab === 'map' ? '#FFFFFF' : '#475569',
+              border: 'none',
               fontSize: 12,
-              fontWeight: 600,
-              textDecoration: 'none',
+              fontWeight: 700,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
+              transition: 'all 0.15s ease',
             }}
           >
             <span>🗺️ Live GPS Map</span>
-          </Link>
-          <Link
-            to="/deliveries/active"
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              background: 'transparent',
-              color: '#475569',
-              fontSize: 12,
-              fontWeight: 600,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>📦 Active Deliveries</span>
-          </Link>
+          </button>
+          {!isModal && (
+            <Link
+              to="/deliveries/active"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: 'transparent',
+                color: '#475569',
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>📦 Active Deliveries</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={loadFleetData}
@@ -445,6 +451,28 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
           )}
         </div>
       </header>
+
+      {/* ── LIVE GPS MAP TAB ── */}
+      {activeFleetTab === 'map' && (
+        <div style={{
+          marginTop: 18,
+          height: isModal ? 'calc(92vh - 160px)' : 'calc(100vh - 200px)',
+          minHeight: 560,
+          borderRadius: 16,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+          border: '1px solid #E2E8F0',
+        }}>
+          <DeliveryMap
+            isEmbedded={true}
+            embeddedOrderId={orderParam}
+            embeddedDriverId={chatDriverId || activeVehicle?.driver?.id}
+          />
+        </div>
+      )}
 
       {/* ── COURIER DISPATCH CHAT TAB ── */}
       {activeFleetTab === 'chat' && (
@@ -832,12 +860,26 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     </div>
                   </div>
 
-                  <Link
-                    to="/deliveries/map"
-                    style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textDecoration: 'none', marginTop: 6 }}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeVehicle?.driver?.id) setChatDriverId(activeVehicle.driver.id)
+                      setActiveFleetTab('map')
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      textAlign: 'left',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#2563eb',
+                      cursor: 'pointer',
+                      marginTop: 6
+                    }}
                   >
                     View on Map →
-                  </Link>
+                  </button>
                 </div>
 
                 {/* Card 2: Recorded Speed Gauge */}

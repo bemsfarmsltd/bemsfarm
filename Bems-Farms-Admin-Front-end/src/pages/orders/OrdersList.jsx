@@ -1285,13 +1285,14 @@ export default function OrdersList() {
                     <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 13 }}>
                       <i className={`${cfg.icon} me-1`} />{cfg.label}
                     </span>
-                    <Link
-                      to={`/deliveries/map?orderId=${selected.id}`}
+                    <button
+                      type="button"
+                      onClick={() => openModal('fleet', selected)}
                       className="btn btn-sm btn-outline-primary"
-                      title="Open Full Screen Live Fleet Dispatch Map"
+                      title="Open Live Fleet Command & GPS Tracking"
                     >
                       <i className="ri-map-pin-2-line me-1" />Live Fleet Map
-                    </Link>
+                    </button>
                     {(!selected.invoice_printed && !['delivered', 'cancelled', 'completed'].includes(selected.status)) ? (
                       <button className="btn btn-sm btn-success fw-bold" onClick={() => openModal('invoice', selected)} title="Print Warehouse Invoice & Packing List">
                         <i className="ri-file-text-line me-1" />Print Invoice
@@ -1633,12 +1634,13 @@ export default function OrdersList() {
                       <div className="mb-3">
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <span className="fw-bold small">📍 Order Location &amp; Dispatch Map</span>
-                          <Link
-                            to={`/deliveries/map?orderId=${selected.id}`}
-                            className="small text-primary text-decoration-none fw-semibold"
+                          <button
+                            type="button"
+                            onClick={() => openModal('fleet', selected)}
+                            className="btn btn-link p-0 small text-primary text-decoration-none fw-semibold"
                           >
                             Full Screen <i className="ri-arrow-right-up-line" />
-                          </Link>
+                          </button>
                         </div>
                         <AdminOrderMap order={selected} height="200px" />
                       </div>

@@ -203,10 +203,14 @@ function MapCameraController({ target, bounds }) {
   return null
 }
 
-export default function DeliveryMap() {
+export default function DeliveryMap({
+  embeddedOrderId = null,
+  embeddedDriverId = null,
+  isEmbedded = false
+}) {
   const [searchParams] = useSearchParams()
-  const urlOrderId = searchParams.get('orderId')
-  const urlDriverId = searchParams.get('driverId')
+  const urlOrderId = embeddedOrderId || searchParams.get('orderId')
+  const urlDriverId = embeddedDriverId || searchParams.get('driverId')
 
   const [deliveries, setDeliveries] = useState([])
   const [fleetCouriers, setFleetCouriers] = useState([])
@@ -230,9 +234,65 @@ export default function DeliveryMap() {
   const load = useCallback(async (isManual = false) => {
     if (isManual) setIsRefreshing(true)
     try {
-      const res = await api.get('/admin/deliveries/active')
-      const list = res.data.deliveries || []
-      const fleetList = res.data.fleet || []
+      const res = await api.get('/admin/deliveries/active', {
+        params: urlOrderId ? { orderId: urlOrderId } : {}
+      })
+      let list = res.data?.deliveries || []
+      const fleetList = res.data?.fleet || []
+
+      // If a specific order is requested (e.g. from Fleet modal) and not in active deliveries list
+      if (urlOrderId) {
+        const cleanReqId = String(urlOrderId).replace(/^#/, '').toLowerCase()
+        const found = list.find(d =>
+          String(d.order_id || '').toLowerCase() === cleanReqId ||
+          String(d.id || '').toLowerCase() === cleanReqId ||
+          String(d.delivery_ref || '').replace(/^#/, '').toLowerCase() === cleanReqId
+        )
+        if (!found) {
+          try {
+            const ofRes = await api.get(`/admin/deliveries/order-fleet/${encodeURIComponent(cleanReqId)}`)
+            if (ofRes.data?.order) {
+              const ord = ofRes.data.order
+              const del = ofRes.data.delivery || {}
+              const drv = ofRes.data.driver || {}
+              const loc = ofRes.data.location || {}
+
+              const syntheticDelivery = {
+                id: del.id || `order-${ord.id}`,
+                order_id: ord.id,
+                delivery_ref: del.delivery_ref || ord.order_ref || `ORD-${ord.id}`,
+                status: del.status || ord.status || 'assigned',
+                delivery_address: ord.delivery_address || ord.address || '—',
+                customer_name: ord.customer_name || 'Customer',
+                customer_phone: ord.customer_phone || '—',
+                customer_email: ord.customer_email || '—',
+                customer_lat: safeNum(del.customer_lat, safeNum(ord.latitude, null)),
+                customer_lng: safeNum(del.customer_lng, safeNum(ord.longitude, null)),
+                driver_id: drv.id || del.driver_id || null,
+                driver_name: drv.name || 'Assigned Courier',
+                driver_phone: drv.phone || '—',
+                driver_plate: drv.vehicle_plate || '—',
+                vehicle_type: drv.vehicle_type || 'motorcycle',
+                driver_lat: loc.latitude || drv.driver_lat || null,
+                driver_lng: loc.longitude || drv.driver_lng || null,
+                driver_heading: loc.heading || 0,
+                driver_speed: loc.speed || 0,
+                driver_last_ping: loc.recorded_at,
+                is_gps_live: Boolean(loc.is_gps_live),
+                items: ord.items || [],
+                order_total: ord.total,
+                payment_method: ord.payment_method,
+                payment_status: ord.payment_status,
+                delivery_fee: ord.delivery_fee,
+              }
+              list = [syntheticDelivery, ...list]
+            }
+          } catch (e) {
+            console.warn('Could not fetch order-fleet fallback for map:', e)
+          }
+        }
+      }
+
       setDeliveries(list)
       setFleetCouriers(fleetList)
       setLastUpdated(new Date())
@@ -240,18 +300,19 @@ export default function DeliveryMap() {
       // Auto-select requested order or driver from URL, or first active delivery if none selected
       setSelected(prev => {
         if (urlOrderId) {
+          const cleanReqId = String(urlOrderId).replace(/^#/, '').toLowerCase()
           const match = list.find(d =>
-            String(d.order_id || '').toLowerCase() === urlOrderId.toLowerCase() ||
-            String(d.id || '').toLowerCase() === urlOrderId.toLowerCase() ||
-            String(d.delivery_ref || '').toLowerCase() === urlOrderId.toLowerCase()
+            String(d.order_id || '').toLowerCase() === cleanReqId ||
+            String(d.id || '').toLowerCase() === cleanReqId ||
+            String(d.delivery_ref || '').replace(/^#/, '').toLowerCase() === cleanReqId
           )
           if (match) return match
         }
         if (urlDriverId) {
-          const match = list.find(d => String(d.driver_id || '').toLowerCase() === urlDriverId.toLowerCase())
+          const match = list.find(d => String(d.driver_id || '').toLowerCase() === String(urlDriverId).toLowerCase())
           if (match) return match
           // If courier is in fleet (idle/between orders), fly camera directly to their GPS coordinates
-          const fleetDriver = fleetList.find(f => String(f.id).toLowerCase() === urlDriverId.toLowerCase())
+          const fleetDriver = fleetList.find(f => String(f.id).toLowerCase() === String(urlDriverId).toLowerCase())
           if (fleetDriver && fleetDriver.driver_lat && fleetDriver.driver_lng) {
             setFlyTarget([Number(fleetDriver.driver_lat), Number(fleetDriver.driver_lng)])
           }
@@ -414,7 +475,7 @@ export default function DeliveryMap() {
   const attemptedCount = deliveries.filter(d => d.status === 'delivery_attempted').length
 
   return (
-    <div className="container-fluid py-2.5" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className={isEmbedded ? "w-100 h-100 p-0" : "container-fluid py-2.5"} style={{ display: 'flex', flexDirection: 'column', height: isEmbedded ? '100%' : undefined }}>
 
       {/* Embedded CSS for glowing realtime journey lines & radar pulses */}
       <style>{`
@@ -569,143 +630,147 @@ export default function DeliveryMap() {
         .delivery-sidebar-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
       `}</style>
 
-      {/* Top Header Row */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2.5 flex-shrink-0">
-        <div>
-          <div className="d-flex align-items-center gap-2">
-            <h5 className="mb-0 fw-bold text-dark">
-              <i className="ri-road-map-line text-primary me-2" />Live Delivery Radar & Journey Map
-            </h5>
-            <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style={{ fontSize: 11 }}>
-              <i className="ri-radar-fill me-1" />Realtime GPS Active
-            </span>
-          </div>
-          <p className="text-muted small mb-0 mt-0.5">
-            Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations across Nigeria
-          </p>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {/* Refresh speed picker */}
-          <div className="input-group input-group-sm" style={{ width: 'auto' }}>
-            <span className="input-group-text bg-white border-end-0 text-muted" style={{ fontSize: 11.5 }}>
-              <i className="ri-timer-line me-1" />Interval
-            </span>
-            <select
-              className="form-select form-select-sm bg-white border-start-0"
-              style={{ fontSize: 11.5, fontWeight: 600, width: 85 }}
-              value={refreshSec}
-              onChange={(e) => setRefreshSec(Number(e.target.value))}>
-              <option value={5}>5s</option>
-              <option value={10}>10s</option>
-              <option value={20}>20s</option>
-              <option value={60}>1m</option>
-            </select>
+      {/* Top Header Row (suppressed in embedded modal mode) */}
+      {!isEmbedded && (
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2.5 flex-shrink-0">
+          <div>
+            <div className="d-flex align-items-center gap-2">
+              <h5 className="mb-0 fw-bold text-dark">
+                <i className="ri-road-map-line text-primary me-2" />Live Delivery Radar & Journey Map
+              </h5>
+              <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style={{ fontSize: 11 }}>
+                <i className="ri-radar-fill me-1" />Realtime GPS Active
+              </span>
+            </div>
+            <p className="text-muted small mb-0 mt-0.5">
+              Realtime route journey tracking from Bems Farms Hubs to customer delivery destinations across Nigeria
+            </p>
           </div>
 
-          <button
-            className={`btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 ${isRefreshing ? 'disabled' : ''}`}
-            onClick={() => load(true)}
-            title="Refresh GPS positions right now">
-            <i className={`ri-refresh-line ${isRefreshing ? 'ri-spin' : ''}`} />
-            <span>{isRefreshing ? 'Updating...' : 'Sync GPS'}</span>
-          </button>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Refresh speed picker */}
+            <div className="input-group input-group-sm" style={{ width: 'auto' }}>
+              <span className="input-group-text bg-white border-end-0 text-muted" style={{ fontSize: 11.5 }}>
+                <i className="ri-timer-line me-1" />Interval
+              </span>
+              <select
+                className="form-select form-select-sm bg-white border-start-0"
+                style={{ fontSize: 11.5, fontWeight: 600, width: 85 }}
+                value={refreshSec}
+                onChange={(e) => setRefreshSec(Number(e.target.value))}>
+                <option value={5}>5s</option>
+                <option value={10}>10s</option>
+                <option value={20}>20s</option>
+                <option value={60}>1m</option>
+              </select>
+            </div>
 
-          <Link to="/deliveries/active" className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1">
-            <i className="ri-list-unordered me-0.5" />Deliveries List
-          </Link>
+            <button
+              className={`btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 ${isRefreshing ? 'disabled' : ''}`}
+              onClick={() => load(true)}
+              title="Refresh GPS positions right now">
+              <i className={`ri-refresh-line ${isRefreshing ? 'ri-spin' : ''}`} />
+              <span>{isRefreshing ? 'Updating...' : 'Sync GPS'}</span>
+            </button>
+
+            <Link to="/deliveries/active" className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1">
+              <i className="ri-list-unordered me-0.5" />Deliveries List
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* KPI Stat Cards */}
-      <div className="row g-2.5 mb-2.5 flex-shrink-0">
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #2563eb' }}>
-            <div className="card-body p-3">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
-                  En Route (In Transit)
-                </span>
-                <span className="p-2 rounded-3" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
-                  <i className="ri-truck-line fs-5"></i>
-                </span>
+      {/* KPI Stat Cards (suppressed in embedded modal mode) */}
+      {!isEmbedded && (
+        <div className="row g-2.5 mb-2.5 flex-shrink-0">
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #2563eb' }}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
+                    En Route (In Transit)
+                  </span>
+                  <span className="p-2 rounded-3" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
+                    <i className="ri-truck-line fs-5"></i>
+                  </span>
+                </div>
+                <div className="fs-3 fw-bolder text-primary mb-1">{enRouteCount}</div>
+                <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
+                  <span>Live Route Tracking</span>
+                  <strong className="text-success font-monospace">Active transit</strong>
+                </div>
               </div>
-              <div className="fs-3 fw-bolder text-primary mb-1">{enRouteCount}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
-                <span>Live Route Tracking</span>
-                <strong className="text-success font-monospace">Active transit</strong>
+            </div>
+          </div>
+
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #0891b2' }}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
+                    Awaiting Pickup
+                  </span>
+                  <span className="p-2 rounded-3" style={{ background: 'rgba(8,145,178,0.1)', color: '#0891b2' }}>
+                    <i className="ri-store-2-line fs-5"></i>
+                  </span>
+                </div>
+                <div className="fs-3 fw-bolder text-info mb-1">{awaitingCount}</div>
+                <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
+                  <span>Aba & Umuahia Hubs</span>
+                  <strong className="text-dark font-monospace">Ready for rider</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #ea580c' }}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
+                    Attempted / Issues
+                  </span>
+                  <span className="p-2 rounded-3" style={{ background: 'rgba(234,88,12,0.1)', color: '#ea580c' }}>
+                    <i className="ri-alarm-warning-line fs-5"></i>
+                  </span>
+                </div>
+                <div className="fs-3 fw-bolder text-warning mb-1">{attemptedCount}</div>
+                <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
+                  <span>Customer Unavailable</span>
+                  <strong className="text-dark font-monospace">{attemptedCount > 0 ? 'Follow-up' : 'All clear'}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #4f46e5' }}>
+              <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
+                    Total Active Deliveries
+                  </span>
+                  <span className="p-2 rounded-3" style={{ background: 'rgba(79,70,229,0.1)', color: '#4f46e5' }}>
+                    <i className="ri-map-pin-line fs-5"></i>
+                  </span>
+                </div>
+                <div className="fs-3 fw-bolder text-dark mb-1">{deliveries.length}</div>
+                <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
+                  <span>Interstate &amp; Regional Coverage</span>
+                  <strong className="text-dark font-monospace">{refreshSec}s auto-refresh</strong>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #0891b2' }}>
-            <div className="card-body p-3">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
-                  Awaiting Pickup
-                </span>
-                <span className="p-2 rounded-3" style={{ background: 'rgba(8,145,178,0.1)', color: '#0891b2' }}>
-                  <i className="ri-store-2-line fs-5"></i>
-                </span>
-              </div>
-              <div className="fs-3 fw-bolder text-info mb-1">{awaitingCount}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
-                <span>Aba & Umuahia Hubs</span>
-                <strong className="text-dark font-monospace">Ready for rider</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #ea580c' }}>
-            <div className="card-body p-3">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
-                  Attempted / Issues
-                </span>
-                <span className="p-2 rounded-3" style={{ background: 'rgba(234,88,12,0.1)', color: '#ea580c' }}>
-                  <i className="ri-alarm-warning-line fs-5"></i>
-                </span>
-              </div>
-              <div className="fs-3 fw-bolder text-warning mb-1">{attemptedCount}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
-                <span>Customer Unavailable</span>
-                <strong className="text-dark font-monospace">{attemptedCount > 0 ? 'Follow-up' : 'All clear'}</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card h-100 border-0 shadow-sm rounded-4 bg-white" style={{ borderLeft: '4px solid #4f46e5' }}>
-            <div className="card-body p-3">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-uppercase fw-bold text-muted" style={{ fontSize: 11, letterSpacing: 0.5 }}>
-                  Total Active Deliveries
-                </span>
-                <span className="p-2 rounded-3" style={{ background: 'rgba(79,70,229,0.1)', color: '#4f46e5' }}>
-                  <i className="ri-map-pin-line fs-5"></i>
-                </span>
-              </div>
-              <div className="fs-3 fw-bolder text-dark mb-1">{deliveries.length}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted border-top pt-2 mt-2" style={{ fontSize: 11 }}>
-                <span>Interstate &amp; Regional Coverage</span>
-                <strong className="text-dark font-monospace">{refreshSec}s auto-refresh</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Map & Interactive Side Panel Layout (Spacious, Large Viewport) */}
-      <div className="flex-grow-1 row g-0 border rounded-4 overflow-hidden shadow-sm bg-white" style={{ minHeight: '740px', height: 'calc(100vh - 200px)', position: 'relative' }}>
+      {/* Main Map & Interactive Side Panel Layout */}
+      <div className="flex-grow-1 row g-0 border rounded-4 overflow-hidden shadow-sm bg-white" style={{ minHeight: isEmbedded ? '540px' : '740px', height: isEmbedded ? '100%' : 'calc(100vh - 200px)', position: 'relative' }}>
 
         {/* ── Left Sidebar: Active Deliveries & Recipient Filter ──────────────── */}
         {sidebarOpen && (
-          <div className="col-12 col-md-5 col-lg-4 col-xl-3 d-flex flex-column border-end bg-white" style={{ height: '100%', minHeight: '740px', zIndex: 10 }}>
+          <div className="col-12 col-md-5 col-lg-4 col-xl-3 d-flex flex-column border-end bg-white" style={{ height: '100%', minHeight: isEmbedded ? '540px' : '740px', zIndex: 10 }}>
             
             {/* Search and Filters Bar */}
             <div className="p-2.5 border-bottom bg-light-subtle">
@@ -954,7 +1019,7 @@ export default function DeliveryMap() {
         {/* ── Right Column: Large Interactive Leaflet Map & Live Journey HUD ──── */}
         <div
           className={`col-12 ${sidebarOpen ? 'col-md-7 col-lg-8 col-xl-9' : 'col-12'} position-relative d-flex flex-column`}
-          style={{ height: '100%', minHeight: '740px', flex: 1 }}>
+          style={{ height: '100%', minHeight: isEmbedded ? '540px' : '740px', flex: 1 }}>
 
           {/* Quick Floating Map Toolbar (Top-Left) */}
           <div
@@ -990,13 +1055,21 @@ export default function DeliveryMap() {
               <i className="ri-plant-line text-success" />
               <span>Umuahia Central Hub</span>
             </button>
+
+            <button
+              className={`btn btn-sm btn-white bg-white shadow-sm border text-dark fw-semibold d-inline-flex align-items-center gap-1 ${isRefreshing ? 'disabled' : ''}`}
+              onClick={() => load(true)}
+              title="Refresh GPS positions right now">
+              <i className={`ri-refresh-line ${isRefreshing ? 'ri-spin text-primary' : 'text-primary'}`} />
+              <span>{isRefreshing ? 'Syncing...' : 'Sync GPS'}</span>
+            </button>
           </div>
 
           <MapContainer
             center={DEFAULT_CENTER}
             zoom={12}
             scrollWheelZoom={true}
-            style={{ width: '100%', height: '100%', minHeight: '740px', flex: 1, zIndex: 1 }}
+            style={{ width: '100%', height: '100%', minHeight: isEmbedded ? '540px' : '740px', flex: 1, zIndex: 1 }}
             zoomControl={true}>
 
             <TileLayer

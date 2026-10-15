@@ -240,13 +240,19 @@ router.get("/order-fleet/:orderId", requireRole("superadmin", "manager", "admin"
 // ── GET /api/admin/deliveries/active ─────────────────────────────
 router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
-    const { search = "", status = "" } = req.query;
+    const { search = "", status = "", orderId = "" } = req.query;
+    const cleanOrderId = (orderId || "").trim().replace(/^#/, "");
     const params = [];
-    const where = [
-      "d.status NOT IN ('delivered','cancelled')",
-      "d.driver_id IS NOT NULL",
-      "(d.accepted_at IS NOT NULL OR o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' OR d.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))"
-    ];
+    
+    let baseStatusFilter = "d.status NOT IN ('delivered','cancelled') AND d.driver_id IS NOT NULL AND (d.accepted_at IS NOT NULL OR o.driver_accepted_at IS NOT NULL OR o.driver_response = 'accepted' OR d.status IN ('accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route', 'arrived'))";
+
+    if (cleanOrderId) {
+      params.push(cleanOrderId);
+      const pIdx = params.length;
+      baseStatusFilter = `( (${baseStatusFilter}) OR (o.id::text = $${pIdx} OR o.order_ref ILIKE $${pIdx} OR d.delivery_ref ILIKE $${pIdx}) )`;
+    }
+
+    const where = [baseStatusFilter];
 
     if (status) {
       params.push(status);
