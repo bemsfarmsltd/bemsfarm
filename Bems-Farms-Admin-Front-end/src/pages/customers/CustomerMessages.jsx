@@ -186,6 +186,249 @@ function ReferencedOrderCard({ metadata, orderId, isDriver = false }) {
   );
 }
 
+// ─── Order / Task Reference Picker Dropdown & Search Modal ────────────────────
+function OrderReferencePicker({
+  isOpen,
+  onClose,
+  onSelect,
+  type = 'driver', // 'driver' | 'customer'
+  initialItems = [],
+}) {
+  const [search, setSearch] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const searchTimeoutRef = useRef(null)
+
+  // Live search against /admin/orders?search=...
+  useEffect(() => {
+    if (!search.trim()) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/admin/orders?search=${encodeURIComponent(search.trim())}&limit=12`)
+        setSearchResults(res.data?.orders || [])
+      } catch (err) {
+        console.error('Search orders error:', err)
+      } finally {
+        setSearching(false)
+      }
+    }, 280)
+    return () => clearTimeout(searchTimeoutRef.current)
+  }, [search])
+
+  if (!isOpen) return null
+
+  const isDriver = type === 'driver'
+  const displayItems = search.trim() ? searchResults : initialItems
+
+  return (
+    <div style={{
+      borderTop: `1px solid ${isDriver ? '#a7f3d0' : '#bfdbfe'}`,
+      borderBottom: '1px solid #e2e8f0',
+      background: '#FFFFFF',
+      maxHeight: 300,
+      display: 'flex',
+      flexDirection: 'column',
+      boxShadow: '0 -6px 18px rgba(0,0,0,0.08)',
+      position: 'relative',
+      zIndex: 30,
+    }}>
+      {/* Header bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        background: isDriver ? '#f0fdf4' : '#eff6ff',
+        borderBottom: `1px solid ${isDriver ? '#bbf7d0' : '#dbeafe'}`,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: isDriver ? '#065f46' : '#1e40af' }}>
+          <span>{isDriver ? '🛵 Attach Delivery Task / Order' : '📦 Attach Order Reference'}</span>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: isDriver ? '#047857' : '#2563eb',
+            background: isDriver ? '#dcfce7' : '#dbeafe',
+            padding: '2px 7px',
+            borderRadius: 12,
+          }}>
+            {displayItems.length} available
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            fontSize: 14,
+            fontWeight: 800,
+            color: '#64748b',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: 4,
+          }}
+          title="Close picker"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Search Input Bar */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', background: '#fff' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <span style={{ position: 'absolute', left: 10, fontSize: 13, color: '#94a3b8' }}>🔍</span>
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isDriver ? "Search by order #, task, customer name, or phone..." : "Search customer orders by #ID, recipient, or phone..."}
+            style={{
+              width: '100%',
+              padding: '7px 28px 7px 32px',
+              border: `1px solid ${isDriver ? '#86efac' : '#93c5fd'}`,
+              borderRadius: 8,
+              fontSize: 12,
+              outline: 'none',
+              boxSizing: 'border-box',
+              background: '#f8fafc',
+            }}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: 8,
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div style={{ flex: 1, overflowY: 'auto', maxHeight: 210, padding: '6px 8px' }}>
+        {searching && (
+          <div style={{ padding: '16px', textAlign: 'center', fontSize: 12, color: '#64748b' }}>
+            <span>Searching store orders…</span>
+          </div>
+        )}
+
+        {!searching && displayItems.length === 0 && (
+          <div style={{ padding: '20px 16px', textAlign: 'center', fontSize: 12, color: '#64748b' }}>
+            <div style={{ fontSize: 22, marginBottom: 4 }}>📋</div>
+            <div style={{ fontWeight: 600 }}>No orders found in recent list.</div>
+            <div style={{ fontSize: 11, marginTop: 4, color: '#94a3b8' }}>
+              Type an order number (e.g. 1042 or BF-...) in the search box above to reference any order.
+            </div>
+          </div>
+        )}
+
+        {!searching && displayItems.map((item, idx) => {
+          const ordId = item.order_ref || item.order_id || item.id;
+          const taskRef = item.delivery_ref || (item.delivery_id ? `DEL-${item.delivery_id}` : null);
+          const totalVal = item.total ? `₦${Number(item.total).toLocaleString()}` : null;
+          const status = item.delivery_status || item.status || 'pending';
+
+          const statusBadge = {
+            delivered: { bg: '#ecfdf5', text: '#065f46' },
+            in_transit: { bg: '#eff6ff', text: '#1e40af' },
+            out_for_delivery: { bg: '#eff6ff', text: '#1e40af' },
+            assigned: { bg: '#f5f3ff', text: '#5b21b6' },
+            confirmed: { bg: '#ecfdf5', text: '#065f46' },
+            processing: { bg: '#fffbeb', text: '#92400e' },
+            packed_ready: { bg: '#f0fdf4', text: '#15803d' },
+            cancelled: { bg: '#fef2f2', text: '#991b1b' },
+          }[status] || { bg: '#f1f5f9', text: '#475569' };
+
+          return (
+            <button
+              key={`${ordId}-${taskRef || idx}`}
+              type="button"
+              onClick={() => onSelect(item)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                textAlign: 'left',
+                border: '1px solid #f1f5f9',
+                background: '#fff',
+                borderRadius: 8,
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 10,
+                transition: 'all 0.12s ease',
+                marginBottom: 4,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDriver ? '#f0fdf4' : '#eff6ff';
+                e.currentTarget.style.borderColor = isDriver ? '#a7f3d0' : '#bfdbfe';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#fff';
+                e.currentTarget.style.borderColor = '#f1f5f9';
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 800, fontSize: 13, color: '#0f172a' }}>
+                    Order #{ordId}
+                  </span>
+                  {taskRef && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#dcfce7', padding: '1px 6px', borderRadius: 4 }}>
+                      Task #{taskRef}
+                    </span>
+                  )}
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    background: statusBadge.bg,
+                    color: statusBadge.text,
+                    textTransform: 'uppercase',
+                  }}>
+                    {status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {item.customer_name ? <span>Customer: <strong>{item.customer_name}</strong> {item.customer_phone ? `(${item.customer_phone})` : ''}</span> : (item.address || 'Produce Order')}
+                  {item.address && item.customer_name && <span style={{ marginLeft: 6, color: '#94a3b8' }}>· {item.address}</span>}
+                </div>
+              </div>
+              {totalVal && (
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 12, color: '#16a34a' }}>
+                    {totalVal}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#3b82f6', fontWeight: 600 }}>
+                    Attach ↵
+                  </div>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Customer Chat Pane ───────────────────────────────────────────────────────
 export function CustomerChat({ customerId, customerStatus, customerName }) {
   const [messages, setMessages] = useState([])
@@ -211,13 +454,30 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
   }, [customerId])
 
   // Fetch recent customer orders for @ / / quick picker
-  useEffect(() => {
-    api.get(`/orders?customer_id=${customerId}&limit=10`)
-      .then((res) => {
-        setRecentOrders(res.data.orders || [])
-      })
-      .catch(() => {})
+  const fetchOrderOptions = useCallback(async () => {
+    try {
+      const r = await api.get(`/admin/customers/${customerId}/reference-options`)
+      if (r.data?.orders?.length) {
+        setRecentOrders(r.data.orders)
+        return
+      }
+    } catch {}
+    try {
+      const r2 = await api.get(`/admin/orders?customer_id=${customerId}&limit=12`)
+      if (r2.data?.orders?.length) {
+        setRecentOrders(r2.data.orders)
+        return
+      }
+    } catch {}
+    try {
+      const r3 = await api.get(`/admin/orders?limit=10`)
+      setRecentOrders(r3.data?.orders || [])
+    } catch {}
   }, [customerId])
+
+  useEffect(() => {
+    fetchOrderOptions()
+  }, [fetchOrderOptions])
 
   useEffect(() => {
     let active = true
@@ -251,7 +511,8 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
     try {
       await api.post(`/admin/customers/${customerId}/messages`, {
         message: text,
-        order_id: selectedOrder?.id || selectedOrder?.order_ref,
+        order_id: selectedOrder?.order_ref || selectedOrder?.order_id || selectedOrder?.id,
+        delivery_id: selectedOrder?.delivery_id,
       })
       setText('')
       setSelectedOrder(null)
@@ -268,15 +529,17 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
     setText(val);
     if (val.endsWith('@') || val.endsWith('/')) {
       setShowMentionMenu(true);
-    } else if (val === '' || !val.includes('@') && !val.includes('/')) {
-      setShowMentionMenu(false);
     }
   };
 
   const handleSelectOrderReference = (ord) => {
     setSelectedOrder(ord);
     setShowMentionMenu(false);
-    setText((prev) => prev.replace(/[@/][a-zA-Z0-9_-]*$/, '') + ` #${ord.order_ref || ord.id} `);
+    const ordNum = ord.order_ref || ord.order_id || ord.id;
+    setText((prev) => {
+      const cleaned = prev.replace(/[@/][a-zA-Z0-9_-]*$/, '').trim();
+      return cleaned ? `${cleaned} #${ordNum} ` : `#${ordNum} `;
+    });
   };
 
   return (
@@ -344,57 +607,21 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Mention / Order Picker Menu */}
-      {showMentionMenu && recentOrders.length > 0 && (
-        <div style={{
-          maxHeight: 180,
-          overflowY: 'auto',
-          background: '#FFFFFF',
-          borderTop: '1px solid #e2e8f0',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '6px 8px',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', padding: '4px 8px' }}>
-            SELECT AN ORDER TO REFERENCE (@ or /):
-          </div>
-          {recentOrders.map(ord => (
-            <button
-              key={ord.id}
-              type="button"
-              onClick={() => handleSelectOrderReference(ord)}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
-                borderRadius: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 12,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              <div>
-                <strong>#{ord.order_ref || ord.id}</strong> · {ord.status}
-              </div>
-              <span style={{ color: '#16a34a', fontWeight: 700 }}>
-                ₦{Number(ord.total).toLocaleString()}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mention / Order Picker Menu with Live Search */}
+      <OrderReferencePicker
+        isOpen={showMentionMenu}
+        onClose={() => setShowMentionMenu(false)}
+        onSelect={handleSelectOrderReference}
+        type="customer"
+        initialItems={recentOrders}
+      />
 
       {/* Composer */}
       <form onSubmit={send} style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fff', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {selectedOrder && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#2563eb', background: '#eff6ff', padding: '4px 8px', borderRadius: 6, alignSelf: 'flex-start' }}>
-            <span>📦 Referencing: <strong>#{selectedOrder.order_ref || selectedOrder.id}</strong> (₦{Number(selectedOrder.total).toLocaleString()})</span>
-            <button type="button" onClick={() => setSelectedOrder(null)} style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 800 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '6px 10px', borderRadius: 8, alignSelf: 'flex-start' }}>
+            <span>📦 Referencing: <strong>Order #{selectedOrder.order_ref || selectedOrder.order_id || selectedOrder.id}</strong> {selectedOrder.total ? `(₦${Number(selectedOrder.total).toLocaleString()})` : ''}</span>
+            <button type="button" onClick={() => setSelectedOrder(null)} style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>✕</button>
           </div>
         )}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -403,7 +630,7 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
             onChange={handleInputChange}
             maxLength={4000}
             required
-            placeholder={isClosed ? "Type an internal staff note on this archived thread…" : "Type your reply… Use @ or / to reference an order"}
+            placeholder={isClosed ? "Type an internal staff note on this archived thread…" : "Type your reply… Click 📦 @ or use @ or / to attach an order"}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) } }}
             style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px',
               fontSize: 13, resize: 'none', minHeight: 44, maxHeight: 120, outline: 'none',
@@ -415,14 +642,15 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
             onClick={() => setShowMentionMenu(!showMentionMenu)}
             title="Reference an Order"
             style={{
-              background: '#f1f5f9',
-              border: '1px solid #cbd5e1',
+              background: showMentionMenu ? '#dbeafe' : '#f1f5f9',
+              border: `1px solid ${showMentionMenu ? '#93c5fd' : '#cbd5e1'}`,
               borderRadius: 10,
               padding: '10px 12px',
               cursor: 'pointer',
               fontSize: 13,
               fontWeight: 700,
-              color: '#475569',
+              color: '#2563eb',
+              transition: 'all 0.15s',
             }}
           >
             📦 @
@@ -462,13 +690,30 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
   }, [driverId])
 
   // Fetch active driver tasks for @ / / quick picker
-  useEffect(() => {
-    api.get(`/admin/deliveries/active?driver_id=${driverId}`)
-      .then((res) => {
-        setActiveDeliveries(res.data.deliveries || [])
-      })
-      .catch(() => {})
+  const fetchDeliveryOptions = useCallback(async () => {
+    try {
+      const r = await api.get(`/admin/customers/drivers/${driverId}/reference-options`)
+      if (r.data?.deliveries?.length) {
+        setActiveDeliveries(r.data.deliveries)
+        return
+      }
+    } catch {}
+    try {
+      const r2 = await api.get(`/admin/deliveries/active?driver_id=${driverId}`)
+      if (r2.data?.deliveries?.length) {
+        setActiveDeliveries(r2.data.deliveries)
+        return
+      }
+    } catch {}
+    try {
+      const r3 = await api.get(`/admin/orders?limit=10`)
+      setActiveDeliveries(r3.data?.orders || [])
+    } catch {}
   }, [driverId])
+
+  useEffect(() => {
+    fetchDeliveryOptions()
+  }, [fetchDeliveryOptions])
 
   useEffect(() => {
     let active = true
@@ -501,8 +746,8 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
     try {
       await api.post(`/admin/customers/drivers/${driverId}/messages`, {
         message: text,
-        order_id: selectedDelivery?.order_id,
-        delivery_id: selectedDelivery?.id || selectedDelivery?.delivery_id,
+        order_id: selectedDelivery?.order_ref || selectedDelivery?.order_id || selectedDelivery?.id,
+        delivery_id: selectedDelivery?.delivery_id || selectedDelivery?.id,
       })
       setText('')
       setSelectedDelivery(null)
@@ -519,15 +764,17 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
     setText(val);
     if (val.endsWith('@') || val.endsWith('/')) {
       setShowMentionMenu(true);
-    } else if (val === '' || !val.includes('@') && !val.includes('/')) {
-      setShowMentionMenu(false);
     }
   };
 
   const handleSelectDeliveryReference = (del) => {
     setSelectedDelivery(del);
     setShowMentionMenu(false);
-    setText((prev) => prev.replace(/[@/][a-zA-Z0-9_-]*$/, '') + ` #Task-${del.delivery_ref || del.order_id} `);
+    const refNum = del.order_ref || del.order_id || del.delivery_ref || del.id;
+    setText((prev) => {
+      const cleaned = prev.replace(/[@/][a-zA-Z0-9_-]*$/, '').trim();
+      return cleaned ? `${cleaned} #${refNum} ` : `#${refNum} `;
+    });
   };
 
   return (
@@ -589,57 +836,21 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
         <div ref={bottomRef} />
       </div>
 
-      {/* Mention / Delivery Picker Menu */}
-      {showMentionMenu && activeDeliveries.length > 0 && (
-        <div style={{
-          maxHeight: 180,
-          overflowY: 'auto',
-          background: '#FFFFFF',
-          borderTop: '1px solid #e2e8f0',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '6px 8px',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', padding: '4px 8px' }}>
-            SELECT ACTIVE DELIVERY TASK TO REFERENCE (@ or /):
-          </div>
-          {activeDeliveries.map(del => (
-            <button
-              key={del.id}
-              type="button"
-              onClick={() => handleSelectDeliveryReference(del)}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                textAlign: 'left',
-                border: 'none',
-                background: 'transparent',
-                borderRadius: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 12,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            >
-              <div>
-                <strong>#{del.delivery_ref || del.order_id}</strong> · {del.status}
-              </div>
-              <span style={{ color: '#059669', fontWeight: 700 }}>
-                {del.customer_name || 'Customer'}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mention / Delivery Picker Menu with Live Search */}
+      <OrderReferencePicker
+        isOpen={showMentionMenu}
+        onClose={() => setShowMentionMenu(false)}
+        onSelect={handleSelectDeliveryReference}
+        type="driver"
+        initialItems={activeDeliveries}
+      />
 
       {/* Composer */}
       <form onSubmit={send} style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fff', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {selectedDelivery && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '4px 8px', borderRadius: 6, alignSelf: 'flex-start' }}>
-            <span>🛵 Referencing Task: <strong>#{selectedDelivery.delivery_ref || selectedDelivery.order_id}</strong></span>
-            <button type="button" onClick={() => setSelectedDelivery(null)} style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 800 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#065f46', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '6px 10px', borderRadius: 8, alignSelf: 'flex-start' }}>
+            <span>🛵 Referencing: <strong>Task #{selectedDelivery.order_ref || selectedDelivery.delivery_ref || selectedDelivery.order_id || selectedDelivery.id}</strong> {selectedDelivery.total ? `(₦${Number(selectedDelivery.total).toLocaleString()})` : ''}</span>
+            <button type="button" onClick={() => setSelectedDelivery(null)} style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>✕</button>
           </div>
         )}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -648,7 +859,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             onChange={handleInputChange}
             maxLength={4000}
             required
-            placeholder="Type dispatch instruction to rider… Use @ or / to attach task"
+            placeholder="Type dispatch instruction to rider… Click 🛵 @ or use @ or / to attach task"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) } }}
             style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px',
               fontSize: 13, resize: 'none', minHeight: 44, maxHeight: 120, outline: 'none',
@@ -658,16 +869,17 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
           <button
             type="button"
             onClick={() => setShowMentionMenu(!showMentionMenu)}
-            title="Reference a Delivery Task"
+            title="Reference a Delivery Task / Order"
             style={{
-              background: '#f1f5f9',
-              border: '1px solid #cbd5e1',
+              background: showMentionMenu ? '#dcfce7' : '#f1f5f9',
+              border: `1px solid ${showMentionMenu ? '#86efac' : '#cbd5e1'}`,
               borderRadius: 10,
               padding: '10px 12px',
               cursor: 'pointer',
               fontSize: 13,
               fontWeight: 700,
               color: '#059669',
+              transition: 'all 0.15s',
             }}
           >
             🛵 @

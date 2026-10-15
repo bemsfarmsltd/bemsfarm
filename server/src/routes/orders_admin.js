@@ -71,6 +71,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       search = "",
       status = "",
       channel = "",
+      customer_id = "",
+      driver_id = "",
     } = req.query;
     const limit = clampLimit(limitRaw, 20);
 
@@ -78,10 +80,19 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const params = [];
     const where = ["(c.role IS NULL OR c.role IN ('user', 'customer'))"];
 
+    if (customer_id) {
+      params.push(customer_id);
+      where.push(`(o.user_id::text = $${params.length} OR c.id::text = $${params.length})`);
+    }
+    if (driver_id) {
+      params.push(driver_id);
+      where.push(`(o.driver_id::text = $${params.length})`);
+    }
+
     if (search) {
       params.push(`%${search}%`);
       where.push(
-        `(o.id ILIKE $${params.length} OR c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR o.address ILIKE $${params.length})`,
+        `(o.id::text ILIKE $${params.length} OR COALESCE(o.order_ref, '') ILIKE $${params.length} OR c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR o.address ILIKE $${params.length})`,
       );
     }
     if (status) {

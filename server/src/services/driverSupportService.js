@@ -58,36 +58,81 @@ async function getDriverReferenceOptions(driverId) {
           LIMIT 1
         ) AS thumbnail
       FROM deliveries d
-      JOIN orders o ON d.order_id = o.id
+      JOIN orders o ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
       LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
-      WHERE d.driver_id = $1
+      WHERE d.driver_id = $1 OR o.driver_id = $1
       ORDER BY 
         CASE 
-          WHEN d.status IN ('assigned', 'awaiting_pickup', 'accepted', 'picked_up', 'en_route', 'arrived') THEN 1
+          WHEN d.status IN ('assigned', 'awaiting_pickup', 'accepted', 'picked_up', 'en_route', 'arrived', 'in_transit') THEN 1
           ELSE 2
         END,
-        d.assigned_at DESC,
-        d.id DESC
-      LIMIT 15
+        d.assigned_at DESC NULLS LAST,
+        d.id DESC NULLS LAST
+      LIMIT 20
       `,
       [driverId]
     );
 
+    const mappedDeliveries = deliveriesRes.rows.map(d => ({
+      delivery_id: d.delivery_id,
+      delivery_ref: d.delivery_ref || `DEL-${d.delivery_id}`,
+      delivery_status: d.delivery_status,
+      eta_minutes: d.eta_minutes,
+      order_id: d.order_id,
+      order_ref: d.order_ref || d.order_id,
+      total: parseFloat(d.total) || 0,
+      payment_method: d.payment_method,
+      address: d.address,
+      customer_name: d.customer_name,
+      customer_phone: d.customer_phone,
+      thumbnail: d.thumbnail,
+      is_assigned: true,
+    }));
+
+    // If driver has few or no deliveries, also fetch recent store orders ready for courier dispatch
+    let mappedAvailable = [];
+    if (mappedDeliveries.length < 10) {
+      const availRes = await pool.query(
+        `
+        SELECT 
+          o.id AS order_id,
+          o.order_ref,
+          o.status AS delivery_status,
+          o.total,
+          o.payment_method,
+          o.address,
+          COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+          COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+          d.id AS delivery_id,
+          d.delivery_ref
+        FROM orders o
+        LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+        LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+        WHERE o.status NOT IN ('delivered', 'cancelled')
+        ORDER BY o.created_at DESC
+        LIMIT 10
+        `
+      );
+      const seenOrderIds = new Set(mappedDeliveries.map(d => String(d.order_id)));
+      mappedAvailable = availRes.rows
+        .filter(r => !seenOrderIds.has(String(r.order_id)))
+        .map(r => ({
+          delivery_id: r.delivery_id || null,
+          delivery_ref: r.delivery_ref || `ORD-${r.order_id}`,
+          delivery_status: r.delivery_status,
+          order_id: r.order_id,
+          order_ref: r.order_ref || r.order_id,
+          total: parseFloat(r.total) || 0,
+          payment_method: r.payment_method,
+          address: r.address,
+          customer_name: r.customer_name,
+          customer_phone: r.customer_phone,
+          is_assigned: false,
+        }));
+    }
+
     return {
-      deliveries: deliveriesRes.rows.map(d => ({
-        delivery_id: d.delivery_id,
-        delivery_ref: d.delivery_ref || `DEL-${d.delivery_id}`,
-        delivery_status: d.delivery_status,
-        eta_minutes: d.eta_minutes,
-        order_id: d.order_id,
-        order_ref: d.order_ref || d.order_id,
-        total: parseFloat(d.total) || 0,
-        payment_method: d.payment_method,
-        address: d.address,
-        customer_name: d.customer_name,
-        customer_phone: d.customer_phone,
-        thumbnail: d.thumbnail,
-      })),
+      deliveries: [...mappedDeliveries, ...mappedAvailable],
     };
   } catch (err) {
     console.error("getDriverReferenceOptions error:", err.message);
@@ -106,7 +151,7 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
   // Detect explicit or text-embedded order/delivery references
   let resolvedId = order_id || delivery_id || null;
   if (!resolvedId) {
-    const match = message.match(/(?:@|\/delivery\s+|\/order\s+|#)(DEL-[A-Z0-9-]+|BF-[A-Z0-9-]+|[0-9]{4,})/i);
+    const match = message.match(/(?:@|\/delivery\s+|\/order\s+|#|Task-|Order-)(DEL-[A-Z0-9-]+|BF-[A-Z0-9-]+|[0-9]+)/i);
     if (match) {
       resolvedId = match[1];
     }

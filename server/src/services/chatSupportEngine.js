@@ -10,14 +10,18 @@ const { broadcastSupportMessage, broadcastDriverMessage } = require("./socketSer
  */
 async function fetchOrderReferenceContext(orderIdentifier, expectedCustomerId = null) {
   if (!orderIdentifier) return null;
-  const cleanId = String(orderIdentifier).trim().replace(/^#/, "");
+  const rawId = String(orderIdentifier).trim();
+  const cleanId = rawId
+    .replace(/^[#@]/, "")
+    .replace(/^(task|order|del|ord)[-_:\s]+/i, "")
+    .trim();
 
   try {
-    const params = [cleanId];
+    const params = [cleanId, rawId];
     let customerFilter = "";
     if (expectedCustomerId) {
       params.push(expectedCustomerId);
-      customerFilter = `AND (o.user_id = $2 OR o.customer_id = $2)`;
+      customerFilter = `AND (o.user_id = $3 OR o.customer_id = $3)`;
     }
 
     const result = await pool.query(
@@ -75,10 +79,11 @@ async function fetchOrderReferenceContext(orderIdentifier, expectedCustomerId = 
       LEFT JOIN drivers drv ON (d.driver_id = drv.id OR o.driver_id = drv.id)
       LEFT JOIN delivery_zones dz ON (COALESCE(d.zone_id, o.zone_id) = dz.zone_id)
       WHERE (
-            UPPER(REPLACE(o.id::text, '#', '')) = UPPER($1)
-         OR UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', '')) = UPPER($1)
-         OR d.id::text = $1
-         OR d.delivery_ref = $1
+            UPPER(REPLACE(o.id::text, '#', '')) IN (UPPER($1), UPPER($2))
+         OR UPPER(REPLACE(COALESCE(o.order_ref, ''), '#', '')) IN (UPPER($1), UPPER($2))
+         OR d.id::text IN ($1, $2)
+         OR UPPER(REPLACE(COALESCE(d.delivery_ref, ''), '#', '')) IN (UPPER($1), UPPER($2))
+         OR d.order_id IN ($1, $2)
       )
       ${customerFilter}
       LIMIT 1

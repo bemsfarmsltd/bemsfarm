@@ -645,6 +645,17 @@ router.post('/drivers/:id/messages/read', requireRole('superadmin', 'manager', '
   }
 });
 
+router.get('/drivers/:id/reference-options', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
+  try {
+    const drv = await driverSupport.resolveDriver(req.params.id);
+    const data = await driverSupport.getDriverReferenceOptions(drv.id);
+    res.json({ success: true, ...data });
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
+});
+
 // ── GET /api/admin/customers/procurement/demand-ranking ────────────
 // Out-of-stock items clicked by customers for the procurement next-purchase list
 router.get("/procurement/demand-ranking", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
@@ -794,17 +805,47 @@ router.get("/:id/goods-intelligence", requireRole("superadmin", "manager", "admi
 });
 
 const support = require('../services/supportService');
-router.get('/:id/messages', requireRole('superadmin','manager','admin'),async(req,res,next)=>{
-  try {const c=await support.resolveCustomer(req.params.id);res.json(await support.getMessages(c.id));}
-  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
+router.get('/:id/messages', requireRole('superadmin','manager','admin'), async (req,res,next) => {
+  try {
+    const c = await support.resolveCustomer(req.params.id);
+    res.json(await support.getMessages(c.id));
+  } catch(e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
 });
-router.post('/:id/messages',requireRole('superadmin','manager','admin'),async(req,res,next)=>{
-  try {const c=await support.resolveCustomer(req.params.id);res.status(201).json(await support.sendMessage(c.id,req.body.message,req.user));}
-  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
+
+router.get('/:id/reference-options', requireRole('superadmin','manager','admin'), async (req,res,next) => {
+  try {
+    const c = await support.resolveCustomer(req.params.id);
+    const data = await support.getCustomerReferenceOptions(c.id);
+    res.json({ success: true, ...data });
+  } catch(e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
 });
-router.post('/:id/messages/read',requireRole('superadmin','manager','admin'),async(req,res,next)=>{
-  try {const c=await support.resolveCustomer(req.params.id);await support.markRead(c.id,'customer');res.json({success:true});}
-  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
+
+router.post('/:id/messages', requireRole('superadmin','manager','admin'), async (req,res,next) => {
+  try {
+    const c = await support.resolveCustomer(req.params.id);
+    const { message, order_id, delivery_id } = req.body;
+    res.status(201).json(await support.sendMessage(c.id, message, req.user, { order_id, delivery_id }));
+  } catch(e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
+});
+
+router.post('/:id/messages/read', requireRole('superadmin','manager','admin'), async (req,res,next) => {
+  try {
+    const c = await support.resolveCustomer(req.params.id);
+    await support.markRead(c.id, 'customer');
+    res.json({ success: true });
+  } catch(e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    next(e);
+  }
 });
 
 // ── GET /api/admin/customers/:id ──────────────────────────────────
