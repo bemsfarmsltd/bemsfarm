@@ -1,8 +1,8 @@
-// Bems-Farms-Admin-Front-end/src/pages/deliveries/FleetCommand.jsx
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
+import DriverDispatchConsole from './DriverDispatchConsole'
 
 function timeSince(ts) {
   if (!ts) return 'Never'
@@ -18,11 +18,36 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
   const [searchParams, setSearchParams] = useSearchParams()
   const orderParam = orderId || searchParams.get('order')
 
+  const [activeFleetTab, setActiveFleetTab] = useState('hub') // 'hub' | 'chat'
+  const [chatDriverId, setChatDriverId] = useState(null)
+  const [unreadDriversCount, setUnreadDriversCount] = useState(0)
+
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({ drivers: [], kpis: {}, zones: [], orders: [] })
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0)
   const [orderTab, setOrderTab] = useState('all') // 'all' | 'pending' | 'assigned' | 'in_transit' | 'completed'
   const [lastRefreshed, setLastRefreshed] = useState(Date.now())
+
+  // Poll unread driver messages for the Courier Chat tab badge
+  useEffect(() => {
+    const checkDriverUnread = async () => {
+      try {
+        const r = await api.get('/admin/customers/conversations/driver-inbox')
+        const total = (r.data.conversations || []).reduce((s, c) => s + Number(c.unread_count || 0), 0)
+        setUnreadDriversCount(total)
+      } catch {}
+    }
+    checkDriverUnread()
+    const t = setInterval(checkDriverUnread, 8000)
+    return () => clearInterval(t)
+  }, [])
+
+  useRealtimeEvent('support:driver_message', () => {
+    api.get('/admin/customers/conversations/driver-inbox').then((r) => {
+      const total = (r.data.conversations || []).reduce((s, c) => s + Number(c.unread_count || 0), 0)
+      setUnreadDriversCount(total)
+    }).catch(() => {})
+  })
 
   const loadFleetData = async () => {
     try {
@@ -283,23 +308,58 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               <span>← Back to Orders</span>
             </Link>
           )}
-          <Link
-            to="/deliveries/fleet"
+          <button
+            type="button"
+            onClick={() => setActiveFleetTab('hub')}
             style={{
               padding: '8px 16px',
               borderRadius: 10,
-              background: '#0F172A',
-              color: '#FFFFFF',
+              background: activeFleetTab === 'hub' ? '#0F172A' : 'transparent',
+              color: activeFleetTab === 'hub' ? '#FFFFFF' : '#475569',
+              border: 'none',
               fontSize: 12,
               fontWeight: 700,
-              textDecoration: 'none',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
+              transition: 'all 0.15s ease',
             }}
           >
             <span>🎛️ Command Hub</span>
-          </Link>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFleetTab('chat')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              background: activeFleetTab === 'chat' ? '#059669' : 'transparent',
+              color: activeFleetTab === 'chat' ? '#FFFFFF' : '#475569',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>💬 Courier Chat</span>
+            {unreadDriversCount > 0 && (
+              <span style={{
+                background: activeFleetTab === 'chat' ? '#FFFFFF' : '#059669',
+                color: activeFleetTab === 'chat' ? '#059669' : '#FFFFFF',
+                borderRadius: 20,
+                padding: '1px 6px',
+                fontSize: 10,
+                fontWeight: 800,
+              }}>
+                {unreadDriversCount}
+              </span>
+            )}
+          </button>
           <Link
             to="/deliveries/map"
             style={{
@@ -316,23 +376,6 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
             }}
           >
             <span>🗺️ Live GPS Map</span>
-          </Link>
-          <Link
-            to="/customers/messages?tab=drivers"
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              background: 'transparent',
-              color: '#475569',
-              fontSize: 12,
-              fontWeight: 600,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>💬 Courier Chat</span>
           </Link>
           <Link
             to="/deliveries/active"
@@ -397,8 +440,27 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
         </div>
       </header>
 
-      {/* If no drivers registered in the database */}
-      {vehicles.length === 0 && !loading && (
+      {/* ── COURIER DISPATCH CHAT TAB ── */}
+      {activeFleetTab === 'chat' && (
+        <div style={{
+          marginTop: 18,
+          height: isModal ? 'calc(92vh - 160px)' : 'calc(100vh - 200px)',
+          minHeight: 560,
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <DriverDispatchConsole
+            initialDriverId={chatDriverId || activeVehicle?.driver?.id}
+            orderId={orderParam}
+          />
+        </div>
+      )}
+
+      {/* ── COMMAND HUB TAB ── */}
+      {activeFleetTab === 'hub' && (
+        <>
+          {/* If no drivers registered in the database */}
+          {vehicles.length === 0 && !loading && (
         <div style={{
           background: '#FFFFFF',
           borderRadius: 20,
@@ -621,25 +683,29 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                       📞
                     </a>
                   )}
-                  <Link
-                    to={`/customers/messages?driver=${activeVehicle.driver.id}&tab=drivers`}
-                    title="Open Dispatch Chat (with Order Reference)"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatDriverId(activeVehicle.driver.id)
+                      setActiveFleetTab('chat')
+                    }}
+                    title={`Open Dispatch Chat with ${activeVehicle.driver.name}`}
                     style={{
                       width: 32,
                       height: 32,
                       borderRadius: 8,
-                      background: '#EFF6FF',
-                      border: '1px solid #BFDBFE',
-                      color: '#2563eb',
+                      background: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      color: '#059669',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      textDecoration: 'none',
+                      cursor: 'pointer',
                       fontSize: 13,
                     }}
                   >
                     💬
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1187,38 +1253,41 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               </table>
             )}
           </div>
-          {isModal && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: 24,
-              paddingTop: 16,
-              borderTop: '1px solid #E2E8F0',
-            }}>
-              <div style={{ fontSize: 12, color: '#64748B' }}>
-                Bems Fleet Command · Live Vehicle & Courier Telemetry
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  background: '#0F172A',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '10px 24px',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: 13,
-                }}
-              >
-                Close Fleet
-              </button>
-            </div>
-          )}
         </div>
       </div>
+        </>
+      )}
+
+      {isModal && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 20,
+          paddingTop: 16,
+          borderTop: '1px solid #E2E8F0',
+        }}>
+          <div style={{ fontSize: 12, color: '#64748B' }}>
+            Bems Fleet Command · Live Vehicle & Courier Telemetry
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: '#0F172A',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 10,
+              padding: '10px 24px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: 13,
+            }}
+          >
+            Close Fleet
+          </button>
+        </div>
+      )}
     </div>
   )
 
