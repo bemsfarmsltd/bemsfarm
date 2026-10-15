@@ -143,7 +143,7 @@ router.get("/order-fleet/:orderId", requireRole("superadmin", "manager", "admin"
         COALESCE(NULLIF(o.address, ''), 'Farm Store Pickup') AS delivery_address,
         COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
         COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
-        o.created_at, o.driver_id, o.fulfillment_type, o.driver_accepted_at
+        o.created_at, o.driver_id
       FROM orders o
       LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
       WHERE o.id::text = $1 OR o.order_ref = $1

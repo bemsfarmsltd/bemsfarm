@@ -228,6 +228,22 @@ export default function FleetCommand() {
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
                 REAL-TIME DATABASE STREAM
               </span>
+              {orderParam && (
+                <span style={{
+                  background: '#FEF3C7',
+                  color: '#92400E',
+                  border: '1px solid #FCD34D',
+                  padding: '2px 8px',
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}>
+                  📦 Order #{orderParam}
+                </span>
+              )}
             </div>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
               Live courier telemetry, active produce delivery tracking & multi-zone fleet operations
@@ -247,6 +263,24 @@ export default function FleetCommand() {
           borderRadius: 14,
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
         }}>
+          <Link
+            to="/orders"
+            style={{
+              padding: '8px 14px',
+              borderRadius: 10,
+              background: '#F0FDF4',
+              color: '#15803D',
+              border: '1px solid #BBF7D0',
+              fontSize: 12,
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>← Back to Orders</span>
+          </Link>
           <Link
             to="/deliveries/fleet"
             style={{
@@ -1053,6 +1087,7 @@ export default function FleetCommand() {
                 <tbody>
                   {filteredOrders.map((ord, idx) => {
                     const status = ord.delivery_status || ord.status || 'pending'
+                    const isFocused = orderParam && (String(ord.order_id) === String(orderParam) || String(ord.order_ref) === String(orderParam))
                     const statusPill = {
                       delivered: { bg: '#ECFDF5', text: '#065F46' },
                       in_transit: { bg: '#EFF6FF', text: '#1E40AF' },
@@ -1068,15 +1103,22 @@ export default function FleetCommand() {
                         key={ord.order_id || idx}
                         style={{
                           borderBottom: '1px solid #F8FAFC',
+                          backgroundColor: isFocused ? '#F0FDF4' : 'transparent',
+                          borderLeft: isFocused ? '3px solid #16A34A' : 'none',
                           transition: 'background 0.1s ease',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        onMouseEnter={(e) => { if (!isFocused) e.currentTarget.style.backgroundColor = '#F8FAFC' }}
+                        onMouseLeave={(e) => { if (!isFocused) e.currentTarget.style.backgroundColor = 'transparent' }}
                       >
                         <td style={{ padding: '12px 10px', fontWeight: 800, color: '#0F172A' }}>
                           <Link to={`/orders?search=${ord.order_ref || ord.order_id}`} style={{ color: '#0F172A', textDecoration: 'none' }}>
                             #{ord.order_ref || ord.order_id}
                           </Link>
+                          {isFocused && (
+                            <span style={{ marginLeft: 6, fontSize: 10, background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                              Selected
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '12px 10px' }}>
                           <div style={{ fontWeight: 700, color: '#0F172A' }}>{ord.customer_name || 'Customer'}</div>
