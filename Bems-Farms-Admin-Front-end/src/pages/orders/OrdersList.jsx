@@ -936,15 +936,15 @@ export default function OrdersList() {
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th style={{ minWidth: 150 }}>Order & Payment</th>
-                <th style={{ minWidth: 120 }}>Date & Time</th>
-                <th style={{ minWidth: 180 }}>Customer & Destination</th>
-                <th style={{ minWidth: 140 }}>Channel / Type</th>
-                <th style={{ minWidth: 200 }}>Items Breakdown</th>
-                <th style={{ minWidth: 110 }}>Total Amount</th>
-                <th style={{ minWidth: 140 }}>Courier / Driver</th>
-                <th style={{ minWidth: 130 }}>Fulfillment Status</th>
-                <th style={{ minWidth: 120 }} className="text-end">Actions</th>
+                <th style={{ minWidth: 110 }}>Order & Payment</th>
+                <th style={{ minWidth: 90 }}>Date & Time</th>
+                <th style={{ minWidth: 140 }}>Customer & Destination</th>
+                <th style={{ minWidth: 110 }}>Channel / Type</th>
+                <th style={{ minWidth: 130 }}>Items Breakdown</th>
+                <th style={{ minWidth: 90 }}>Total Amount</th>
+                <th style={{ minWidth: 110 }}>Courier / Driver</th>
+                <th style={{ minWidth: 105 }}>Fulfillment Status</th>
+                <th style={{ minWidth: 130 }} className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1117,17 +1117,19 @@ export default function OrdersList() {
                         <div className="text-danger fw-medium mt-0.5" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
                       )}
                     </td>
-                    <td className="text-end">
-                      <div className="d-inline-flex gap-1">
+                    <td className="text-end text-nowrap">
+                      <div className="d-inline-flex gap-1 align-items-center justify-content-end">
                         <button
-                          className="btn btn-sm btn-outline-secondary"
+                          className="btn btn-sm btn-outline-secondary px-2 py-1"
+                          style={{ fontSize: 11 }}
                           title="View Details"
                           onClick={() => openModal('view', order)}
                         >
                           <i className="ri-eye-line" />
                         </button>
                         <button
-                          className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-xs px-2"
+                          className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 shadow-xs px-2 py-1"
+                          style={{ fontSize: 11, whiteSpace: 'nowrap' }}
                           title="Open 3D Fleet Command & Vehicle Telemetry for this order"
                           onClick={() => openModal('fleet', order)}
                         >
@@ -1135,7 +1137,8 @@ export default function OrdersList() {
                         </button>
                         {!(order.invoice_printed || ['processing', 'packed_ready', 'packed', 'assigned', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived', 'delivered', 'completed', 'cancelled'].includes(order.status)) ? (
                           <button
-                            className="btn btn-sm btn-success fw-bold px-2"
+                            className="btn btn-sm btn-success fw-bold px-2 py-1"
+                            style={{ fontSize: 11, whiteSpace: 'nowrap' }}
                             title="Print Invoice (Packing List) — Orders must always print invoice first"
                             onClick={() => openModal('invoice', order)}
                           >
@@ -1143,7 +1146,8 @@ export default function OrdersList() {
                           </button>
                         ) : (
                           <button
-                            className="btn btn-sm btn-outline-secondary"
+                            className="btn btn-sm btn-outline-secondary px-2 py-1"
+                            style={{ fontSize: 11 }}
                             title="Print Customer Payment Receipt"
                             onClick={() => openModal('receipt', order)}
                           >

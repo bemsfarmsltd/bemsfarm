@@ -214,6 +214,7 @@ body.sidebar-condensed #main-sidebar {
   .page-wrapper,
   body .page-wrapper,
   [data-content-width=fluid] .page-wrapper {
+    padding-inline: 1.25rem !important;
     padding-left: 1.25rem !important;
     padding-right: 1.25rem !important;
   }
@@ -222,10 +223,37 @@ body.sidebar-condensed #main-sidebar {
   .page-wrapper,
   body .page-wrapper,
   [data-content-width=fluid] .page-wrapper {
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
+    padding-inline: 1.25rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
   }
 }
+
+/* Global full-width & responsive table controls */
+.page-wrapper .card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.table-responsive {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: auto !important;
+}
+
+.table th,
+.table td {
+  padding: 0.55rem 0.65rem !important;
+  vertical-align: middle !important;
+}
+
 
 #main-sidebar .sidebar-wrapper {
   background-color: transparent !important;
