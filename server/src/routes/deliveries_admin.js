@@ -130,6 +130,113 @@ router.get("/fleet-command", requireRole("superadmin", "manager", "admin", "deli
   }
 });
 
+// ── GET /api/admin/deliveries/order-fleet/:orderId ─────────────────
+// Get full real-time fleet & courier telemetry for a specific order
+router.get("/order-fleet/:orderId", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { orderId } = req.params;
+
+    // 1. Fetch order details
+    const orderRes = await pool.query(`
+      SELECT 
+        o.id, o.order_ref, o.status, o.total, o.delivery_fee, o.payment_method, o.payment_status,
+        COALESCE(NULLIF(o.address, ''), 'Farm Store Pickup') AS delivery_address,
+        COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+        COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+        o.created_at, o.driver_id, o.fulfillment_type, o.driver_accepted_at
+      FROM orders o
+      LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+      WHERE o.id::text = $1 OR o.order_ref = $1
+      LIMIT 1
+    `, [orderId]);
+
+    if (orderRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    // 2. Fetch items for order
+    const itemsRes = await pool.query(`
+      SELECT oi.id, oi.product_id, oi.quantity, oi.unit_price, oi.subtotal,
+             COALESCE(p.name, oi.product_name, 'Produce Item') AS name,
+             p.weight_kg, p.image_url
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id::text = $1 OR oi.order_id::text = $2
+    `, [order.id, order.order_ref || order.id]);
+
+    // 3. Fetch delivery row if exists
+    const deliveryRes = await pool.query(`
+      SELECT 
+        d.id, d.delivery_ref, d.status, d.driver_id, d.eta_minutes,
+        d.assigned_at, d.accepted_at, d.picked_up_at, d.arrived_at, d.delivered_at,
+        d.proof_note, d.proof_photo, d.proof_photos, d.customer_confirmed, d.delivery_fee,
+        d.zone_id
+      FROM deliveries d
+      WHERE d.order_id = $1 OR d.order_id = $2
+      ORDER BY d.id DESC
+      LIMIT 1
+    `, [order.id, order.order_ref || order.id]);
+
+    const delivery = deliveryRes.rows[0] || null;
+    const driverId = delivery?.driver_id || order.driver_id;
+
+    // 4. Fetch assigned driver & telemetry if assigned
+    let driver = null;
+    let location = null;
+    if (driverId) {
+      const driverRes = await pool.query(`
+        SELECT 
+          dr.id, dr.name, dr.phone, dr.email, dr.vehicle_type, dr.vehicle_plate,
+          dr.status AS driver_status, COALESCE(dr.rating, 5.0) AS rating,
+          COALESCE(dr.wallet_balance, 0) AS wallet_balance,
+          (SELECT COUNT(*) FROM deliveries WHERE driver_id = dr.id AND status = 'delivered') AS completed_deliveries_count
+        FROM drivers dr
+        WHERE dr.id = $1
+      `, [driverId]);
+
+      if (driverRes.rows.length > 0) {
+        driver = driverRes.rows[0];
+
+        const locRes = await pool.query(`
+          SELECT latitude, longitude, heading, speed, recorded_at,
+            (recorded_at >= NOW() - INTERVAL '3 minutes') AS is_gps_live
+          FROM driver_locations
+          WHERE driver_id = $1
+          ORDER BY recorded_at DESC
+          LIMIT 1
+        `, [driverId]);
+
+        location = locRes.rows[0] || null;
+      }
+    }
+
+    // 5. Fetch available active drivers for quick reassignment
+    const availableDriversRes = await pool.query(`
+      SELECT dr.id, dr.name, dr.phone, dr.vehicle_type, dr.vehicle_plate, dr.status,
+             COALESCE(dr.rating, 5.0) AS rating
+      FROM drivers dr
+      WHERE dr.status IN ('active', 'verified')
+      ORDER BY dr.name ASC
+    `);
+
+    res.json({
+      success: true,
+      order: {
+        ...order,
+        items: itemsRes.rows,
+      },
+      delivery,
+      driver,
+      location,
+      availableDrivers: availableDriversRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/deliveries/active ─────────────────────────────
 router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {

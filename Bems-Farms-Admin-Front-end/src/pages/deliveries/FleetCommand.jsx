@@ -1,6 +1,6 @@
 // Bems-Farms-Admin-Front-end/src/pages/deliveries/FleetCommand.jsx
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 
@@ -15,6 +15,9 @@ function timeSince(ts) {
 
 export default function FleetCommand() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const orderParam = searchParams.get('order')
+
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({ drivers: [], kpis: {}, zones: [], orders: [] })
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0)
@@ -129,6 +132,24 @@ export default function FleetCommand() {
   }, [data?.drivers])
 
   const activeVehicle = vehicles[selectedVehicleIndex] || vehicles[0]
+
+  // When orderParam is passed, find matching driver/order and auto-select
+  useEffect(() => {
+    if (!orderParam || !data?.drivers?.length) return
+    const driverIdx = data.drivers.findIndex(d => 
+      String(d.order_id) === String(orderParam) || 
+      String(d.order_ref) === String(orderParam)
+    )
+    if (driverIdx >= 0) {
+      setSelectedVehicleIndex(driverIdx)
+    } else {
+      const ord = (data.orders || []).find(o => String(o.order_id) === String(orderParam) || String(o.order_ref) === String(orderParam))
+      if (ord?.driver_id) {
+        const dIdx = data.drivers.findIndex(d => d.id === ord.driver_id)
+        if (dIdx >= 0) setSelectedVehicleIndex(dIdx)
+      }
+    }
+  }, [orderParam, data?.drivers, data?.orders])
 
   // Real orders from database
   const orders = data?.orders || []
