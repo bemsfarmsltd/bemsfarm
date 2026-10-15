@@ -160,7 +160,7 @@ router.get("/order-fleet/:orderId", requireRole("superadmin", "manager", "admin"
     const itemsRes = await pool.query(`
       SELECT oi.id, oi.product_id, oi.quantity, oi.unit_price, oi.subtotal,
              COALESCE(p.name, oi.product_name, 'Produce Item') AS name,
-             p.weight_kg, p.image_url
+             p.image_url
       FROM order_items oi
       LEFT JOIN products p ON oi.product_id = p.id
       WHERE oi.order_id::text = $1 OR oi.order_id::text = $2
