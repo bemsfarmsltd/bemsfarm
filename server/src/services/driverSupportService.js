@@ -13,9 +13,9 @@ async function resolveDriver(target) {
   return r.rows[0];
 }
 
-async function getDriverMessages(driverId) {
-  const r = await pool.query(
-    `
+async function getDriverMessages(driverId, options = {}) {
+  const { order_id } = options;
+  let query = `
     SELECT 
       m.*,
       u.name AS admin_name,
@@ -25,11 +25,23 @@ async function getDriverMessages(driverId) {
     FROM driver_messages m
     LEFT JOIN users u ON u.id = m.admin_id
     WHERE m.driver_id = $1
-    ORDER BY m.created_at DESC, m.id DESC
-    LIMIT 200
-    `,
-    [driverId]
-  );
+  `;
+  const params = [driverId];
+
+  if (order_id) {
+    params.push(String(order_id).trim());
+    query += ` AND (
+      m.order_id::text = $2 
+      OR m.order_id = $2 
+      OR (m.metadata->>'order_ref') = $2 
+      OR (m.metadata->>'order_id') = $2
+      OR m.message ILIKE '%' || $2 || '%'
+    )`;
+  }
+
+  query += ` ORDER BY m.created_at DESC, m.id DESC LIMIT 200`;
+
+  const r = await pool.query(query, params);
   return { messages: r.rows.reverse() };
 }
 

@@ -206,15 +206,21 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
       backgroundColor: '#F3F4F6',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       color: '#0F172A',
-      padding: isModal ? '20px 24px 32px' : '24px 32px 48px',
+      padding: isModal ? '0 24px 28px' : '0 32px 48px',
       boxSizing: 'border-box',
     }}>
-      {/* ── Top Bar / Header ── */}
+      {/* ── Top Bar / Header (Sticky at top of modal) ── */}
       <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        backgroundColor: '#F3F4F6',
+        padding: isModal ? '16px 0 14px' : '20px 0 18px',
+        marginBottom: 20,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 24,
+        borderBottom: '1px solid #E5E7EB',
       }}>
         {/* Brand & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

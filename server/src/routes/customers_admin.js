@@ -616,7 +616,8 @@ const driverSupport = require('../services/driverSupportService');
 router.get('/drivers/:id/messages', requireRole('superadmin', 'manager', 'admin', 'delivery_manager'), async (req, res, next) => {
   try {
     const drv = await driverSupport.resolveDriver(req.params.id);
-    res.json(await driverSupport.getDriverMessages(drv.id));
+    const { order_id } = req.query;
+    res.json(await driverSupport.getDriverMessages(drv.id, { order_id }));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
     next(e);
