@@ -1245,7 +1245,7 @@ export function GlobalDriverDispatchConsole({ initialDriverId = null }) {
     try {
       const [inboxRes, driversRes] = await Promise.all([
         api.get('/admin/customers/conversations/driver-inbox').catch(() => ({ data: { conversations: [] } })),
-        api.get('/admin/drivers').catch(() => ({ data: { drivers: [] } })),
+        api.get('/admin/deliveries/drivers').catch(() => ({ data: { drivers: [] } })),
       ])
 
       const conversations = inboxRes.data?.conversations || []
