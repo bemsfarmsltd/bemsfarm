@@ -40,6 +40,13 @@ cpSync(path.join(root, 'client/dist'), staging, { recursive: true });
 mkdirSync(path.join(staging, 'admin'), { recursive: true });
 cpSync(path.join(root, 'Bems-Farms-Admin-Front-end/dist'), path.join(staging, 'admin'), { recursive: true });
 
+// Ensure fleet assets are also available at root /assets/fleet for absolute path requests
+const fleetDist = path.join(root, 'Bems-Farms-Admin-Front-end/dist/assets/fleet');
+if (existsSync(fleetDist)) {
+  mkdirSync(path.join(staging, 'assets/fleet'), { recursive: true });
+  cpSync(fleetDist, path.join(staging, 'assets/fleet'), { recursive: true });
+}
+
 // 5. Generate .htaccess rules for SPA routing
 const rootHtaccess = `Options -Indexes +FollowSymLinks
 DirectoryIndex index.html

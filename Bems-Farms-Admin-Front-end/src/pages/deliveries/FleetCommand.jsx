@@ -4,6 +4,9 @@ import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import DriverDispatchConsole from './DriverDispatchConsole'
 import DeliveryMap from './DeliveryMap'
+import fleetMotoImg from '../../assets/fleet/fleet_moto.jpg'
+import fleetTruckImg from '../../assets/fleet/fleet_truck.jpg'
+import fleetVanImg from '../../assets/fleet/fleet_van.jpg'
 
 function timeSince(ts) {
   if (!ts) return 'Never'
@@ -12,6 +15,43 @@ function timeSince(ts) {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
   return new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
+function SpeedometerGauge({ speed = 0, maxSpeed = 100 }) {
+  const clampedSpeed = Math.min(Math.max(Number(speed) || 0, 0), maxSpeed)
+  const ratio = clampedSpeed / maxSpeed
+  const angle = Math.PI * (1 - ratio)
+  const cx = 50, cy = 50, r = 38
+  const x = cx + r * Math.cos(angle)
+  const y = cy - r * Math.sin(angle)
+  const largeArcFlag = ratio > 0.5 ? 1 : 0
+  const arcD = ratio > 0.01 ? `M 12 50 A ${r} ${r} 0 ${largeArcFlag} 1 ${x.toFixed(1)} ${y.toFixed(1)}` : ''
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
+      <svg width="88" height="48" viewBox="0 0 100 55">
+        <path
+          d="M 12 50 A 38 38 0 0 1 88 50"
+          fill="none"
+          stroke="#F1F5F9"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        {ratio > 0.01 && (
+          <path
+            d={arcD}
+            fill="none"
+            stroke={clampedSpeed > 70 ? '#EF4444' : (clampedSpeed > 40 ? '#F59E0B' : '#10B981')}
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+        )}
+      </svg>
+      <div style={{ fontSize: 17, fontWeight: 900, color: '#0F172A', marginTop: -6 }}>
+        {Math.round(clampedSpeed)} <span style={{ fontSize: 10, fontWeight: 600, color: '#64748B' }}>km/h</span>
+      </div>
+    </div>
+  )
 }
 
 export default function FleetCommand({ isModal = false, orderId = null, onClose = null }) {
@@ -78,18 +118,21 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
     const rawDrivers = data?.drivers || []
     return rawDrivers.map((d) => {
       const vType = (d.vehicle_type || 'motorcycle').toLowerCase()
-      let image = '/assets/fleet/fleet_moto.jpg'
+      let image = fleetMotoImg
       let model = 'Express Produce Motorcycle'
       let capacityKg = '65kg'
+      let icon = '🛵'
 
       if (vType.includes('truck')) {
-        image = '/assets/fleet/fleet_truck.jpg'
+        image = fleetTruckImg
         model = 'Refrigerated Produce Truck'
         capacityKg = '750kg'
+        icon = '🚚'
       } else if (vType.includes('van') || vType.includes('car') || vType.includes('sprinter')) {
-        image = '/assets/fleet/fleet_van.jpg'
+        image = fleetVanImg
         model = 'Commercial Cold-Box Vehicle'
         capacityKg = '420kg'
+        icon = '🚐'
       }
 
       const hasActiveDelivery = d.delivery_id && ['assigned', 'awaiting_pickup', 'accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'en_route'].includes(d.delivery_status)
@@ -115,6 +158,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
         model,
         capacityKg,
         image,
+        icon,
         status: statusLabel,
         statusType,
         rating: Number(d.rating) || 5.0,
@@ -333,7 +377,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               transition: 'all 0.15s ease',
             }}
           >
-            <span>🎛️ Command Hub</span>
+            <i className="ri-dashboard-3-line" style={{ fontSize: 14 }} />
+            <span>Command Hub</span>
           </button>
           <button
             type="button"
@@ -353,7 +398,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               transition: 'all 0.15s ease',
             }}
           >
-            <span>💬 Courier Chat</span>
+            <i className="ri-message-3-line" style={{ fontSize: 14 }} />
+            <span>Courier Chat</span>
             {unreadDriversCount > 0 && (
               <span style={{
                 background: activeFleetTab === 'chat' ? '#FFFFFF' : '#059669',
@@ -385,7 +431,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               transition: 'all 0.15s ease',
             }}
           >
-            <span>🗺️ Live GPS Map</span>
+            <i className="ri-map-pin-range-line" style={{ fontSize: 14 }} />
+            <span>Live GPS Map</span>
           </button>
           {!isModal && (
             <Link
@@ -403,7 +450,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                 gap: 6,
               }}
             >
-              <span>📦 Active Deliveries</span>
+              <i className="ri-truck-line" style={{ fontSize: 14 }} />
+              <span>Active Deliveries</span>
             </Link>
           )}
           <button
@@ -420,9 +468,12 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               fontWeight: 700,
               fontSize: 12,
               marginLeft: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            🔄
+            <i className="ri-refresh-line" style={{ fontSize: 14 }} />
           </button>
           {isModal && onClose && (
             <button
@@ -797,7 +848,35 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     filter: 'drop-shadow(0 20px 30px rgba(0, 0, 0, 0.12))',
                     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                   }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fb = e.currentTarget.parentElement?.querySelector('.vehicle-fallback-visual')
+                    if (fb) fb.style.display = 'flex'
+                  }}
                 />
+
+                {/* Elegant Vector / Visual Fallback if image ever fails */}
+                <div
+                  className="vehicle-fallback-visual"
+                  style={{
+                    display: 'none',
+                    width: '100%',
+                    height: '100%',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 100%)',
+                    borderRadius: 24,
+                    border: '2px dashed #CBD5E1',
+                    padding: 24,
+                  }}
+                >
+                  <span style={{ fontSize: 72, marginBottom: 12 }}>{activeVehicle.icon || '🛵'}</span>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A' }}>{activeVehicle.model}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#059669', marginTop: 4 }}>
+                    {activeVehicle.code} • Capacity: {activeVehicle.capacityKg}
+                  </div>
+                </div>
 
                 {/* Ambient ground reflection shadow */}
                 <div style={{
@@ -899,28 +978,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     <div style={{ fontSize: 9, color: '#94A3B8' }}>GPS speed sensor</div>
                   </div>
 
-                  {/* Speed arc */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
-                    <svg width="84" height="46" viewBox="0 0 100 55">
-                      <path
-                        d="M 10 50 A 40 40 0 0 1 90 50"
-                        fill="none"
-                        stroke="#F1F5F9"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M 10 50 A 40 40 0 0 1 65 24"
-                        fill="none"
-                        stroke="#10B981"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div style={{ fontSize: 17, fontWeight: 900, color: '#0F172A', marginTop: -6 }}>
-                      {activeVehicle.location.speed} km/h
-                    </div>
-                  </div>
+                  {/* Real-time Dynamic Speed Gauge */}
+                  <SpeedometerGauge speed={activeVehicle.location.speed} maxSpeed={100} />
 
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textAlign: 'center' }}>
                     Heading: {activeVehicle.location.heading}°
@@ -999,9 +1058,9 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
             >
               {/* Miniature thumbnail */}
               <div style={{
-                width: 52,
-                height: 40,
-                borderRadius: 8,
+                width: 54,
+                height: 42,
+                borderRadius: 10,
                 background: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 display: 'flex',
@@ -1009,12 +1068,32 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                 justifyContent: 'center',
                 overflow: 'hidden',
                 flexShrink: 0,
+                position: 'relative',
               }}>
                 <img
                   src={v.image}
                   alt={v.code}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fb = e.currentTarget.parentElement?.querySelector('.thumb-fallback-visual')
+                    if (fb) fb.style.display = 'flex'
+                  }}
                 />
+                <div
+                  className="thumb-fallback-visual"
+                  style={{
+                    display: 'none',
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 22,
+                    background: '#F1F5F9',
+                  }}
+                >
+                  {v.icon || '🛵'}
+                </div>
               </div>
 
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -1044,7 +1123,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
       {/* ── Bottom Section: Real Database Delivery Zones & Orders Stream ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '360px 1fr',
+        gridTemplateColumns: 'minmax(320px, 390px) 1fr',
         gap: 20,
       }}>
         {/* Left Card: Real Database Delivery Zones */}
@@ -1095,7 +1174,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1, marginRight: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.35, wordBreak: 'break-word' }}>
                         {z.zone_name}
                       </div>
                       <div style={{ fontSize: 10, color: '#64748B' }}>
