@@ -177,17 +177,37 @@ function resolveApkFilePath(release, appType) {
 
 // GET /api/app-releases/debug
 router.get("/debug", (req, res) => {
-  const rootDir = path.resolve(__dirname, "../../..");
-  const publicDownloads = path.join(rootDir, "public_html", "downloads");
+  const homeDir = "/home/u649760923";
+  let homeContents = [];
+  try {
+    if (fs.existsSync(homeDir)) homeContents = fs.readdirSync(homeDir);
+  } catch (e) { homeContents = [e.message]; }
+
+  let domainContents = [];
+  const domainsDir = "/home/u649760923/domains";
+  try {
+    if (fs.existsSync(domainsDir)) domainContents = fs.readdirSync(domainsDir);
+  } catch (e) { domainContents = [e.message]; }
+
+  let bemsfarmsPublic = [];
+  const bemsPublic = "/home/u649760923/domains/bemsfarms.com/public_html";
+  try {
+    if (fs.existsSync(bemsPublic)) bemsfarmsPublic = fs.readdirSync(bemsPublic);
+  } catch (e) { bemsfarmsPublic = [e.message]; }
+
+  let oldBuilds = [];
+  const hbuildsDir = "/home/u649760923/domains/api.bemsfarms.com/hbuilds/versions";
+  try {
+    if (fs.existsSync(hbuildsDir)) oldBuilds = fs.readdirSync(hbuildsDir);
+  } catch (e) { oldBuilds = [e.message]; }
+
   res.json({
-    downloadsDir,
-    downloadsDirExists: fs.existsSync(downloadsDir),
-    downloadsFiles: fs.existsSync(downloadsDir) ? fs.readdirSync(downloadsDir) : [],
-    publicDownloads,
-    publicDownloadsExists: fs.existsSync(publicDownloads),
-    publicDownloadsFiles: fs.existsSync(publicDownloads) ? fs.readdirSync(publicDownloads) : [],
+    homeContents,
+    domainContents,
+    bemsfarmsPublicExists: fs.existsSync(bemsPublic),
+    bemsfarmsPublic,
+    oldBuilds,
     cwd: process.cwd(),
-    dirname: __dirname,
   });
 });
 
