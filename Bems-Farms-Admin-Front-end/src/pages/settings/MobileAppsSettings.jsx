@@ -64,61 +64,154 @@ export default function MobileAppsSettings() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-200">
+    <div className="container-fluid py-4 px-sm-4" style={{ maxWidth: '1100px' }}>
+      <style>{`
+        .app-upload-card {
+          background: #ffffff;
+          border: 1px solid #EFECE6;
+          border-radius: 18px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+          transition: all 0.2s ease;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          height: 100%;
+        }
+        .app-icon-box {
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+        .app-dropzone {
+          border: 2px dashed #CBD5E1;
+          border-radius: 14px;
+          padding: 1.75rem 1rem;
+          text-align: center;
+          cursor: pointer;
+          background: #FAF8F5;
+          transition: all 0.2s ease;
+        }
+        .app-dropzone:hover, .app-dropzone.dragging {
+          border-color: #143C2D;
+          background: #EAF5EF;
+        }
+        .app-dropzone-amber:hover, .app-dropzone-amber.dragging {
+          border-color: #C85A17;
+          background: #FEF3C7;
+        }
+        .file-ready-box {
+          background: #EAF5EF;
+          border: 1px solid #A7F3D0;
+          border-radius: 14px;
+          padding: 1rem 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .file-ready-box-amber {
+          background: #FEF3C7;
+          border: 1px solid #FDE68A;
+          border-radius: 14px;
+          padding: 1rem 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .btn-deploy-green {
+          background-color: #143C2D;
+          border-color: #143C2D;
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 13px;
+          padding: 0.65rem 1.25rem;
+          border-radius: 12px;
+          transition: all 0.15s ease;
+        }
+        .btn-deploy-green:hover:not(:disabled) {
+          background-color: #1A4E3B;
+          border-color: #1A4E3B;
+          color: #ffffff;
+        }
+        .btn-deploy-amber {
+          background-color: #C85A17;
+          border-color: #C85A17;
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 13px;
+          padding: 0.65rem 1.25rem;
+          border-radius: 12px;
+          transition: all 0.15s ease;
+        }
+        .btn-deploy-amber:hover:not(:disabled) {
+          background-color: #B04F14;
+          border-color: #B04F14;
+          color: #ffffff;
+        }
+      `}</style>
+
+      {/* ── Breadcrumb & Header ── */}
+      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 pb-3 mb-4 border-bottom">
         <div>
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-500 mb-1">
-            <Link to="/settings" className="hover:text-emerald-800 transition">Settings</Link>
+          <div className="d-flex align-items-center gap-2 mb-1" style={{ fontSize: '13px', color: '#64748B' }}>
+            <Link to="/settings" className="text-decoration-none text-muted">Settings</Link>
             <span>/</span>
-            <span className="text-gray-900 font-semibold">Mobile Apps</span>
+            <span className="fw-semibold text-dark">Mobile Apps</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Mobile Apps Management</h1>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">
-            Upload and update the official Android APK packages downloaded directly from the storefront.
+          <h1 className="h3 fw-bold text-dark mb-1 font-display" style={{ letterSpacing: '-0.02em' }}>
+            Mobile Apps Management
+          </h1>
+          <p className="text-muted small mb-0">
+            Upload and update the official Android APK builds served to customers and dispatch couriers.
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 text-xs font-bold text-emerald-800 shrink-0 self-start sm:self-auto">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border" style={{ backgroundColor: '#EAF5EF', borderColor: '#A7F3D0', fontSize: '12px', fontWeight: '700', color: '#143C2D', alignSelf: 'flex-start' }}>
+          <span className="spinner-grow spinner-grow-sm text-success" style={{ width: '8px', height: '8px' }} role="status"></span>
           <span>Live Storefront Download Active</span>
         </div>
       </div>
 
-      {/* ── Two Upload Cards ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Two Upload Cards in Grid ── */}
+      <div className="row g-4 mb-4">
         
         {/* 1. Customer App Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between overflow-hidden">
-          <div className="p-6 space-y-5">
-            {/* Header info */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-100/80 text-2xl shrink-0">
-                  🛒
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-base">Customer Shopping App</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Target: <code className="text-emerald-800 font-semibold">BemsCustomer.apk</code></p>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                For Shoppers
-              </span>
-            </div>
-
-            {/* Dropzone */}
+        <div className="col-12 col-lg-6">
+          <div className="app-upload-card p-4">
             <div>
+              {/* Header */}
+              <div className="d-flex align-items-center justify-content-between mb-4">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="app-icon-box" style={{ background: '#EAF5EF', color: '#143C2D' }}>
+                    <i className="ri-shopping-cart-2-line"></i>
+                  </div>
+                  <div>
+                    <h2 className="h5 fw-bold text-dark mb-0 font-display">Customer Shopping App</h2>
+                    <span className="small text-muted">File: <code className="text-success fw-bold">BemsCustomer.apk</code></span>
+                  </div>
+                </div>
+                <span className="badge rounded-pill px-2.5 py-1" style={{ background: '#EAF5EF', color: '#143C2D', border: '1px solid #A7F3D0', fontSize: '11px', fontWeight: '700' }}>
+                  For Shoppers
+                </span>
+              </div>
+
+              {/* Hidden Native File Input */}
               <input
                 ref={customerInputRef}
                 type="file"
                 accept=".apk"
-                className="hidden"
+                style={{ display: 'none' }}
                 onChange={(e) => handleFileSelect(e.target.files?.[0], 'customer')}
               />
 
+              {/* Interactive Dropzone */}
               {!customerFile ? (
                 <div
+                  className={`app-dropzone ${customerDragging ? 'dragging' : ''}`}
                   onClick={() => customerInputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); setCustomerDragging(true); }}
                   onDragLeave={() => setCustomerDragging(false)}
@@ -127,31 +220,26 @@ export default function MobileAppsSettings() {
                     setCustomerDragging(false);
                     handleFileSelect(e.dataTransfer.files?.[0], 'customer');
                   }}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    customerDragging
-                      ? 'border-emerald-600 bg-emerald-50/70 scale-[0.99]'
-                      : 'border-gray-300 hover:border-emerald-600 hover:bg-emerald-50/30'
-                  }`}
                 >
-                  <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-emerald-800 text-xl mb-2">
-                    📁
+                  <div className="d-inline-flex align-items-center justify-center rounded-circle mb-2" style={{ width: '44px', height: '44px', background: '#EAF5EF', color: '#143C2D', fontSize: '20px' }}>
+                    <i className="ri-upload-cloud-2-line"></i>
                   </div>
-                  <p className="text-xs font-bold text-gray-800">
+                  <div className="fw-bold text-dark small mb-1">
                     Click to select or drag and drop new APK
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    Android Application Package (.apk) up to 200MB
-                  </p>
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '11px' }}>
+                    Accepts Android Application Package (.apk) up to 200MB
+                  </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-2xl">📦</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900 truncate">{customerFile.name}</p>
-                      <p className="text-[11px] text-emerald-800 font-medium mt-0.5">
+                <div className="file-ready-box">
+                  <div className="d-flex align-items-center gap-3 text-truncate">
+                    <i className="ri-checkbox-circle-fill text-success fs-4"></i>
+                    <div className="text-truncate">
+                      <div className="fw-bold text-dark small text-truncate">{customerFile.name}</div>
+                      <div className="text-muted" style={{ fontSize: '11px' }}>
                         {(customerFile.size / (1024 * 1024)).toFixed(1)} MB • Ready to deploy
-                      </p>
+                      </div>
                     </div>
                   </div>
                   <button
@@ -160,75 +248,81 @@ export default function MobileAppsSettings() {
                       setCustomerFile(null);
                       if (customerInputRef.current) customerInputRef.current.value = '';
                     }}
-                    className="text-xs text-red-600 hover:text-red-800 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                    className="btn btn-sm btn-link text-danger text-decoration-none fw-bold"
+                    style={{ fontSize: '12px' }}
                   >
                     Change
                   </button>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Action Footer */}
-          <div className="bg-gray-50/80 px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-            <a
-              href="/downloads/BemsCustomer.apk"
-              download="BemsCustomer.apk"
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 transition"
-            >
-              <span>⬇️</span>
-              <span>Test Download Active File</span>
-            </a>
+            {/* Footer Actions */}
+            <div className="d-flex align-items-center justify-content-between pt-4 mt-3 border-top gap-2">
+              <a
+                href="/downloads/BemsCustomer.apk"
+                download="BemsCustomer.apk"
+                className="text-decoration-none fw-bold small text-success d-flex align-items-center gap-1.5"
+              >
+                <i className="ri-download-2-line"></i>
+                <span>Test Download Current</span>
+              </a>
 
-            <button
-              type="button"
-              onClick={() => handleUpload('customer')}
-              disabled={uploadingCustomer || !customerFile}
-              className="rounded-xl bg-[#143c2d] hover:bg-[#1a4e3b] disabled:bg-gray-200 disabled:text-gray-400 text-white py-2.5 px-5 text-xs font-bold shadow-xs transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {uploadingCustomer ? (
-                <>
-                  <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Deploying…</span>
-                </>
-              ) : (
-                <span>Upload &amp; Deploy APK</span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => handleUpload('customer')}
+                disabled={uploadingCustomer || !customerFile}
+                className="btn btn-deploy-green d-flex align-items-center gap-2"
+              >
+                {uploadingCustomer ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Deploying…</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="ri-upload-2-line"></i>
+                    <span>Deploy Customer APK</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* 2. Driver App Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between overflow-hidden">
-          <div className="p-6 space-y-5">
-            {/* Header info */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-xl bg-amber-100/80 text-2xl shrink-0">
-                  🛵
-                </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-base">Driver Dispatch App</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Target: <code className="text-amber-800 font-semibold">BemsDriver.apk</code></p>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                For Courier Fleet
-              </span>
-            </div>
-
-            {/* Dropzone */}
+        <div className="col-12 col-lg-6">
+          <div className="app-upload-card p-4">
             <div>
+              {/* Header */}
+              <div className="d-flex align-items-center justify-content-between mb-4">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="app-icon-box" style={{ background: '#FEF3C7', color: '#B45309' }}>
+                    <i className="ri-e-bike-2-line"></i>
+                  </div>
+                  <div>
+                    <h2 className="h5 fw-bold text-dark mb-0 font-display">Driver Dispatch App</h2>
+                    <span className="small text-muted">File: <code className="text-warning-emphasis fw-bold">BemsDriver.apk</code></span>
+                  </div>
+                </div>
+                <span className="badge rounded-pill px-2.5 py-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontSize: '11px', fontWeight: '700' }}>
+                  For Courier Fleet
+                </span>
+              </div>
+
+              {/* Hidden Native File Input */}
               <input
                 ref={driverInputRef}
                 type="file"
                 accept=".apk"
-                className="hidden"
+                style={{ display: 'none' }}
                 onChange={(e) => handleFileSelect(e.target.files?.[0], 'driver')}
               />
 
+              {/* Interactive Dropzone */}
               {!driverFile ? (
                 <div
+                  className={`app-dropzone app-dropzone-amber ${driverDragging ? 'dragging' : ''}`}
                   onClick={() => driverInputRef.current?.click()}
                   onDragOver={(e) => { e.preventDefault(); setDriverDragging(true); }}
                   onDragLeave={() => setDriverDragging(false)}
@@ -237,31 +331,26 @@ export default function MobileAppsSettings() {
                     setDriverDragging(false);
                     handleFileSelect(e.dataTransfer.files?.[0], 'driver');
                   }}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    driverDragging
-                      ? 'border-amber-600 bg-amber-50/70 scale-[0.99]'
-                      : 'border-gray-300 hover:border-amber-600 hover:bg-amber-50/30'
-                  }`}
                 >
-                  <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-amber-50 text-amber-800 text-xl mb-2">
-                    📁
+                  <div className="d-inline-flex align-items-center justify-center rounded-circle mb-2" style={{ width: '44px', height: '44px', background: '#FEF3C7', color: '#B45309', fontSize: '20px' }}>
+                    <i className="ri-upload-cloud-2-line"></i>
                   </div>
-                  <p className="text-xs font-bold text-gray-800">
+                  <div className="fw-bold text-dark small mb-1">
                     Click to select or drag and drop new APK
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    Android Application Package (.apk) up to 200MB
-                  </p>
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '11px' }}>
+                    Accepts Android Application Package (.apk) up to 200MB
+                  </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-amber-300 bg-amber-50/60 p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-2xl">📦</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900 truncate">{driverFile.name}</p>
-                      <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                <div className="file-ready-box-amber">
+                  <div className="d-flex align-items-center gap-3 text-truncate">
+                    <i className="ri-checkbox-circle-fill text-warning-emphasis fs-4"></i>
+                    <div className="text-truncate">
+                      <div className="fw-bold text-dark small text-truncate">{driverFile.name}</div>
+                      <div className="text-muted" style={{ fontSize: '11px' }}>
                         {(driverFile.size / (1024 * 1024)).toFixed(1)} MB • Ready to deploy
-                      </p>
+                      </div>
                     </div>
                   </div>
                   <button
@@ -270,76 +359,86 @@ export default function MobileAppsSettings() {
                       setDriverFile(null);
                       if (driverInputRef.current) driverInputRef.current.value = '';
                     }}
-                    className="text-xs text-red-600 hover:text-red-800 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                    className="btn btn-sm btn-link text-danger text-decoration-none fw-bold"
+                    style={{ fontSize: '12px' }}
                   >
                     Change
                   </button>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Action Footer */}
-          <div className="bg-gray-50/80 px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-4">
-            <a
-              href="/downloads/BemsDriver.apk"
-              download="BemsDriver.apk"
-              className="text-xs font-bold text-amber-800 hover:text-amber-950 flex items-center gap-1 transition"
-            >
-              <span>⬇️</span>
-              <span>Test Download Active File</span>
-            </a>
+            {/* Footer Actions */}
+            <div className="d-flex align-items-center justify-content-between pt-4 mt-3 border-top gap-2">
+              <a
+                href="/downloads/BemsDriver.apk"
+                download="BemsDriver.apk"
+                className="text-decoration-none fw-bold small text-warning-emphasis d-flex align-items-center gap-1.5"
+              >
+                <i className="ri-download-2-line"></i>
+                <span>Test Download Current</span>
+              </a>
 
-            <button
-              type="button"
-              onClick={() => handleUpload('driver')}
-              disabled={uploadingDriver || !driverFile}
-              className="rounded-xl bg-[#c85a17] hover:bg-[#b04f14] disabled:bg-gray-200 disabled:text-gray-400 text-white py-2.5 px-5 text-xs font-bold shadow-xs transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {uploadingDriver ? (
-                <>
-                  <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Deploying…</span>
-                </>
-              ) : (
-                <span>Upload &amp; Deploy APK</span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => handleUpload('driver')}
+                disabled={uploadingDriver || !driverFile}
+                className="btn btn-deploy-amber d-flex align-items-center gap-2"
+              >
+                {uploadingDriver ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Deploying…</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="ri-upload-2-line"></i>
+                    <span>Deploy Driver APK</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
       </div>
 
-      {/* ── Deployment Information Footer Card ── */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3 flex items-center gap-2">
-          <span>ℹ️</span>
-          <span>How Live Distribution Works</span>
-        </h3>
-        <div className="grid sm:grid-cols-3 gap-4 text-xs text-gray-600">
-          <div className="flex items-start gap-2.5">
-            <span className="text-base">⚡</span>
-            <div>
-              <p className="font-bold text-gray-900">Instant Storefront Sync</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Uploading a file replaces the live download immediately without server downtime.</p>
-            </div>
+      {/* ── Info Card ── */}
+      <div className="card border-0 rounded-4 shadow-sm" style={{ background: '#ffffff', border: '1px solid #EFECE6' }}>
+        <div className="card-body p-4">
+          <div className="d-flex align-items-center gap-2 mb-3">
+            <i className="ri-information-line text-success fs-5"></i>
+            <h3 className="h6 fw-bold text-dark mb-0 font-display">How Live Distribution Works</h3>
           </div>
-          <div className="flex items-start gap-2.5">
-            <span className="text-base">📱</span>
-            <div>
-              <p className="font-bold text-gray-900">Direct User Downloads</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Landing page visitors tap "Download App" to get the latest APK directly.</p>
+          <div className="row g-3" style={{ fontSize: '12.5px' }}>
+            <div className="col-12 col-md-4">
+              <div className="fw-bold text-dark mb-1">
+                <i className="ri-flashlight-line text-warning me-1"></i> Instant Storefront Sync
+              </div>
+              <div className="text-muted">
+                Uploading a file replaces the live download immediately without requiring any server reboot.
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2.5">
-            <span className="text-base">🔒</span>
-            <div>
-              <p className="font-bold text-gray-900">Verified Packaging</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Only authentic Android APK packages are accepted and distributed.</p>
+            <div className="col-12 col-md-4">
+              <div className="fw-bold text-dark mb-1">
+                <i className="ri-smartphone-line text-primary me-1"></i> Direct User Downloads
+              </div>
+              <div className="text-muted">
+                Visitors on the landing page click "Download App" to instantly download the APK file to their Android device.
+              </div>
+            </div>
+            <div className="col-12 col-md-4">
+              <div className="fw-bold text-dark mb-1">
+                <i className="ri-shield-check-line text-success me-1"></i> Verified Packaging
+              </div>
+              <div className="text-muted">
+                The system only accepts valid Android APK files and verifies file integrity before publishing.
+              </div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   )
 }
