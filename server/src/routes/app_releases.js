@@ -175,9 +175,21 @@ function resolveApkFilePath(release, appType) {
   return null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC ENDPOINTS: Used by Landing Page & Mobile Launchers
-// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/app-releases/debug
+router.get("/debug", (req, res) => {
+  const rootDir = path.resolve(__dirname, "../../..");
+  const publicDownloads = path.join(rootDir, "public_html", "downloads");
+  res.json({
+    downloadsDir,
+    downloadsDirExists: fs.existsSync(downloadsDir),
+    downloadsFiles: fs.existsSync(downloadsDir) ? fs.readdirSync(downloadsDir) : [],
+    publicDownloads,
+    publicDownloadsExists: fs.existsSync(publicDownloads),
+    publicDownloadsFiles: fs.existsSync(publicDownloads) ? fs.readdirSync(publicDownloads) : [],
+    cwd: process.cwd(),
+    dirname: __dirname,
+  });
+});
 
 // GET /api/app-releases/download/:appType (e.g. 'customer' | 'driver')
 // Streams the actual uploaded APK file directly to the visitor
