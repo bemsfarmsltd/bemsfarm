@@ -1057,14 +1057,13 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">How it works</a>
             <Link to="/delivery" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Delivery</Link>
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
-            <button
-              type="button"
-              onClick={() => setAppModalOpen(true)}
+            <a
+              href="#mobile-apps"
               className="text-sm font-bold text-[#143c2d] hover:text-[#c85a17] transition flex items-center gap-1.5 cursor-pointer"
             >
               <span>📱</span>
               <span>Apps</span>
-            </button>
+            </a>
             <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
           <div className="hidden items-center gap-3 xl:flex">
@@ -1106,17 +1105,14 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
                 {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Bems Originals'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setAppModalOpen(true);
-                  }}
+                <a
+                  href="#mobile-apps"
+                  onClick={() => setMenuOpen(false)}
                   className="rounded-xl px-4 py-3 text-left text-sm font-bold text-[#143c2d] hover:bg-[#FAF9F6] flex items-center gap-2 cursor-pointer"
                 >
                   <span>📱</span>
                   <span>Download Mobile Apps</span>
-                </button>
+                </a>
                 <Link to="/delivery" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Delivery & Tracking</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
@@ -1156,14 +1152,13 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link to="/products" className="rounded-full bg-[#143c2d] px-8 py-4 text-center text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Start shopping <span aria-hidden="true">→</span></Link>
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
-                <button
-                  type="button"
-                  onClick={() => setAppModalOpen(true)}
+                <a
+                  href="#mobile-apps"
                   className="rounded-full border border-emerald-800/30 bg-emerald-50 hover:bg-emerald-100 px-6 py-4 text-center text-base font-extrabold text-[#143c2d] transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
                   <span>📱</span>
                   <span>Download App</span>
-                </button>
+                </a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
                 <span className="inline-flex items-center gap-1.5">

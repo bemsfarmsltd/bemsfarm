@@ -31,6 +31,9 @@ scripts/generate_pdf.js
 
 # Local uploads
 server/uploads/
+server/downloads/*.apk
+client/public/downloads/*.apk
+*.apk
 
 # Brain and scratches
 brain/

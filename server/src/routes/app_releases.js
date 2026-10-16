@@ -38,6 +38,7 @@ async function initSchema() {
         file_size VARCHAR(50),
         file_size_bytes BIGINT,
         file_name VARCHAR(120) NOT NULL,
+        stored_filename VARCHAR(255),
         download_url TEXT NOT NULL,
         release_notes TEXT,
         is_active BOOLEAN DEFAULT true,
@@ -46,6 +47,7 @@ async function initSchema() {
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
+      ALTER TABLE app_releases ADD COLUMN IF NOT EXISTS stored_filename VARCHAR(255);
     `);
 
     // Seed defaults if empty
@@ -54,11 +56,11 @@ async function initSchema() {
       const origin = process.env.BASE_URL || "https://bemsfarms.com";
       await pool.query(
         `INSERT INTO app_releases 
-          (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, download_url, release_notes, is_active, uploaded_by_email)
+          (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by_email)
          VALUES 
-          ('customer', 'BemsFarms Customer App', 'com.bemsfarms.customer', '2.4.1', 241, 'Android 8.0+', '18.4 MB', 19293798, 'BemsCustomer.apk', $1, 'Official release with 1-tap reorders, Chef Bems AI, and real-time live order tracking.', true, 'system@bemsfarms.com'),
-          ('driver', 'BemsFarms Driver App', 'com.bemsfarms.driver', '2.3.0', 230, 'Android 8.0+', '16.8 MB', 17616076, 'BemsDriver.apk', $2, 'Official logistics dispatch release with auto-dispatch, route bundling, and mandatory photo proof.', true, 'system@bemsfarms.com')`,
-        [`${origin}/downloads/BemsCustomer.apk`, `${origin}/downloads/BemsDriver.apk`]
+          ('customer', 'BemsFarms Customer App', 'com.bemsfarms.customer', '2.4.1', 241, 'Android 8.0+', '18.4 MB', 19293798, 'BemsCustomer.apk', 'BemsCustomer.apk', $1, 'Official release with 1-tap reorders, Chef Bems AI, and real-time live order tracking.', true, 'system@bemsfarms.com'),
+          ('driver', 'BemsFarms Driver App', 'com.bemsfarms.driver', '2.3.0', 230, 'Android 8.0+', '16.8 MB', 17616076, 'BemsDriver.apk', 'BemsDriver.apk', $2, 'Official logistics dispatch release with auto-dispatch, route bundling, and mandatory photo proof.', true, 'system@bemsfarms.com')`,
+        [`https://api.bemsfarms.com/api/app-releases/download/customer`, `https://api.bemsfarms.com/api/app-releases/download/driver`]
       );
       console.log("✅ Seeded initial app releases into database.");
     }
@@ -119,9 +121,137 @@ function syncApkCopies(sourcePath, standardName) {
   });
 }
 
+// Helper to locate an APK file on disk given a release record
+function resolveApkFilePath(release, appType) {
+  const standardName = appType === "driver" ? "BemsDriver.apk" : "BemsCustomer.apk";
+
+  // 1. Check stored_filename if set
+  if (release && release.stored_filename) {
+    const p = path.join(downloadsDir, release.stored_filename);
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 2. Scan downloadsDir for any Bems_${appType}_*.apk
+  try {
+    if (fs.existsSync(downloadsDir)) {
+      const files = fs.readdirSync(downloadsDir);
+      const prefix = `bems_${appType}_`;
+      const matching = files
+        .filter((f) => f.toLowerCase().startsWith(prefix) && f.toLowerCase().endsWith(".apk"))
+        .map((f) => ({
+          name: f,
+          path: path.join(downloadsDir, f),
+          stat: fs.statSync(path.join(downloadsDir, f)),
+        }));
+
+      // If we have an expected size, prioritize closest match
+      if (release && release.file_size_bytes) {
+        const expectedBytes = parseInt(release.file_size_bytes, 10);
+        const matchBySize = matching.find(
+          (m) => Math.abs(m.stat.size - expectedBytes) < 2048
+        );
+        if (matchBySize) return matchBySize.path;
+      }
+
+      // Otherwise take newest
+      if (matching.length > 0) {
+        matching.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+        return matching[0].path;
+      }
+    }
+  } catch (e) {
+    console.warn("[app_releases] Error scanning downloadsDir:", e.message);
+  }
+
+  // 3. Fall back to standard name in downloadsDir
+  const stdPath = path.join(downloadsDir, standardName);
+  if (fs.existsSync(stdPath)) return stdPath;
+
+  // 4. Fall back to public_html/downloads
+  const rootDir = path.resolve(__dirname, "../../..");
+  const publicPath = path.join(rootDir, "public_html", "downloads", standardName);
+  if (fs.existsSync(publicPath)) return publicPath;
+
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC ENDPOINTS: Used by Landing Page & Mobile Launchers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/app-releases/download/:appType (e.g. 'customer' | 'driver')
+// Streams the actual uploaded APK file directly to the visitor
+router.get("/download/:appType", async (req, res) => {
+  await initSchema();
+  try {
+    const { appType } = req.params;
+    if (appType !== "customer" && appType !== "driver") {
+      return res.status(400).send("Invalid app type. Must be 'customer' or 'driver'.");
+    }
+
+    const result = await pool.query(
+      `SELECT * FROM app_releases WHERE app_type = $1 AND is_active = true ORDER BY id DESC LIMIT 1`,
+      [appType]
+    );
+
+    const release = result.rows[0];
+    const standardName = appType === "driver" ? "BemsDriver.apk" : "BemsCustomer.apk";
+    const filePath = resolveApkFilePath(release, appType);
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).send(`APK file for ${appType} is not currently available on the server.`);
+    }
+
+    const stat = fs.statSync(filePath);
+    console.log(`[download] Serving ${appType} APK: ${filePath} (${stat.size} bytes)`);
+
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    res.setHeader("Content-Disposition", `attachment; filename="${standardName}"`);
+    res.setHeader("Content-Length", stat.size);
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error("Error serving APK download:", err);
+    res.status(500).send("Server error while preparing download.");
+  }
+});
+
+// GET /api/app-releases/download-file/:id
+// Downloads any specific release by ID (used by Admin History table)
+router.get("/download-file/:id", async (req, res) => {
+  await initSchema();
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`SELECT * FROM app_releases WHERE id = $1`, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).send("Release record not found.");
+    }
+
+    const release = result.rows[0];
+    const standardName = release.app_type === "driver" ? "BemsDriver.apk" : "BemsCustomer.apk";
+    const filePath = resolveApkFilePath(release, release.app_type);
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).send("APK file not found on server.");
+    }
+
+    const stat = fs.statSync(filePath);
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    res.setHeader("Content-Disposition", `attachment; filename="${release.file_name || standardName}"`);
+    res.setHeader("Content-Length", stat.size);
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error("Error serving release file by id:", err);
+    res.status(500).send("Server error while preparing download.");
+  }
+});
 
 // GET /api/app-releases/latest OR GET /api/app-releases
 router.get(["/", "/latest"], async (req, res) => {
@@ -130,7 +260,7 @@ router.get(["/", "/latest"], async (req, res) => {
     const result = await pool.query(`
       SELECT DISTINCT ON (app_type)
         id, app_type, app_name, package_name, version_name, version_code,
-        min_android, file_size, file_size_bytes, file_name, download_url,
+        min_android, file_size, file_size_bytes, file_name, stored_filename, download_url,
         release_notes, is_active, updated_at
       FROM app_releases
       WHERE is_active = true
@@ -143,12 +273,15 @@ router.get(["/", "/latest"], async (req, res) => {
     };
 
     result.rows.forEach((row) => {
+      // Ensure download_url points directly to the live streaming download endpoint
+      const host = req.get("host") || "api.bemsfarms.com";
+      const proto = req.protocol || "https";
+      const apiBase = `${proto}://${host}`;
+      row.download_url = `${apiBase}/api/app-releases/download/${row.app_type}`;
       formatted[row.app_type] = row;
     });
 
-    // Provide safe defaults if no rows exist
-    const origin =
-      req.get("origin") || `${req.protocol}://${req.get("host")}` || "https://bemsfarms.com";
+    const apiBase = "https://api.bemsfarms.com";
 
     if (!formatted.customer) {
       formatted.customer = {
@@ -160,7 +293,7 @@ router.get(["/", "/latest"], async (req, res) => {
         min_android: "Android 8.0+",
         file_size: "18.4 MB",
         file_name: "BemsCustomer.apk",
-        download_url: `${origin}/downloads/BemsCustomer.apk`,
+        download_url: `${apiBase}/api/app-releases/download/customer`,
         release_notes: "Fresh produce 1-tap reorders and Chef Bems AI meal planning.",
       };
     }
@@ -175,7 +308,7 @@ router.get(["/", "/latest"], async (req, res) => {
         min_android: "Android 8.0+",
         file_size: "16.8 MB",
         file_name: "BemsDriver.apk",
-        download_url: `${origin}/downloads/BemsDriver.apk`,
+        download_url: `${apiBase}/api/app-releases/download/driver`,
         release_notes: "Live proximity auto-dispatch, route bundling, and photo delivery proof.",
       };
     }
@@ -206,12 +339,59 @@ router.get("/history", protect, async (req, res) => {
     query += " ORDER BY id DESC LIMIT 50";
 
     const result = await pool.query(query, params);
-    res.json({ success: true, history: result.rows });
+    
+    // Ensure download_url in history items links to download-file/:id
+    const rows = result.rows.map(row => ({
+      ...row,
+      download_url: `https://api.bemsfarms.com/api/app-releases/download-file/${row.id}`
+    }));
+
+    res.json({ success: true, history: rows });
   } catch (err) {
     console.error("Error fetching release history:", err);
     res.status(500).json({ error: "Failed to fetch release history" });
   }
 });
+
+// DELETE /api/admin/app-releases/:id
+// Allows admins to delete old test releases or seeded placeholders
+router.delete(
+  "/:id",
+  protect,
+  requireRole("superadmin", "admin", "manager"),
+  async (req, res) => {
+    await initSchema();
+    try {
+      const { id } = req.params;
+      const findRes = await pool.query("SELECT * FROM app_releases WHERE id = $1", [id]);
+      if (findRes.rows.length === 0) {
+        return res.status(404).json({ error: "Release not found" });
+      }
+
+      const release = findRes.rows[0];
+      await pool.query("DELETE FROM app_releases WHERE id = $1", [id]);
+
+      // If this was active, activate the next most recent release of this appType
+      if (release.is_active) {
+        await pool.query(`
+          UPDATE app_releases
+          SET is_active = true
+          WHERE id = (
+            SELECT id FROM app_releases
+            WHERE app_type = $1
+            ORDER BY id DESC
+            LIMIT 1
+          )
+        `, [release.app_type]);
+      }
+
+      res.json({ success: true, message: "Release record deleted successfully" });
+    } catch (err) {
+      console.error("Error deleting release:", err);
+      res.status(500).json({ error: "Failed to delete release: " + err.message });
+    }
+  }
+);
 
 // POST /api/admin/app-releases/upload
 // Handles uploading a new build for Customer App or Driver App
@@ -255,20 +435,14 @@ router.post(
       const packageName = isCustomer ? "com.bemsfarms.customer" : "com.bemsfarms.driver";
 
       const uploadedPath = req.file.path;
+      const storedFilename = req.file.filename;
       const fileSizeBytes = req.file.size;
       const fileSize = formatBytes(fileSizeBytes);
 
       // Copy uploaded file to the standard BemsCustomer.apk / BemsDriver.apk locations
       syncApkCopies(uploadedPath, standardFileName);
 
-      const origin =
-        process.env.FRONTEND_URL ||
-        process.env.BASE_URL ||
-        req.get("origin") ||
-        `${req.protocol}://${req.get("host")}` ||
-        "https://bemsfarms.com";
-
-      const downloadUrl = `${origin.replace(/\/$/, "")}/downloads/${standardFileName}`;
+      const downloadUrl = `https://api.bemsfarms.com/api/app-releases/download/${appType}`;
 
       // Mark previous releases of this app type as inactive
       await pool.query(
@@ -279,7 +453,7 @@ router.post(
       // Insert new active release
       const insertResult = await pool.query(
         `INSERT INTO app_releases
-          (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, download_url, release_notes, is_active, uploaded_by, uploaded_by_email)
+          (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by, uploaded_by_email)
          VALUES
           ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12, $13)
          RETURNING *`,
@@ -293,6 +467,7 @@ router.post(
           fileSize,
           fileSizeBytes,
           standardFileName,
+          storedFilename,
           downloadUrl,
           releaseNotes.trim(),
           req.user?.id || null,

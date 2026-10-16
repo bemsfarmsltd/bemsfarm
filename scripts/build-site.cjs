@@ -55,6 +55,10 @@ DirectoryIndex index.html
   RewriteEngine On
   RewriteBase /
 
+  # 0. Mobile APK Download Direct Routing -> Dynamic Express API
+  RewriteRule ^downloads/BemsDriver\\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
+  RewriteRule ^downloads/BemsCustomer\\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
+
   # 1. Admin SPA Routing (/admin/*)
   RewriteRule ^admin/index\\.html$ - [L]
   RewriteCond %{REQUEST_URI} ^/admin(/|$) [NC]

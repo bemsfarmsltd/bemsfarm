@@ -104,6 +104,20 @@ export default function MobileAppsSettings() {
     }
   }
 
+  const handleDeleteRelease = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this release record from history?')) {
+      return
+    }
+    try {
+      await api.delete(`/admin/app-releases/${id}`)
+      toast.success('Release record removed')
+      await fetchHistory()
+    } catch (err) {
+      console.error('Failed to delete release:', err)
+      toast.error(err.response?.data?.error || 'Failed to remove release record')
+    }
+  }
+
   return (
     <div className="container-fluid py-4 px-sm-4" style={{ maxWidth: '1100px' }}>
       <style>{`
@@ -573,15 +587,27 @@ export default function MobileAppsSettings() {
                           }) : '—'}
                         </td>
                         <td className="pe-3 py-3 text-end">
-                          <a
-                            href={item.download_url || (isCust ? '/downloads/BemsCustomer.apk' : '/downloads/BemsDriver.apk')}
-                            download={item.file_name || (isCust ? 'BemsCustomer.apk' : 'BemsDriver.apk')}
-                            className="btn btn-sm btn-light border px-2.5 py-1 text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
-                            style={{ fontSize: '11.5px', borderRadius: '8px' }}
-                          >
-                            <i className="ri-download-2-line"></i>
-                            <span>Download</span>
-                          </a>
+                          <div className="d-inline-flex align-items-center gap-1.5">
+                            <a
+                              href={item.download_url || `https://api.bemsfarms.com/api/app-releases/download-file/${item.id}`}
+                              download={item.file_name || (isCust ? 'BemsCustomer.apk' : 'BemsDriver.apk')}
+                              className="btn btn-sm btn-light border px-2.5 py-1 text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                              style={{ fontSize: '11.5px', borderRadius: '8px' }}
+                              title="Download APK package"
+                            >
+                              <i className="ri-download-2-line"></i>
+                              <span>Download</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRelease(item.id)}
+                              className="btn btn-sm btn-light text-danger border px-2 py-1 d-inline-flex align-items-center"
+                              style={{ fontSize: '11.5px', borderRadius: '8px' }}
+                              title="Remove release from history"
+                            >
+                              <i className="ri-delete-bin-line"></i>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
