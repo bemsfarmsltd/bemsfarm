@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
@@ -14,8 +14,29 @@ export default function MobileAppsSettings() {
   const [uploadingDriver, setUploadingDriver] = useState(false)
   const [driverProgress, setDriverProgress] = useState(0)
 
+  const [history, setHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   const customerInputRef = useRef(null)
   const driverInputRef = useRef(null)
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const res = await api.get('/admin/app-releases/history')
+      if (res.data?.success && Array.isArray(res.data.history)) {
+        setHistory(res.data.history)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch release history:', err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchHistory()
+  }, [])
 
   const handleFileSelect = (file, appType) => {
     if (!file) return
@@ -68,6 +89,7 @@ export default function MobileAppsSettings() {
       setProgress(0)
       if (isCustomer && customerInputRef.current) customerInputRef.current.value = ''
       if (!isCustomer && driverInputRef.current) driverInputRef.current.value = ''
+      await fetchHistory()
     } catch (err) {
       console.error('APK upload error:', err)
       const errorMsg =
@@ -170,6 +192,13 @@ export default function MobileAppsSettings() {
           background-color: #B04F14;
           border-color: #B04F14;
           color: #ffffff;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
         }
       `}</style>
 
@@ -441,7 +470,128 @@ export default function MobileAppsSettings() {
 
       </div>
 
-      {/* ── Info Card ── */}
+      {/* ── Upload & Release History Table ── */}
+      <div className="card border-0 rounded-4 shadow-sm mb-4" style={{ background: '#ffffff', border: '1px solid #EFECE6' }}>
+        <div className="card-body p-4">
+          <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+            <div className="d-flex align-items-center gap-2.5">
+              <div className="d-inline-flex align-items-center justify-content-center rounded-circle" style={{ width: '36px', height: '36px', background: '#EAF5EF', color: '#143C2D', fontSize: '18px' }}>
+                <i className="ri-history-line"></i>
+              </div>
+              <div>
+                <h3 className="h6 fw-bold text-dark mb-0 font-display">Upload &amp; Release History</h3>
+                <span className="text-muted" style={{ fontSize: '11px' }}>Detailed log of every Customer and Driver build published to the server</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchHistory}
+              disabled={loadingHistory}
+              className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1.5 text-muted px-3 py-1.5"
+              style={{ fontSize: '12px', borderRadius: '10px' }}
+            >
+              <i className={`ri-refresh-line ${loadingHistory ? 'spin' : ''}`}></i>
+              <span>Refresh Log</span>
+            </button>
+          </div>
+
+          {loadingHistory && history.length === 0 ? (
+            <div className="py-4 text-center text-muted small">
+              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+              Loading upload history…
+            </div>
+          ) : history.length === 0 ? (
+            <div className="py-4 text-center text-muted small">
+              No upload records found. Upload a build above to log deployment details here.
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '13px' }}>
+                <thead className="table-light text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <tr>
+                    <th scope="col" className="ps-3 py-3">Application</th>
+                    <th scope="col" className="py-3">Target File</th>
+                    <th scope="col" className="py-3">File Size</th>
+                    <th scope="col" className="py-3">Status</th>
+                    <th scope="col" className="py-3">Uploaded By</th>
+                    <th scope="col" className="py-3">Date &amp; Time</th>
+                    <th scope="col" className="pe-3 py-3 text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((item) => {
+                    const isCust = item.app_type === 'customer'
+                    return (
+                      <tr key={item.id}>
+                        <td className="ps-3 py-3">
+                          <div className="d-flex align-items-center gap-2.5">
+                            <span className="fs-5">
+                              {isCust ? '🛒' : '🛵'}
+                            </span>
+                            <div>
+                              <div className="fw-bold text-dark">
+                                {isCust ? 'Customer Shopping App' : 'Driver Dispatch App'}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: '11px' }}>
+                                {item.package_name || (isCust ? 'com.bemsfarms.customer' : 'com.bemsfarms.driver')}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <code className={`fw-bold ${isCust ? 'text-success' : 'text-warning-emphasis'}`} style={{ fontSize: '12px' }}>
+                            {item.file_name || (isCust ? 'BemsCustomer.apk' : 'BemsDriver.apk')}
+                          </code>
+                        </td>
+                        <td className="py-3 fw-semibold text-dark">
+                          {item.file_size || (item.file_size_bytes ? `${(item.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : '—')}
+                        </td>
+                        <td className="py-3">
+                          {item.is_active ? (
+                            <span className="badge rounded-pill px-2.5 py-1" style={{ background: '#EAF5EF', color: '#143C2D', border: '1px solid #A7F3D0', fontWeight: '700', fontSize: '11px' }}>
+                              <span className="spinner-grow spinner-grow-sm me-1" style={{ width: '6px', height: '6px' }}></span>
+                              Live Storefront
+                            </span>
+                          ) : (
+                            <span className="badge rounded-pill px-2.5 py-1 bg-light text-muted border" style={{ fontWeight: '600', fontSize: '11px' }}>
+                              Replaced / Archive
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-muted" style={{ fontSize: '12px' }}>
+                          {item.uploaded_by_email || 'admin@bemsfarms.com'}
+                        </td>
+                        <td className="py-3 text-muted" style={{ fontSize: '12px' }}>
+                          {item.created_at ? new Date(item.created_at).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          }) : '—'}
+                        </td>
+                        <td className="pe-3 py-3 text-end">
+                          <a
+                            href={item.download_url || (isCust ? '/downloads/BemsCustomer.apk' : '/downloads/BemsDriver.apk')}
+                            download={item.file_name || (isCust ? 'BemsCustomer.apk' : 'BemsDriver.apk')}
+                            className="btn btn-sm btn-light border px-2.5 py-1 text-decoration-none fw-semibold d-inline-flex align-items-center gap-1"
+                            style={{ fontSize: '11.5px', borderRadius: '8px' }}
+                          >
+                            <i className="ri-download-2-line"></i>
+                            <span>Download</span>
+                          </a>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
       <div className="card border-0 rounded-4 shadow-sm" style={{ background: '#ffffff', border: '1px solid #EFECE6' }}>
         <div className="card-body p-4">
           <div className="d-flex align-items-center gap-2 mb-3">
