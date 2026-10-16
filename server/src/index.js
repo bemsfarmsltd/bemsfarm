@@ -67,6 +67,18 @@ const uploadsStatic = express.static(path.join(__dirname, "../uploads"), {
 });
 app.use("/uploads", uploadsStatic);
 app.use("/api/uploads", uploadsStatic);
+const downloadsStatic = express.static(path.join(__dirname, "../downloads"), {
+  setHeaders: (res, filepath) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    if (filepath.endsWith(".apk")) {
+      res.setHeader("Content-Type", "application/vnd.android.package-archive");
+      res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
+    }
+  }
+});
+app.use("/downloads", downloadsStatic);
+app.use("/api/downloads", downloadsStatic);
 app.use(require('./services/auditService').auditRequests);
 app.use('/api/audit', require('./routes/audit'));
 
@@ -253,8 +265,11 @@ const locationRoutes = require("./routes/locations");
 const dispatchAdminRoutes = require("./routes/dispatch_admin");
 const notificationsRoutes = require("./routes/notifications");
 const verifyRoutes = require("./routes/verify_public");
+const appReleasesRoutes = require("./routes/app_releases");
 
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/app-releases", appReleasesRoutes);
+app.use("/api/admin/app-releases", appReleasesRoutes);
 app.use("/api/verify", verifyRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/driver", driverRoutes);

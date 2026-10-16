@@ -123,6 +123,7 @@ import InvoiceSettings      from './pages/settings/InvoiceSettings'
 import ManagerSettings      from './pages/settings/ManagerSettings'
 import TeamOnboarding        from './pages/settings/TeamOnboarding'
 import Profile               from './pages/settings/Profile'
+import MobileAppsSettings    from './pages/settings/MobileAppsSettings'
 
 import GlobalBarcodeListener from './components/GlobalBarcodeListener'
 import { RealtimeProvider } from './context/RealtimeContext'
@@ -333,6 +334,8 @@ function App() {
                 <Route path="/settings/currencies"    element={<Navigate to="/settings/general" replace />} />
                 <Route path="/settings/invoices"      element={<InvoiceSettings />} />
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
+                <Route path="/settings/mobile-apps"   element={<MobileAppsSettings />} />
+                <Route path="/deliveries/mobile-apps" element={<MobileAppsSettings />} />
               </Route>
 
               {/* ── God Eye Audit Log — restricted to one designated owner account ── */}

@@ -785,6 +785,12 @@ export default function Sidebar() {
                 >
                   <span>Courier Dispatch Chat</span>
                 </NavLink>
+                <NavLink
+                  to="/deliveries/mobile-apps"
+                  className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}
+                >
+                  <span>📱 Driver &amp; Customer Apps</span>
+                </NavLink>
               </>
             )}
 
@@ -918,6 +924,9 @@ export default function Sidebar() {
                 )}
                 <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Notifications</span>
+                </NavLink>
+                <NavLink to="/settings/mobile-apps" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>📱 Mobile Apps &amp; APKs</span>
                 </NavLink>
               </>
             )}

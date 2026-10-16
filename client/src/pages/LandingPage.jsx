@@ -12,6 +12,8 @@ import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
 import CartDrawer from "../components/ui/CartDrawer";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
+import AppDownloadModal from "../components/ui/AppDownloadModal";
+import LandingMobileAppsSection from "../components/ui/LandingMobileAppsSection";
 
 
 
@@ -143,6 +145,7 @@ const shoppingDetails = [
 
 const faqs = [
   { question: "Do I need an account to place an order?", answer: "Yes. Your account keeps your delivery details, orders and preferences together, making future purchases quicker." },
+  { question: "How do I download and install the Customer or Driver app?", answer: "You can download the official verified Android APK directly from this landing page under the 'Mobile Apps' section or by tapping 'Download APK'. After downloading BemsCustomer.apk or BemsDriver.apk, tap the file notification in your browser and tap 'Install' (if prompted, enable 'Allow installation from this source'). Our apps are lightweight, fast, malware-scanned, and sync live with our inventory." },
   { question: "What does delivery cost?", answer: "Delivery fees are calculated based on your location and chosen delivery options, confirmed for your address at checkout." },
   { question: "What can Chef Bems help me with?", answer: "Chef Bems can suggest meals, build shopping ideas and help you find useful alternatives from products available in the store." },
   { question: "Can I review my order after payment?", answer: "Yes. Signed-in customers can follow order progress and review previous purchases from their account." },
@@ -830,6 +833,8 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fullScreenModalOpen, setFullScreenModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [appModalOpen, setAppModalOpen] = useState(false);
+  const [appModalInitial, setAppModalInitial] = useState("customer");
   const [openFaq, setOpenFaq] = useState(0);
   const [email, setEmail] = useState("");
   const [subscribeState, setSubscribeState] = useState("idle");
@@ -848,6 +853,11 @@ export default function LandingPage() {
   const toastTimerRef = useRef(null);
   const catalogueTriggerRef = useRef(null);
   const itemsPerPage = 6;
+
+  const handleOpenAppModal = (app = "customer") => {
+    setAppModalInitial(app);
+    setAppModalOpen(true);
+  };
 
   // Cleanup toast timer on unmount
   useEffect(() => {
@@ -1053,6 +1063,10 @@ export default function LandingPage() {
             <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">How it works</a>
             <Link to="/delivery" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Delivery</Link>
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
+            <a href="#mobile-apps" className="text-sm font-bold text-[#143c2d] hover:text-[#c85a17] transition flex items-center gap-1.5">
+              <span>📱</span>
+              <span>Apps</span>
+            </a>
             <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
           <div className="hidden items-center gap-3 xl:flex">
@@ -1093,7 +1107,7 @@ export default function LandingPage() {
           {menuOpen && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
-                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Bems Originals'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
+                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Bems Originals'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#mobile-apps', '📱 Mobile Apps (APK)'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
                 <Link to="/delivery" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Delivery & Tracking</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
@@ -1133,6 +1147,14 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link to="/products" className="rounded-full bg-[#143c2d] px-8 py-4 text-center text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Start shopping <span aria-hidden="true">→</span></Link>
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAppModal("customer")}
+                  className="rounded-full border border-emerald-800/30 bg-emerald-50 hover:bg-emerald-100 px-6 py-4 text-center text-base font-extrabold text-[#143c2d] transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <span>📱</span>
+                  <span>Get Mobile Apps</span>
+                </button>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
                 <span className="inline-flex items-center gap-1.5">
@@ -1618,6 +1640,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── UPGRADED MOBILE APPS ECOSYSTEM (CUSTOMER & DRIVER APPS) ── */}
+        <LandingMobileAppsSection onOpenDownloadModal={handleOpenAppModal} />
+
         {/* ── TACTILE FAQ SECTION ── */}
         <section id="faq" className="scroll-mt-24 border-t border-[#DDD3BF] bg-[#EFE8DC] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
           <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.85fr_1.15fr]">
@@ -1863,9 +1888,30 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col"><Link to="/products" className="rounded-full bg-amber-300 px-7 py-3.5 text-center text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Shop the catalogue</Link><Link to="/chef-chat" className="rounded-full border border-white/25 px-7 py-3.5 text-center text-sm font-extrabold text-white transition hover:bg-white/10">Open Chef Bems</Link></div>
           </div>
 
-          <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_.75fr_.75fr_.9fr]">
+          <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.25fr_.7fr_.75fr_.75fr_.85fr]">
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Fresh Selection</span><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Secure Checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Mobile Apps</h2>
+              <div className="mt-5 flex flex-col gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => handleOpenAppModal("customer")}
+                  className="text-left text-amber-300 font-bold hover:text-white transition cursor-pointer"
+                >
+                  Customer App (.apk)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAppModal("driver")}
+                  className="text-left text-amber-300 font-bold hover:text-white transition cursor-pointer"
+                >
+                  Driver App (.apk)
+                </button>
+                <Link to="/driver/login" className="hover:text-white">Driver Web Portal</Link>
+                <Link to="/driver/onboarding" className="hover:text-white">Join Courier Fleet</Link>
+              </div>
+            </div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help &amp; Verification</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/verify" className="hover:text-white text-amber-300 font-bold">Verify Receipt / Invoice</Link><Link to="/delivery" className="hover:text-white">Delivery &amp; Tracking</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping &amp; delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns &amp; refunds</Link></div></div>
             <div>
               <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2>
@@ -1932,6 +1978,13 @@ export default function LandingPage() {
         product={restockProduct}
         isOpen={Boolean(restockProduct)}
         onClose={() => setRestockProduct(null)}
+      />
+
+      {/* App Download Modal for Customer & Driver Apps */}
+      <AppDownloadModal
+        isOpen={appModalOpen}
+        onClose={() => setAppModalOpen(false)}
+        initialApp={appModalInitial}
       />
 
       {/* Toast Notification for Basket Actions */}

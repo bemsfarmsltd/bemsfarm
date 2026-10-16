@@ -31,3 +31,6 @@ scripts/generate_pdf.js
 
 # Local uploads
 server/uploads/
+
+# Brain and scratches
+brain/
