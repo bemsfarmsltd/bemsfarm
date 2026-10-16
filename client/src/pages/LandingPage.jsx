@@ -11,6 +11,7 @@ import logo from "../assets/bemsfarms_logo_compact.png";
 import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
 import CartDrawer from "../components/ui/CartDrawer";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 import LandingMobileAppsSection from "../components/ui/LandingMobileAppsSection";
 import AppDownloadModal from "../components/ui/AppDownloadModal";
 
