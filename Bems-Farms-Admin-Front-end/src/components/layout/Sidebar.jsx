@@ -349,8 +349,6 @@ export default function Sidebar() {
         letter-spacing: -0.01em;
         margin: 0;
       }
-        letter-spacing: -0.01em;
-      }
       
       .sub-panel-nav {
         flex: 1;
@@ -359,6 +357,19 @@ export default function Sidebar() {
         display: flex;
         flex-direction: column;
         gap: 0.2rem;
+      }
+
+      .sub-section-header {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #94A3B8;
+        padding: 0.85rem 0.85rem 0.3rem;
+        text-transform: uppercase;
+        user-select: none;
+      }
+      .sub-section-header:first-of-type {
+        padding-top: 0.2rem;
       }
       
       .dual-sub-link {
@@ -372,16 +383,23 @@ export default function Sidebar() {
         font-weight: 550;
         text-decoration: none;
         transition: all 0.15s ease;
+        outline: none !important;
+        border: none !important;
+      }
+      .dual-sub-link:focus,
+      .dual-sub-link:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
       }
       .dual-sub-link:hover {
-        background: #F8FAFC;
+        background: #F1F5F9;
         color: #0F172A;
       }
       .dual-sub-link.active {
         background: #EAF5EF;
         color: #143C2D;
         font-weight: 750;
-        border-left: 3px solid #143C2D;
+        border-left: 3px solid #143C2D !important;
         padding-left: calc(0.85rem - 3px);
       }
       
@@ -866,6 +884,7 @@ export default function Sidebar() {
             {/* 10. SETTINGS & ONBOARDING */}
             {activeTab === 'settings' && (
               <>
+                <div className="sub-section-header">Store &amp; Account</div>
                 <NavLink to="/settings/profile" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>My Profile &amp; Security</span>
                 </NavLink>
@@ -876,6 +895,7 @@ export default function Sidebar() {
                 {/* Team Onboarding & Staff Management */}
                 {showStaff && (
                   <>
+                    <div className="sub-section-header">Team &amp; Access</div>
                     <Link
                       to="/onboarding?tab=onboarding"
                       className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
@@ -903,6 +923,7 @@ export default function Sidebar() {
                 )}
 
                 {/* Store Operations & Billing Settings */}
+                <div className="sub-section-header">Billing &amp; Store Ops</div>
                 <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Payment &amp; Tax</span>
                 </NavLink>
@@ -919,6 +940,9 @@ export default function Sidebar() {
                 <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Notifications</span>
                 </NavLink>
+
+                {/* Mobile Apps & Distribution */}
+                <div className="sub-section-header">Mobile Ecosystem</div>
                 <NavLink to="/settings/mobile-apps" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Mobile Apps</span>
                 </NavLink>
