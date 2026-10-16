@@ -218,7 +218,7 @@ router.get("/history", protect, async (req, res) => {
 router.post(
   "/upload",
   protect,
-  requireRole(["superadmin", "admin", "manager"]),
+  requireRole("superadmin", "admin", "manager"),
   (req, res, next) => {
     upload.single("apk")(req, res, (err) => {
       if (err instanceof multer.MulterError) {

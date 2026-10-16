@@ -83,16 +83,15 @@ const protect = async (req, res, next) => {
 
 const SALES_ROLES = Object.freeze(["cashier", "salesperson", "sales_person", "sales"]);
 
-// ── requireRole ───────────────────────────────────────────────────
-// Usage: router.get('/route', protect, requireRole('superadmin','manager'), handler)
 const requireRole =
   (...roles) =>
   (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
+    const flattened = roles.flat(Infinity);
     const userRole = String(req.user.role || "").toLowerCase();
-    const isAllowed = roles.some((r) => {
+    const isAllowed = flattened.some((r) => {
       const lowerR = String(r).toLowerCase();
       if (lowerR === userRole) return true;
       if (lowerR === "cashier" && SALES_ROLES.includes(userRole)) return true;
@@ -101,7 +100,7 @@ const requireRole =
 
     if (!isAllowed) {
       return res.status(403).json({
-        message: `Access denied. Required role: ${roles.join(" or ")}`,
+        message: `Access denied. Required role: ${flattened.join(" or ")}`,
       });
     }
     next();

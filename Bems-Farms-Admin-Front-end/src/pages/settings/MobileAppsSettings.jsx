@@ -7,10 +7,12 @@ export default function MobileAppsSettings() {
   const [customerFile, setCustomerFile] = useState(null)
   const [customerDragging, setCustomerDragging] = useState(false)
   const [uploadingCustomer, setUploadingCustomer] = useState(false)
+  const [customerProgress, setCustomerProgress] = useState(0)
 
   const [driverFile, setDriverFile] = useState(null)
   const [driverDragging, setDriverDragging] = useState(false)
   const [uploadingDriver, setUploadingDriver] = useState(false)
+  const [driverProgress, setDriverProgress] = useState(0)
 
   const customerInputRef = useRef(null)
   const driverInputRef = useRef(null)
@@ -23,8 +25,10 @@ export default function MobileAppsSettings() {
     }
     if (appType === 'customer') {
       setCustomerFile(file)
+      setCustomerProgress(0)
     } else {
       setDriverFile(file)
+      setDriverProgress(0)
     }
   }
 
@@ -33,6 +37,7 @@ export default function MobileAppsSettings() {
     const selectedFile = isCustomer ? customerFile : driverFile
     const setUploading = isCustomer ? setUploadingCustomer : setUploadingDriver
     const setFile = isCustomer ? setCustomerFile : setDriverFile
+    const setProgress = isCustomer ? setCustomerProgress : setDriverProgress
 
     if (!selectedFile) {
       toast.error(`Please select a .apk file for ${isCustomer ? 'Customer App' : 'Driver App'}`)
@@ -40,24 +45,38 @@ export default function MobileAppsSettings() {
     }
 
     const formData = new FormData()
-    formData.append('apk', selectedFile)
     formData.append('appType', appType)
+    formData.append('apk', selectedFile)
 
     setUploading(true)
+    setProgress(0)
     const toastId = toast.loading(`Uploading & deploying ${selectedFile.name}...`)
 
     try {
       const res = await api.post('/admin/app-releases/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000,
+        timeout: 600000,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            setProgress(percent)
+          }
+        },
       })
 
       toast.success(res.data?.message || `${isCustomer ? 'Customer' : 'Driver'} APK deployed successfully!`, { id: toastId })
       setFile(null)
+      setProgress(0)
       if (isCustomer && customerInputRef.current) customerInputRef.current.value = ''
       if (!isCustomer && driverInputRef.current) driverInputRef.current.value = ''
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to upload APK', { id: toastId })
+      console.error('APK upload error:', err)
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        (err.code === 'ECONNABORTED' ? 'Upload timed out. Please check your internet connection.' : null) ||
+        err.message ||
+        'Failed to upload APK'
+      toast.error(errorMsg, { id: toastId })
     } finally {
       setUploading(false)
     }
@@ -255,6 +274,16 @@ export default function MobileAppsSettings() {
                   </button>
                 </div>
               )}
+
+              {uploadingCustomer && (
+                <div className="progress mt-3" style={{ height: '6px' }}>
+                  <div
+                    className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                    role="progressbar"
+                    style={{ width: `${customerProgress}%` }}
+                  ></div>
+                </div>
+              )}
             </div>
 
             {/* Footer Actions */}
@@ -277,7 +306,7 @@ export default function MobileAppsSettings() {
                 {uploadingCustomer ? (
                   <>
                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span>Deploying…</span>
+                    <span>{customerProgress > 0 ? `Uploading ${customerProgress}%…` : 'Deploying…'}</span>
                   </>
                 ) : (
                   <>
@@ -366,6 +395,15 @@ export default function MobileAppsSettings() {
                   </button>
                 </div>
               )}
+              {uploadingDriver && (
+                <div className="progress mt-3" style={{ height: '6px' }}>
+                  <div
+                    className="progress-bar bg-warning progress-bar-striped progress-bar-animated"
+                    role="progressbar"
+                    style={{ width: `${driverProgress}%` }}
+                  ></div>
+                </div>
+              )}
             </div>
 
             {/* Footer Actions */}
@@ -388,7 +426,7 @@ export default function MobileAppsSettings() {
                 {uploadingDriver ? (
                   <>
                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span>Deploying…</span>
+                    <span>{driverProgress > 0 ? `Uploading ${driverProgress}%…` : 'Deploying…'}</span>
                   </>
                 ) : (
                   <>
