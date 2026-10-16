@@ -6,11 +6,30 @@ const multer = require("multer");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
-// Ensure downloads directory exists
-const downloadsDir = path.resolve(__dirname, "../../downloads");
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
+// Persistent storage directory that survives Hostinger ephemeral hbuilds deployments
+function getStorageDir() {
+  const hostingerHome = "/home/u649760923";
+  if (fs.existsSync(hostingerHome)) {
+    const p = path.join(hostingerHome, "storage", "app_releases");
+    if (!fs.existsSync(p)) {
+      try {
+        fs.mkdirSync(p, { recursive: true });
+        console.log("✅ Created persistent Hostinger app_releases storage:", p);
+      } catch (e) {
+        console.warn("Could not create persistent storage:", e.message);
+      }
+    }
+    return p;
+  }
+  // Local development / generic fallback
+  const localDir = path.resolve(__dirname, "../../downloads");
+  if (!fs.existsSync(localDir)) {
+    fs.mkdirSync(localDir, { recursive: true });
+  }
+  return localDir;
 }
+
+const downloadsDir = getStorageDir();
 
 // Format file size in readable format
 function formatBytes(bytes) {
@@ -53,7 +72,6 @@ async function initSchema() {
     // Seed defaults if empty
     const check = await pool.query("SELECT COUNT(*) FROM app_releases");
     if (parseInt(check.rows[0].count, 10) === 0) {
-      const origin = process.env.BASE_URL || "https://bemsfarms.com";
       await pool.query(
         `INSERT INTO app_releases 
           (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by_email)
@@ -76,7 +94,8 @@ initSchema();
 // Configure Multer storage for APK files
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, downloadsDir);
+    const dir = getStorageDir();
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     const appType = req.body.appType === "driver" ? "driver" : "customer";
@@ -98,25 +117,26 @@ const upload = multer({
   },
 });
 
-// Helper to copy file to client/public/downloads, client/dist/downloads, and public_html/downloads
+// Helper to copy file to persistent storage, public_html/downloads, and client/dist/downloads
 function syncApkCopies(sourcePath, standardName) {
   const rootDir = path.resolve(__dirname, "../../..");
   const targets = [
     path.join(downloadsDir, standardName),
+    "/home/u649760923/domains/bemsfarms.com/public_html/downloads/" + standardName,
     path.join(rootDir, "client", "public", "downloads", standardName),
     path.join(rootDir, "client", "dist", "downloads", standardName),
     path.join(rootDir, "public_html", "downloads", standardName),
+    path.resolve(__dirname, "../../downloads", standardName),
   ];
 
   targets.forEach((target) => {
     try {
       const dir = path.dirname(target);
-      if (fs.existsSync(dir)) {
-        fs.copyFileSync(sourcePath, target);
-        console.log(`[app_releases] Synced APK to: ${target}`);
-      }
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.copyFileSync(sourcePath, target);
+      console.log(`[app_releases] Synced APK to: ${target}`);
     } catch (e) {
-      console.warn(`[app_releases] Failed copying to ${target}:`, e.message);
+      // quiet non-existent paths
     }
   });
 }
@@ -125,91 +145,67 @@ function syncApkCopies(sourcePath, standardName) {
 function resolveApkFilePath(release, appType) {
   const standardName = appType === "driver" ? "BemsDriver.apk" : "BemsCustomer.apk";
 
-  // 1. Check stored_filename if set
+  const searchDirs = [
+    downloadsDir,
+    "/home/u649760923/storage/app_releases",
+    "/home/u649760923/domains/bemsfarms.com/public_html/downloads",
+    path.resolve(__dirname, "../../downloads"),
+    path.resolve(__dirname, "../../../public_html/downloads"),
+    path.resolve(__dirname, "../../../client/public/downloads"),
+  ];
+
+  // 1. Check stored_filename in search dirs
   if (release && release.stored_filename) {
-    const p = path.join(downloadsDir, release.stored_filename);
-    if (fs.existsSync(p)) return p;
-  }
-
-  // 2. Scan downloadsDir for any Bems_${appType}_*.apk
-  try {
-    if (fs.existsSync(downloadsDir)) {
-      const files = fs.readdirSync(downloadsDir);
-      const prefix = `bems_${appType}_`;
-      const matching = files
-        .filter((f) => f.toLowerCase().startsWith(prefix) && f.toLowerCase().endsWith(".apk"))
-        .map((f) => ({
-          name: f,
-          path: path.join(downloadsDir, f),
-          stat: fs.statSync(path.join(downloadsDir, f)),
-        }));
-
-      // If we have an expected size, prioritize closest match
-      if (release && release.file_size_bytes) {
-        const expectedBytes = parseInt(release.file_size_bytes, 10);
-        const matchBySize = matching.find(
-          (m) => Math.abs(m.stat.size - expectedBytes) < 2048
-        );
-        if (matchBySize) return matchBySize.path;
-      }
-
-      // Otherwise take newest
-      if (matching.length > 0) {
-        matching.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
-        return matching[0].path;
+    for (const dir of searchDirs) {
+      if (fs.existsSync(dir)) {
+        const p = path.join(dir, release.stored_filename);
+        if (fs.existsSync(p)) return p;
       }
     }
-  } catch (e) {
-    console.warn("[app_releases] Error scanning downloadsDir:", e.message);
   }
 
-  // 3. Fall back to standard name in downloadsDir
-  const stdPath = path.join(downloadsDir, standardName);
-  if (fs.existsSync(stdPath)) return stdPath;
+  // 2. Scan searchDirs for any Bems_${appType}_*.apk
+  for (const dir of searchDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        const prefix = `bems_${appType}_`;
+        const matching = files
+          .filter((f) => f.toLowerCase().startsWith(prefix) && f.toLowerCase().endsWith(".apk"))
+          .map((f) => ({
+            name: f,
+            path: path.join(dir, f),
+            stat: fs.statSync(path.join(dir, f)),
+          }));
 
-  // 4. Fall back to public_html/downloads
-  const rootDir = path.resolve(__dirname, "../../..");
-  const publicPath = path.join(rootDir, "public_html", "downloads", standardName);
-  if (fs.existsSync(publicPath)) return publicPath;
+        if (release && release.file_size_bytes) {
+          const expectedBytes = parseInt(release.file_size_bytes, 10);
+          const matchBySize = matching.find(
+            (m) => Math.abs(m.stat.size - expectedBytes) < 2048
+          );
+          if (matchBySize) return matchBySize.path;
+        }
+
+        if (matching.length > 0) {
+          matching.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+          return matching[0].path;
+        }
+      }
+    } catch (e) {
+      // ignore scan errors
+    }
+  }
+
+  // 3. Fall back to standard name in searchDirs
+  for (const dir of searchDirs) {
+    if (fs.existsSync(dir)) {
+      const stdPath = path.join(dir, standardName);
+      if (fs.existsSync(stdPath)) return stdPath;
+    }
+  }
 
   return null;
 }
-
-// GET /api/app-releases/debug
-router.get("/debug", (req, res) => {
-  const homeDir = "/home/u649760923";
-  let homeContents = [];
-  try {
-    if (fs.existsSync(homeDir)) homeContents = fs.readdirSync(homeDir);
-  } catch (e) { homeContents = [e.message]; }
-
-  let domainContents = [];
-  const domainsDir = "/home/u649760923/domains";
-  try {
-    if (fs.existsSync(domainsDir)) domainContents = fs.readdirSync(domainsDir);
-  } catch (e) { domainContents = [e.message]; }
-
-  let bemsfarmsPublic = [];
-  const bemsPublic = "/home/u649760923/domains/bemsfarms.com/public_html";
-  try {
-    if (fs.existsSync(bemsPublic)) bemsfarmsPublic = fs.readdirSync(bemsPublic);
-  } catch (e) { bemsfarmsPublic = [e.message]; }
-
-  let oldBuilds = [];
-  const hbuildsDir = "/home/u649760923/domains/api.bemsfarms.com/hbuilds/versions";
-  try {
-    if (fs.existsSync(hbuildsDir)) oldBuilds = fs.readdirSync(hbuildsDir);
-  } catch (e) { oldBuilds = [e.message]; }
-
-  res.json({
-    homeContents,
-    domainContents,
-    bemsfarmsPublicExists: fs.existsSync(bemsPublic),
-    bemsfarmsPublic,
-    oldBuilds,
-    cwd: process.cwd(),
-  });
-});
 
 // GET /api/app-releases/download/:appType (e.g. 'customer' | 'driver')
 // Streams the actual uploaded APK file directly to the visitor
