@@ -238,18 +238,15 @@ router.post(
 
       const {
         appType,
-        versionName,
-        versionCode,
         minAndroid = "Android 8.0+",
         releaseNotes = "",
       } = req.body;
 
+      const versionName = (req.body.versionName && req.body.versionName.trim()) || "latest";
+      const versionCode = parseInt(req.body.versionCode, 10) || Math.floor(Date.now() / 1000);
+
       if (!appType || (appType !== "customer" && appType !== "driver")) {
         return res.status(400).json({ error: "appType must be either 'customer' or 'driver'" });
-      }
-
-      if (!versionName || !versionCode) {
-        return res.status(400).json({ error: "versionName and versionCode are required" });
       }
 
       const isCustomer = appType === "customer";

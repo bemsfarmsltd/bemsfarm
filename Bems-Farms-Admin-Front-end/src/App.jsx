@@ -335,7 +335,7 @@ function App() {
                 <Route path="/settings/invoices"      element={<InvoiceSettings />} />
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
                 <Route path="/settings/mobile-apps"   element={<MobileAppsSettings />} />
-                <Route path="/deliveries/mobile-apps" element={<MobileAppsSettings />} />
+                <Route path="/deliveries/mobile-apps" element={<Navigate to="/settings/mobile-apps" replace />} />
               </Route>
 
               {/* ── God Eye Audit Log — restricted to one designated owner account ── */}

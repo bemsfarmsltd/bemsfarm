@@ -120,6 +120,15 @@ const SETTINGS_SECTIONS = [
       { name: 'Perishable Produce Shelf-Life Tracking', path: '/inventory' },
       { name: 'Recipe & Grocery Pairing Rules', path: '/chef-bems' }
     ]
+  },
+  {
+    id: 'mobile-apps',
+    title: 'Mobile Apps (APKs)',
+    subtitle: 'Upload Android APK files for Customer and Driver mobile applications',
+    icon: 'ri-smartphone-line',
+    items: [
+      { name: 'Upload Mobile Apps (.apk)', path: '/settings/mobile-apps' }
+    ]
   }
 ]
 
