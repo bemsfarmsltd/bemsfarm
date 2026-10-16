@@ -12,7 +12,6 @@ import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
 import CartDrawer from "../components/ui/CartDrawer";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
-import AppDownloadModal from "../components/ui/AppDownloadModal";
 import LandingMobileAppsSection from "../components/ui/LandingMobileAppsSection";
 
 
@@ -833,8 +832,6 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fullScreenModalOpen, setFullScreenModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [appModalOpen, setAppModalOpen] = useState(false);
-  const [appModalInitial, setAppModalInitial] = useState("customer");
   const [openFaq, setOpenFaq] = useState(0);
   const [email, setEmail] = useState("");
   const [subscribeState, setSubscribeState] = useState("idle");
@@ -853,11 +850,6 @@ export default function LandingPage() {
   const toastTimerRef = useRef(null);
   const catalogueTriggerRef = useRef(null);
   const itemsPerPage = 6;
-
-  const handleOpenAppModal = (app = "customer") => {
-    setAppModalInitial(app);
-    setAppModalOpen(true);
-  };
 
   // Cleanup toast timer on unmount
   useEffect(() => {
@@ -1147,14 +1139,13 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link to="/products" className="rounded-full bg-[#143c2d] px-8 py-4 text-center text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Start shopping <span aria-hidden="true">→</span></Link>
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
-                <button
-                  type="button"
-                  onClick={() => handleOpenAppModal("customer")}
-                  className="rounded-full border border-emerald-800/30 bg-emerald-50 hover:bg-emerald-100 px-6 py-4 text-center text-base font-extrabold text-[#143c2d] transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                <a
+                  href="#mobile-apps"
+                  className="rounded-full border border-emerald-800/30 bg-emerald-50 hover:bg-emerald-100 px-6 py-4 text-center text-base font-extrabold text-[#143c2d] transition flex items-center justify-center gap-2 shadow-xs"
                 >
                   <span>📱</span>
-                  <span>Get Mobile Apps</span>
-                </button>
+                  <span>Download App ↓</span>
+                </a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
                 <span className="inline-flex items-center gap-1.5">
@@ -1641,7 +1632,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── UPGRADED MOBILE APPS ECOSYSTEM (CUSTOMER & DRIVER APPS) ── */}
-        <LandingMobileAppsSection onOpenDownloadModal={handleOpenAppModal} />
+        <LandingMobileAppsSection />
 
         {/* ── TACTILE FAQ SECTION ── */}
         <section id="faq" className="scroll-mt-24 border-t border-[#DDD3BF] bg-[#EFE8DC] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
@@ -1894,20 +1885,20 @@ export default function LandingPage() {
             <div>
               <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Mobile Apps</h2>
               <div className="mt-5 flex flex-col gap-3 text-sm">
-                <button
-                  type="button"
-                  onClick={() => handleOpenAppModal("customer")}
-                  className="text-left text-amber-300 font-bold hover:text-white transition cursor-pointer"
+                <a
+                  href="/downloads/BemsCustomer.apk"
+                  download="BemsCustomer.apk"
+                  className="text-left text-amber-300 font-bold hover:text-white transition"
                 >
-                  Customer App (.apk)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenAppModal("driver")}
-                  className="text-left text-amber-300 font-bold hover:text-white transition cursor-pointer"
+                  Download Customer App (.apk)
+                </a>
+                <a
+                  href="/downloads/BemsDriver.apk"
+                  download="BemsDriver.apk"
+                  className="text-left text-amber-300 font-bold hover:text-white transition"
                 >
-                  Driver App (.apk)
-                </button>
+                  Download Driver App (.apk)
+                </a>
                 <Link to="/driver/login" className="hover:text-white">Driver Web Portal</Link>
                 <Link to="/driver/onboarding" className="hover:text-white">Join Courier Fleet</Link>
               </div>
@@ -1978,13 +1969,6 @@ export default function LandingPage() {
         product={restockProduct}
         isOpen={Boolean(restockProduct)}
         onClose={() => setRestockProduct(null)}
-      />
-
-      {/* App Download Modal for Customer & Driver Apps */}
-      <AppDownloadModal
-        isOpen={appModalOpen}
-        onClose={() => setAppModalOpen(false)}
-        initialApp={appModalInitial}
       />
 
       {/* Toast Notification for Basket Actions */}
