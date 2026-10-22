@@ -169,6 +169,19 @@ export const wishlistAPI = {
 };
 
 // ─────────────────────────────────────────────
+// CART API (PERSISTENT ACROSS DEVICES)
+// ─────────────────────────────────────────────
+export const cartAPI = {
+  getCart: (params) => api.get("/cart", { params }),
+  addItem: (data) => api.post("/cart/items", data),
+  updateQuantity: (productId, quantity, data = {}) =>
+    api.patch(`/cart/items/${productId}`, { quantity, ...data }),
+  removeItem: (productId, params) => api.delete(`/cart/items/${productId}`, { params }),
+  clearCart: () => api.delete("/cart"),
+  syncCart: (items, sessionId) => api.post("/cart/sync", { items, sessionId }),
+};
+
+// ─────────────────────────────────────────────
 // EXPORT BASE API (optional but useful)
 // ─────────────────────────────────────────────
 export default api;

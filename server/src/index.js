@@ -266,8 +266,10 @@ const dispatchAdminRoutes = require("./routes/dispatch_admin");
 const notificationsRoutes = require("./routes/notifications");
 const verifyRoutes = require("./routes/verify_public");
 const appReleasesRoutes = require("./routes/app_releases");
+const cartRoutes = require("./routes/cart");
 
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/cart", cartRoutes);
 app.use("/api/app-releases", appReleasesRoutes);
 app.use("/api/admin/app-releases", appReleasesRoutes);
 app.use("/api/verify", verifyRoutes);

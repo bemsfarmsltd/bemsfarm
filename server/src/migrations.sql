@@ -1106,3 +1106,8 @@ ADD COLUMN IF NOT EXISTS zone_change_status VARCHAR(50) DEFAULT 'none',
 ADD COLUMN IF NOT EXISTS zone_change_requested_at TIMESTAMP,
 ADD COLUMN IF NOT EXISTS zone_change_notes TEXT;
 
+-- ── 34. PERSISTENT CART INDEXES ──
+CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_cart_items_cart_product ON customer_cart_items (cart_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_customer_carts_customer_id ON customer_carts (customer_id);
+CREATE INDEX IF NOT EXISTS idx_customer_carts_session_id ON customer_carts (session_id);
+
