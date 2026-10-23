@@ -379,7 +379,7 @@ export default function VerifiedLocationModal({
             <div>
               <h3 className="font-bold text-base leading-tight">Pin Your Exact Delivery Doorstep</h3>
               <p className="text-xs text-emerald-100">
-                {mapEngine === "google" ? "Powered by Google Maps & Landmark Search" : "Pin your doorstep for precise dispatch"}
+                Powered by Google Maps & Landmark Search
               </p>
             </div>
           </div>
