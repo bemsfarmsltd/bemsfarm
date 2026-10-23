@@ -4,6 +4,12 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
 import { normalizeNigerianState, resolveNigerianPostalCode } from "../../utils/nigerianStates";
+import {
+  loadGoogleMaps,
+  getGooglePlacePredictions,
+  getGooglePlaceDetails,
+  reverseGeocodeGoogle,
+} from "../../utils/googleMapsLoader";
 
 // Fix Leaflet icon URLs in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -13,7 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Custom Delivery Pin Icon
+// Custom Delivery Pin Icon for Leaflet
 const pinIcon = L.divIcon({
   className: "custom-delivery-pin",
   iconSize: [38, 48],
@@ -40,7 +46,7 @@ const pinIcon = L.divIcon({
   `,
 });
 
-// Helper component to smoothly pan map when center changes
+// Leaflet helpers
 function MapRecenter({ center }) {
   const map = useMap();
   useEffect(() => {
@@ -51,7 +57,6 @@ function MapRecenter({ center }) {
   return null;
 }
 
-// Helper component to handle map clicks for pin placement
 function MapClickHandler({ onLocationClicked }) {
   useMapEvents({
     click(e) {
@@ -87,6 +92,30 @@ export default function VerifiedLocationModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [saveToAccount, setSaveToAccount] = useState(showSaveToAccount);
 
+  // Google Maps engine state
+  const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
+  const [mapEngine, setMapEngine] = useState("google"); // "google" | "leaflet"
+  const googleMapRef = useRef(null);
+  const googleMapInstance = useRef(null);
+  const googleMarkerInstance = useRef(null);
+  const sessionTokenRef = useRef(null);
+
+  // Initialize Google Maps SDK
+  useEffect(() => {
+    loadGoogleMaps()
+      .then((maps) => {
+        setIsGoogleMapsReady(true);
+        setMapEngine("google");
+        if (maps?.places?.AutocompleteSessionToken) {
+          sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+        }
+      })
+      .catch((err) => {
+        console.warn("Falling back to OpenStreetMap engine:", err.message);
+        setMapEngine("leaflet");
+      });
+  }, []);
+
   // Reverse geocode and verify location whenever pin position changes
   const verifyCoordinates = useCallback(async (lat, lng, addressHint = "") => {
     setIsVerifying(true);
@@ -109,7 +138,83 @@ export default function VerifiedLocationModal({
     }
   }, []);
 
-  // Initial verification on open: align by coordinates or search query
+  // Setup Google Map instance when modal is opened and Google Maps is ready
+  useEffect(() => {
+    if (!isOpen || mapEngine !== "google" || !googleMapRef.current || !window.google?.maps) {
+      return;
+    }
+
+    const lat = position[0] || defaultCenter[0];
+    const lng = position[1] || defaultCenter[1];
+    const centerLatLng = { lat, lng };
+
+    if (!googleMapInstance.current) {
+      const map = new window.google.maps.Map(googleMapRef.current, {
+        center: centerLatLng,
+        zoom: 16,
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+          style: window.google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+          position: window.google.maps.ControlPosition.TOP_RIGHT,
+        },
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true,
+      });
+
+      const marker = new window.google.maps.Marker({
+        position: centerLatLng,
+        map: map,
+        draggable: true,
+        animation: window.google.maps.Animation.DROP,
+        title: "Bems Farms Delivery Gate",
+      });
+
+      // Handle marker drag
+      marker.addListener("dragend", async (e) => {
+        const newLat = e.latLng.lat();
+        const newLng = e.latLng.lng();
+        setPosition([newLat, newLng]);
+
+        const revData = await reverseGeocodeGoogle(newLat, newLng);
+        const bestAddress = revData?.formatted_address || searchQuery;
+        if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+        verifyCoordinates(newLat, newLng, bestAddress);
+      });
+
+      // Handle map click
+      map.addListener("click", async (e) => {
+        const newLat = e.latLng.lat();
+        const newLng = e.latLng.lng();
+        marker.setPosition(e.latLng);
+        setPosition([newLat, newLng]);
+
+        const revData = await reverseGeocodeGoogle(newLat, newLng);
+        const bestAddress = revData?.formatted_address || searchQuery;
+        if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+        verifyCoordinates(newLat, newLng, bestAddress);
+      });
+
+      googleMapInstance.current = map;
+      googleMarkerInstance.current = marker;
+    } else {
+      googleMapInstance.current.setCenter(centerLatLng);
+      if (googleMarkerInstance.current) {
+        googleMarkerInstance.current.setPosition(centerLatLng);
+      }
+    }
+  }, [isOpen, mapEngine, isGoogleMapsReady]);
+
+  // Sync Google Map marker when position state changes externally
+  useEffect(() => {
+    if (googleMapInstance.current && googleMarkerInstance.current && position[0] && position[1]) {
+      const latLng = { lat: position[0], lng: position[1] };
+      googleMapInstance.current.panTo(latLng);
+      googleMarkerInstance.current.setPosition(latLng);
+    }
+  }, [position]);
+
+  // Initial verification on open
   useEffect(() => {
     if (isOpen) {
       setFallbackSuggestion(null);
@@ -122,21 +227,22 @@ export default function VerifiedLocationModal({
       } else if (initialAddress && initialAddress.trim().length >= 3) {
         setSearchQuery(initialAddress);
         setIsSearching(true);
-        api.get("/locations/search", { params: { q: initialAddress } })
-          .then((res) => {
+        // Try Google search first
+        getGooglePlacePredictions(initialAddress, sessionTokenRef.current)
+          .then(async (preds) => {
+            if (preds && preds.length > 0) {
+              const details = await getGooglePlaceDetails(preds[0].place_id, sessionTokenRef.current);
+              if (details?.latitude && details?.longitude) {
+                const pos = [details.latitude, details.longitude];
+                setPosition(pos);
+                verifyCoordinates(details.latitude, details.longitude, details.formatted_address);
+                return;
+              }
+            }
+            // Fallback to internal search
+            const res = await api.get("/locations/search", { params: { q: initialAddress } });
             const results = res.data?.results || [];
-            if (res.data?.exactMatch && results.length > 0) {
-              const first = results[0];
-              const pos = [first.latitude, first.longitude];
-              setPosition(pos);
-              setFallbackSuggestion(null);
-              verifyCoordinates(first.latitude, first.longitude, first.display_name);
-            } else if (res.data?.closestMatch) {
-              const closest = res.data.closestMatch;
-              setPosition([closest.latitude, closest.longitude]);
-              setFallbackSuggestion(closest);
-              verifyCoordinates(closest.latitude, closest.longitude, closest.display_name);
-            } else if (results.length > 0) {
+            if (results.length > 0) {
               const first = results[0];
               setPosition([first.latitude, first.longitude]);
               verifyCoordinates(first.latitude, first.longitude, first.display_name);
@@ -165,12 +271,18 @@ export default function VerifiedLocationModal({
     setErrorMsg("");
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setPosition([lat, lng]);
         setFallbackSuggestion(null);
-        verifyCoordinates(lat, lng);
+
+        // Try reverse geocode with Google
+        const rev = await reverseGeocodeGoogle(lat, lng);
+        const addr = rev?.formatted_address || "";
+        if (addr) setSearchQuery(addr);
+
+        verifyCoordinates(lat, lng, addr);
         setIsLocating(false);
       },
       (err) => {
@@ -182,18 +294,9 @@ export default function VerifiedLocationModal({
     );
   };
 
-  const applyClosestSuggestion = (closest) => {
-    if (!closest) return;
-    const newPos = [closest.latitude, closest.longitude];
-    setPosition(newPos);
-    setFallbackSuggestion(null);
-    setSearchResults([]);
-    verifyCoordinates(closest.latitude, closest.longitude, closest.display_name);
-  };
-
-  // Debounced search for Nominatim OpenStreetMap
+  // Search input typing handler with Google Places priority
   useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 3) {
+    if (!searchQuery || searchQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
@@ -201,6 +304,22 @@ export default function VerifiedLocationModal({
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
+        // 1. Google Places search
+        const googleResults = await getGooglePlacePredictions(searchQuery, sessionTokenRef.current);
+        if (googleResults && googleResults.length > 0) {
+          const formatted = googleResults.slice(0, 5).map((p) => ({
+            isGoogle: true,
+            place_id: p.place_id,
+            display_name: p.description,
+            main_text: p.structured_formatting?.main_text || p.description,
+            secondary_text: p.structured_formatting?.secondary_text || "",
+          }));
+          setSearchResults(formatted);
+          setIsSearching(false);
+          return;
+        }
+
+        // 2. Fallback to OpenStreetMap/internal search
         const res = await api.get(`/locations/search`, { params: { q: searchQuery } });
         setSearchResults(res.data?.results || []);
         if (res.data?.exactMatch === false && res.data?.closestMatch) {
@@ -213,17 +332,37 @@ export default function VerifiedLocationModal({
       } finally {
         setIsSearching(false);
       }
-    }, 350);
+    }, 280);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSelectSearchResult = (result) => {
+  const handleSelectSearchResult = async (result) => {
+    setSearchResults([]);
+    setFallbackSuggestion(null);
+
+    // Google Place Result
+    if (result.isGoogle && result.place_id) {
+      setIsSearching(true);
+      const details = await getGooglePlaceDetails(result.place_id, sessionTokenRef.current);
+      if (window.google?.maps?.places?.AutocompleteSessionToken) {
+        sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+      }
+      setIsSearching(false);
+
+      if (details?.latitude && details?.longitude) {
+        const newPos = [details.latitude, details.longitude];
+        setPosition(newPos);
+        setSearchQuery(details.formatted_address || result.display_name);
+        verifyCoordinates(details.latitude, details.longitude, details.formatted_address);
+        return;
+      }
+    }
+
+    // Standard Result
     const newPos = [result.latitude, result.longitude];
     setPosition(newPos);
     setSearchQuery(result.display_name);
-    setSearchResults([]);
-    setFallbackSuggestion(null);
     verifyCoordinates(result.latitude, result.longitude, result.display_name);
   };
 
@@ -245,11 +384,10 @@ export default function VerifiedLocationModal({
   const handleConfirmLocation = async () => {
     const lat = position[0];
     const lng = position[1];
-    
-    // CRITICAL: Preserve customer's exact words in address field. Never overwrite with generic landmark.
-    const finalAddress = (initialAddress && initialAddress.trim().length > 0)
-      ? initialAddress.trim()
-      : (searchQuery && searchQuery.trim().length > 0 ? searchQuery.trim() : verifiedData?.formatted_address || "Pinned Delivery Location");
+
+    const finalAddress = (searchQuery && searchQuery.trim().length > 0)
+      ? searchQuery.trim()
+      : (verifiedData?.formatted_address || initialAddress || "Pinned Delivery Location");
 
     const city = verifiedData?.city || verifiedData?.lga || "Umuahia";
     const lga = verifiedData?.lga || verifiedData?.city || "Umuahia North";
@@ -277,7 +415,6 @@ export default function VerifiedLocationModal({
       verified: true,
     };
 
-    // Save to user address book only if explicitly enabled (e.g. standalone prompt) and user is logged in
     const token = typeof window !== "undefined" ? (localStorage.getItem("token") || sessionStorage.getItem("token")) : null;
     if (showSaveToAccount && saveToAccount && token) {
       try {
@@ -311,20 +448,22 @@ export default function VerifiedLocationModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-green-800 to-green-700 text-white flex items-center justify-between">
+        <div className="px-5 py-4 bg-gradient-to-r from-emerald-800 to-emerald-700 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
               📍
             </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">Verify Your Delivery Location</h3>
-              <p className="text-xs text-green-100">Pin your exact building or gate so our driver navigates directly to you</p>
+              <h3 className="font-bold text-base leading-tight">Pin Your Exact Delivery Doorstep</h3>
+              <p className="text-xs text-emerald-100">
+                {mapEngine === "google" ? "Powered by Google Maps & Landmark Search" : "Pin your doorstep for precise dispatch"}
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
           >
             ✕
           </button>
@@ -336,8 +475,8 @@ export default function VerifiedLocationModal({
             <div className="relative flex-1">
               <input
                 type="text"
-                className="w-full px-3.5 py-2.5 pl-9 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
-                placeholder="Search street, estate, or landmark in Nigeria..."
+                className="w-full px-3.5 py-2.5 pl-9 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white"
+                placeholder="Search street, estate, bank, or landmark (e.g. Near Abia Tower)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -353,13 +492,17 @@ export default function VerifiedLocationModal({
                     <button
                       key={idx}
                       type="button"
-                      className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-green-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition"
+                      className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-emerald-50 border-b border-gray-50 last:border-0 flex items-start gap-2 transition cursor-pointer"
                       onClick={() => handleSelectSearchResult(res)}
                     >
                       <span className="text-base mt-0.5">📍</span>
-                      <div>
-                        <div className="font-medium text-gray-900">{res.display_name}</div>
-                        <div className="text-[10px] text-gray-500">{res.city ? `${res.city}, ` : ''}{res.state}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">
+                          {res.main_text || res.display_name}
+                        </div>
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {res.secondary_text || res.city || res.state}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -371,7 +514,7 @@ export default function VerifiedLocationModal({
               type="button"
               onClick={detectCurrentLocation}
               disabled={isLocating}
-              className="px-4 py-2.5 bg-white hover:bg-green-50 border border-green-300 text-green-900 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition whitespace-nowrap"
+              className="px-4 py-2.5 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition whitespace-nowrap cursor-pointer"
             >
               {isLocating ? (
                 <>
@@ -387,83 +530,61 @@ export default function VerifiedLocationModal({
             </button>
           </div>
 
-          {/* Smart Fallback & Distance Banner (When exact landmark not indexed) */}
           {fallbackSuggestion && (
             <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl text-xs flex flex-col gap-2 animate-fadeIn">
               <div className="flex items-start gap-2">
                 <span className="text-base leading-none mt-0.5 text-amber-600">⚠️</span>
                 <div className="flex-1">
                   <div className="font-bold text-amber-900">
-                    Exact building or shop name not located on map database
+                    Exact building not indexed on map database
                   </div>
                   <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                    {fallbackSuggestion.reason || "We identified the closest recognized area and calculated proximity."}
+                    {fallbackSuggestion.reason || "We identified the closest recognized area. Drag the pin directly to your gate."}
                   </p>
-                  <div className="mt-1 font-semibold text-amber-950 flex flex-wrap items-center gap-1.5">
-                    <span>📍 Closest Area:</span>
-                    <span className="underline decoration-amber-400">{fallbackSuggestion.display_name}</span>
-                    {fallbackSuggestion.distance_km > 0 && (
-                      <span className="bg-amber-200 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                        ~{fallbackSuggestion.distance_km} km
-                      </span>
-                    )}
-                  </div>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/70 mt-0.5">
-                <button
-                  type="button"
-                  onClick={() => applyClosestSuggestion(fallbackSuggestion)}
-                  className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white font-bold text-[11px] rounded-lg shadow-sm transition flex items-center gap-1"
-                >
-                  <span>✓ Use Closest Area</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={detectCurrentLocation}
-                  className="px-3 py-1.5 bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 font-bold text-[11px] rounded-lg transition flex items-center gap-1"
-                >
-                  <span>🎯 Use My Present GPS Location</span>
-                </button>
-                <span className="text-[10px] text-amber-800 italic ml-auto">
-                  (Or click / drag pin on map to your exact building)
-                </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Interactive Map Canvas */}
-        <div className="relative w-full h-[260px] sm:h-[300px] bg-gray-100">
-          <MapContainer
-            center={position}
-            zoom={16}
-            style={{ width: "100%", height: "100%" }}
-            attributionControl={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={19}
+        {/* Interactive Map Canvas: Google Maps with Leaflet Fallback */}
+        <div className="relative w-full h-[280px] sm:h-[320px] bg-gray-100">
+          {mapEngine === "google" ? (
+            <div
+              ref={googleMapRef}
+              style={{ width: "100%", height: "100%" }}
+              className="google-map-canvas"
             />
-            <MapRecenter center={position} />
-            <MapClickHandler onLocationClicked={handleMapClick} />
-            <Marker
-              position={position}
-              icon={pinIcon}
-              draggable={true}
-              eventHandlers={{
-                dragend: handleMarkerDragEnd,
-              }}
+          ) : (
+            <MapContainer
+              center={position}
+              zoom={16}
+              style={{ width: "100%", height: "100%" }}
+              attributionControl={false}
             >
-              <Popup>
-                <div className="text-xs p-1">
-                  <strong>Delivery Pin Location</strong>
-                  <p className="text-[10px] text-gray-500 mt-1">Drag marker or click map to adjust gate position.</p>
-                </div>
-              </Popup>
-            </Marker>
-          </MapContainer>
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maxZoom={19}
+              />
+              <MapRecenter center={position} />
+              <MapClickHandler onLocationClicked={handleMapClick} />
+              <Marker
+                position={position}
+                icon={pinIcon}
+                draggable={true}
+                eventHandlers={{
+                  dragend: handleMarkerDragEnd,
+                }}
+              >
+                <Popup>
+                  <div className="text-xs p-1">
+                    <strong>Delivery Pin Location</strong>
+                    <p className="text-[10px] text-gray-500 mt-1">Drag marker to adjust building gate.</p>
+                  </div>
+                </Popup>
+              </Marker>
+            </MapContainer>
+          )}
 
           {/* Floating Instructions */}
           <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow border border-gray-200 text-[11px] text-gray-700 z-[400] flex items-center gap-1.5">
@@ -472,7 +593,7 @@ export default function VerifiedLocationModal({
           </div>
 
           {isVerifying && (
-            <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow text-xs text-green-800 font-medium z-[400] flex items-center gap-2 border border-green-200">
+            <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow text-xs text-emerald-800 font-medium z-[400] flex items-center gap-2 border border-emerald-200">
               <span className="animate-spin">🔄</span>
               <span>Verifying coordinates and matching delivery zone...</span>
             </div>
@@ -482,23 +603,23 @@ export default function VerifiedLocationModal({
         {/* Verification Result Card & Actions */}
         <div className="p-4 bg-white flex flex-col gap-3">
           {verifiedData?.zone ? (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
                   ✓
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-green-900">
+                  <div className="text-xs font-bold text-emerald-900">
                     {verifiedData.zone.zone_name}
                   </div>
-                  <div className="text-[11px] text-green-700">
-                    Estimated Time: {verifiedData.zone.estimated_delivery_time || "1–2 hours"}
+                  <div className="text-[11px] text-emerald-700">
+                    Estimated Delivery: {verifiedData.zone.estimated_delivery_time || "30–60 mins"}
                   </div>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-[10px] text-gray-500 uppercase font-semibold">Delivery Fee</div>
-                <div className="text-sm font-extrabold text-green-800">
+                <div className="text-sm font-extrabold text-emerald-800">
                   ₦{Number(verifiedData.zone.delivery_fee || 1000).toLocaleString()}
                 </div>
               </div>
@@ -512,59 +633,30 @@ export default function VerifiedLocationModal({
             </div>
           )}
 
-          {verifiedData?.digital_postcode && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
-              <span className="text-base leading-none">🇳🇬</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-semibold text-emerald-800">Official NIPOST Postcode:</span>
-                <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-900">
-                  {verifiedData.digital_postcode_display || verifiedData.digital_postcode}
-                </span>
-                {verifiedData.nipost_verified && (
-                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                    Verified
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {errorMsg && (
-            <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
+            <div className="text-xs text-red-600 font-medium px-1">
               ⚠️ {errorMsg}
             </div>
           )}
 
           <div className="flex items-center justify-between pt-1">
-            {showSaveToAccount ? (
-              <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={saveToAccount}
-                  onChange={(e) => setSaveToAccount(e.target.checked)}
-                  className="rounded text-green-600 focus:ring-green-500"
-                />
-                <span>Save as my default delivery address</span>
-              </label>
-            ) : <div />}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 text-xs text-gray-600 hover:text-gray-900 font-bold transition cursor-pointer"
+            >
+              Cancel
+            </button>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmLocation}
-                className="px-5 py-2 bg-green-700 hover:bg-green-800 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
-              >
-                <span>Confirm & Pin Location</span>
-                <span>➔</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleConfirmLocation}
+              disabled={isVerifying}
+              className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
+            >
+              <span>Confirm Doorstep Location</span>
+              <span>→</span>
+            </button>
           </div>
         </div>
       </div>

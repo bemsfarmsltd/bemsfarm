@@ -21,7 +21,7 @@ const NAVBAR_CSS = `
 .bf-navbar-user-name { display: none; }
 .bf-navbar-logo { height: 28px; width: auto; max-width: 120px; object-fit: contain; display: block; }
 .bf-navbar-logo-wrap { flex-shrink: 0; display: flex; align-items: center; margin-right: 6px; min-width: 0; }
-.bf-navbar-inner { padding: 0 10px; height: 56px; display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; }
+.bf-navbar-inner { padding: 0 10px; height: 56px; display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box; overflow: visible; }
 .bf-search-full { display: none; }
 .bf-navbar-guest-join { display: none; }
 
@@ -523,7 +523,7 @@ export default function Navbar() {
       style={{
         position: "sticky",
         top: 0,
-        zIndex: 200,
+        zIndex: 1000,
         backgroundColor: "var(--white)",
         borderBottom: scrolled ? "1px solid var(--gray-200)" : "1px solid transparent",
         boxShadow: scrolled ? (theme === "dark" ? "0 2px 16px rgba(0,0,0,0.3)" : "0 2px 16px rgba(27,67,50,0.06)") : "none",
@@ -720,7 +720,7 @@ export default function Navbar() {
               </button>
 
               {/* Avatar dropdown */}
-              <div style={{ position: "relative" }} ref={dropdownRef}>
+              <div style={{ position: "relative", zIndex: 1001 }} ref={dropdownRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   aria-label="Account menu"
@@ -792,8 +792,8 @@ export default function Navbar() {
                         borderRadius: "14px",
                         padding: "6px",
                         width: "min(220px, 90vw)",
-                        boxShadow: "0 16px 40px rgba(0,0,0,0.10)",
-                        zIndex: 300,
+                        boxShadow: "0 16px 40px rgba(0,0,0,0.18)",
+                        zIndex: 1002,
                       }}
                     >
                       <div

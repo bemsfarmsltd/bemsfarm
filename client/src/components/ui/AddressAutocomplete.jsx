@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import VerifiedLocationModal from "./VerifiedLocationModal";
 import api from "../../services/api";
+import {
+  loadGoogleMaps,
+  getGooglePlacePredictions,
+  getGooglePlaceDetails,
+} from "../../utils/googleMapsLoader";
 
 export default function AddressAutocomplete({ 
   value, 
   onChange, 
   onPlaceSelected, 
-  placeholder = "Enter your street address or pin on map", 
+  placeholder = "Enter your street address or landmark (e.g. Near Abia Tower, Umuahia)", 
   className = "", 
   style,
   required,
@@ -25,7 +30,20 @@ export default function AddressAutocomplete({
 
   const wrapperRef = useRef(null);
   const searchTimerRef = useRef(null);
-  const autoPinTimerRef = useRef(null);
+  const sessionTokenRef = useRef(null);
+
+  // Initialize Google Places session token for cost-effective bundling
+  useEffect(() => {
+    loadGoogleMaps()
+      .then((maps) => {
+        if (maps?.places?.AutocompleteSessionToken) {
+          sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+        }
+      })
+      .catch(() => {
+        // Fallback silently if Google Maps is not reachable
+      });
+  }, []);
 
   // Sync internal value if external value changes
   useEffect(() => {
@@ -58,7 +76,6 @@ export default function AddressAutocomplete({
   useEffect(() => {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-      if (autoPinTimerRef.current) clearTimeout(autoPinTimerRef.current);
     };
   }, []);
 
@@ -129,20 +146,34 @@ export default function AddressAutocomplete({
     }
 
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (autoPinTimerRef.current) clearTimeout(autoPinTimerRef.current);
 
-    if (!text || text.trim().length < 3) {
+    if (!text || text.trim().length < 2) {
       setSuggestions([]);
       return;
     }
 
-    // 1. Debounced dropdown suggestions search
+    // Debounced dropdown suggestions search
     searchTimerRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
+        // 1. First priority: Google Places Autocomplete (High accuracy for Nigerian landmarks)
+        const googlePredictions = await getGooglePlacePredictions(text, sessionTokenRef.current);
+        if (googlePredictions && googlePredictions.length > 0) {
+          const formatted = googlePredictions.slice(0, 5).map((p) => ({
+            isGoogle: true,
+            place_id: p.place_id,
+            main_text: p.structured_formatting?.main_text || p.description,
+            secondary_text: p.structured_formatting?.secondary_text || "",
+            display_name: p.description,
+          }));
+          setSuggestions(formatted);
+          setIsSearching(false);
+          return;
+        }
+
+        // 2. Fallback: Internal backend / OSM geocoder
         const res = await api.get("/locations/search", { params: { q: text.trim() } });
         let list = res.data?.results || [];
-        // If results array is empty but backend resolved a closest match area (e.g. Umuahia, Abia), show it!
         if (list.length === 0 && res.data?.closestMatch) {
           list = [res.data.closestMatch];
         }
@@ -152,25 +183,12 @@ export default function AddressAutocomplete({
       } finally {
         setIsSearching(false);
       }
-    }, 350);
-
-    // 2. Proactive Auto-Pin Trigger:
-    // If the customer has typed a substantial address (>= 8 chars) and pauses for 750ms,
-    // trigger auto-pinning immediately so the system doesn't stay idle!
-    if (autoTriggerPin && text.trim().length >= 8) {
-      autoPinTimerRef.current = setTimeout(async () => {
-        const success = await autoPinLocation(text.trim());
-        // If auto-resolution in the background couldn't find coordinates,
-        // trigger the interactive pin map modal so customer is smoothly prompted to pin their doorstep!
-        if (!success && text.trim().length >= 12) {
-          setIsModalOpen(true);
-        }
-      }, 750);
-    }
+    }, 280);
   };
 
+  // When customer clicks a suggestion
   const handleSelectSuggestion = async (suggestion) => {
-    const address = suggestion.display_name;
+    const address = suggestion.display_name || suggestion.main_text;
     setInputValue(address);
     setSuggestions([]);
 
@@ -178,6 +196,63 @@ export default function AddressAutocomplete({
       onChange({ target: { value: address } });
     }
 
+    // A. If selected from Google Places:
+    if (suggestion.isGoogle && suggestion.place_id) {
+      setIsSearching(true);
+      try {
+        const placeDetails = await getGooglePlaceDetails(suggestion.place_id, sessionTokenRef.current);
+        // Reset session token for next search
+        if (window.google?.maps?.places?.AutocompleteSessionToken) {
+          sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        }
+
+        if (placeDetails && placeDetails.latitude && placeDetails.longitude) {
+          // Verify with backend delivery zones
+          const verifyRes = await api.post("/locations/verify", {
+            latitude: placeDetails.latitude,
+            longitude: placeDetails.longitude,
+            address: placeDetails.formatted_address || address,
+            city: placeDetails.city,
+            state: placeDetails.state,
+          });
+
+          const resolvedData = {
+            address: placeDetails.formatted_address || address,
+            street_address: placeDetails.formatted_address || address,
+            city: verifyRes.data?.city || placeDetails.city,
+            lga: verifyRes.data?.lga || placeDetails.lga || placeDetails.city,
+            state: verifyRes.data?.state || placeDetails.state,
+            postal_code: verifyRes.data?.postal_code || placeDetails.postal_code || "440221",
+            postcode: verifyRes.data?.postal_code || placeDetails.postal_code || "440221",
+            digital_postcode: verifyRes.data?.digital_postcode || null,
+            digital_postcode_display: verifyRes.data?.digital_postcode_display || null,
+            latitude: placeDetails.latitude,
+            longitude: placeDetails.longitude,
+            zone_id: verifyRes.data?.zone?.zone_id || "ZONE001",
+            zone_name: verifyRes.data?.zone?.zone_name,
+            delivery_fee: (verifyRes.data?.zone?.delivery_fee !== undefined && verifyRes.data?.zone?.delivery_fee !== null && !isNaN(Number(verifyRes.data.zone.delivery_fee)))
+              ? Number(verifyRes.data.zone.delivery_fee)
+              : 1000,
+            verified: true,
+          };
+
+          setHasVerifiedCoords(true);
+          setPinnedDetails(resolvedData);
+
+          if (onPlaceSelected) {
+            onPlaceSelected(resolvedData);
+          }
+          setIsSearching(false);
+          return;
+        }
+      } catch (gErr) {
+        console.warn("Google place detail resolution error:", gErr);
+      } finally {
+        setIsSearching(false);
+      }
+    }
+
+    // B. Fallback to standard internal resolver
     await autoPinLocation(address, suggestion);
   };
 
@@ -207,15 +282,9 @@ export default function AddressAutocomplete({
 
   // When customer leaves the address input field (onBlur)
   const handleBlur = () => {
-    // If an address was typed but coordinates haven't been pinned yet,
-    // immediately trigger pinning so customer is never stuck
+    // Proactively verify without popping up annoying full modal
     if (inputValue && inputValue.trim().length >= 6 && !hasVerifiedCoords) {
-      autoPinLocation(inputValue.trim()).then((pinned) => {
-        if (!pinned && autoTriggerPin) {
-          // Open map modal so customer can confirm doorstep location
-          setIsModalOpen(true);
-        }
-      });
+      autoPinLocation(inputValue.trim());
     }
   };
 
