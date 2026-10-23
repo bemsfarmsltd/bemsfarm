@@ -9,6 +9,7 @@ import {
   getGooglePlacePredictions,
   getGooglePlaceDetails,
   reverseGeocodeGoogle,
+  isGoogleMapsAuthFailed,
 } from "../../utils/googleMapsLoader";
 
 // Fix Leaflet icon URLs in Vite
@@ -100,12 +101,27 @@ export default function VerifiedLocationModal({
   const googleMarkerInstance = useRef(null);
   const sessionTokenRef = useRef(null);
 
-  // Initialize Google Maps SDK
+  // Initialize Google Maps SDK & listen for auth failures
   useEffect(() => {
+    if (isGoogleMapsAuthFailed()) {
+      setMapEngine("leaflet");
+      return;
+    }
+
+    const handleAuthFail = () => {
+      console.warn("Google Maps auth failed, switching to Leaflet fallback");
+      setMapEngine("leaflet");
+    };
+    window.addEventListener("google-maps-auth-failure", handleAuthFail);
+
     loadGoogleMaps()
       .then((maps) => {
-        setIsGoogleMapsReady(true);
-        setMapEngine("google");
+        if (!isGoogleMapsAuthFailed()) {
+          setIsGoogleMapsReady(true);
+          setMapEngine("google");
+        } else {
+          setMapEngine("leaflet");
+        }
         if (maps?.places?.AutocompleteSessionToken) {
           sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
         }
@@ -114,6 +130,10 @@ export default function VerifiedLocationModal({
         console.warn("Falling back to OpenStreetMap engine:", err.message);
         setMapEngine("leaflet");
       });
+
+    return () => {
+      window.removeEventListener("google-maps-auth-failure", handleAuthFail);
+    };
   }, []);
 
   // Reverse geocode and verify location whenever pin position changes

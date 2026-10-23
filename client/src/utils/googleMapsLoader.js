@@ -5,6 +5,21 @@ const GOOGLE_MAPS_API_KEY =
   import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyAkTC7CWqsjgUTIrGoZ5kxF6SLCsr5ErQc";
 
 let loadPromise = null;
+let authFailed = false;
+
+if (typeof window !== "undefined") {
+  window.gm_authFailure = () => {
+    console.warn(
+      "Google Maps Authentication Failed: The API key has restrictions (e.g. mobile-only bundle ID) or Maps JavaScript API is disabled."
+    );
+    authFailed = true;
+    window.dispatchEvent(new CustomEvent("google-maps-auth-failure"));
+  };
+}
+
+export function isGoogleMapsAuthFailed() {
+  return authFailed;
+}
 
 export function loadGoogleMaps() {
   if (typeof window === "undefined") {
