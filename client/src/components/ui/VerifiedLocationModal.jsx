@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
 import { normalizeNigerianState, resolveNigerianPostalCode } from "../../utils/nigerianStates";
 import {
@@ -9,65 +6,7 @@ import {
   getGooglePlacePredictions,
   getGooglePlaceDetails,
   reverseGeocodeGoogle,
-  isGoogleMapsAuthFailed,
 } from "../../utils/googleMapsLoader";
-
-// Fix Leaflet icon URLs in Vite
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-// Custom Delivery Pin Icon for Leaflet
-const pinIcon = L.divIcon({
-  className: "custom-delivery-pin",
-  iconSize: [38, 48],
-  iconAnchor: [19, 48],
-  popupAnchor: [0, -50],
-  html: `
-    <div style="position:relative;width:38px;height:48px;display:flex;flex-direction:column;align-items:center;">
-      <div style="
-        width:38px;height:38px;border-radius:50%;
-        background:linear-gradient(135deg, #15803d 0%, #16a34a 100%);
-        color:#ffffff;display:flex;align-items:center;justify-content:center;
-        box-shadow:0 6px 16px rgba(21,128,61,0.45);
-        border:2.5px solid #ffffff;font-size:18px;
-      ">
-        📍
-      </div>
-      <div style="
-        width:0;height:0;
-        border-left:7px solid transparent;border-right:7px solid transparent;
-        border-top:10px solid #15803d;
-        margin-top:-2px;
-      "></div>
-    </div>
-  `,
-});
-
-// Leaflet helpers
-function MapRecenter({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, map.getZoom() < 15 ? 16 : map.getZoom(), { animate: true });
-    }
-  }, [center, map]);
-  return null;
-}
-
-function MapClickHandler({ onLocationClicked }) {
-  useMapEvents({
-    click(e) {
-      if (e.latlng) {
-        onLocationClicked([e.latlng.lat, e.latlng.lng]);
-      }
-    },
-  });
-  return null;
-}
 
 export default function VerifiedLocationModal({
   isOpen,
@@ -93,47 +32,26 @@ export default function VerifiedLocationModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [saveToAccount, setSaveToAccount] = useState(showSaveToAccount);
 
-  // Google Maps engine state
+  // Google Maps state
   const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
-  const [mapEngine, setMapEngine] = useState("google"); // "google" | "leaflet"
   const googleMapRef = useRef(null);
   const googleMapInstance = useRef(null);
   const googleMarkerInstance = useRef(null);
   const sessionTokenRef = useRef(null);
 
-  // Initialize Google Maps SDK & listen for auth failures
+  // Initialize Google Maps SDK
   useEffect(() => {
-    if (isGoogleMapsAuthFailed()) {
-      setMapEngine("leaflet");
-      return;
-    }
-
-    const handleAuthFail = () => {
-      console.warn("Google Maps auth failed, switching to Leaflet fallback");
-      setMapEngine("leaflet");
-    };
-    window.addEventListener("google-maps-auth-failure", handleAuthFail);
-
     loadGoogleMaps()
       .then((maps) => {
-        if (!isGoogleMapsAuthFailed()) {
-          setIsGoogleMapsReady(true);
-          setMapEngine("google");
-        } else {
-          setMapEngine("leaflet");
-        }
+        setIsGoogleMapsReady(true);
         if (maps?.places?.AutocompleteSessionToken) {
           sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
         }
       })
       .catch((err) => {
-        console.warn("Falling back to OpenStreetMap engine:", err.message);
-        setMapEngine("leaflet");
+        console.error("Google Maps load error:", err);
+        setErrorMsg("Failed to load Google Maps. Please check network connection.");
       });
-
-    return () => {
-      window.removeEventListener("google-maps-auth-failure", handleAuthFail);
-    };
   }, []);
 
   // Reverse geocode and verify location whenever pin position changes
@@ -160,7 +78,7 @@ export default function VerifiedLocationModal({
 
   // Setup Google Map instance when modal is opened and Google Maps is ready
   useEffect(() => {
-    if (!isOpen || mapEngine !== "google" || !googleMapRef.current || !window.google?.maps) {
+    if (!isOpen || !googleMapRef.current || !window.google?.maps) {
       return;
     }
 
@@ -223,7 +141,7 @@ export default function VerifiedLocationModal({
         googleMarkerInstance.current.setPosition(centerLatLng);
       }
     }
-  }, [isOpen, mapEngine, isGoogleMapsReady]);
+  }, [isOpen, isGoogleMapsReady]);
 
   // Sync Google Map marker when position state changes externally
   useEffect(() => {
@@ -384,21 +302,6 @@ export default function VerifiedLocationModal({
     setPosition(newPos);
     setSearchQuery(result.display_name);
     verifyCoordinates(result.latitude, result.longitude, result.display_name);
-  };
-
-  const handleMarkerDragEnd = (e) => {
-    const marker = e.target;
-    if (marker) {
-      const latlng = marker.getLatLng();
-      const newPos = [latlng.lat, latlng.lng];
-      setPosition(newPos);
-      verifyCoordinates(latlng.lat, latlng.lng);
-    }
-  };
-
-  const handleMapClick = (coords) => {
-    setPosition(coords);
-    verifyCoordinates(coords[0], coords[1]);
   };
 
   const handleConfirmLocation = async () => {
@@ -567,43 +470,19 @@ export default function VerifiedLocationModal({
           )}
         </div>
 
-        {/* Interactive Map Canvas: Google Maps with Leaflet Fallback */}
+        {/* Interactive Google Map Canvas */}
         <div className="relative w-full h-[280px] sm:h-[320px] bg-gray-100">
-          {mapEngine === "google" ? (
-            <div
-              ref={googleMapRef}
-              style={{ width: "100%", height: "100%" }}
-              className="google-map-canvas"
-            />
-          ) : (
-            <MapContainer
-              center={position}
-              zoom={16}
-              style={{ width: "100%", height: "100%" }}
-              attributionControl={false}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                maxZoom={19}
-              />
-              <MapRecenter center={position} />
-              <MapClickHandler onLocationClicked={handleMapClick} />
-              <Marker
-                position={position}
-                icon={pinIcon}
-                draggable={true}
-                eventHandlers={{
-                  dragend: handleMarkerDragEnd,
-                }}
-              >
-                <Popup>
-                  <div className="text-xs p-1">
-                    <strong>Delivery Pin Location</strong>
-                    <p className="text-[10px] text-gray-500 mt-1">Drag marker to adjust building gate.</p>
-                  </div>
-                </Popup>
-              </Marker>
-            </MapContainer>
+          <div
+            ref={googleMapRef}
+            style={{ width: "100%", height: "100%" }}
+            className="google-map-canvas"
+          />
+
+          {!isGoogleMapsReady && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/90 z-[300] gap-2">
+              <span className="text-2xl animate-spin">⏳</span>
+              <span className="text-xs font-semibold text-gray-600">Loading Google Maps...</span>
+            </div>
           )}
 
           {/* Floating Instructions */}
