@@ -5,10 +5,59 @@ const GOOGLE_MAPS_API_KEY =
   import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyAkTC7CWqsjgUTIrGoZ5kxF6SLCsr5ErQc";
 
 let loadPromise = null;
+let authFailed = false;
+const authFailureListeners = new Set();
+
+/**
+ * Check if Google Maps has encountered an authentication or quota failure
+ */
+export function isGoogleMapsAuthFailed() {
+  return authFailed || Boolean(typeof window !== "undefined" && window.__googleMapsAuthFailed);
+}
+
+/**
+ * Register a listener when Google Maps encounters an authentication failure
+ */
+export function onGoogleMapsAuthError(callback) {
+  if (typeof callback !== "function") return () => {};
+  authFailureListeners.add(callback);
+  if (isGoogleMapsAuthFailed()) {
+    try {
+      callback();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return () => authFailureListeners.delete(callback);
+}
+
+// Hook into global gm_authFailure to catch domain restriction, billing, or invalid key errors immediately
+if (typeof window !== "undefined") {
+  const previousAuthFailure = window.gm_authFailure;
+  window.gm_authFailure = function () {
+    authFailed = true;
+    window.__googleMapsAuthFailed = true;
+    console.warn("Google Maps JavaScript API authentication failed. Switching to OpenStreetMap fallback.");
+    authFailureListeners.forEach((fn) => {
+      try {
+        fn();
+      } catch (err) {
+        console.error("Error in gm_authFailure handler:", err);
+      }
+    });
+    if (typeof previousAuthFailure === "function") {
+      previousAuthFailure();
+    }
+  };
+}
 
 export function loadGoogleMaps() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Window is not defined"));
+  }
+
+  if (isGoogleMapsAuthFailed()) {
+    return Promise.reject(new Error("Google Maps authentication failed"));
   }
 
   // Already loaded
@@ -25,6 +74,10 @@ export function loadGoogleMaps() {
     // Check if script element already exists in document
     const existingScript = document.getElementById("google-maps-sdk");
     if (existingScript) {
+      if (window.google?.maps?.places) {
+        resolve(window.google.maps);
+        return;
+      }
       existingScript.addEventListener("load", () => {
         if (window.google?.maps) resolve(window.google.maps);
         else reject(new Error("Google Maps object not found after script load"));
@@ -33,16 +86,9 @@ export function loadGoogleMaps() {
       return;
     }
 
-    const script = document.createElement("script");
-    script.id = "google-maps-sdk";
-    script.type = "text/javascript";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      GOOGLE_MAPS_API_KEY
-    )}&libraries=places,geometry&loading=async`;
-    script.async = true;
-    script.defer = true;
-
-    script.onload = () => {
+    const callbackName = "__googleMapsCallback_" + Math.random().toString(36).substring(2, 9);
+    window[callbackName] = () => {
+      delete window[callbackName];
       if (window.google && window.google.maps) {
         resolve(window.google.maps);
       } else {
@@ -50,9 +96,19 @@ export function loadGoogleMaps() {
       }
     };
 
+    const script = document.createElement("script");
+    script.id = "google-maps-sdk";
+    script.type = "text/javascript";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+      GOOGLE_MAPS_API_KEY
+    )}&libraries=places,geometry&callback=${callbackName}&loading=async`;
+    script.async = true;
+    script.defer = true;
+
     script.onerror = (err) => {
       console.warn("Failed to load Google Maps SDK:", err);
       loadPromise = null;
+      delete window[callbackName];
       reject(err);
     };
 
@@ -68,7 +124,7 @@ export function loadGoogleMaps() {
  * @param {google.maps.places.AutocompleteSessionToken} [sessionToken] - Session token for cost optimization
  */
 export async function getGooglePlacePredictions(input, sessionToken = null) {
-  if (!input || input.trim().length < 2) return [];
+  if (!input || input.trim().length < 2 || isGoogleMapsAuthFailed()) return [];
 
   try {
     const maps = await loadGoogleMaps();
@@ -105,7 +161,7 @@ export async function getGooglePlacePredictions(input, sessionToken = null) {
  * @param {google.maps.places.AutocompleteSessionToken} [sessionToken]
  */
 export async function getGooglePlaceDetails(placeId, sessionToken = null) {
-  if (!placeId) return null;
+  if (!placeId || isGoogleMapsAuthFailed()) return null;
 
   try {
     const maps = await loadGoogleMaps();
@@ -169,11 +225,47 @@ export async function getGooglePlaceDetails(placeId, sessionToken = null) {
 }
 
 /**
- * Reverse geocode GPS coordinates to a formatted Nigerian address using Google Geocoder
+ * Reverse geocode via OpenStreetMap Nominatim (reliable zero-key fallback)
+ */
+export async function reverseGeocodeNominatim(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(
+      lat
+    )}&lon=${encodeURIComponent(lng)}&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.address) return null;
+    const a = data.address;
+    const city = a.city || a.town || a.municipality || a.county || "";
+    const lga = a.county || a.state_district || city;
+    const state = a.state || "";
+    const postalCode = a.postcode || "";
+    return {
+      formatted_address: data.display_name || "",
+      city: city || lga,
+      lga: lga || city,
+      state: state,
+      postal_code: postalCode,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Reverse geocode GPS coordinates to a formatted Nigerian address using Google Geocoder,
+ * with graceful OpenStreetMap fallback if Google Maps is restricted or offline
  * @param {number} lat
  * @param {number} lng
  */
 export async function reverseGeocodeGoogle(lat, lng) {
+  if (isGoogleMapsAuthFailed()) {
+    return reverseGeocodeNominatim(lat, lng);
+  }
+
   try {
     const maps = await loadGoogleMaps();
     const geocoder = new maps.Geocoder();
@@ -181,7 +273,7 @@ export async function reverseGeocodeGoogle(lat, lng) {
     return new Promise((resolve) => {
       geocoder.geocode(
         { location: { lat: parseFloat(lat), lng: parseFloat(lng) } },
-        (results, status) => {
+        async (results, status) => {
           if (status === "OK" && Array.isArray(results) && results.length > 0) {
             const top = results[0];
             let city = "";
@@ -205,13 +297,14 @@ export async function reverseGeocodeGoogle(lat, lng) {
               postal_code: postalCode,
             });
           } else {
-            resolve(null);
+            const fallback = await reverseGeocodeNominatim(lat, lng);
+            resolve(fallback);
           }
         }
       );
     });
   } catch (err) {
-    console.warn("Reverse Geocode Google error:", err);
-    return null;
+    console.warn("Reverse Geocode Google error, trying Nominatim:", err);
+    return reverseGeocodeNominatim(lat, lng);
   }
 }

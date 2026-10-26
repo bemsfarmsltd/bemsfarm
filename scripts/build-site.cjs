@@ -48,7 +48,12 @@ if (existsSync(fleetDist)) {
 }
 
 // 5. Generate .htaccess rules for SPA routing
-const rootHtaccess = `Options -Indexes +FollowSymLinks
+const rootHtaccess = `<IfModule LiteSpeed>
+  LsRecaptcha 0
+  RewriteRule .* - [E=verifycaptcha:off]
+</IfModule>
+
+Options -Indexes +FollowSymLinks
 DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
@@ -68,6 +73,9 @@ DirectoryIndex index.html
 
   # 2. Main Storefront SPA Routing (/*)
   RewriteRule ^index\\.html$ - [L]
+  # Force SPA route for products catalog even though physical /products folder exists
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^products(/.*)?$ /index.html [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]

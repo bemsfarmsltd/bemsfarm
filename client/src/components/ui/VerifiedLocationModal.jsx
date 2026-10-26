@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
 import { normalizeNigerianState, resolveNigerianPostalCode } from "../../utils/nigerianStates";
 import {
@@ -6,7 +8,37 @@ import {
   getGooglePlacePredictions,
   getGooglePlaceDetails,
   reverseGeocodeGoogle,
+  reverseGeocodeNominatim,
+  isGoogleMapsAuthFailed,
+  onGoogleMapsAuthError,
 } from "../../utils/googleMapsLoader";
+
+// Custom Leaflet pin for Bems Farms doorstep delivery
+const leafletPinIcon = L.divIcon({
+  className: "custom-delivery-pin",
+  iconSize: [42, 50],
+  iconAnchor: [21, 50],
+  popupAnchor: [0, -48],
+  html: `
+    <div style="position:relative;width:42px;height:50px;display:flex;flex-direction:column;align-items:center;">
+      <div style="
+        width:40px;height:40px;border-radius:50%;
+        background:linear-gradient(135deg, #047857 0%, #064e3b 100%);
+        color:#ffffff;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 8px 20px rgba(4,120,87,0.5);
+        border:2.5px solid #ffffff;font-size:20px;
+      ">
+        📍
+      </div>
+      <div style="
+        width:0;height:0;
+        border-left:7px solid transparent;border-right:7px solid transparent;
+        border-top:10px solid #064e3b;
+        margin-top:-2px;
+      "></div>
+    </div>
+  `,
+});
 
 export default function VerifiedLocationModal({
   isOpen,
@@ -32,27 +64,70 @@ export default function VerifiedLocationModal({
   const [errorMsg, setErrorMsg] = useState("");
   const [saveToAccount, setSaveToAccount] = useState(showSaveToAccount);
 
-  // Google Maps state
-  const [isGoogleMapsReady, setIsGoogleMapsReady] = useState(false);
-  const googleMapRef = useRef(null);
+  // Map state (Google Maps with seamless Leaflet/OpenStreetMap fallback)
+  const [useLeaflet, setUseLeaflet] = useState(() => isGoogleMapsAuthFailed());
+  const [isMapReady, setIsMapReady] = useState(false);
+  const mapContainerRef = useRef(null);
   const googleMapInstance = useRef(null);
   const googleMarkerInstance = useRef(null);
+  const leafletMapInstance = useRef(null);
+  const leafletMarkerInstance = useRef(null);
   const sessionTokenRef = useRef(null);
 
-  // Initialize Google Maps SDK
+  // Listen for Google Maps auth errors (e.g. domain restriction on bemsfarms.com)
   useEffect(() => {
+    const unsubscribe = onGoogleMapsAuthError(() => {
+      setUseLeaflet(true);
+      setIsMapReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Initialize Maps engine
+  useEffect(() => {
+    if (isGoogleMapsAuthFailed()) {
+      setUseLeaflet(true);
+      setIsMapReady(true);
+      return;
+    }
+
     loadGoogleMaps()
       .then((maps) => {
-        setIsGoogleMapsReady(true);
-        if (maps?.places?.AutocompleteSessionToken) {
-          sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+        if (!isGoogleMapsAuthFailed()) {
+          setIsMapReady(true);
+          if (maps?.places?.AutocompleteSessionToken) {
+            sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+          }
+        } else {
+          setUseLeaflet(true);
+          setIsMapReady(true);
         }
       })
       .catch((err) => {
-        console.error("Google Maps load error:", err);
-        setErrorMsg("Failed to load Google Maps. Please check network connection.");
+        console.warn("Google Maps load failed, switching to Leaflet fallback:", err);
+        setUseLeaflet(true);
+        setIsMapReady(true);
       });
   }, []);
+
+  // Clean up map instances when modal is closed to prevent stale detached nodes on reopen
+  useEffect(() => {
+    if (!isOpen) {
+      if (googleMapInstance.current) {
+        googleMapInstance.current = null;
+        googleMarkerInstance.current = null;
+      }
+      if (leafletMapInstance.current) {
+        try {
+          leafletMapInstance.current.remove();
+        } catch (e) {
+          // ignore
+        }
+        leafletMapInstance.current = null;
+        leafletMarkerInstance.current = null;
+      }
+    }
+  }, [isOpen]);
 
   // Reverse geocode and verify location whenever pin position changes
   const verifyCoordinates = useCallback(async (lat, lng, addressHint = "") => {
@@ -76,81 +151,163 @@ export default function VerifiedLocationModal({
     }
   }, []);
 
-  // Setup Google Map instance when modal is opened and Google Maps is ready
+  // Setup Map instance when modal is opened and ready
   useEffect(() => {
-    if (!isOpen || !googleMapRef.current || !window.google?.maps) {
+    if (!isOpen || !mapContainerRef.current) {
       return;
     }
 
     const lat = position[0] || defaultCenter[0];
     const lng = position[1] || defaultCenter[1];
-    const centerLatLng = { lat, lng };
 
-    if (!googleMapInstance.current) {
-      const map = new window.google.maps.Map(googleMapRef.current, {
-        center: centerLatLng,
-        zoom: 16,
-        mapTypeControl: true,
-        mapTypeControlOptions: {
-          style: window.google.maps.MapTypeControlStyle.DROPDOWN_MENU,
-          position: window.google.maps.ControlPosition.TOP_RIGHT,
-        },
-        streetViewControl: false,
-        fullscreenControl: false,
-        zoomControl: true,
-      });
-
-      const marker = new window.google.maps.Marker({
-        position: centerLatLng,
-        map: map,
-        draggable: true,
-        animation: window.google.maps.Animation.DROP,
-        title: "Bems Farms Delivery Gate",
-      });
-
-      // Handle marker drag
-      marker.addListener("dragend", async (e) => {
-        const newLat = e.latLng.lat();
-        const newLng = e.latLng.lng();
-        setPosition([newLat, newLng]);
-
-        const revData = await reverseGeocodeGoogle(newLat, newLng);
-        const bestAddress = revData?.formatted_address || searchQuery;
-        if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
-        verifyCoordinates(newLat, newLng, bestAddress);
-      });
-
-      // Handle map click
-      map.addListener("click", async (e) => {
-        const newLat = e.latLng.lat();
-        const newLng = e.latLng.lng();
-        marker.setPosition(e.latLng);
-        setPosition([newLat, newLng]);
-
-        const revData = await reverseGeocodeGoogle(newLat, newLng);
-        const bestAddress = revData?.formatted_address || searchQuery;
-        if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
-        verifyCoordinates(newLat, newLng, bestAddress);
-      });
-
-      googleMapInstance.current = map;
-      googleMarkerInstance.current = marker;
-    } else {
-      googleMapInstance.current.setCenter(centerLatLng);
-      if (googleMarkerInstance.current) {
-        googleMarkerInstance.current.setPosition(centerLatLng);
+    if (useLeaflet) {
+      // Clean up google map if switching
+      if (googleMapInstance.current) {
+        googleMapInstance.current = null;
+        googleMarkerInstance.current = null;
       }
-    }
-  }, [isOpen, isGoogleMapsReady]);
 
-  // Sync Google Map marker when position state changes externally
+      if (!leafletMapInstance.current) {
+        const lMap = L.map(mapContainerRef.current, {
+          center: [lat, lng],
+          zoom: 16,
+          zoomControl: true,
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(lMap);
+
+        const marker = L.marker([lat, lng], {
+          icon: leafletPinIcon,
+          draggable: true,
+        }).addTo(lMap);
+
+        marker.on("dragend", async (e) => {
+          const c = e.target.getLatLng();
+          const newLat = c.lat;
+          const newLng = c.lng;
+          setPosition([newLat, newLng]);
+
+          const revData = await reverseGeocodeNominatim(newLat, newLng);
+          const bestAddress = revData?.formatted_address || searchQuery;
+          if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+          verifyCoordinates(newLat, newLng, bestAddress);
+        });
+
+        lMap.on("click", async (e) => {
+          const newLat = e.latlng.lat;
+          const newLng = e.latlng.lng;
+          marker.setLatLng(e.latlng);
+          setPosition([newLat, newLng]);
+
+          const revData = await reverseGeocodeNominatim(newLat, newLng);
+          const bestAddress = revData?.formatted_address || searchQuery;
+          if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+          verifyCoordinates(newLat, newLng, bestAddress);
+        });
+
+        leafletMapInstance.current = lMap;
+        leafletMarkerInstance.current = marker;
+      } else {
+        leafletMapInstance.current.setView([lat, lng], 16);
+        if (leafletMarkerInstance.current) {
+          leafletMarkerInstance.current.setLatLng([lat, lng]);
+        }
+      }
+
+      const timer = setTimeout(() => {
+        leafletMapInstance.current?.invalidateSize();
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      // Google Maps mode
+      if (!window.google?.maps) return;
+
+      const centerLatLng = { lat, lng };
+
+      if (!googleMapInstance.current) {
+        try {
+          const map = new window.google.maps.Map(mapContainerRef.current, {
+            center: centerLatLng,
+            zoom: 16,
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+              style: window.google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+              position: window.google.maps.ControlPosition.TOP_RIGHT,
+            },
+            streetViewControl: false,
+            fullscreenControl: false,
+            zoomControl: true,
+          });
+
+          const marker = new window.google.maps.Marker({
+            position: centerLatLng,
+            map: map,
+            draggable: true,
+            animation: window.google.maps.Animation.DROP,
+            title: "Bems Farms Delivery Gate",
+          });
+
+          marker.addListener("dragend", async (e) => {
+            const newLat = e.latLng.lat();
+            const newLng = e.latLng.lng();
+            setPosition([newLat, newLng]);
+
+            const revData = await reverseGeocodeGoogle(newLat, newLng);
+            const bestAddress = revData?.formatted_address || searchQuery;
+            if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+            verifyCoordinates(newLat, newLng, bestAddress);
+          });
+
+          map.addListener("click", async (e) => {
+            const newLat = e.latLng.lat();
+            const newLng = e.latLng.lng();
+            marker.setPosition(e.latLng);
+            setPosition([newLat, newLng]);
+
+            const revData = await reverseGeocodeGoogle(newLat, newLng);
+            const bestAddress = revData?.formatted_address || searchQuery;
+            if (bestAddress && !searchQuery) setSearchQuery(bestAddress);
+            verifyCoordinates(newLat, newLng, bestAddress);
+          });
+
+          googleMapInstance.current = map;
+          googleMarkerInstance.current = marker;
+        } catch (gErr) {
+          console.warn("Error creating Google Map, falling back to Leaflet:", gErr);
+          setUseLeaflet(true);
+        }
+      } else {
+        googleMapInstance.current.setCenter(centerLatLng);
+        if (googleMarkerInstance.current) {
+          googleMarkerInstance.current.setPosition(centerLatLng);
+        }
+      }
+
+      const timer = setTimeout(() => {
+        if (googleMapInstance.current && window.google?.maps) {
+          window.google.maps.event.trigger(googleMapInstance.current, "resize");
+          googleMapInstance.current.setCenter(centerLatLng);
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, useLeaflet, isMapReady]);
+
+  // Sync Map marker when position state changes externally
   useEffect(() => {
-    if (googleMapInstance.current && googleMarkerInstance.current && position[0] && position[1]) {
+    if (!position[0] || !position[1]) return;
+    if (useLeaflet && leafletMapInstance.current && leafletMarkerInstance.current) {
+      leafletMapInstance.current.panTo([position[0], position[1]]);
+      leafletMarkerInstance.current.setLatLng([position[0], position[1]]);
+    } else if (googleMapInstance.current && googleMarkerInstance.current && window.google?.maps) {
       const latLng = { lat: position[0], lng: position[1] };
       googleMapInstance.current.panTo(latLng);
       googleMarkerInstance.current.setPosition(latLng);
     }
-  }, [position]);
+  }, [position, useLeaflet]);
 
   // Initial verification on open
   useEffect(() => {
@@ -379,7 +536,9 @@ export default function VerifiedLocationModal({
             <div>
               <h3 className="font-bold text-base leading-tight">Pin Your Exact Delivery Doorstep</h3>
               <p className="text-xs text-emerald-100">
-                Powered by Google Maps & Landmark Search
+                {useLeaflet
+                  ? "Powered by OpenStreetMap & Verified Delivery Zones"
+                  : "Powered by Google Maps & Landmark Search"}
               </p>
             </div>
           </div>
@@ -470,26 +629,34 @@ export default function VerifiedLocationModal({
           )}
         </div>
 
-        {/* Interactive Google Map Canvas */}
+        {/* Interactive Map Canvas (Leaflet / Google Maps) */}
         <div className="relative w-full h-[280px] sm:h-[320px] bg-gray-100">
           <div
-            ref={googleMapRef}
-            style={{ width: "100%", height: "100%" }}
-            className="google-map-canvas"
+            ref={mapContainerRef}
+            style={{ width: "100%", height: "100%", zIndex: 1 }}
+            className="delivery-map-canvas"
           />
 
-          {!isGoogleMapsReady && (
+          {!isMapReady && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/90 z-[300] gap-2">
               <span className="text-2xl animate-spin">⏳</span>
-              <span className="text-xs font-semibold text-gray-600">Loading Google Maps...</span>
+              <span className="text-xs font-semibold text-gray-600">Loading Map...</span>
             </div>
           )}
 
           {/* Floating Instructions */}
-          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow border border-gray-200 text-[11px] text-gray-700 z-[400] flex items-center gap-1.5">
+          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow border border-gray-200 text-[11px] text-gray-700 z-[400] flex items-center gap-1.5 pointer-events-none">
             <span>💡</span>
             <span>Click or drag pin to your exact building gate</span>
           </div>
+
+          {/* Map Mode Badge */}
+          {useLeaflet && (
+            <div className="absolute top-3 right-3 bg-emerald-900/90 text-white backdrop-blur-sm px-2.5 py-1 rounded-md shadow text-[10px] font-semibold z-[400] flex items-center gap-1">
+              <span>🗺️</span>
+              <span>Live Street Map</span>
+            </div>
+          )}
 
           {isVerifying && (
             <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow text-xs text-emerald-800 font-medium z-[400] flex items-center gap-2 border border-emerald-200">
