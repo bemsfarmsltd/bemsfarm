@@ -710,7 +710,7 @@ export default function DriversManagement() {
               <Link to="/deliveries/active">Deliveries</Link>
             </li>
             <li className="breadcrumb-item active">
-              {tabMode === 'fleet' ? 'Drivers & Verification' : 'Wallets & Payouts'}
+              {tabMode === 'fleet' ? 'Drivers & Verification' : tabMode === 'chat' ? 'Courier Dispatch Chat' : 'Wallets & Payouts'}
             </li>
           </ul>
           {tabMode === 'fleet' && stats.pendingCompliance > 0 && (
@@ -1653,7 +1653,7 @@ export default function DriversManagement() {
           VIEW 3: CENTRAL DRIVER DISPATCH & ALL-COURIER CHAT
       ══════════════════════════════════════════════════════════════ */}
       {tabMode === 'chat' && (
-        <div style={{ height: 'calc(100vh - 220px)', minHeight: 650, marginBottom: 24 }}>
+        <div style={{ height: 'calc(100vh - 210px)', minHeight: 580, maxHeight: 850, width: '100%', maxWidth: '100%', boxSizing: 'border-box', marginBottom: 24 }}>
           <DriverDispatchConsole
             initialDriverId={selectedChatDriverId}
           />

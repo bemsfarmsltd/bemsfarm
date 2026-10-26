@@ -68,6 +68,8 @@ function QuotedMessageSnippet({ replyTo, onDismiss = null, isInsideBubble = fals
         cursor: onClickOriginal ? 'pointer' : 'default',
         transition: 'all 0.15s ease',
         userSelect: 'none',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         borderTop: isInsideBubble ? 'none' : '1px solid #BBF7D0',
         borderRight: isInsideBubble ? 'none' : '1px solid #BBF7D0',
         borderBottom: isInsideBubble ? 'none' : '1px solid #BBF7D0',
@@ -381,6 +383,10 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
       flexDirection: 'column',
       height: '100%',
       minHeight: 560,
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      boxSizing: 'border-box',
       background: '#FFFFFF',
       borderRadius: 16,
       border: '1px solid #E2E8F0',
@@ -570,6 +576,9 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
         style={{
           flex: 1,
           overflowY: 'auto',
+          overflowX: 'hidden',
+          width: '100%',
+          boxSizing: 'border-box',
           padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
@@ -618,13 +627,22 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                 display: 'flex',
                 justifyContent: isAdmin ? 'flex-end' : 'flex-start',
                 gap: 8,
-                padding: '2px 4px',
+                padding: '2px 0',
                 borderRadius: 12,
+                width: '100%',
+                boxSizing: 'border-box',
                 transition: 'background-color 0.2s',
               }}
             >
               {!isAdmin && <DriverAvatar name={isBot ? 'Dispatch AI' : (driver.name || 'Courier')} size={28} />}
-              <div style={{ maxWidth: '75%', position: 'relative' }}>
+              <div style={{
+                maxWidth: '82%',
+                minWidth: 0,
+                position: 'relative',
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                boxSizing: 'border-box',
+              }}>
                 {msgOrderRef && showAllHistory && (
                   <div style={{
                     marginBottom: 4,
@@ -651,6 +669,9 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                   fontSize: 13,
                   lineHeight: 1.5,
                   whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  boxSizing: 'border-box',
                 }}>
                   {replyMeta && (
                     <QuotedMessageSnippet
@@ -1124,22 +1145,28 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
       borderRadius: 16,
       border: '1px solid #E2E8F0',
       overflow: 'hidden',
+      boxSizing: 'border-box',
       fontFamily: 'Inter, system-ui, sans-serif',
       background: '#F8FAFC',
     }}>
       {/* Top Header */}
       <div style={{
-        padding: '14px 20px',
+        padding: '12px 18px',
         borderBottom: '1px solid #E2E8F0',
         background: '#FFFFFF',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        flexWrap: 'wrap',
+        flexWrap: 'nowrap',
         gap: 12,
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <DriverAvatar name={driverName} size={42} />
@@ -1165,7 +1192,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {driverPhone && (
             <a
               href={`tel:${driverPhone}`}
@@ -1181,6 +1208,8 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               <span>📞 Call ({driverPhone})</span>
@@ -1193,7 +1222,10 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: 20,
+        overflowX: 'hidden',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '16px 20px',
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
@@ -1226,13 +1258,22 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                 display: 'flex',
                 justifyContent: isAdmin ? 'flex-end' : 'flex-start',
                 gap: 8,
-                padding: '2px 4px',
+                padding: '2px 0',
                 borderRadius: 12,
+                width: '100%',
+                boxSizing: 'border-box',
                 transition: 'background-color 0.2s',
               }}
             >
               {!isAdmin && <DriverAvatar name={isBot ? 'Dispatch AI' : (driverName || 'Courier')} size={28} />}
-              <div style={{ maxWidth: '75%', position: 'relative' }}>
+              <div style={{
+                maxWidth: '82%',
+                minWidth: 0,
+                position: 'relative',
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                boxSizing: 'border-box',
+              }}>
                 {m.order_id && (
                   <div style={{
                     marginBottom: 4,
@@ -1259,6 +1300,9 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                   fontSize: 13,
                   lineHeight: 1.5,
                   whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  boxSizing: 'border-box',
                 }}>
                   {replyMeta && (
                     <QuotedMessageSnippet
@@ -1329,6 +1373,9 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
         gap: 8,
         overflowX: 'auto',
         whiteSpace: 'nowrap',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}>
         <button
           type="button"
@@ -1345,6 +1392,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             display: 'flex',
             alignItems: 'center',
             gap: 4,
+            flexShrink: 0,
           }}
         >
           <span>📦 Attach Order</span>
@@ -1364,6 +1412,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
               fontSize: 11,
               fontWeight: 600,
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             {action}
@@ -1389,6 +1438,9 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
           display: 'flex',
           flexDirection: 'column',
           gap: 6,
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {replyingTo && (
@@ -1410,8 +1462,10 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             padding: '6px 10px',
             borderRadius: 8,
             alignSelf: 'flex-start',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
           }}>
-            <span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               📦 Referencing: <strong>Order #{selectedDelivery.order_ref || selectedDelivery.delivery_ref || selectedDelivery.order_id || selectedDelivery.id}</strong> {selectedDelivery.total ? `(₦${Number(selectedDelivery.total).toLocaleString()})` : ''}
             </span>
             <button
@@ -1424,6 +1478,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                 cursor: 'pointer',
                 fontWeight: 800,
                 fontSize: 13,
+                flexShrink: 0,
               }}
             >
               ✕
@@ -1431,7 +1486,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', width: '100%', boxSizing: 'border-box' }}>
           <textarea
             value={text}
             onChange={handleInputChange}
@@ -1446,6 +1501,8 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             }}
             style={{
               flex: 1,
+              minWidth: 0,
+              boxSizing: 'border-box',
               border: '1px solid #CBD5E1',
               borderRadius: 10,
               padding: '10px 14px',
@@ -1474,6 +1531,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
               fontSize: 13,
               whiteSpace: 'nowrap',
               height: 46,
+              flexShrink: 0,
             }}
           >
             {sending ? 'Sending…' : '↑ Send'}
@@ -1578,6 +1636,9 @@ export function GlobalDriverDispatchConsole({ initialDriverId = null }) {
       display: 'flex',
       height: '100%',
       minHeight: 620,
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
       fontFamily: 'Inter, system-ui, sans-serif',
       background: '#FFFFFF',
       borderRadius: 16,
@@ -1739,7 +1800,7 @@ export function GlobalDriverDispatchConsole({ initialDriverId = null }) {
       </div>
 
       {/* ── Right Content: Active Driver Chat ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minWidth: 0, maxWidth: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         {selectedDriverId ? (
           <DriverDispatchChat
             key={selectedDriverId}
