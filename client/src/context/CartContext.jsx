@@ -98,7 +98,7 @@ export function CartProvider({ children }) {
         try {
           // If customer just logged in with existing local items, merge them into their persistent account cart
           const currentLocalItems = Object.values(loadLocalCart());
-          if (wasLoggedOut && currentLocalItems.length > 0) {
+          if (currentLocalItems.length > 0) {
             const syncPayload = currentLocalItems.map((item) => ({
               productId: item.product?.id,
               quantity: item.quantity,

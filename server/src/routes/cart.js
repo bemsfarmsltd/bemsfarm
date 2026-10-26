@@ -56,8 +56,9 @@ async function resolveCustomer(req) {
       return null;
     }
 
-    const tokenVersion = decoded.tokenVersion || 0;
-    if (u.token_version !== undefined && tokenVersion !== u.token_version) {
+    const tokenVersion = Number(decoded.tokenVersion || 0);
+    const dbTokenVersion = Number(u.token_version || 0);
+    if (tokenVersion !== dbTokenVersion) {
       return null;
     }
 
