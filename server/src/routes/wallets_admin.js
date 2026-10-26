@@ -77,17 +77,46 @@ router.delete("/drivers/:id", requireRole("superadmin", "manager", "admin"), asy
     }
 
     await client.query("BEGIN");
-    await client.query("DELETE FROM driver_locations WHERE driver_id = $1", [id]);
-    await client.query("DELETE FROM driver_availability WHERE driver_id = $1", [id]);
-    await client.query("DELETE FROM driver_notifications WHERE driver_id = $1", [id]);
-    await client.query("DELETE FROM driver_device_tokens WHERE driver_id = $1", [id]);
+
+    // 1. Clean up driver location tracking pings
+    try { await client.query("DELETE FROM driver_locations WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 2. Clean up driver availability records
+    try { await client.query("DELETE FROM driver_availability WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 3. Clean up driver notifications & device tokens
+    try { await client.query("DELETE FROM driver_notifications WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM driver_device_tokens WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM driver_devices WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 4. Clean up driver incidents & zone assignments
     try { await client.query("DELETE FROM driver_incidents WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM zone_drivers WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 5. Clean up driver wallet ledger, commissions, and payouts
     try { await client.query("DELETE FROM driver_wallet_ledger WHERE driver_id = $1", [id]); } catch (e) {}
     try { await client.query("DELETE FROM driver_commissions WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM commission_payments WHERE driver_id = $1", [id]); } catch (e) {}
     try { await client.query("DELETE FROM driver_payouts WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 6. Clean up chat messages & conversations
+    try { await client.query("DELETE FROM driver_messages WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM driver_conversations WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 7. Clean up driver profiles, stats, auth
+    try { await client.query("DELETE FROM driver_profiles WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM driver_stats WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("DELETE FROM driver_auth WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 8. Clean up delivery assignments & unassign from deliveries & orders
     try { await client.query("DELETE FROM delivery_assignments WHERE driver_id = $1", [id]); } catch (e) {}
-    await client.query("UPDATE deliveries SET driver_id = NULL WHERE driver_id = $1", [id]);
+    try { await client.query("UPDATE deliveries SET driver_id = NULL WHERE driver_id = $1", [id]); } catch (e) {}
+    try { await client.query("UPDATE deliveries SET picked_up_by = NULL WHERE picked_up_by = $1", [id]); } catch (e) {}
+    try { await client.query("UPDATE orders SET driver_id = NULL WHERE driver_id = $1", [id]); } catch (e) {}
+
+    // 9. Delete driver record
     await client.query("DELETE FROM drivers WHERE id = $1", [id]);
+
     await client.query("COMMIT");
 
     res.json({
