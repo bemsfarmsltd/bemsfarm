@@ -108,3 +108,19 @@ CREATE TABLE IF NOT EXISTS public.delivery_assignments (
 );
 CREATE INDEX IF NOT EXISTS idx_delivery_assignments_lookup ON public.delivery_assignments(delivery_id, driver_id, driver_response, created_at);
 
+-- 9. Ensure driver_wallet_ledger table exists for commissions, payouts, bonuses, and penalties
+CREATE TABLE IF NOT EXISTS public.driver_wallet_ledger (
+    id BIGSERIAL PRIMARY KEY,
+    driver_id BIGINT NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL, -- 'credit', 'debit'
+    category VARCHAR(50) NOT NULL, -- 'bonus', 'penalty', 'delivery_commission', 'withdrawal', 'manual_adjustment', etc.
+    amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+    balance_before NUMERIC(14,2) DEFAULT 0,
+    balance_after NUMERIC(14,2) DEFAULT 0,
+    reference VARCHAR(100),
+    description TEXT,
+    performed_by INTEGER,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_driver_wallet_ledger_driver_time ON public.driver_wallet_ledger(driver_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_driver_wallet_ledger_ref ON public.driver_wallet_ledger(reference);

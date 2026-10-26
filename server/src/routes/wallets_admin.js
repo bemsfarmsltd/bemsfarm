@@ -15,6 +15,32 @@ const {
 router.use(protect);
 router.use(requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant"));
 
+// Ensure driver_wallet_ledger table exists for commission adjustments, bonuses, and penalties
+async function ensureDriverWalletLedgerTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS public.driver_wallet_ledger (
+        id BIGSERIAL PRIMARY KEY,
+        driver_id BIGINT NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
+        type VARCHAR(20) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+        balance_before NUMERIC(14,2) DEFAULT 0,
+        balance_after NUMERIC(14,2) DEFAULT 0,
+        reference VARCHAR(100),
+        description TEXT,
+        performed_by INTEGER,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_driver_wallet_ledger_driver_time ON public.driver_wallet_ledger(driver_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_driver_wallet_ledger_ref ON public.driver_wallet_ledger(reference);
+    `);
+  } catch (err) {
+    console.warn("ensureDriverWalletLedgerTable notice:", err.message);
+  }
+}
+ensureDriverWalletLedgerTable();
+
 // ── POST /api/admin/wallets/drivers/:id/provision-internal-wallet ───
 // Auto-generates an internal wallet ID for driver within Bems Farms system
 router.post("/drivers/:id/provision-internal-wallet", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
@@ -571,20 +597,27 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
     );
 
     // Double-Entry Ledger Side B: Central Company Accounts Debit (valid type 'expense')
-    await client.query(
-      `
-      INSERT INTO transactions (
-        reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
-      )
-      VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())
-      `,
-      [
-        gatewayRef,
-        `Driver Payout Disbursed: ${driver.name} (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
-        payout.amount,
-        payout.payout_ref || gatewayRef,
-      ]
-    );
+    try {
+      await client.query("SAVEPOINT sp_payout_txn");
+      await client.query(
+        `
+        INSERT INTO transactions (
+          reference, date, type, sub_type, description, amount, status, related_ref, created_at
+        )
+        VALUES ($1, CURRENT_DATE, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())
+        `,
+        [
+          gatewayRef,
+          `Driver Payout Disbursed: ${driver.name} (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
+          payout.amount,
+          payout.payout_ref || gatewayRef,
+        ]
+      );
+      await client.query("RELEASE SAVEPOINT sp_payout_txn");
+    } catch (txnErr) {
+      await client.query("ROLLBACK TO SAVEPOINT sp_payout_txn").catch(() => {});
+      console.warn("transactions insert notice (payout disburse):", txnErr.message);
+    }
 
     await client.query("COMMIT");
 
@@ -734,18 +767,25 @@ router.post("/payouts/bulk-disburse", requireRole("superadmin", "manager", "admi
       );
 
       // Ledger Side B: Company Accounts (type 'expense')
-      await client.query(
-        `INSERT INTO transactions (
-          reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
-        )
-        VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
-        [
-          `${batchRef}-${payout.id}`,
-          `Batch Driver Payout (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
-          payout.amount,
-          payout.payout_ref,
-        ]
-      );
+      try {
+        await client.query("SAVEPOINT sp_batch_txn");
+        await client.query(
+          `INSERT INTO transactions (
+            reference, date, type, sub_type, description, amount, status, related_ref, created_at
+          )
+          VALUES ($1, CURRENT_DATE, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
+          [
+            `${batchRef}-${payout.id}`,
+            `Batch Driver Payout (${payout.bank_name || 'Bank'} - ${payout.account_number})`,
+            payout.amount,
+            payout.payout_ref,
+          ]
+        );
+        await client.query("RELEASE SAVEPOINT sp_batch_txn");
+      } catch (txnErr) {
+        await client.query("ROLLBACK TO SAVEPOINT sp_batch_txn").catch(() => {});
+        console.warn("transactions insert notice (batch payout):", txnErr.message);
+      }
     }
 
     const affectedDriverIds = [...new Set(updateRes.rows.map((p) => p.driver_id))];
@@ -1132,6 +1172,7 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
       return res.status(400).json({ message: "A mandatory audit reason / description is required" });
     }
 
+    await ensureDriverWalletLedgerTable();
     await client.query("BEGIN");
 
     const driverRes = await client.query("SELECT * FROM drivers WHERE id = $1 FOR UPDATE", [id]);
@@ -1205,6 +1246,7 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
     );
 
     const adjRef = reference || `ADJ-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+    const performedById = req.user?.id ? parseInt(req.user.id, 10) || null : null;
 
     const ledgerEntry = await client.query(
       `
@@ -1224,28 +1266,32 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
         balanceAfter,
         adjRef,
         cleanReason,
-        req.user.id,
+        performedById,
       ]
     );
 
-    // Side B: Central Company Double-Entry Ledger Entry
+    // Side B: Central Company Double-Entry Ledger Entry (using isolated SAVEPOINT)
     try {
+      await client.query("SAVEPOINT sp_adjust_txn");
+      const txnType = type === "credit" ? "expense" : "income";
       await client.query(
         `
         INSERT INTO transactions (
-          reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
+          reference, date, type, sub_type, description, amount, status, related_ref, created_at
         )
-        VALUES ($1, CURRENT_DATE, CURRENT_TIME, $2, 'driver_wallet_adjustment', $3, $4, 'completed', $5, NOW())
+        VALUES ($1, CURRENT_DATE, $2, 'driver_wallet_adjustment', $3, $4, 'completed', $5, NOW())
         `,
         [
           adjRef,
-          type === "credit" ? "debit" : "credit", // Company book opposite side
+          txnType,
           `Driver Wallet ${type === "credit" ? "Credit (Bonus/Stipend)" : "Debit (Penalty)"}: ${driver.name} - ${categoryTitle}. Reason: ${cleanReason}`,
           numAmount,
           driver.wallet_account_number || `DRV-${id}`,
         ]
       );
+      await client.query("RELEASE SAVEPOINT sp_adjust_txn");
     } catch (txnErr) {
+      await client.query("ROLLBACK TO SAVEPOINT sp_adjust_txn").catch(() => {});
       console.warn("transactions table insert notice (driver adjust):", txnErr.message);
     }
 

@@ -170,19 +170,26 @@ async function processScheduledPayouts() {
           ]
         );
 
-        // Ledger Side B: Central Company Accounts
-        await client.query(
-          `INSERT INTO transactions (
-            reference, date, time, type, sub_type, description, amount, status, related_ref, created_at
-          )
-          VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'debit', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
-          [
-            gatewayRef,
-            `Automated Driver Payout Disbursed: ${driver.name} (${driver.bank_name} - ${driver.account_number})`,
-            payoutAmount,
-            payoutRef,
-          ]
-        );
+        // Ledger Side B: Central Company Accounts (Wrapped in SAVEPOINT)
+        try {
+          await client.query("SAVEPOINT sp_sched_txn");
+          await client.query(
+            `INSERT INTO transactions (
+              reference, date, type, sub_type, description, amount, status, related_ref, created_at
+            )
+            VALUES ($1, CURRENT_DATE, 'expense', 'driver_payout', $2, $3, 'completed', $4, NOW())`,
+            [
+              gatewayRef,
+              `Automated Driver Payout Disbursed: ${driver.name} (${driver.bank_name} - ${driver.account_number})`,
+              payoutAmount,
+              payoutRef,
+            ]
+          );
+          await client.query("RELEASE SAVEPOINT sp_sched_txn");
+        } catch (txnErr) {
+          await client.query("ROLLBACK TO SAVEPOINT sp_sched_txn").catch(() => {});
+          console.warn("[auto-payout] transactions insert notice:", txnErr.message);
+        }
 
         await client.query("COMMIT");
         disbursedPayouts.push({ driver_id: driver.id, name: driver.name, amount: payoutAmount });
