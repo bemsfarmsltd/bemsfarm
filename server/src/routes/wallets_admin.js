@@ -78,43 +78,74 @@ router.delete("/drivers/:id", requireRole("superadmin", "manager", "admin"), asy
 
     await client.query("BEGIN");
 
-    // 1. Clean up driver location tracking pings
-    try { await client.query("DELETE FROM driver_locations WHERE driver_id = $1", [id]); } catch (e) {}
+    // Helper to safely delete from a table only if it exists, using SAVEPOINT so failures never abort the transaction
+    const safeDelete = async (table, column = "driver_id") => {
+      try {
+        const regRes = await client.query("SELECT to_regclass($1) AS tbl_exists", [`public.${table}`]);
+        if (regRes.rows[0]?.tbl_exists) {
+          await client.query("SAVEPOINT sp_del");
+          try {
+            await client.query(`DELETE FROM public."${table}" WHERE "${column}" = $1`, [id]);
+            await client.query("RELEASE SAVEPOINT sp_del");
+          } catch (err) {
+            await client.query("ROLLBACK TO SAVEPOINT sp_del");
+          }
+        }
+      } catch (e) {}
+    };
 
-    // 2. Clean up driver availability records
-    try { await client.query("DELETE FROM driver_availability WHERE driver_id = $1", [id]); } catch (e) {}
+    // Helper to safely nullify foreign key columns if table exists
+    const safeNullify = async (table, column) => {
+      try {
+        const regRes = await client.query("SELECT to_regclass($1) AS tbl_exists", [`public.${table}`]);
+        if (regRes.rows[0]?.tbl_exists) {
+          await client.query("SAVEPOINT sp_null");
+          try {
+            await client.query(`UPDATE public."${table}" SET "${column}" = NULL WHERE "${column}" = $1`, [id]);
+            await client.query("RELEASE SAVEPOINT sp_null");
+          } catch (err) {
+            await client.query("ROLLBACK TO SAVEPOINT sp_null");
+          }
+        }
+      } catch (e) {}
+    };
 
-    // 3. Clean up driver notifications & device tokens
-    try { await client.query("DELETE FROM driver_notifications WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_device_tokens WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_devices WHERE driver_id = $1", [id]); } catch (e) {}
+    // 1. Clean up driver location tracking & availability
+    await safeDelete("driver_locations");
+    await safeDelete("driver_availability");
 
-    // 4. Clean up driver incidents & zone assignments
-    try { await client.query("DELETE FROM driver_incidents WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM zone_drivers WHERE driver_id = $1", [id]); } catch (e) {}
+    // 2. Clean up driver devices & notifications
+    await safeDelete("driver_notifications");
+    await safeDelete("driver_device_tokens");
+    await safeDelete("driver_devices");
+    await safeDelete("driver_feedback");
 
-    // 5. Clean up driver wallet ledger, commissions, and payouts
-    try { await client.query("DELETE FROM driver_wallet_ledger WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_commissions WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM commission_payments WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_payouts WHERE driver_id = $1", [id]); } catch (e) {}
+    // 3. Clean up driver incidents & zone assignments
+    await safeDelete("driver_incidents");
+    await safeDelete("zone_drivers");
 
-    // 6. Clean up chat messages & conversations
-    try { await client.query("DELETE FROM driver_messages WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_conversations WHERE driver_id = $1", [id]); } catch (e) {}
+    // 4. Clean up driver wallet ledger, commissions, and payouts
+    await safeDelete("driver_wallet_ledger");
+    await safeDelete("driver_commissions");
+    await safeDelete("commission_payments");
+    await safeDelete("driver_payouts");
 
-    // 7. Clean up driver profiles, stats, auth
-    try { await client.query("DELETE FROM driver_profiles WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_stats WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("DELETE FROM driver_auth WHERE driver_id = $1", [id]); } catch (e) {}
+    // 5. Clean up chat messages & conversations
+    await safeDelete("driver_messages");
+    await safeDelete("driver_conversations");
 
-    // 8. Clean up delivery assignments & unassign from deliveries & orders
-    try { await client.query("DELETE FROM delivery_assignments WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("UPDATE deliveries SET driver_id = NULL WHERE driver_id = $1", [id]); } catch (e) {}
-    try { await client.query("UPDATE deliveries SET picked_up_by = NULL WHERE picked_up_by = $1", [id]); } catch (e) {}
-    try { await client.query("UPDATE orders SET driver_id = NULL WHERE driver_id = $1", [id]); } catch (e) {}
+    // 6. Clean up driver profiles, stats, auth
+    await safeDelete("driver_profiles");
+    await safeDelete("driver_stats");
+    await safeDelete("driver_auth");
 
-    // 9. Delete driver record
+    // 7. Clean up delivery assignments & unassign from deliveries & orders
+    await safeDelete("delivery_assignments");
+    await safeNullify("deliveries", "driver_id");
+    await safeNullify("deliveries", "picked_up_by");
+    await safeNullify("orders", "driver_id");
+
+    // 8. Delete driver record
     await client.query("DELETE FROM drivers WHERE id = $1", [id]);
 
     await client.query("COMMIT");
