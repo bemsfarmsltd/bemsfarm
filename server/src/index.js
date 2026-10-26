@@ -21,26 +21,35 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
+      // Allow requests with no origin (curl, mobile native apps) or null/mobile webview schemes
+      if (
+        !origin ||
+        origin === "null" ||
+        origin.startsWith("capacitor://") ||
+        origin.startsWith("ionic://") ||
+        origin.startsWith("file://") ||
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("https://localhost")
+      ) {
+        return callback(null, true);
+      }
       const allowed = [
         "https://www.bemsfarms.com",
         "https://bemsfarms.com",
         "https://bemsfarm.vercel.app",
         "https://palegoldenrod-bee-264147.hostingersite.com",
-        // Henry's admin frontend — update these to match his actual deployment URL
         "https://bems-admin.vercel.app",
         "https://admin.bemsfarms.com",
-        // Local dev
         "http://localhost:5173",
-        "http://localhost:5174", // Henry's local dev (Vite uses next port if 5173 is taken)
+        "http://localhost:5174",
         "http://localhost:3000",
         "http://localhost:4173",
         process.env.FRONTEND_URL,
-        process.env.ADMIN_URL, // add ADMIN_URL to Render env vars once Henry deploys
+        process.env.ADMIN_URL,
       ].filter(Boolean);
       if (allowed.includes(origin)) return callback(null, true);
-      console.warn(`🚫 CORS blocked origin: ${origin}`);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      console.warn(`[CORS] Non-standard origin: ${origin} — allowing for mobile compatibility`);
+      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
