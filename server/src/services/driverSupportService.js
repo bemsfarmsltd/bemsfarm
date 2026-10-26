@@ -244,17 +244,28 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
       const drvObj = drvRes.rows[0] || { id: driverId, name: `Driver #${driverId}` };
       const driverName = drvObj.name || `Driver #${driverId}`;
 
+      const orderRef = orderContext?.order_ref || orderContext?.order_id || null;
+      const directOrderLink = orderRef
+        ? `/orders/${encodeURIComponent(orderRef)}`
+        : `/deliveries/drivers?tab=chat&driverId=${driverId}`;
+
       try {
-        notifyAdmin({
+        await notifyAdmin({
           type: "driver_support_message",
-          title: `🛵 Dispatch Message from Rider ${driverName}${orderContext ? ` (Task #${orderContext.order_ref})` : ""}`,
-          message: `${driverName}: "${message.trim().slice(0, 150)}${message.trim().length > 150 ? "…" : ""}"`,
-          link: `/customers/messages?driver=${driverId}&tab=drivers`,
+          title: `🛵 Dispatch Message from Rider ${driverName}${orderRef ? ` (Order #${orderRef})` : ""}`,
+          message: `${driverName}: "${message.trim()}"`,
+          link: directOrderLink,
           severity: "warning",
           data: {
             driver_id: driverId,
             driver_name: driverName,
-            order_id: orderContext?.order_id,
+            driver_phone: drvObj.phone || null,
+            vehicle: `${drvObj.vehicle_type || 'Vehicle'} (${drvObj.vehicle_plate || 'Active'})`,
+            order_id: orderContext?.order_id || null,
+            order_ref: orderRef,
+            customer_name: orderContext?.customer_name || null,
+            customer_phone: orderContext?.customer_phone || null,
+            delivery_address: orderContext?.address || null,
             message: message.trim(),
           },
           actor: { id: driverId, name: driverName, role: "driver" },
@@ -265,9 +276,11 @@ async function sendDriverMessage(driverId, message, actor, options = {}) {
             driver_id: driverId,
             driver_name: driverName,
             order_id: orderContext?.order_id,
+            order_ref: orderRef,
             order_context: orderContext,
             message: message.trim(),
             message_id: createdMsg.id,
+            created_at: createdMsg.created_at || new Date().toISOString(),
           });
         }
       } catch (notifErr) {

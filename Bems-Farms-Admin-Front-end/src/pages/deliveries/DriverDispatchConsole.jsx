@@ -1,6 +1,117 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
+
+// Helper component that converts @BF-..., #BF-..., or Order #... into clickable links directly to /orders/:id
+function FormattedMessageWithOrderLinks({ text, isAdminBubble }) {
+  if (!text) return null
+  const orderRegex = /(@|#|Order\s*#)(BF-[A-Za-z0-9-]+|[0-9]{3,})/gi
+  const parts = []
+  let lastIndex = 0
+  let match
+
+  while ((match = orderRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const prefix = match[1]
+    const orderRef = match[2]
+    parts.push(
+      <Link
+        key={`order-tag-${match.index}`}
+        to={`/orders/${encodeURIComponent(orderRef)}`}
+        target="_blank"
+        rel="noreferrer"
+        title={`View Order #${orderRef} Details (Opens in new tab)`}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          padding: '1px 7px',
+          margin: '0 2px',
+          borderRadius: 5,
+          fontSize: '0.92em',
+          fontWeight: 800,
+          textDecoration: 'none',
+          backgroundColor: isAdminBubble ? 'rgba(255,255,255,0.25)' : '#DCFCE7',
+          color: isAdminBubble ? '#FFFFFF' : '#166534',
+          border: isAdminBubble ? '1px solid rgba(255,255,255,0.4)' : '1px solid #86EFAC',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-1px)'
+          e.currentTarget.style.backgroundColor = isAdminBubble ? 'rgba(255,255,255,0.35)' : '#BBF7D0'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'none'
+          e.currentTarget.style.backgroundColor = isAdminBubble ? 'rgba(255,255,255,0.25)' : '#DCFCE7'
+        }}
+      >
+        <span>{prefix}{orderRef}</span>
+        <i className="ri-external-link-line" style={{ fontSize: '0.85em', opacity: 0.9 }} />
+      </Link>
+    )
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+
+  return <>{parts}</>
+}
+
+// Styled clickable Order badge rendered atop chat bubbles
+function ClickableOrderBadge({ orderId, labelPrefix = '📦 Order #' }) {
+  if (!orderId) return null
+  return (
+    <Link
+      to={`/orders/${encodeURIComponent(orderId)}`}
+      target="_blank"
+      rel="noreferrer"
+      title={`Click to open full Order #${orderId} details directly in a new tab`}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        marginBottom: 5,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        background: '#DCFCE7',
+        color: '#166534',
+        padding: '3px 10px',
+        borderRadius: 6,
+        fontSize: 11,
+        fontWeight: 800,
+        textDecoration: 'none',
+        border: '1px solid #86EFAC',
+        cursor: 'pointer',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = '#BBF7D0'
+        e.currentTarget.style.borderColor = '#4ADE80'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+        e.currentTarget.style.boxShadow = '0 3px 8px rgba(22,101,52,0.15)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = '#DCFCE7'
+        e.currentTarget.style.borderColor = '#86EFAC'
+        e.currentTarget.style.transform = 'none'
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'
+      }}
+    >
+      <span>{labelPrefix}{orderId}</span>
+      <span style={{ fontSize: 10, background: '#166534', color: '#ffffff', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+        Details ↗
+      </span>
+    </Link>
+  )
+}
 
 function timeSince(ts) {
   if (!ts) return ''
@@ -167,9 +278,26 @@ function OrderReferenceBanner({ order, delivery, isAssigned = true }) {
           <span style={{ fontSize: 20 }}>📦</span>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 900, fontSize: 14, color: '#0F172A' }}>
-                Order #{ordRef}
-              </span>
+              <Link
+                to={`/orders/${encodeURIComponent(ordRef)}`}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open full Order #${ordRef} details in new tab`}
+                style={{
+                  fontWeight: 900,
+                  fontSize: 14,
+                  color: '#0F172A',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#16A34A' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#0F172A' }}
+              >
+                <span>Order #{ordRef}</span>
+                <i className="ri-external-link-line text-muted" style={{ fontSize: 13 }} />
+              </Link>
               <span style={{
                 fontSize: 10,
                 fontWeight: 800,
@@ -423,16 +551,30 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                 }}>
                   {driver.vehicle_type || 'Motorcycle'} ({driver.vehicle_plate || 'Active'})
                 </span>
-                <span style={{
-                  fontSize: 11,
-                  background: '#FEF3C7',
-                  color: '#92400E',
-                  padding: '2px 8px',
-                  borderRadius: 6,
-                  fontWeight: 700,
-                }}>
-                  📦 Order #{orderData?.order?.order_ref || orderId}
-                </span>
+                <Link
+                  to={`/orders/${encodeURIComponent(orderData?.order?.order_ref || orderId)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open full order details in new tab"
+                  style={{
+                    fontSize: 11,
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    border: '1px solid #FDE68A',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#FDE68A' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#FEF3C7' }}
+                >
+                  <span>📦 Order #{orderData?.order?.order_ref || orderId}</span>
+                  <i className="ri-external-link-line" style={{ fontSize: 10 }} />
+                </Link>
               </div>
               <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                 Live dispatch connection for Order #{orderData?.order?.order_ref || orderId}
@@ -644,20 +786,7 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                 boxSizing: 'border-box',
               }}>
                 {msgOrderRef && showAllHistory && (
-                  <div style={{
-                    marginBottom: 4,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: '#DCFCE7',
-                    color: '#166534',
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}>
-                    <span>🛵 Order #{msgOrderRef}</span>
-                  </div>
+                  <ClickableOrderBadge orderId={msgOrderRef} labelPrefix="🛵 Order #" />
                 )}
                 <div style={{
                   padding: '10px 14px',
@@ -681,7 +810,7 @@ function SingleOrderDispatchChat({ orderId, initialDriver = null, onOpenAllHisto
                       onClickOriginal={() => scrollToMessage(replyMeta.id)}
                     />
                   )}
-                  {m.message}
+                  <FormattedMessageWithOrderLinks text={m.message} isAdminBubble={isAdmin} />
                 </div>
                 <div style={{
                   fontSize: 10,
@@ -1275,20 +1404,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                 boxSizing: 'border-box',
               }}>
                 {m.order_id && (
-                  <div style={{
-                    marginBottom: 4,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: '#DCFCE7',
-                    color: '#166534',
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}>
-                    <span>📦 Order #{m.order_id}</span>
-                  </div>
+                  <ClickableOrderBadge orderId={m.order_id} labelPrefix="📦 Order #" />
                 )}
                 <div style={{
                   padding: '10px 14px',
@@ -1312,7 +1428,7 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
                       onClickOriginal={() => scrollToMessage(replyMeta.id)}
                     />
                   )}
-                  {m.message}
+                  <FormattedMessageWithOrderLinks text={m.message} isAdminBubble={isAdmin} />
                 </div>
                 <div style={{
                   fontSize: 10,
@@ -1465,8 +1581,26 @@ export function DriverDispatchChat({ driverId, driverName, driverPhone, vehicleT
             maxWidth: '100%',
             boxSizing: 'border-box',
           }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              📦 Referencing: <strong>Order #{selectedDelivery.order_ref || selectedDelivery.delivery_ref || selectedDelivery.order_id || selectedDelivery.id}</strong> {selectedDelivery.total ? `(₦${Number(selectedDelivery.total).toLocaleString()})` : ''}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>📦 Referencing:</span>
+              <Link
+                to={`/orders/${encodeURIComponent(selectedDelivery.order_ref || selectedDelivery.delivery_ref || selectedDelivery.order_id || selectedDelivery.id)}`}
+                target="_blank"
+                rel="noreferrer"
+                title="View full order details in new tab"
+                style={{
+                  fontWeight: 800,
+                  color: '#065F46',
+                  textDecoration: 'underline',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                <span>Order #{selectedDelivery.order_ref || selectedDelivery.delivery_ref || selectedDelivery.order_id || selectedDelivery.id}</span>
+                <i className="ri-external-link-line" style={{ fontSize: 11 }} />
+              </Link>
+              {selectedDelivery.total ? `(₦${Number(selectedDelivery.total).toLocaleString()})` : ''}
             </span>
             <button
               type="button"

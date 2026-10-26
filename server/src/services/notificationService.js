@@ -167,7 +167,7 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
     const isEmailAllowed = emailGlobal && emailSpecific;
 
     if (isEmailAllowed) {
-      const recipientEmail = settings['store_email'] || process.env.ADMIN_NOTIF_EMAIL || 'info@bemsfarms.com';
+      const recipientEmail = settings['dispatch_email'] || settings['store_email'] || process.env.ADMIN_NOTIF_EMAIL || process.env.SUPPORT_EMAIL || 'info@bemsfarms.com';
       sendAdminAlertEmail({
         to: recipientEmail,
         type,
@@ -182,18 +182,19 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
 
     // 3. Automatically record into God Eye Audit Trail
     const categoryMap = {
-      customer_register: 'auth',
-      order_placed:      'financial',
-      pos_sale:          'financial',
-      order_delivery:    'admin',
-      support_message:   'comms',
-      ai_chat:           'ai',
-      low_stock:         'admin',
-      batch_expiry:      'admin',
-      refund_request:    'financial',
-      system_error:      'system',
-      security_event:    'security',
-      staff_action:      'admin',
+      customer_register:      'auth',
+      order_placed:           'financial',
+      pos_sale:               'financial',
+      order_delivery:         'admin',
+      driver_support_message: 'admin',
+      support_message:        'comms',
+      ai_chat:                'ai',
+      low_stock:              'admin',
+      batch_expiry:           'admin',
+      refund_request:         'financial',
+      system_error:           'system',
+      security_event:         'security',
+      staff_action:           'admin',
     };
 
     recordAudit({

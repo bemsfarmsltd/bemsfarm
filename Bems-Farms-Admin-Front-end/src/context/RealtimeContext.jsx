@@ -13,6 +13,7 @@ const NOTIF_META = {
   order_delivery:    { label: 'Delivery Update',emoji: '🚚', color: '#0ea5e9', bg: '#e0f2fe' },
   delivery_updated:  { label: 'Delivery Update',emoji: '🚚', color: '#0ea5e9', bg: '#e0f2fe' },
   dispatch_alert:    { label: 'Dispatch Alert', emoji: '⚠️', color: '#d97706', bg: '#fef3c7' },
+  driver_support_message: { label: 'Courier Dispatch', emoji: '🛵', color: '#059669', bg: '#dcfce7' },
   support_message:   { label: 'Support Message',emoji: '💬', color: '#8b5cf6', bg: '#ede9fe' },
   ai_chat:           { label: 'Chef Bems AI',   emoji: '🤖', color: '#9333ea', bg: '#f3e8ff' },
   low_stock:         { label: 'Low Stock Alert',emoji: '📦', color: '#ea580c', bg: '#ffedd5' },
@@ -116,18 +117,36 @@ function showNotificationPopup(notif, { navigate, soundEnabled, playChime }) {
   }
 
   // 2. Desktop notification
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-    try {
-      const desktopNotif = new Notification(notif.title || 'Bems Farms Notification', {
-        body: notif.message || notif.body || '',
-        icon: '/favicon.ico',
-        tag: String(notif.id || notif.order_id || Date.now()),
-      })
-      desktopNotif.onclick = () => {
-        window.focus()
-        if (notif.link) navigate(notif.link)
-      }
-    } catch (_) {}
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try {
+        const desktopNotif = new Notification(notif.title || 'Bems Farms Notification', {
+          body: notif.message || notif.body || '',
+          icon: '/favicon.ico',
+          tag: String(notif.id || notif.order_id || Date.now()),
+        })
+        desktopNotif.onclick = () => {
+          window.focus()
+          if (notif.link) navigate(notif.link)
+        }
+      } catch (_) {}
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission().then((perm) => {
+        if (perm === 'granted') {
+          try {
+            const desktopNotif = new Notification(notif.title || 'Bems Farms Notification', {
+              body: notif.message || notif.body || '',
+              icon: '/favicon.ico',
+              tag: String(notif.id || notif.order_id || Date.now()),
+            })
+            desktopNotif.onclick = () => {
+              window.focus()
+              if (notif.link) navigate(notif.link)
+            }
+          } catch (_) {}
+        }
+      }).catch(() => {})
+    }
   }
 
   // 3. Floating In-App Interactive Pop-up Toast
@@ -421,6 +440,25 @@ export function RealtimeProvider({ children }) {
       )
     }
 
+    // 11. Courier / Driver Dispatch Message
+    const handleDriverSupportMessage = (data) => {
+      notifySubscribers('driver:support_message', data)
+      const orderRef = data.order_ref || data.order_id || data.order_context?.order_ref || null
+      showNotificationPopup(
+        {
+          id: `drv-msg-${data.message_id || Date.now()}`,
+          type: 'driver_support_message',
+          severity: 'warning',
+          title: `🛵 Courier ${data.driver_name || 'Driver'}${orderRef ? ` (Order #${orderRef})` : ''}`,
+          message: data.message ? `"${data.message}"` : 'Courier sent a live dispatch instruction.',
+          link: orderRef
+            ? `/orders/${encodeURIComponent(orderRef)}`
+            : `/deliveries/drivers?tab=chat&driverId=${data.driver_id}`,
+        },
+        { navigate, soundEnabled, playChime: playWebAudioChime }
+      )
+    }
+
     socket.on('notification:new', handleNotificationNew)
     socket.on('order:created', handleOrderCreated)
     socket.on('order:updated', handleOrderUpdated)
@@ -432,6 +470,7 @@ export function RealtimeProvider({ children }) {
     socket.on('emergency:sos', handleEmergencySos)
     socket.on('dashboard:update', handleDashboardUpdate)
     socket.on('support:message', handleSupportMessage)
+    socket.on('driver:support_message', handleDriverSupportMessage)
 
     // Handle Window Focus: when admin returns to tab, refresh current views
     const onVisibilityChange = () => {
@@ -456,6 +495,7 @@ export function RealtimeProvider({ children }) {
       socket.off('emergency:sos', handleEmergencySos)
       socket.off('dashboard:update', handleDashboardUpdate)
       socket.off('support:message', handleSupportMessage)
+      socket.off('driver:support_message', handleDriverSupportMessage)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('focus', onVisibilityChange)
     }

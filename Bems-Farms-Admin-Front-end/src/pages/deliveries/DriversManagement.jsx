@@ -1230,7 +1230,16 @@ export default function DriversManagement() {
                                 </span>
                               )}
                               {driver.current_order && (
-                                <div className="text-primary fw-semibold fs-10 mt-0.5">Order #{driver.current_order}</div>
+                                <Link
+                                  to={`/orders/${encodeURIComponent(driver.current_order)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary fw-semibold fs-10 mt-0.5 d-inline-flex align-items-center gap-1 text-decoration-none"
+                                  title="View Order Details (Opens in new tab)"
+                                >
+                                  <span>Order #{driver.current_order}</span>
+                                  <i className="ri-external-link-line fs-9" />
+                                </Link>
                               )}
                             </div>
                           </td>
@@ -3200,7 +3209,18 @@ export default function DriversManagement() {
                                 <span className="badge bg-danger text-white fs-10 mb-1">Active Drop Destination</span>
                                 <strong className="fs-13 d-block">{activeDelivery.customer_name}</strong>
                                 <div className="text-muted fs-11">{activeDelivery.delivery_address}</div>
-                                <div className="text-primary fs-11 fw-semibold mt-1">Order #{activeDelivery.order_id}</div>
+                                <div className="text-primary fs-11 fw-semibold mt-1">
+                                  <Link
+                                    to={`/orders/${encodeURIComponent(activeDelivery.order_id)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary text-decoration-none d-inline-flex align-items-center gap-1"
+                                    title="View Order Details (Opens in new tab)"
+                                  >
+                                    <span>Order #{activeDelivery.order_id}</span>
+                                    <i className="ri-external-link-line" style={{ fontSize: 10 }} />
+                                  </Link>
+                                </div>
                               </div>
                             </Popup>
                           </Marker>

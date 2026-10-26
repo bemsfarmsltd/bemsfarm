@@ -701,18 +701,19 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
   const fullLink = link ? (link.startsWith("http") ? link : `${domain}${link.startsWith("/") ? "" : "/"}${link}`) : domain;
 
   const typeLabels = {
-    customer_register: "👤 New Customer Registered",
-    order_placed:      "🛍️ New Online Order",
-    pos_sale:          "💳 Point-of-Sale Sale",
-    order_delivery:    "🛵 Delivery & Dispatch Update",
-    support_message:   "💬 Live Support Message",
-    ai_chat:           "🤖 Chef Bems AI Conversation",
-    low_stock:         "⚠️ Low Stock Alert",
-    batch_expiry:      "⏰ Batch Expiry Warning",
-    refund_request:    "↩️ Refund / Return Request",
-    system_error:      "🔴 System Error / Exception",
-    security_event:    "🔑 Security & Password Change",
-    staff_action:      "👥 Staff Management Action",
+    customer_register:      "👤 New Customer Registered",
+    order_placed:           "🛍️ New Online Order",
+    pos_sale:               "💳 Point-of-Sale Sale",
+    order_delivery:         "🛵 Delivery & Dispatch Update",
+    driver_support_message: "🛵 Courier Dispatch & Rider Message",
+    support_message:        "💬 Live Support Message",
+    ai_chat:                "🤖 Chef Bems AI Conversation",
+    low_stock:              "⚠️ Low Stock Alert",
+    batch_expiry:           "⏰ Batch Expiry Warning",
+    refund_request:         "↩️ Refund / Return Request",
+    system_error:           "🔴 System Error / Exception",
+    security_event:         "🔑 Security & Password Change",
+    staff_action:           "👥 Staff Management Action",
   };
 
   const badgeTitle = typeLabels[type] || title || "BemsFarms Notification";
@@ -727,6 +728,15 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
           ${message}
         </p>
       </div>
+
+      ${data?.order_ref || data?.order_id ? `
+      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 14px 18px; margin: 18px 0;">
+        <div style="font-weight: 800; color: #065F46; font-size: 14px;">
+          📦 Referenced Order: #${data.order_ref || data.order_id}
+        </div>
+        ${data.customer_name ? `<div style="color: #047857; font-size: 12px; margin-top: 4px;">Customer: <strong>${data.customer_name}</strong> ${data.customer_phone ? `(${data.customer_phone})` : ''}</div>` : ''}
+        ${data.delivery_address ? `<div style="color: #64748B; font-size: 11px; margin-top: 3px;">📍 Address: ${data.delivery_address}</div>` : ''}
+      </div>` : ''}
 
       ${Object.keys(data).length > 0 ? `
       <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 13px;">

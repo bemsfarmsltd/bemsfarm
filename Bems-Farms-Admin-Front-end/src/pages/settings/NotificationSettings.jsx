@@ -47,6 +47,12 @@ const EVENT_CATEGORIES = [
         desc: 'Alerts when orders are dispatched, accepted by riders, or delivered.',
         icon: 'ri-map-pin-user-line',
       },
+      {
+        id: 'driver_support_message',
+        name: 'Courier Dispatch & Rider Chat',
+        desc: 'Instant alert & email when delivery drivers send dispatch inquiries or tag orders.',
+        icon: 'ri-chat-voice-line',
+      },
     ]
   },
   {
