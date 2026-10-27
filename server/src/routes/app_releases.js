@@ -5,6 +5,7 @@ const fs = require("fs");
 const multer = require("multer");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { getAppVersionConfig, updateAppVersionConfig } = require("../config/appVersion");
 
 // Persistent storage directory that survives Hostinger ephemeral hbuilds deployments
 function getStorageDir() {
@@ -351,6 +352,68 @@ router.get(["/", "/latest"], async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // ADMIN ENDPOINTS: Used by Admin Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/admin/app-releases/version-config
+router.get("/version-config", protect, async (req, res) => {
+  try {
+    const config = getAppVersionConfig();
+    res.json({ success: true, config });
+  } catch (err) {
+    console.error("Error fetching app version config:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch version configuration" });
+  }
+});
+
+// PUT /api/admin/app-releases/version-config
+router.put(
+  "/version-config",
+  protect,
+  requireRole("superadmin", "admin", "manager"),
+  async (req, res) => {
+    try {
+      const { customer, driver } = req.body || {};
+
+      if (!customer || !driver) {
+        return res.status(400).json({
+          success: false,
+          error: "Payload must contain both 'customer' and 'driver' configuration objects."
+        });
+      }
+
+      // Merge and clean incoming configuration
+      const current = getAppVersionConfig();
+      const updatedConfig = {
+        customer: {
+          minimum_version: String(customer.minimum_version || current.customer?.minimum_version || '1.0.1').trim(),
+          latest_version: String(customer.latest_version || current.customer?.latest_version || '1.0.1').trim(),
+          download_url: String(customer.download_url || current.customer?.download_url || 'https://bemsfarms.com/download/customer-app.apk').trim(),
+          force_update: Boolean(customer.force_update !== false),
+          release_notes: String(customer.release_notes || current.customer?.release_notes || '').trim()
+        },
+        driver: {
+          minimum_version: String(driver.minimum_version || current.driver?.minimum_version || '1.0.1').trim(),
+          latest_version: String(driver.latest_version || current.driver?.latest_version || '1.0.1').trim(),
+          download_url: String(driver.download_url || current.driver?.download_url || 'https://bemsfarms.com/download/driver-app.apk').trim(),
+          force_update: Boolean(driver.force_update !== false),
+          release_notes: String(driver.release_notes || current.driver?.release_notes || '').trim()
+        }
+      };
+
+      await updateAppVersionConfig(updatedConfig, pool);
+
+      console.log('✅ Updated app version gate config from Admin Portal:', updatedConfig);
+
+      res.json({
+        success: true,
+        message: "Mobile app version gate configuration updated successfully. All incoming requests will immediately use the new rules.",
+        config: updatedConfig
+      });
+    } catch (err) {
+      console.error("Error updating app version config:", err);
+      res.status(500).json({ success: false, error: "Failed to update version configuration: " + err.message });
+    }
+  }
+);
 
 // GET /api/admin/app-releases/history
 router.get("/history", protect, async (req, res) => {

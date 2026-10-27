@@ -17,8 +17,76 @@ export default function MobileAppsSettings() {
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
+  // Version Control & Force Update Gates
+  const [versionConfig, setVersionConfig] = useState({
+    customer: {
+      minimum_version: '1.0.1',
+      latest_version: '1.0.1',
+      download_url: 'https://bemsfarms.com/download/customer-app.apk',
+      force_update: true,
+      release_notes: ''
+    },
+    driver: {
+      minimum_version: '1.0.1',
+      latest_version: '1.0.1',
+      download_url: 'https://bemsfarms.com/download/driver-app.apk',
+      force_update: true,
+      release_notes: ''
+    }
+  })
+  const [loadingConfig, setLoadingConfig] = useState(false)
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [configDirty, setConfigDirty] = useState(false)
+
   const customerInputRef = useRef(null)
   const driverInputRef = useRef(null)
+
+  const fetchVersionConfig = async () => {
+    setLoadingConfig(true)
+    try {
+      const res = await api.get('/admin/app-releases/version-config')
+      if (res.data?.success && res.data.config) {
+        setVersionConfig(res.data.config)
+        setConfigDirty(false)
+      }
+    } catch (err) {
+      console.warn('Failed to load version config:', err)
+    } finally {
+      setLoadingConfig(false)
+    }
+  }
+
+  const handleSaveVersionConfig = async (e) => {
+    if (e) e.preventDefault()
+    setSavingConfig(true)
+    const toastId = toast.loading('Saving app version rules & updating live gate...')
+    try {
+      const res = await api.put('/admin/app-releases/version-config', versionConfig)
+      if (res.data?.success) {
+        toast.success('App version gate updated! Outdated apps are now gated.', { id: toastId })
+        setVersionConfig(res.data.config)
+        setConfigDirty(false)
+      } else {
+        toast.error(res.data?.error || 'Failed to save settings', { id: toastId })
+      }
+    } catch (err) {
+      console.error('Error saving app version gate:', err)
+      toast.error(err.response?.data?.error || err.message || 'Failed to update app version config', { id: toastId })
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
+  const updateConfigField = (appType, field, value) => {
+    setVersionConfig(prev => ({
+      ...prev,
+      [appType]: {
+        ...prev[appType],
+        [field]: value
+      }
+    }))
+    setConfigDirty(true)
+  }
 
   const fetchHistory = async () => {
     setLoadingHistory(true)
@@ -36,6 +104,7 @@ export default function MobileAppsSettings() {
 
   useEffect(() => {
     fetchHistory()
+    fetchVersionConfig()
   }, [])
 
   const handleFileSelect = (file, appType) => {
@@ -235,6 +304,273 @@ export default function MobileAppsSettings() {
         <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border" style={{ backgroundColor: '#EAF5EF', borderColor: '#A7F3D0', fontSize: '12px', fontWeight: '700', color: '#143C2D', alignSelf: 'flex-start' }}>
           <span className="spinner-grow spinner-grow-sm text-success" style={{ width: '8px', height: '8px' }} role="status"></span>
           <span>Live Storefront Download Active</span>
+        </div>
+      </div>
+
+      {/* ── Version Control & Forced Upgrade Gate Card ── */}
+      <div className="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E2E8F0' }}>
+        <div className="card-header bg-white py-3 px-4 border-bottom d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge px-2.5 py-1.5 rounded-pill" style={{ backgroundColor: '#FEF3C7', color: '#92400E', fontSize: '12px', fontWeight: '700' }}>
+                <i className="ri-shield-check-fill me-1"></i> HTTP 426 Gate
+              </span>
+              <h2 className="h5 fw-bold text-dark mb-0 font-display">App Version Control & Upgrade Gates</h2>
+            </div>
+            <p className="text-muted small mb-0 mt-1">
+              Configure minimum version thresholds in real time. Mobile apps below the minimum version are immediately blocked from placing orders, logging in, or syncing deliveries until they download the update.
+            </p>
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            {configDirty && (
+              <span className="badge bg-warning text-dark px-2.5 py-1.5 rounded-pill" style={{ fontSize: '11px', fontWeight: '700' }}>
+                <i className="ri-error-warning-line me-1"></i> Unsaved Changes
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-deploy-green d-flex align-items-center gap-1.5"
+              onClick={handleSaveVersionConfig}
+              disabled={savingConfig || loadingConfig}
+              style={{ minWidth: '160px', justifyContent: 'center' }}
+            >
+              {savingConfig ? (
+                <>
+                  <i className="ri-loader-4-line spin"></i>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <i className="ri-save-3-line"></i>
+                  <span>Save Gate Rules</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="card-body p-4">
+          {loadingConfig ? (
+            <div className="text-center py-4">
+              <div className="spinner-border text-success" role="status">
+                <span className="visually-hidden">Loading config...</span>
+              </div>
+              <p className="small text-muted mt-2 mb-0">Loading live version gate settings...</p>
+            </div>
+          ) : (
+            <div className="row g-4">
+              {/* Customer App Settings */}
+              <div className="col-12 col-lg-6">
+                <div className="p-3.5 rounded-3 border h-100" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="app-icon-box" style={{ width: '38px', height: '38px', background: '#EAF5EF', color: '#143C2D', fontSize: '18px' }}>
+                        <i className="ri-shopping-cart-2-fill"></i>
+                      </div>
+                      <div>
+                        <h3 className="h6 fw-bold text-dark mb-0 font-display">Customer App Rules</h3>
+                        <span className="text-muted" style={{ fontSize: '11px' }}>com.bemsfarms.customer · BemsFarmsMobile</span>
+                      </div>
+                    </div>
+                    <div className="form-check form-switch mb-0">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="customerForceUpdate"
+                        checked={Boolean(versionConfig.customer?.force_update)}
+                        onChange={(e) => updateConfigField('customer', 'force_update', e.target.checked)}
+                      />
+                      <label className="form-check-label small fw-semibold" htmlFor="customerForceUpdate" style={{ fontSize: '12px' }}>
+                        Force Update
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="row g-2 mb-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                        Minimum Allowed Version <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace fw-bold"
+                        style={{ borderColor: '#CBD5E1', color: '#B91C1C' }}
+                        placeholder="e.g. 1.0.1"
+                        value={versionConfig.customer?.minimum_version || ''}
+                        onChange={(e) => updateConfigField('customer', 'minimum_version', e.target.value)}
+                      />
+                      <div className="form-text" style={{ fontSize: '10.5px', color: '#64748B' }}>
+                        Apps below this version will be blocked with 426.
+                      </div>
+                    </div>
+
+                    <div className="col-6">
+                      <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                        Latest Version Available
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace fw-bold"
+                        style={{ borderColor: '#CBD5E1', color: '#047857' }}
+                        placeholder="e.g. 1.0.1"
+                        value={versionConfig.customer?.latest_version || ''}
+                        onChange={(e) => updateConfigField('customer', 'latest_version', e.target.value)}
+                      />
+                      <div className="form-text" style={{ fontSize: '10.5px', color: '#64748B' }}>
+                        Recommended target version shown in update dialog.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                      Customer APK Direct Download URL
+                    </label>
+                    <input
+                      type="url"
+                      className="form-control form-control-sm font-monospace"
+                      style={{ borderColor: '#CBD5E1', fontSize: '12px' }}
+                      placeholder="https://bemsfarms.com/download/customer-app.apk"
+                      value={versionConfig.customer?.download_url || ''}
+                      onChange={(e) => updateConfigField('customer', 'download_url', e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                      Upgrade Prompt Notes
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="form-control form-control-sm"
+                      style={{ borderColor: '#CBD5E1', fontSize: '12px' }}
+                      placeholder="e.g. Live driver tracking, verified electronic web receipts, and stability fixes."
+                      value={versionConfig.customer?.release_notes || ''}
+                      onChange={(e) => updateConfigField('customer', 'release_notes', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Driver App Settings */}
+              <div className="col-12 col-lg-6">
+                <div className="p-3.5 rounded-3 border h-100" style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="app-icon-box" style={{ width: '38px', height: '38px', background: '#FEF3C7', color: '#C85A17', fontSize: '18px' }}>
+                        <i className="ri-e-bike-2-fill"></i>
+                      </div>
+                      <div>
+                        <h3 className="h6 fw-bold text-dark mb-0 font-display">Driver & Courier App Rules</h3>
+                        <span className="text-muted" style={{ fontSize: '11px' }}>com.bemsfarms.driver · BemsFarmsDriver</span>
+                      </div>
+                    </div>
+                    <div className="form-check form-switch mb-0">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="driverForceUpdate"
+                        checked={Boolean(versionConfig.driver?.force_update)}
+                        onChange={(e) => updateConfigField('driver', 'force_update', e.target.checked)}
+                      />
+                      <label className="form-check-label small fw-semibold" htmlFor="driverForceUpdate" style={{ fontSize: '12px' }}>
+                        Force Update
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="row g-2 mb-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                        Minimum Allowed Version <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace fw-bold"
+                        style={{ borderColor: '#CBD5E1', color: '#B91C1C' }}
+                        placeholder="e.g. 1.0.1"
+                        value={versionConfig.driver?.minimum_version || ''}
+                        onChange={(e) => updateConfigField('driver', 'minimum_version', e.target.value)}
+                      />
+                      <div className="form-text" style={{ fontSize: '10.5px', color: '#64748B' }}>
+                        Couriers below this version are blocked with 426.
+                      </div>
+                    </div>
+
+                    <div className="col-6">
+                      <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                        Latest Version Available
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace fw-bold"
+                        style={{ borderColor: '#CBD5E1', color: '#047857' }}
+                        placeholder="e.g. 1.0.1"
+                        value={versionConfig.driver?.latest_version || ''}
+                        onChange={(e) => updateConfigField('driver', 'latest_version', e.target.value)}
+                      />
+                      <div className="form-text" style={{ fontSize: '10.5px', color: '#64748B' }}>
+                        Recommended target version shown in update dialog.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                      Driver APK Direct Download URL
+                    </label>
+                    <input
+                      type="url"
+                      className="form-control form-control-sm font-monospace"
+                      style={{ borderColor: '#CBD5E1', fontSize: '12px' }}
+                      placeholder="https://bemsfarms.com/download/driver-app.apk"
+                      value={versionConfig.driver?.download_url || ''}
+                      onChange={(e) => updateConfigField('driver', 'download_url', e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label small fw-bold text-dark mb-1" style={{ fontSize: '12px' }}>
+                      Upgrade Prompt Notes
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="form-control form-control-sm"
+                      style={{ borderColor: '#CBD5E1', fontSize: '12px' }}
+                      placeholder="e.g. Live GPS exposure, accurate weekly payout sync, and real-time order alerts."
+                      value={versionConfig.driver?.release_notes || ''}
+                      onChange={(e) => updateConfigField('driver', 'release_notes', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Guidance Alert */}
+          <div className="mt-3 p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style={{ backgroundColor: '#EAF5EF', border: '1px solid #A7F3D0' }}>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge rounded-circle p-1.5" style={{ background: '#143C2D', color: '#ffffff' }}>
+                <i className="ri-information-line"></i>
+              </span>
+              <span className="small text-dark">
+                <strong>Instant Live Effect:</strong> Whenever you build and upload a new APK (e.g. v1.0.2), simply increment <strong>Minimum Allowed Version</strong> to <code>1.0.2</code> here and click Save. All outdated apps will be immediately gated with HTTP 426 on their next API request.
+              </span>
+            </div>
+            {configDirty && (
+              <button
+                type="button"
+                className="btn btn-sm btn-deploy-green px-3"
+                onClick={handleSaveVersionConfig}
+                disabled={savingConfig}
+              >
+                {savingConfig ? 'Saving...' : 'Save Now'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

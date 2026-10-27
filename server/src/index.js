@@ -182,6 +182,15 @@ app.use('/api/audit', require('./routes/audit'));
       console.warn('[payout-worker] Failed to initialize payout scheduler worker:', e.message);
     }
 
+    // Initialize & cache mobile app version gate configuration from database
+    try {
+      const { initAppVersionConfig } = require('./config/appVersion');
+      await initAppVersionConfig(pool);
+      console.log('✅ Mobile app version gate configuration ready.');
+    } catch (e) {
+      console.warn('[app-version] Init notice:', e.message?.slice(0, 120));
+    }
+
     // Auto-record deployment audit event for Developer Audit
     const { recordDeploymentEvent } = require('./services/auditService');
     await recordDeploymentEvent();
