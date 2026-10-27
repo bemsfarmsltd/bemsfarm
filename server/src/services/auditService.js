@@ -300,6 +300,26 @@ function auditRequests(req, res, next) {
   // Skip health checks and audit read endpoints (too noisy)
   if (req.path === '/api' || req.path.startsWith('/api/audit') || req.path === '/health') return next();
 
+  // Skip high-frequency read-only GET polling that floods the database
+  if (req.method === 'GET') {
+    const p = req.path;
+    if (
+      p.startsWith('/api/admin/notifications') ||
+      p.startsWith('/api/admin/dispatch/alerts') ||
+      p.startsWith('/api/support/messages') ||
+      p.startsWith('/api/orders') ||
+      p.startsWith('/api/admin/orders') ||
+      p.startsWith('/api/auth/me') ||
+      p.startsWith('/api/admin/deliveries') ||
+      p.startsWith('/api/products') ||
+      p.startsWith('/api/categories') ||
+      p.startsWith('/api/admin/reports') ||
+      p.startsWith('/api/app-version')
+    ) {
+      return next();
+    }
+  }
+
   const requestId  = randomUUID();
   req.auditRequestId = requestId;
   res.setHeader('X-Request-ID', requestId);

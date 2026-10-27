@@ -178,18 +178,6 @@ async function ensureAuditTable() {
 // ── All routes below require admin / superadmin ───────────────────────────────
 router.use(protect, requireRole('superadmin', 'admin'));
 
-// God Eye exposes raw request payloads, IPs, and every staff account's
-// activity — several staff accounts share the superadmin role (including
-// test accounts), so role alone isn't tight enough. Restrict to the one
-// designated owner account.
-const GOD_EYE_ALLOWED_EMAILS = ['admin@bemsfarms.com'];
-router.use((req, res, next) => {
-  if (!GOD_EYE_ALLOWED_EMAILS.includes((req.user?.email || '').toLowerCase())) {
-    return res.status(403).json({ message: 'Access denied. God Eye is restricted to designated system owners.' });
-  }
-  next();
-});
-
 router.use(async (req, res, next) => {
   await ensureAuditTable();
   next();
@@ -199,11 +187,43 @@ router.use(async (req, res, next) => {
 function buildWhere(query) {
   const args = [], where = [];
 
+  // Exclude high-frequency background polling noise by default
+  if (!query.include_polling) {
+    where.push(`(
+      action NOT ILIKE 'GET /api/admin/notifications%' AND
+      action NOT ILIKE 'GET /api/admin/dispatch/alerts%' AND
+      action NOT ILIKE 'GET /api/support/messages%' AND
+      action NOT ILIKE 'GET /api/orders%' AND
+      action NOT ILIKE 'GET /api/admin/orders%' AND
+      action NOT ILIKE 'GET /api/auth/me%' AND
+      action NOT ILIKE 'GET /api/admin/deliveries%' AND
+      action NOT ILIKE 'GET /api/products%' AND
+      action NOT ILIKE 'GET /api/categories%'
+    )`);
+  }
+
   // Exact filters
-  for (const key of ['source', 'outcome', 'actor_id', 'request_id', 'category', 'severity', 'entity_type', 'ip_address', 'session_id']) {
+  for (const key of ['source', 'outcome', 'actor_id', 'request_id', 'severity', 'entity_type', 'ip_address', 'session_id']) {
     if (query[key]) {
       args.push(String(query[key]));
       where.push(`${key}::text = $${args.length}`);
+    }
+  }
+
+  // Category mapping
+  if (query.category && query.category !== 'all') {
+    const cat = String(query.category).toLowerCase();
+    if (cat === 'orders' || cat === 'financial') {
+      where.push(`(category = 'financial' OR action ILIKE '%order%')`);
+    } else if (cat === 'staff' || cat === 'admin') {
+      where.push(`(category = 'admin' OR actor_role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff'))`);
+    } else if (cat === 'auth' || cat === 'security') {
+      where.push(`(category IN ('auth', 'security') OR action ILIKE '%login%' OR action ILIKE '%password%')`);
+    } else if (cat === 'system' || cat === 'developer') {
+      where.push(`(category IN ('system', 'developer') OR source IN ('deployment', 'developer', 'system'))`);
+    } else {
+      args.push(cat);
+      where.push(`category = $${args.length}`);
     }
   }
 
@@ -245,6 +265,7 @@ function buildWhere(query) {
 
   return { args, clause: where.length ? 'WHERE ' + where.join(' AND ') : '' };
 }
+
 
 // ── GET /api/audit — paginated list ───────────────────────────────────────────
 router.get('/', async (req, res, next) => {
@@ -288,24 +309,40 @@ router.get('/', async (req, res, next) => {
 // ── GET /api/audit/stats — live dashboard header stats ────────────────────────
 router.get('/stats', async (req, res, next) => {
   try {
-    const [today, week, month, bySeverity, byCategory, activeActors, lastDev] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '1 day'`).catch(() => ({ rows: [{ count: 0 }] })),
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ count: 0 }] })),
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
-      pool.query(`SELECT severity, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY severity`).catch(() => ({ rows: [] })),
-      pool.query(`SELECT category, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY category ORDER BY count DESC`).catch(() => ({ rows: [] })),
-      pool.query(`SELECT COUNT(DISTINCT actor_id) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '5 minutes' AND actor_id IS NOT NULL`).catch(() => ({ rows: [{ count: 0 }] })),
-      pool.query(`SELECT occurred_at, details FROM system_audit_events WHERE category = 'developer' ORDER BY occurred_at DESC LIMIT 1`).catch(() => ({ rows: [] })),
+    const NOISE_FILTER = `(
+      action NOT ILIKE 'GET /api/admin/notifications%' AND
+      action NOT ILIKE 'GET /api/admin/dispatch/alerts%' AND
+      action NOT ILIKE 'GET /api/support/messages%' AND
+      action NOT ILIKE 'GET /api/orders%' AND
+      action NOT ILIKE 'GET /api/admin/orders%' AND
+      action NOT ILIKE 'GET /api/auth/me%' AND
+      action NOT ILIKE 'GET /api/admin/deliveries%' AND
+      action NOT ILIKE 'GET /api/products%' AND
+      action NOT ILIKE 'GET /api/categories%'
+    )`;
+
+    const [today, week, month, bySeverity, byCategory, activeActors, staffCount, orderCount, authCount] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '1 day'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT severity, COUNT(*) AS count FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '7 days' GROUP BY severity`).catch(() => ({ rows: [] })),
+      pool.query(`SELECT category, COUNT(*) AS count FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '7 days' GROUP BY category ORDER BY count DESC`).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(DISTINCT actor_id) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '15 minutes' AND actor_id IS NOT NULL`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND (category = 'admin' OR actor_role IN ('superadmin', 'admin', 'manager', 'cashier')) AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE (category = 'financial' OR action ILIKE '%order%') AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE (category IN ('auth', 'security') OR action ILIKE '%login%') AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
     ]);
 
     res.json({
       today:         Number(today.rows[0]?.count || 0),
       week:          Number(week.rows[0]?.count || 0),
       month:         Number(month.rows[0]?.count || 0),
+      staff_actions: Number(staffCount.rows[0]?.count || 0),
+      order_events:  Number(orderCount.rows[0]?.count || 0),
+      auth_events:   Number(authCount.rows[0]?.count || 0),
       by_severity:   bySeverity.rows,
       by_category:   byCategory.rows,
       active_actors: Number(activeActors.rows[0]?.count || 0),
-      last_developer_event: lastDev.rows[0] || null,
     });
   } catch (err) {
     console.error('GET /api/audit/stats error:', err.message);
@@ -313,10 +350,12 @@ router.get('/stats', async (req, res, next) => {
       today: 0,
       week: 0,
       month: 0,
+      staff_actions: 0,
+      order_events: 0,
+      auth_events: 0,
       by_severity: [],
       by_category: [],
       active_actors: 0,
-      last_developer_event: null,
     });
   }
 });

@@ -36,9 +36,8 @@ export default function Sidebar() {
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
-  // God Eye is restricted to one designated owner account, not the whole
-  // superadmin role — several staff (including test accounts) are superadmin.
-  const showGodEye    = (user?.email || '').toLowerCase() === 'admin@bemsfarms.com'
+  // Audit log is accessible to superadmins and administrators
+  const showGodEye    = is('superadmin', 'admin')
 
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
@@ -52,7 +51,7 @@ export default function Sidebar() {
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/chef-bems')) return 'chef'
     if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings')) return 'settings'
-    if (path.startsWith('/god-eye')) return 'godeye'
+    if (path.startsWith('/god-eye') || path.startsWith('/audit')) return 'godeye'
     return 'dashboards'
   }
 
@@ -557,17 +556,17 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 13. God Eye Audit — superadmin only */}
+            {/* 13. Audit Log — superadmin / admin */}
             {showGodEye && (
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'godeye' ? 'active' : ''}`}
                 onClick={() => handleCategoryClick('godeye')}
-                title="God Eye — System Audit"
-                style={activeTab === 'godeye' ? { background: 'linear-gradient(135deg,#1e293b,#0f172a)', color: '#f59e0b' } : {}}
+                title="System Activity & Audit Log"
+                style={activeTab === 'godeye' ? { background: 'linear-gradient(135deg,#1e293b,#0f172a)', color: '#10b981' } : {}}
               >
-                <span className="rail-icon" style={{ fontSize: 18, lineHeight: 1 }}>👁️</span>
-                <span className="rail-label" style={{ fontWeight: activeTab === 'godeye' ? 700 : 500 }}>God Eye</span>
+                <i className="ri-history-line rail-icon" style={{ fontSize: 19, lineHeight: 1 }}></i>
+                <span className="rail-label" style={{ fontWeight: activeTab === 'godeye' ? 700 : 500 }}>Audit Log</span>
               </button>
             )}
           </div>

@@ -338,9 +338,10 @@ function App() {
                 <Route path="/deliveries/mobile-apps" element={<Navigate to="/settings/mobile-apps" replace />} />
               </Route>
 
-              {/* ── God Eye Audit Log — restricted to one designated owner account ── */}
-              <Route element={<ProtectedRoute allowedRoles={['superadmin']} allowedEmails={['admin@bemsfarms.com']} />}>
+              {/* ── System Audit & Activity Log ── */}
+              <Route element={<ProtectedRoute allowedRoles={['superadmin', 'admin']} />}>
                 <Route path="/god-eye" element={<GodEye />} />
+                <Route path="/audit"   element={<GodEye />} />
               </Route>
             </Route>
           </Route>
