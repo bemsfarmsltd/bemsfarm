@@ -53,7 +53,20 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Channel", "X-Requested-With", "Accept", "Origin", "X-Audit-Actor", "X-Audit-Id"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Channel",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "X-Audit-Actor",
+      "X-Audit-Id",
+      "X-App-Version",
+      "X-App-Platform",
+      "x-app-version",
+      "x-app-platform",
+    ],
   }),
 );
 
@@ -286,6 +299,26 @@ const notificationsRoutes = require("./routes/notifications");
 const verifyRoutes = require("./routes/verify_public");
 const appReleasesRoutes = require("./routes/app_releases");
 const cartRoutes = require("./routes/cart");
+
+// Public App Version Gates & Configuration Endpoint (Customer App & Driver App)
+const { getAppVersionConfig } = require("./config/appVersion");
+const appVersionGate = require("./middleware/appVersionGate");
+
+app.get(["/api/app-version", "/app-version"], (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.json(getAppVersionConfig());
+});
+
+// App Download Direct Shortcuts
+app.get(["/download/customer-app.apk", "/downloads/customer-app.apk"], (req, res) => {
+  res.redirect("https://api.bemsfarms.com/api/app-releases/download/customer");
+});
+app.get(["/download/driver-app.apk", "/downloads/driver-app.apk"], (req, res) => {
+  res.redirect("https://api.bemsfarms.com/api/app-releases/download/driver");
+});
+
+// Enforce minimum version requirement for mobile app requests
+app.use("/api", appVersionGate);
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/cart", cartRoutes);

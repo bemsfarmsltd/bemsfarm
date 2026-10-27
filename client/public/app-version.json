@@ -1,0 +1,16 @@
+{
+  "customer": {
+    "minimum_version": "1.0.1",
+    "latest_version": "1.0.1",
+    "download_url": "https://bemsfarms.com/download/customer-app.apk",
+    "force_update": true,
+    "release_notes": "Live driver tracking, verified electronic web receipts, and stability fixes."
+  },
+  "driver": {
+    "minimum_version": "1.0.1",
+    "latest_version": "1.0.1",
+    "download_url": "https://bemsfarms.com/download/driver-app.apk",
+    "force_update": true,
+    "release_notes": "Live GPS exposure, accurate weekly payout sync, and real-time order alerts."
+  }
+}
