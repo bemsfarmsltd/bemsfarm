@@ -230,6 +230,10 @@ export default function OrderDetailModal({
   // Unassign Driver action
   const handleUnassignDriver = async () => {
     if (!order) return
+    if (['delivered', 'completed', 'cancelled', 'returned'].includes(order.status)) {
+      toast.error(`Cannot unassign courier: Order #${order.id} is already ${order.status}.`)
+      return
+    }
     const orderRef = order.numericId || order.id
     if (!window.confirm(`Are you sure you want to unassign the courier from Order #${order.id}? The order will be reset to processing.`)) {
       return
@@ -250,6 +254,10 @@ export default function OrderDetailModal({
   // Reassign Driver action
   const handleReassignDriver = async () => {
     if (!order || !reassignDriverId) return
+    if (['delivered', 'completed', 'cancelled', 'returned'].includes(order.status)) {
+      toast.error(`Cannot reassign courier: Order #${order.id} is already ${order.status}.`)
+      return
+    }
     setActionLoading(true)
     try {
       const targetId = order.numericId || order.id
@@ -768,31 +776,47 @@ export default function OrderDetailModal({
                     <i className="ri-truck-line text-success fs-16" />
                     Assigned Fleet Courier &amp; Vehicle
                   </span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveReceiptModal('reassign')}
-                      className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
-                      style={{ fontSize: 11, borderRadius: 8 }}
-                      title="Reassign to another driver"
+                  {['delivered', 'completed'].includes(order.status) ? (
+                    <span
+                      className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, fontWeight: 700 }}
                     >
-                      <i className="ri-user-follow-line me-1" />
-                      {order.driver ? 'Reassign' : 'Assign Courier'}
-                    </button>
-                    {order.driver && (
+                      <i className="ri-checkbox-circle-fill" /> Delivered &amp; Settled
+                    </span>
+                  ) : ['cancelled', 'returned'].includes(order.status) ? (
+                    <span
+                      className="badge bg-secondary-subtle text-secondary border border-secondary-subtle d-inline-flex align-items-center gap-1"
+                      style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, fontWeight: 700 }}
+                    >
+                      <i className="ri-close-circle-line" /> Order Finalized
+                    </span>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         type="button"
-                        onClick={handleUnassignDriver}
-                        disabled={actionLoading}
-                        className="btn btn-sm btn-outline-danger fw-bold px-2 py-1"
+                        onClick={() => setActiveReceiptModal('reassign')}
+                        className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
                         style={{ fontSize: 11, borderRadius: 8 }}
-                        title="Unassign courier from order"
+                        title="Reassign to another driver"
                       >
-                        <i className="ri-user-unfollow-line me-1" />
-                        Unassign
+                        <i className="ri-user-follow-line me-1" />
+                        {order.driver ? 'Reassign' : 'Assign Courier'}
                       </button>
-                    )}
-                  </div>
+                      {order.driver && (
+                        <button
+                          type="button"
+                          onClick={handleUnassignDriver}
+                          disabled={actionLoading}
+                          className="btn btn-sm btn-outline-danger fw-bold px-2 py-1"
+                          style={{ fontSize: 11, borderRadius: 8 }}
+                          title="Unassign courier from order"
+                        >
+                          <i className="ri-user-unfollow-line me-1" />
+                          Unassign
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {order.driver ? (
@@ -858,14 +882,16 @@ export default function OrderDetailModal({
                     <div style={{ fontSize: 12, color: '#92400E', fontWeight: 600 }}>
                       ⚠️ No courier dispatched yet. Order is awaiting assignment.
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveReceiptModal('reassign')}
-                      className="btn btn-sm btn-warning fw-bold px-3 py-1"
-                      style={{ fontSize: 11, borderRadius: 8 }}
-                    >
-                      + Assign Courier Now
-                    </button>
+                    {!['delivered', 'completed', 'cancelled', 'returned'].includes(order.status) && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveReceiptModal('reassign')}
+                        className="btn btn-sm btn-warning fw-bold px-3 py-1"
+                        style={{ fontSize: 11, borderRadius: 8 }}
+                      >
+                        + Assign Courier Now
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1324,6 +1350,36 @@ export default function OrderDetailModal({
                       <i className="ri-user-add-line me-1" />
                       Assign Delivery Driver
                     </button>
+                  )}
+
+                  {['delivered', 'completed'].includes(order.status) && (
+                    <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#065F46', fontWeight: 800, fontSize: 13 }}>
+                        <i className="ri-checkbox-circle-fill text-success fs-18" />
+                        Order Fulfillment Complete
+                      </div>
+                      <div style={{ fontSize: 11, color: '#047857', lineHeight: 1.5 }}>
+                        This order has been verified and delivered to the recipient. Driver handover, ledger entries, and payout commissions are complete.
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveReceiptModal('receipt')}
+                          className="btn btn-sm btn-outline-success fw-bold px-3 py-1.5 flex-fill"
+                          style={{ borderRadius: 8, fontSize: 11 }}
+                        >
+                          <i className="ri-receipt-line me-1" /> Customer Receipt
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveReceiptModal('invoice')}
+                          className="btn btn-sm btn-outline-secondary fw-bold px-3 py-1.5 flex-fill"
+                          style={{ borderRadius: 8, fontSize: 11 }}
+                        >
+                          <i className="ri-printer-line me-1" /> Packing Invoice
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   {['assigned', 'shipped', 'driver_arrived', 'arrived', 'delivery_attempted'].includes(order.status) && order.driver && (

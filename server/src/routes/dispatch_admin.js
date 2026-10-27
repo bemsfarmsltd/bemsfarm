@@ -26,6 +26,14 @@ router.post('/unassign/:ref', requireRole('superadmin', 'admin', 'manager', 'cas
 
     const order = orderRes.rows[0]
 
+    // Terminal status protection: Completed/delivered/cancelled orders cannot have couriers unassigned
+    if (['delivered', 'completed', 'cancelled', 'returned'].includes(order.status)) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({
+        error: `Cannot unassign courier: Order ${ref} is already marked as ${order.status}. Handover records are finalized.`
+      })
+    }
+
     // Unassign driver from order — revert status to processing
     await client.query(
       `UPDATE orders SET driver_id = NULL, status = 'processing', tracking_status = 'processing', updated_at = NOW() WHERE id = $1`,

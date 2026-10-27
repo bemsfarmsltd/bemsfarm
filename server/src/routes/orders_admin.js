@@ -2267,9 +2267,9 @@ router.patch(
 
       const orderRow = order.rows[0];
 
-      if (orderRow.status === "cancelled") {
+      if (["delivered", "completed", "cancelled", "returned"].includes(orderRow.status)) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ message: "Cannot assign a driver to a cancelled order" });
+        return res.status(400).json({ message: `Cannot assign or reassign a courier to an order that is already ${orderRow.status}.` });
       }
 
       const driver = await client.query("SELECT * FROM drivers WHERE id=$1", [
