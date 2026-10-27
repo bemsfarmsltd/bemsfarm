@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import DriverDispatchConsole from './DriverDispatchConsole'
 import DeliveryMap from './DeliveryMap'
+import OrderDetailModal from '../../components/orders/OrderDetailModal'
 import fleetMotoImg from '../../assets/fleet/fleet_moto.jpg'
 import fleetTruckImg from '../../assets/fleet/fleet_truck.jpg'
 import fleetVanImg from '../../assets/fleet/fleet_van.jpg'
@@ -67,6 +68,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
   const [data, setData] = useState({ drivers: [], kpis: {}, zones: [], orders: [] })
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0)
   const [orderTab, setOrderTab] = useState('all') // 'all' | 'pending' | 'assigned' | 'in_transit' | 'completed'
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState(null)
   const [lastRefreshed, setLastRefreshed] = useState(Date.now())
 
   // Poll unread driver messages for the Courier Chat tab badge
@@ -305,20 +307,29 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                 REAL-TIME DATABASE STREAM
               </span>
               {orderParam && (
-                <span style={{
-                  background: '#FEF3C7',
-                  color: '#92400E',
-                  border: '1px solid #FCD34D',
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}>
-                  📦 Order #{orderParam}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForModal(orderParam)}
+                  style={{
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    border: '1px solid #FCD34D',
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    transition: 'all 0.12s ease',
+                  }}
+                  title="Click to view full order details modal"
+                >
+                  <span>📦 Order #{orderParam}</span>
+                  <i className="ri-external-link-line" style={{ fontSize: 11 }} />
+                </button>
               )}
             </div>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
@@ -643,7 +654,30 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
               {/* Route Timeline Slider Bar */}
               <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 8 }}>
-                  <span>{activeVehicle.mission.hasMission ? `Task: #${activeVehicle.mission.order_id}` : 'Mission Standby'}</span>
+                  <span>
+                    {activeVehicle.mission.hasMission ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderForModal(activeVehicle.mission.order_id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          color: '#2563EB',
+                          fontWeight: 700,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          textDecoration: 'underline',
+                        }}
+                        title="Click to view full order details modal"
+                      >
+                        Task: #{activeVehicle.mission.order_id} ↗
+                      </button>
+                    ) : 'Mission Standby'}
+                  </span>
                   <span style={{ color: activeVehicle.statusType === 'in_transit' ? '#059669' : '#64748B' }}>
                     {activeVehicle.mission.eta}
                   </span>
@@ -1029,16 +1063,22 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                   const earned = Number(focusedOrd.driver_earning || Math.round((focusedOrd.delivery_fee || 0) * 0.70) || 700)
                   const isDelivered = focusedOrd.status === 'delivered' || focusedOrd.delivery_status === 'delivered'
                   return (
-                    <div style={{
-                      marginTop: 12,
-                      padding: '8px 12px',
-                      background: '#F0FDF4',
-                      border: '1px solid #BBF7D0',
-                      borderRadius: 10,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
+                    <div
+                      onClick={() => setSelectedOrderForModal(focusedOrd.order_ref || focusedOrd.order_id)}
+                      style={{
+                        marginTop: 12,
+                        padding: '8px 12px',
+                        background: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 10,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.12s ease',
+                      }}
+                      title="Click to view full order details modal"
+                    >
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#166534' }}>
                           Order #{focusedOrd.order_ref || focusedOrd.order_id} Courier Payout:
@@ -1341,7 +1381,8 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     <th style={{ padding: '8px 10px' }}>DELIVERY DESTINATION</th>
                     <th style={{ padding: '8px 10px' }}>TOTAL</th>
                     <th style={{ padding: '8px 10px', color: '#047857' }}>DRIVER EARNING</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>STATUS</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>STATUS</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1366,14 +1407,40 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                           backgroundColor: isFocused ? '#F0FDF4' : 'transparent',
                           borderLeft: isFocused ? '3px solid #16A34A' : 'none',
                           transition: 'background 0.1s ease',
+                          cursor: 'pointer',
+                        }}
+                        onClick={(e) => {
+                          if (!e.target.closest('a') && !e.target.closest('button')) {
+                            setSelectedOrderForModal(ord.order_ref || ord.order_id)
+                          }
                         }}
                         onMouseEnter={(e) => { if (!isFocused) e.currentTarget.style.backgroundColor = '#F8FAFC' }}
                         onMouseLeave={(e) => { if (!isFocused) e.currentTarget.style.backgroundColor = 'transparent' }}
                       >
                         <td style={{ padding: '12px 10px', fontWeight: 800, color: '#0F172A' }}>
-                          <Link to={`/orders?search=${ord.order_ref || ord.order_id}`} style={{ color: '#0F172A', textDecoration: 'none' }}>
-                            #{ord.order_ref || ord.order_id}
-                          </Link>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOrderForModal(ord.order_ref || ord.order_id)
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontWeight: 800,
+                              color: '#0F172A',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 12,
+                            }}
+                            title="Click to view full order details modal"
+                          >
+                            <span>#{ord.order_ref || ord.order_id}</span>
+                            <i className="ri-external-link-line" style={{ color: '#2563EB', fontSize: 12 }} />
+                          </button>
                           {isFocused && (
                             <span style={{ marginLeft: 6, fontSize: 10, background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
                               Selected
@@ -1420,7 +1487,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                             <span style={{ color: '#CBD5E1', fontSize: 11 }}>—</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                        <td style={{ padding: '12px 10px', textAlign: 'center' }}>
                           <span style={{
                             fontSize: 10,
                             fontWeight: 800,
@@ -1432,6 +1499,44 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                           }}>
                             {status.replace(/_/g, ' ')}
                           </span>
+                        </td>
+                        <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOrderForModal(ord.order_ref || ord.order_id)
+                            }}
+                            style={{
+                              background: '#FFFFFF',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: 8,
+                              padding: '4px 10px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#0F172A',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                              transition: 'all 0.12s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#EFF6FF'
+                              e.currentTarget.style.borderColor = '#BFDBFE'
+                              e.currentTarget.style.color = '#1D4ED8'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#FFFFFF'
+                              e.currentTarget.style.borderColor = '#CBD5E1'
+                              e.currentTarget.style.color = '#0F172A'
+                            }}
+                            title="Inspect Order Details Modal"
+                          >
+                            <i className="ri-eye-line" style={{ color: '#2563EB', fontSize: 13 }} />
+                            <span>Details</span>
+                          </button>
                         </td>
                       </tr>
                     )
@@ -1478,49 +1583,75 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
     </div>
   )
 
+  const orderModalElement = selectedOrderForModal && (
+    <OrderDetailModal
+      orderId={selectedOrderForModal}
+      availableDrivers={data?.drivers || []}
+      onClose={() => setSelectedOrderForModal(null)}
+      onOpenFleetMap={(ord) => {
+        setSelectedOrderForModal(null)
+        setActiveFleetTab('map')
+        if (ord?.driver?.id || ord?.driver_id) {
+          const dId = ord.driver?.id || ord.driver_id
+          const vIdx = vehicles.findIndex(v => String(v.driver?.id) === String(dId))
+          if (vIdx >= 0) setSelectedVehicleIndex(vIdx)
+        }
+      }}
+      onDriverUpdated={loadFleetData}
+    />
+  )
+
   if (isModal) {
     return (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.72)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 1060,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-        }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget && onClose) onClose()
-        }}
-      >
+      <>
         <div
           style={{
-            background: '#F8FAFC',
-            borderRadius: 20,
-            width: '100%',
-            maxWidth: 1540,
-            height: '92vh',
-            maxHeight: '92vh',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 1060,
             display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && onClose) onClose()
+          }}
         >
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {pageContent}
+          <div
+            style={{
+              background: '#F8FAFC',
+              borderRadius: 20,
+              width: '100%',
+              maxWidth: 1540,
+              height: '92vh',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {pageContent}
+            </div>
           </div>
         </div>
-      </div>
+        {orderModalElement}
+      </>
     )
   }
 
-  return pageContent
+  return (
+    <>
+      {pageContent}
+      {orderModalElement}
+    </>
+  )
 }
