@@ -37,9 +37,16 @@ function appVersionGate(req, res, next) {
 
   // 3. Determine if this request is from a mobile app
   const appPlatform = (req.headers['x-app-platform'] || '').toString().toLowerCase().trim();
-  const appVersion = (req.headers['x-app-version'] || '').toString().trim();
+  let appVersion = (req.headers['x-app-version'] || '').toString().trim();
   const xChannel = (req.headers['x-channel'] || req.headers['x-client-platform'] || '').toString().toLowerCase().trim();
-  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  const rawUa = (req.headers['user-agent'] || '').toString();
+  const ua = rawUa.toLowerCase();
+
+  // Bems Mobile User Agents include:
+  // "BemsFarmsMobile/1.0", "BemsFarmsDriver/1.0", "BemsFarmsMobileApp/1.0", "BemsCustomer/1.0", "BemsDriver/1.0", etc.
+  const isBemsMobileUa =
+    ua.includes('bems') &&
+    (ua.includes('mobile') || ua.includes('driver') || ua.includes('customer') || ua.includes('app'));
 
   const isMobileApp =
     Boolean(appPlatform) ||
@@ -49,10 +56,14 @@ function appVersionGate(req, res, next) {
     xChannel === 'mobile_app' ||
     xChannel === 'android' ||
     xChannel === 'ios' ||
+    isBemsMobileUa ||
     ua.includes('okhttp') ||
     ua.includes('dart') ||
     ua.includes('expo') ||
     ua.includes('react-native') ||
+    ua.includes('flutter') ||
+    ua.includes('capacitor') ||
+    ua.includes('cordova') ||
     ua.includes('bemsapp') ||
     ua.includes('bemsfarmsapp') ||
     ua.includes('bemsdriver') ||
@@ -63,7 +74,15 @@ function appVersionGate(req, res, next) {
     return next();
   }
 
-  // 4. Identify whether it's the customer app or driver app
+  // 4. If X-App-Version header was not sent, extract version from User-Agent if available
+  if (!appVersion) {
+    const uaVersionMatch = rawUa.match(/(?:bems[a-z0-9_-]*(?:mobile|driver|app|customer)|okhttp|dart)[\/\s-]?([0-9]+(?:\.[0-9]+)*)/i);
+    if (uaVersionMatch && uaVersionMatch[1]) {
+      appVersion = uaVersionMatch[1];
+    }
+  }
+
+  // 5. Identify whether it's the customer app or driver app
   const isDriver =
     appPlatform === 'android_driver' ||
     appPlatform === 'driver' ||
@@ -73,12 +92,27 @@ function appVersionGate(req, res, next) {
   const config = getAppVersionConfig();
   const targetConfig = isDriver ? config.driver : config.customer;
   const minVersion = targetConfig?.minimum_version || '1.0.1';
+  const latestVersion = targetConfig?.latest_version || minVersion;
+  const downloadUrl =
+    targetConfig?.download_url ||
+    (isDriver ? 'https://bemsfarms.com/download/driver-app.apk' : 'https://bemsfarms.com/download/customer-app.apk');
+  const releaseNotes =
+    targetConfig?.release_notes || 'Please download the latest update to continue using the application.';
 
-  // 5. If X-App-Version is missing or lower than minimum required version
+  // 6. If version is missing or lower than minimum required version -> HTTP 426 Upgrade Required
   if (!appVersion || isVersionLower(appVersion, minVersion)) {
     return res.status(426).json({
       status: false,
-      message: 'Your app version is outdated. Please download the latest update from https://bemsfarms.com/download'
+      success: false,
+      upgrade_required: true,
+      force_update: true,
+      app_type: isDriver ? 'driver' : 'customer',
+      detected_version: appVersion || 'legacy',
+      minimum_version: minVersion,
+      latest_version: latestVersion,
+      download_url: downloadUrl,
+      release_notes: releaseNotes,
+      message: `Your ${isDriver ? 'Driver' : 'Customer'} app is outdated (version ${appVersion || 'legacy'} detected). Please download update v${latestVersion} from ${downloadUrl} to continue.`
     });
   }
 

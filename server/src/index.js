@@ -304,7 +304,7 @@ const cartRoutes = require("./routes/cart");
 const { getAppVersionConfig } = require("./config/appVersion");
 const appVersionGate = require("./middleware/appVersionGate");
 
-app.get(["/api/app-version", "/app-version"], (req, res) => {
+app.get(["/api/app-version", "/app-version", "/app-version.json", "/api/app-version.json"], (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.json(getAppVersionConfig());
 });

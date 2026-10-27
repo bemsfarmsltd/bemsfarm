@@ -61,6 +61,8 @@ DirectoryIndex index.html
   RewriteBase /
 
   # 0. Mobile App Version Static & Download Direct Routing -> Dynamic Express API
+  RewriteRule ^app-version$ /app-version.json [L]
+  RewriteRule ^api/app-version(\\.json)?$ https://api.bemsfarms.com/api/app-version [R=302,L]
   RewriteRule ^download/customer-app\\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
   RewriteRule ^download/driver-app\\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
   RewriteRule ^downloads/customer-app\\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
