@@ -768,11 +768,6 @@ export default function Sidebar() {
                     <span>Refunds &amp; Returns</span>
                   </NavLink>
                 )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Discounts &amp; Coupons</span>
-                  </NavLink>
-                )}
               </>
             )}
 
