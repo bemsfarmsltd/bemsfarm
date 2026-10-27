@@ -1597,6 +1597,11 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
           if (vIdx >= 0) setSelectedVehicleIndex(vIdx)
         }
       }}
+      onOpenChat={(drvId) => {
+        setSelectedOrderForModal(null)
+        setChatDriverId(drvId)
+        setActiveFleetTab('chat')
+      }}
       onDriverUpdated={loadFleetData}
     />
   )

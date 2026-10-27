@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import AdminOrderMap from '../../components/ui/AdminOrderMap'
 import FleetCommand from '../deliveries/FleetCommand'
+import OrderDetailModal from '../../components/orders/OrderDetailModal'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1252,8 +1253,29 @@ export default function OrdersList() {
         />
       )}
 
-      {/* ── OTHER MODALS (VIEW, INVOICE, ASSIGN, ETC.) ── */}
-      {activeModal && activeModal !== 'fleet' && selected && (
+      {/* ── 1. VIEW ORDER DETAILS (EXECUTIVE DOSSIER MODAL) ────── */}
+      {activeModal === 'view' && selected && (
+        <OrderDetailModal
+          orderId={selected.id || selected.order_ref}
+          initialData={selected}
+          onClose={closeModal}
+          onOpenFleetMap={(ord) => {
+            closeModal()
+            setTimeout(() => openModal('fleet', ord || selected), 100)
+          }}
+          onAction={(act, ord) => {
+            closeModal()
+            setTimeout(() => openModal(act, ord || selected), 100)
+          }}
+          onDriverUpdated={() => {
+            fetchOrders()
+          }}
+          availableDrivers={drivers}
+        />
+      )}
+
+      {/* ── OTHER MODALS (INVOICE, ASSIGN, PROCESS, ETC.) ── */}
+      {activeModal && !['fleet', 'view'].includes(activeModal) && selected && (
         <div
           style={{
             position: 'fixed',
@@ -1268,8 +1290,8 @@ export default function OrdersList() {
           onClick={(e) => e.target === e.currentTarget && closeModal()}
         >
 
-          {/* ── 1. VIEW ORDER DETAILS ─────────────────────────────── */}
-          {activeModal === 'view' && (() => {
+          {/* Legacy inline view modal superseded by executive OrderDetailModal */}
+          {false && (() => {
             const cfg = getStatusCfg(selected.status)
             const idx = pipelineIdx(selected.status)
 

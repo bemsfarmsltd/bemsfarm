@@ -79,12 +79,21 @@ const safeFormatDate = (d, fallback = '—') => {
   return isNaN(date.getTime()) ? fallback : date.toISOString().replace('T', ' ').slice(0, 16)
 }
 
+const getInitials = (name = '') => {
+  if (!name) return 'BF'
+  const parts = String(name).trim().split(' ').filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 export default function OrderDetailModal({
   orderId,
   initialData = null,
   onClose,
   onOpenFleetMap,
+  onOpenChat,
   onDriverUpdated,
+  onAction,
   availableDrivers = [],
 }) {
   const { user } = useAuth()
@@ -158,45 +167,48 @@ export default function OrderDetailModal({
             {
               status: d.status || 'confirmed',
               time: safeFormatDate(d.created_at, ''),
-              note: 'Order registered in system',
+              note: `Order registered via ${channelKey.replace('_', ' ')}`,
               by: 'System',
             },
           ]
         }
 
-        const deliveryFee = parseFloat(d.delivery_fee) || 0
-        const computedTotal = parseFloat(d.total) || (calcSub(orderItems) + deliveryFee)
-
         setOrder({
-          ...d,
-          id: d.order_ref || String(d.id),
           numericId: d.id,
+          id: d.order_ref || `ORD-${d.id}`,
           date: safeFormatDate(d.created_at, '—'),
           channel: channelKey,
-          status: d.status || 'confirmed',
+          status: d.status || 'pending',
           customer: {
-            name: d.customer_name || 'Customer',
-            phone: d.customer_phone || '',
-            email: d.customer_email || '',
-            address: d.address || d.delivery_address || 'Abia State, Nigeria',
+            name: d.customer_name || d.shipping_name || d.name || 'Walk-in Customer',
+            phone: d.customer_phone || d.shipping_phone || d.phone || '—',
+            email: d.customer_email || d.email || '—',
+            address: d.shipping_address || d.customer_address || d.address || 'In-store / Pick-up',
           },
-          driver: d.driver_name ? {
-            id: d.driver_id,
-            name: d.driver_name,
-            phone: d.driver_phone,
-            bike: d.driver_plate || 'Vehicle',
-          } : null,
           items: orderItems,
-          deliveryFee,
-          total: computedTotal,
-          payment: d.payment_method || 'POS Terminal',
-          notes: d.notes || '',
+          total: parseFloat(d.total_amount || d.total || 0),
+          deliveryFee: parseFloat(d.delivery_fee || 0),
+          payment: d.payment_method || d.payment || 'POS Terminal',
+          notes: d.notes || d.special_instructions || '',
+          driver: (d.driver_name || d.driver_id) ? {
+            id: d.driver_id,
+            name: d.driver_name || 'Assigned Courier',
+            phone: d.driver_phone || '—',
+            bike: d.vehicle_plate || d.vehicle_type || 'Vehicle',
+          } : null,
           timeline: timelineEvents,
-          proof_photo: d.proof_photo || null,
-          proof_photos: Array.isArray(d.proof_photos) ? d.proof_photos : [],
-          item_proofs: Array.isArray(d.item_proofs) ? d.item_proofs : [],
-          deliveryNotes: d.delivery_notes || d.proof_note || null,
-          deliveredAt: d.delivered_at || null,
+          lat: d.delivery_lat || d.customer_lat,
+          lng: d.delivery_lng || d.customer_lng,
+          deliveryAddress: d.shipping_address || d.address,
+          proof_photo: d.proof_photo,
+          proof_photos: d.proof_photos,
+          item_proofs: d.item_proofs,
+          deliveryNotes: d.delivery_notes,
+          proof_note: d.proof_note,
+          deliveredAt: d.delivered_at,
+          disputeReason: d.dispute_reason,
+          disputeNote: d.dispute_note,
+          cancelReason: d.cancel_reason,
         })
       } else if (initialData) {
         setOrder(initialData)
@@ -256,6 +268,23 @@ export default function OrderDetailModal({
     }
   }
 
+  // Internal status update helper if onAction is not passed
+  const handleUpdateStatus = async (newStatus, label) => {
+    if (!order) return
+    setActionLoading(true)
+    try {
+      const targetId = order.numericId || order.id
+      await api.patch(`/admin/orders/${targetId}/status`, { status: newStatus })
+      toast.success(`Order #${order.id} status updated to ${label}`)
+      await fetchOrderDetail()
+      if (onDriverUpdated) onDriverUpdated()
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to update status to ${label}`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handlePrint = () => {
     printThermalReceipt()
     toast.success(`Printed invoice/receipt for #${order?.id || ''}`)
@@ -267,8 +296,8 @@ export default function OrderDetailModal({
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(6px)',
+          background: 'rgba(15, 23, 42, 0.72)',
+          backdropFilter: 'blur(8px)',
           zIndex: 1100,
           display: 'flex',
           alignItems: 'center',
@@ -277,12 +306,16 @@ export default function OrderDetailModal({
         }}
         onClick={(e) => e.target === e.currentTarget && onClose && onClose()}
       >
-        <div style={{ background: '#fff', borderRadius: 16, padding: '32px 40px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-          <div className="spinner-border text-primary mb-3" role="status" style={{ width: 36, height: 36 }}>
+        <div style={{ background: '#fff', borderRadius: 24, padding: '36px 48px', textAlign: 'center', boxShadow: '0 25px 60px -15px rgba(0,0,0,0.45)' }}>
+          <div className="spinner-border text-success mb-3" role="status" style={{ width: 40, height: 40 }}>
             <span className="visually-hidden">Loading...</span>
           </div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: '#0F172A' }}>Fetching Live Order Details</div>
-          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>Loading telemetry, goods items and tracking timeline…</div>
+          <div style={{ fontWeight: 900, fontSize: 16, color: '#0F172A', letterSpacing: '-0.01em' }}>
+            Bems Order Command &amp; Fulfillment Dossier
+          </div>
+          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+            Loading live order telemetry, produce manifest &amp; tracking timeline…
+          </div>
         </div>
       </div>
     )
@@ -311,45 +344,123 @@ export default function OrderDetailModal({
     >
       <div
         style={{
-          background: '#FFFFFF',
-          borderRadius: 16,
+          background: '#F1F5F9',
+          borderRadius: 24,
           width: '100%',
-          maxWidth: 960,
-          maxHeight: '92vh',
+          maxWidth: 1240,
+          maxHeight: '94vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 60px -15px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.06)',
+          boxShadow: '0 25px 60px -15px rgba(0,0,0,0.45)',
+          border: '1px solid #E2E8F0',
           overflow: 'hidden',
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
           animation: 'fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Modal Header ── */}
+        {/* ── Top Bar / Cockpit Header (Sticky) ── */}
         <div
-          className="d-flex align-items-center justify-content-between p-4 border-bottom"
-          style={{ background: '#FFFFFF', borderBottom: '1px solid #E2E8F0' }}
+          style={{
+            background: '#FFFFFF',
+            borderBottom: '1px solid #E2E8F0',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+            zIndex: 10,
+          }}
         >
-          <div>
-            <h5 className="mb-0 fw-bold" style={{ color: '#0F172A', fontSize: 18, letterSpacing: '-0.01em' }}>
-              {order.id}
-            </h5>
-            <div className="text-muted small" style={{ fontSize: 12, marginTop: 2 }}>
-              {order.date} · {channelCfg.label}
+          {/* Brand & Order Identifiers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF',
+                fontSize: 22,
+                fontWeight: 800,
+                boxShadow: '0 6px 16px rgba(5, 150, 105, 0.25)',
+                flexShrink: 0,
+              }}
+            >
+              🛍️
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>
+                  Bems Order Command &amp; Fulfillment Dossier
+                </h2>
+                <span
+                  style={{
+                    background: '#ECFDF5',
+                    color: '#065F46',
+                    border: '1px solid #A7F3D0',
+                    padding: '2px 8px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#10B981',
+                      display: 'inline-block',
+                    }}
+                  />
+                  REAL-TIME DATABASE STREAM
+                </span>
+                <span
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#334155',
+                    border: '1px solid #CBD5E1',
+                    padding: '2px 8px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  ID: #{order.id}
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
+                {order.date} · {channelCfg.label} · Active order tracking &amp; dispatch operations
+              </p>
             </div>
           </div>
 
-          <div className="d-flex gap-2 align-items-center flex-wrap">
+          {/* Header Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* Status Pill */}
             <span
-              className="badge"
               style={{
                 background: cfg.bg,
                 color: cfg.color,
+                border: `1px solid ${cfg.color}35`,
+                padding: '6px 12px',
+                borderRadius: 20,
                 fontSize: 12,
-                fontWeight: 700,
-                padding: '6px 10px',
-                borderRadius: 8,
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
               }}
             >
-              <i className={`${cfg.icon} me-1`} />
+              <i className={cfg.icon} />
               {cfg.label}
             </span>
 
@@ -360,68 +471,128 @@ export default function OrderDetailModal({
                 if (onOpenFleetMap) onOpenFleetMap(order)
                 else if (onClose) onClose()
               }}
-              className="btn btn-sm btn-outline-primary"
-              style={{ fontWeight: 600, fontSize: 12, padding: '5px 10px', borderRadius: 8 }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: '#2563EB',
+                color: '#FFFFFF',
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+              }}
               title="Focus in Live Fleet Command & GPS Tracking"
             >
-              <i className="ri-map-pin-2-line me-1" />
-              Live Fleet Map
+              <i className="ri-map-pin-2-line" />
+              <span>Live Fleet Map</span>
             </button>
 
             {/* Reprint Invoice */}
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary"
               onClick={() => setActiveReceiptModal('invoice')}
-              style={{ fontWeight: 600, fontSize: 12, padding: '5px 10px', borderRadius: 8 }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: '#059669',
+                color: '#FFFFFF',
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)',
+              }}
               title="Print Warehouse Invoice & Packing List"
             >
-              <i className="ri-file-text-line me-1" />
-              Reprint Invoice
+              <i className="ri-file-text-line" />
+              <span>Reprint Invoice</span>
             </button>
 
             {/* Customer Receipt */}
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
               onClick={() => setActiveReceiptModal('receipt')}
-              style={{ fontWeight: 600, fontSize: 12, padding: '5px 10px', borderRadius: 8 }}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: '#FFFFFF',
+                color: '#0F172A',
+                border: '1px solid #CBD5E1',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
               title="Print Customer Payment Receipt"
             >
-              <i className="ri-printer-line me-1" />
-              Customer Receipt
+              <i className="ri-printer-line" />
+              <span>Customer Receipt</span>
             </button>
 
             {/* Close Button */}
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
               onClick={onClose}
-              style={{ padding: '5px 8px', borderRadius: 8 }}
-              title="Close Order Modal"
+              style={{
+                padding: '8px 16px',
+                borderRadius: 10,
+                background: '#EF4444',
+                color: '#FFFFFF',
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+              }}
+              title="Close Order Dossier"
             >
-              <i className="ri-close-line" style={{ fontSize: 16 }} />
+              <span>✕ Close</span>
             </button>
           </div>
         </div>
 
         {/* ── 7-Stage Pipeline Progress Stepper ── */}
         {!['physical'].includes(order.channel) && !['dispute', 'cancelled'].includes(order.status) && (
-          <div className="px-4 py-3 border-bottom" style={{ background: '#F8FAFC' }}>
-            <div className="d-flex align-items-center">
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 18,
+              padding: '14px 20px',
+              margin: '16px 24px 0',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.02)',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               {PIPELINE.map((step, i) => {
                 const c = getStatusCfg(step)
                 const done = i <= idx
                 const now = i === idx
                 return (
-                  <div key={step} className="d-flex align-items-center flex-grow-1" style={{ minWidth: 0 }}>
-                    <div className="d-flex flex-column align-items-center flex-shrink-0" style={{ gap: 4 }}>
+                  <div key={step} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, gap: 4 }}>
                       <div
-                        className="rounded-circle d-flex align-items-center justify-content-center"
                         style={{
                           width: 28,
                           height: 28,
+                          borderRadius: '50%',
                           background: done ? c.color : '#E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           boxShadow: now ? `0 0 0 4px ${c.color}35` : 'none',
                           transition: 'all 0.2s ease',
                         }}
@@ -433,7 +604,7 @@ export default function OrderDetailModal({
                           fontSize: 9.5,
                           color: done ? c.color : '#94A3B8',
                           whiteSpace: 'nowrap',
-                          fontWeight: now ? 800 : 500,
+                          fontWeight: now ? 800 : 600,
                         }}
                       >
                         {c.label}
@@ -441,11 +612,12 @@ export default function OrderDetailModal({
                     </div>
                     {i < PIPELINE.length - 1 && (
                       <div
-                        className="flex-grow-1 mx-1"
                         style={{
+                          flex: 1,
+                          margin: '0 6px',
                           height: 2,
-                          background: i < idx ? '#22C55E' : '#E2E8F0',
-                          borderRadius: 1,
+                          background: i < idx ? '#10B981' : '#E2E8F0',
+                          borderRadius: 2,
                         }}
                       />
                     )}
@@ -456,116 +628,234 @@ export default function OrderDetailModal({
           </div>
         )}
 
-        {/* ── Scrollable Body ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        {/* ── Scrollable Body Grid ── */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
           {loading && (
-            <div className="alert alert-info py-2 small mb-3">
+            <div className="alert alert-info py-2 small mb-3" style={{ borderRadius: 12 }}>
               <i className="ri-loader-line ri-spin me-1" />
-              Refreshing live order telemetry & dispatch status…
+              Refreshing live order telemetry &amp; dispatch status…
             </div>
           )}
 
-          <div className="row g-4">
-            {/* ── Left Column: Customer, Items, Delivery info ── */}
-            <div className="col-md-7">
-              {/* Customer & Address Details Card */}
-              <div className="card border mb-3 p-3 bg-light-subtle" style={{ borderRadius: 12 }}>
-                <div className="row g-3">
-                  <div className="col-6">
-                    <div className="text-muted small mb-1" style={{ fontSize: 11, fontWeight: 700 }}>CUSTOMER</div>
-                    <div className="fw-bold" style={{ color: '#0F172A', fontSize: 13 }}>{order.customer?.name}</div>
-                    <div className="small text-muted" style={{ fontSize: 11 }}>{order.customer?.phone}</div>
-                    <div className="small text-muted" style={{ fontSize: 11 }}>{order.customer?.email}</div>
-                  </div>
-
-                  <div className="col-6">
-                    <div className="text-muted small mb-1" style={{ fontSize: 11, fontWeight: 700 }}>FULFILLMENT ADDRESS</div>
-                    <div className="small" style={{ color: '#334155', lineHeight: 1.35 }}>{order.customer?.address}</div>
-                  </div>
-
-                  <div className="col-6">
-                    <div className="text-muted small mb-1" style={{ fontSize: 11, fontWeight: 700 }}>CHANNEL</div>
-                    <span className={`badge rounded-pill ${channelCfg.badgeClass || ''}`} style={{ fontSize: 11, padding: '4px 8px' }}>
-                      <i className={`${channelCfg.icon} me-1`} />
-                      {channelCfg.label}
-                    </span>
-                  </div>
-
-                  <div className="col-6">
-                    <div className="text-muted small mb-1" style={{ fontSize: 11, fontWeight: 700 }}>PAYMENT METHOD</div>
-                    <div className="small fw-semibold" style={{ color: '#0F172A' }}>
-                      {String(order.payment).toLowerCase().includes('cash')
-                        ? '💵 Cash'
-                        : String(order.payment).toLowerCase().includes('pos')
-                        ? '💳 POS Terminal'
-                        : '💳 Paystack / Online Card'}
-                    </div>
-                  </div>
-
-                  {/* Assigned Driver Row */}
-                  <div className="col-12 border-top pt-2 mt-2">
-                    <div className="d-flex align-items-center justify-content-between mb-1.5">
-                      <div className="text-muted small fw-bold" style={{ fontSize: 11 }}>ASSIGNED DRIVER</div>
-                      <div className="d-flex gap-1.5">
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-outline-warning"
-                          style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6 }}
-                          title="Reassign to another courier"
-                          onClick={() => setActiveReceiptModal('reassign')}
-                        >
-                          <i className="ri-user-follow-line me-1" />
-                          Reassign
-                        </button>
-                        {order.driver && (
-                          <button
-                            type="button"
-                            className="btn btn-xs btn-outline-danger"
-                            style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6 }}
-                            title="Unassign courier from order"
-                            disabled={actionLoading}
-                            onClick={handleUnassignDriver}
-                          >
-                            <i className="ri-user-unfollow-line me-1" />
-                            Unassign
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {order.driver ? (
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div
-                          className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                          style={{ width: 34, height: 34, fontSize: 11, fontWeight: 800, background: '#059669' }}
-                        >
-                          {order.driver.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="fw-bold small" style={{ color: '#0F172A' }}>{order.driver.name}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>
-                            {order.driver.phone} · {order.driver.bike}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-muted small fst-italic py-1">
-                        No courier assigned yet. Click Reassign to dispatch an active vehicle.
-                      </div>
-                    )}
-                  </div>
-
-                  {order.notes && (
-                    <div className="col-12 border-top pt-2 mt-2">
-                      <div className="text-muted small mb-1" style={{ fontSize: 11, fontWeight: 700 }}>ORDER NOTES</div>
-                      <div className="small text-muted">{order.notes}</div>
-                    </div>
-                  )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.95fr', gap: 16 }}>
+            {/* ── Left Column: Customer, Driver, Goods, Proof of Delivery ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Card 1: Customer Profile & Fulfillment Details */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '20px 22px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="ri-user-smile-line text-primary fs-16" />
+                    Customer &amp; Delivery Destination
+                  </span>
+                  <span className={`badge rounded-pill ${channelCfg.badgeClass || ''}`} style={{ fontSize: 11, padding: '4px 8px' }}>
+                    <i className={`${channelCfg.icon} me-1`} />
+                    {channelCfg.label}
+                  </span>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {/* Customer details */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 12,
+                        background: 'linear-gradient(135deg, #059669, #10B981)',
+                        color: '#FFFFFF',
+                        fontWeight: 900,
+                        fontSize: 15,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {getInitials(order.customer?.name)}
+                    </div>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Recipient</span>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>{order.customer?.name}</div>
+                      <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                        <a href={`tel:${order.customer?.phone}`} style={{ color: '#2563EB', textDecoration: 'none', fontWeight: 600 }}>
+                          📞 {order.customer?.phone}
+                        </a>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94A3B8' }}>{order.customer?.email}</div>
+                    </div>
+                  </div>
+
+                  {/* Destination Address */}
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Fulfillment Address</span>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', marginTop: 2, lineHeight: 1.4 }}>
+                      📍 {order.customer?.address}
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Payment Method: </span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#0F172A' }}>
+                        {String(order.payment).toLowerCase().includes('cash')
+                          ? '💵 Cash on Delivery'
+                          : String(order.payment).toLowerCase().includes('pos')
+                          ? '💳 POS Terminal'
+                          : '💳 Paystack / Online Card'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {order.notes && (
+                  <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '10px 14px', border: '1px solid #E2E8F0', fontSize: 12, color: '#475569' }}>
+                    <strong style={{ color: '#0F172A' }}>📝 Special Delivery Instructions: </strong>
+                    {order.notes}
+                  </div>
+                )}
               </div>
 
-              {/* Items Breakdown with Dropdown Toggle */}
-              <div className="card border mb-3 p-3" style={{ borderRadius: 12 }}>
+              {/* Card 2: Assigned Courier & Dispatch Status */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '20px 22px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <i className="ri-truck-line text-success fs-16" />
+                    Assigned Fleet Courier &amp; Vehicle
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveReceiptModal('reassign')}
+                      className="btn btn-sm btn-outline-warning fw-bold px-2 py-1"
+                      style={{ fontSize: 11, borderRadius: 8 }}
+                      title="Reassign to another driver"
+                    >
+                      <i className="ri-user-follow-line me-1" />
+                      {order.driver ? 'Reassign' : 'Assign Courier'}
+                    </button>
+                    {order.driver && (
+                      <button
+                        type="button"
+                        onClick={handleUnassignDriver}
+                        disabled={actionLoading}
+                        className="btn btn-sm btn-outline-danger fw-bold px-2 py-1"
+                        style={{ fontSize: 11, borderRadius: 8 }}
+                        title="Unassign courier from order"
+                      >
+                        <i className="ri-user-unfollow-line me-1" />
+                        Unassign
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {order.driver ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background: '#059669',
+                          color: '#FFFFFF',
+                          fontSize: 16,
+                          fontWeight: 900,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)',
+                          flexShrink: 0,
+                          position: 'relative',
+                        }}
+                      >
+                        {getInitials(order.driver.name)}
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: -3,
+                            right: -3,
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            background: '#10B981',
+                            border: '2px solid #FFFFFF',
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>{order.driver.name}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <span>📞 {order.driver.phone}</span>
+                          <span>•</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A' }}>{order.driver.bike}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {onOpenChat && order.driver?.id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose && onClose()
+                          onOpenChat(order.driver.id)
+                        }}
+                        className="btn btn-sm btn-success fw-bold px-3 py-1.5"
+                        style={{ borderRadius: 8, fontSize: 11 }}
+                      >
+                        💬 Courier Chat
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 12, color: '#92400E', fontWeight: 600 }}>
+                      ⚠️ No courier dispatched yet. Order is awaiting assignment.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveReceiptModal('reassign')}
+                      className="btn btn-sm btn-warning fw-bold px-3 py-1"
+                      style={{ fontSize: 11, borderRadius: 8 }}
+                    >
+                      + Assign Courier Now
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Card 3: Order Goods & Itemized Manifest */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '20px 22px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
                 {(() => {
                   const items = order.items || []
                   const previewLimit = 4
@@ -574,9 +864,9 @@ export default function OrderDetailModal({
 
                   return (
                     <>
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <div className="fw-bold small d-flex align-items-center gap-1.5" style={{ color: '#0F172A' }}>
-                          <span>Order Items ({items.length})</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>📦 Order Goods Manifest ({items.length})</span>
                           {hasMore && !expandModalItems && (
                             <span className="badge bg-light text-secondary border fw-normal" style={{ fontSize: 10 }}>
                               Showing 4 of {items.length}
@@ -599,19 +889,19 @@ export default function OrderDetailModal({
                         <>
                           <table className="table table-sm mb-0 align-middle">
                             <thead className="table-light">
-                              <tr style={{ fontSize: 11 }}>
-                                <th>ITEM</th>
+                              <tr style={{ fontSize: 11, color: '#64748B' }}>
+                                <th>PRODUCT ITEM</th>
                                 <th>QTY</th>
-                                <th>PRICE</th>
-                                <th className="text-end">TOTAL</th>
+                                <th>UNIT PRICE</th>
+                                <th className="text-end">SUBTOTAL</th>
                               </tr>
                             </thead>
                             <tbody>
                               {visibleItems.map((it, idx) => (
                                 <tr key={it.id || idx}>
                                   <td>
-                                    <div className="fw-medium small" style={{ color: '#0F172A' }}>{it.name}</div>
-                                    {it.sku && <div className="text-muted" style={{ fontSize: 10 }}>SKU: {it.sku}</div>}
+                                    <div className="fw-bold small" style={{ color: '#0F172A' }}>{it.name}</div>
+                                    {it.sku && <div className="text-muted" style={{ fontSize: 10, fontFamily: 'monospace' }}>SKU: {it.sku}</div>}
                                   </td>
                                   <td className="small">{it.qty} {it.unit || ''}</td>
                                   <td className="small">{fmt(it.price)}</td>
@@ -643,25 +933,26 @@ export default function OrderDetailModal({
                   )
                 })()}
 
-                <div className="border-top pt-2 mt-3">
-                  <div className="d-flex justify-content-between small text-muted">
-                    <span>Subtotal</span>
-                    <span>{fmt(calcSub(order.items) || order.total)}</span>
+                {/* Subtotal & Gross Financials */}
+                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 12, marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
+                    <span>Goods Subtotal:</span>
+                    <span style={{ fontWeight: 600, color: '#0F172A' }}>{fmt(calcSub(order.items) || order.total)}</span>
                   </div>
                   {order.deliveryFee > 0 && (
-                    <div className="d-flex justify-content-between small text-muted">
-                      <span>Delivery Fee</span>
-                      <span>{fmt(order.deliveryFee)}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
+                      <span>Logistics &amp; Delivery Fee:</span>
+                      <span style={{ fontWeight: 600, color: '#0F172A' }}>{fmt(order.deliveryFee)}</span>
                     </div>
                   )}
-                  <div className="d-flex justify-content-between fw-bold mt-1 fs-15">
-                    <span style={{ color: '#0F172A' }}>Total</span>
-                    <span className="text-primary fw-bolder" style={{ fontSize: 16 }}>{fmt(order.total)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #CBD5E1' }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: '#0F172A' }}>Total Gross Settlement</span>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: '#059669' }}>{fmt(order.total)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Proof of Delivery (POD) Image & Handover Notes */}
+              {/* Card 4: Proof of Delivery (POD) & Handover Confirmation */}
               {Boolean(
                 order.proof_photo ||
                 (Array.isArray(order.proof_photos) && order.proof_photos.length > 0) ||
@@ -669,14 +960,26 @@ export default function OrderDetailModal({
                 order.deliveryNotes ||
                 order.proof_note
               ) && (
-                <div className="card border mb-3 p-3 bg-success-subtle border-success-subtle shadow-xs" style={{ borderRadius: 12 }}>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="fw-bold small text-success-emphasis d-flex align-items-center gap-1">
-                      <i className="ri-camera-lens-line fs-15 text-success" />
-                      <span>Proof of Delivery (Handover Confirmed)</span>
-                    </div>
-                    <span className="badge bg-success text-white" style={{ fontSize: 10 }}>
-                      <i className="ri-checkbox-circle-line me-1" />Courier Snapped
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 20,
+                    padding: '20px 22px',
+                    border: '1px solid #A7F3D0',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ECFDF5', paddingBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#065F46', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="ri-camera-lens-line fs-16 text-success" />
+                      Proof of Delivery (Handover Confirmed)
+                    </span>
+                    <span className="badge bg-success text-white" style={{ fontSize: 10, padding: '4px 8px', borderRadius: 20 }}>
+                      <i className="ri-checkbox-circle-line me-1" />
+                      Courier Snapped
                     </span>
                   </div>
 
@@ -691,27 +994,44 @@ export default function OrderDetailModal({
                     if (uniquePhotos.length === 0) return null
 
                     return (
-                      <div className="d-flex flex-wrap gap-2 my-2">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                         {uniquePhotos.map((url, pIdx) => (
                           <a
                             key={pIdx}
                             href={url}
                             target="_blank"
                             rel="noreferrer"
-                            className="d-block position-relative rounded-3 overflow-hidden border shadow-xs text-decoration-none"
-                            style={{ width: 120, height: 120, background: '#0f172a' }}
-                            title="Click to view full image in high resolution"
+                            style={{
+                              width: 120,
+                              height: 120,
+                              borderRadius: 12,
+                              overflow: 'hidden',
+                              border: '1px solid #CBD5E1',
+                              position: 'relative',
+                              display: 'block',
+                              boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+                            }}
+                            title="Click to inspect full photo in high resolution"
                           >
                             <img
                               src={url}
                               alt={`Proof ${pIdx + 1}`}
-                              className="w-100 h-100"
-                              style={{ objectFit: 'cover' }}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => { e.currentTarget.style.display = 'none' }}
                             />
                             <div
-                              className="position-absolute bottom-0 start-0 end-0 text-white text-center py-1 fw-medium"
-                              style={{ fontSize: 10, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}
+                              style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                color: '#FFFFFF',
+                                textAlign: 'center',
+                                padding: '4px 0',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                              }}
                             >
                               <i className="ri-zoom-in-line me-1" />Photo #{pIdx + 1}
                             </div>
@@ -722,74 +1042,311 @@ export default function OrderDetailModal({
                   })()}
 
                   {(order.deliveryNotes || order.proof_note) && (
-                    <div className="bg-white p-2.5 rounded border border-success-subtle mt-2 small">
-                      <div className="text-muted fw-bold" style={{ fontSize: 10, letterSpacing: '0.03em' }}>DRIVER HANDOVER NOTE:</div>
-                      <div className="text-dark mt-0.5">{order.deliveryNotes || order.proof_note}</div>
+                    <div style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>COURIER HANDOVER NOTE:</div>
+                      <div style={{ color: '#0F172A', marginTop: 2 }}>{order.deliveryNotes || order.proof_note}</div>
                     </div>
                   )}
 
-                  <div className="text-muted mt-2 d-flex align-items-center justify-content-between" style={{ fontSize: 11 }}>
-                    <span>Courier: <strong>{order.driver?.name || 'Delivery Driver'}</strong></span>
+                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Delivered by: <strong>{order.driver?.name || 'Assigned Courier'}</strong></span>
                     {order.deliveredAt && (
-                      <span>Delivered: {safeFormatDate(order.deliveredAt, '')}</span>
+                      <span>Time: <strong>{safeFormatDate(order.deliveredAt, '')}</strong></span>
                     )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ── Right Column: Interactive Map, Timeline & Action shortcuts ── */}
-            <div className="col-md-5">
-              {/* Interactive Location & Telemetry Map */}
-              <div className="mb-3">
-                <div className="d-flex align-items-center justify-content-between mb-2">
-                  <span className="fw-bold small" style={{ color: '#0F172A' }}>📍 Order Location &amp; Dispatch Map</span>
+            {/* ── Right Column: Interactive Map, Timeline & Action Shortcuts ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Card 1: Interactive Location & Route Map */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '18px 20px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    📍 Order Location &amp; Dispatch Map
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       if (onOpenFleetMap) onOpenFleetMap(order)
                       else if (onClose) onClose()
                     }}
-                    className="btn btn-link p-0 small text-primary text-decoration-none fw-semibold"
-                    style={{ fontSize: 12 }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#2563EB',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
                   >
-                    Full Screen <i className="ri-arrow-right-up-line" />
+                    <span>Full Screen ↗</span>
                   </button>
                 </div>
-                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-                  <AdminOrderMap order={order} height="200px" />
+                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+                  <AdminOrderMap order={order} height="220px" />
                 </div>
               </div>
 
-              {/* Status & Tracking Timeline */}
-              <div className="fw-bold mb-3 small" style={{ color: '#0F172A' }}>Status &amp; Tracking Timeline</div>
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: 15, top: 8, bottom: 8, width: 2, background: '#E2E8F0', zIndex: 0 }} />
-                {order.timeline && order.timeline.map((ev, i) => {
-                  const c = getStatusCfg(ev.status)
-                  return (
-                    <div key={i} className="d-flex gap-3 mb-3" style={{ position: 'relative', zIndex: 1 }}>
-                      <div
-                        className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{
-                          width: 32,
-                          height: 32,
-                          background: c?.bg || '#F1F5F9',
-                          border: `2px solid ${c?.color || '#CBD5E1'}`,
-                        }}
-                      >
-                        <i className={c?.icon || 'ri-circle-line'} style={{ color: c?.color || '#64748B', fontSize: 12 }} />
+              {/* Card 2: Status & Tracking Audit Log */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '20px 22px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #F1F5F9', paddingBottom: 10 }}>
+                  <i className="ri-history-line text-primary fs-16" />
+                  Status &amp; Tracking Audit Log
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: 15, top: 8, bottom: 8, width: 2, background: '#E2E8F0', zIndex: 0 }} />
+                  {order.timeline && order.timeline.map((ev, i) => {
+                    const c = getStatusCfg(ev.status)
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 14, position: 'relative', zIndex: 1 }}>
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: c?.bg || '#F1F5F9',
+                            border: `2px solid ${c?.color || '#CBD5E1'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <i className={c?.icon || 'ri-circle-line'} style={{ color: c?.color || '#64748B', fontSize: 12 }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>{c?.label || ev.status}</div>
+                          <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 1 }}>{ev.time} · {ev.by || 'System'}</div>
+                          <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{ev.note}</div>
+                        </div>
                       </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Card 3: Quick Dispatch Actions */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: '20px 22px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #F1F5F9', paddingBottom: 10 }}>
+                  <i className="ri-flashlight-line text-warning fs-16" />
+                  Order Dispatch &amp; Fulfillment Actions
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {order.status === 'cancelled' && (
+                    <div className="alert alert-secondary py-2 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: 10 }}>
+                      <i className="ri-close-circle-line fs-5 text-danger" />
                       <div>
-                        <div className="fw-bold" style={{ fontSize: 13, color: '#0F172A' }}>{c?.label || ev.status}</div>
-                        <div className="text-muted" style={{ fontSize: 10 }}>{ev.time} · {ev.by || 'System'}</div>
-                        <div className="small mt-1 text-muted">{ev.note}</div>
+                        <div className="fw-bold text-danger">Order Cancelled</div>
+                        <div className="text-muted" style={{ fontSize: 11 }}>No further processing or dispatch actions are permitted.</div>
                       </div>
                     </div>
-                  )
-                })}
+                  )}
+
+                  {order.status === 'paid' && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => {
+                        if (onAction) onAction('process', order)
+                        else handleUpdateStatus('processing', 'Packaging & Picking')
+                      }}
+                    >
+                      <i className="ri-play-circle-line me-1" />
+                      Process Order (Picking)
+                    </button>
+                  )}
+
+                  {['processing', 'packaging'].includes(order.status) && (
+                    <button
+                      type="button"
+                      className="btn btn-success btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => {
+                        if (onAction) onAction('pack', order)
+                        else handleUpdateStatus('packed_ready', 'Packed & Ready')
+                      }}
+                    >
+                      <i className="ri-archive-line me-1" />
+                      Confirm Packed &amp; Ready
+                    </button>
+                  )}
+
+                  {['packed', 'packed_ready'].includes(order.status) && (
+                    <button
+                      type="button"
+                      className="btn btn-success btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => {
+                        if (onAction) onAction('assign', order)
+                        else setActiveReceiptModal('reassign')
+                      }}
+                    >
+                      <i className="ri-user-add-line me-1" />
+                      Assign Delivery Driver
+                    </button>
+                  )}
+
+                  {['assigned', 'shipped', 'driver_arrived', 'arrived', 'delivery_attempted'].includes(order.status) && order.driver && (
+                    <button
+                      type="button"
+                      className="btn btn-warning btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => {
+                        if (onAction) onAction('assign', order)
+                        else setActiveReceiptModal('reassign')
+                      }}
+                    >
+                      <i className="ri-user-follow-line me-1" />
+                      Reassign Driver
+                    </button>
+                  )}
+
+                  {['in_transit', 'out_for_delivery', 'shipped', 'driver_arrived', 'arrived'].includes(order.status) && (
+                    <button
+                      type="button"
+                      className="btn btn-success btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => handleUpdateStatus('delivered', 'Delivered')}
+                    >
+                      <i className="ri-checkbox-circle-line me-1" />
+                      Mark Order as Delivered
+                    </button>
+                  )}
+
+                  {order.status === 'dispute' && (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => onAction && onAction('dispute', order)}
+                    >
+                      <i className="ri-shield-check-line me-1" />
+                      Resolve Dispute
+                    </button>
+                  )}
+
+                  {['paid', 'processing', 'packed', 'assigned'].includes(order.status) && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm fw-bold py-2"
+                      style={{ borderRadius: 10 }}
+                      onClick={() => {
+                        if (onAction) onAction('cancel', order)
+                        else if (window.confirm(`Are you sure you want to cancel order #${order.id}?`)) {
+                          handleUpdateStatus('cancelled', 'Cancelled')
+                        }
+                      }}
+                    >
+                      <i className="ri-close-circle-line me-1" />
+                      Cancel Order
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── Sticky Bottom Bar ── */}
+        <div
+          style={{
+            background: '#FFFFFF',
+            borderTop: '1px solid #E2E8F0',
+            padding: '12px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+            zIndex: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenFleetMap) onOpenFleetMap(order)
+                else if (onClose) onClose()
+              }}
+              className="btn btn-sm btn-outline-primary fw-bold"
+              style={{ borderRadius: 8, fontSize: 11 }}
+            >
+              <i className="ri-map-pin-2-line me-1" />
+              Live Fleet Map
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveReceiptModal('invoice')}
+              className="btn btn-sm btn-outline-success fw-bold"
+              style={{ borderRadius: 8, fontSize: 11 }}
+            >
+              <i className="ri-file-text-line me-1" />
+              Reprint Invoice
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveReceiptModal('receipt')}
+              className="btn btn-sm btn-outline-secondary fw-bold"
+              style={{ borderRadius: 8, fontSize: 11 }}
+            >
+              <i className="ri-printer-line me-1" />
+              Customer Receipt
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ fontSize: 13, color: '#64748B' }}>
+              Order Value: <strong style={{ fontSize: 16, color: '#059669', marginLeft: 4 }}>{fmt(order.total)}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-sm btn-danger fw-bold px-3 py-1.5"
+              style={{ borderRadius: 8, fontSize: 12 }}
+            >
+              ✕ Close Dossier
+            </button>
           </div>
         </div>
       </div>
@@ -809,14 +1366,14 @@ export default function OrderDetailModal({
           }}
           onClick={(e) => e.target === e.currentTarget && setActiveReceiptModal(null)}
         >
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
               <div>
                 <h6 className="mb-0 fw-bold">📄 Warehouse Invoice &amp; Packing List</h6>
                 <span className="text-muted" style={{ fontSize: 11 }}>Official Picking &amp; Delivery Slip</span>
               </div>
               <div className="d-flex gap-2">
-                <button className="btn btn-sm btn-primary fw-bold" onClick={handlePrint}>
+                <button className="btn btn-sm btn-success fw-bold" onClick={handlePrint}>
                   <i className="ri-printer-line me-1" />Print Invoice
                 </button>
                 <button className="btn btn-sm btn-outline-secondary" onClick={() => setActiveReceiptModal(null)}>
@@ -865,7 +1422,7 @@ export default function OrderDetailModal({
           }}
           onClick={(e) => e.target === e.currentTarget && setActiveReceiptModal(null)}
         >
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
               <div>
                 <h6 className="mb-0 fw-bold">🧾 Customer Payment Receipt</h6>
@@ -921,7 +1478,7 @@ export default function OrderDetailModal({
           }}
           onClick={(e) => e.target === e.currentTarget && setActiveReceiptModal(null)}
         >
-          <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 440, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
             <div className="d-flex align-items-center justify-content-between mb-3">
               <div>
                 <h6 className="mb-0 fw-bold" style={{ color: '#0F172A' }}>Assign Courier to Order</h6>
@@ -944,6 +1501,7 @@ export default function OrderDetailModal({
                 className="form-select form-select-sm"
                 value={reassignDriverId}
                 onChange={(e) => setReassignDriverId(e.target.value)}
+                style={{ borderRadius: 8, padding: '8px 12px' }}
               >
                 <option value="">-- Choose Courier --</option>
                 {driversList.map((d) => (
@@ -959,6 +1517,7 @@ export default function OrderDetailModal({
                 type="button"
                 className="btn btn-sm btn-secondary"
                 onClick={() => setActiveReceiptModal(null)}
+                style={{ borderRadius: 8 }}
               >
                 Cancel
               </button>
@@ -967,6 +1526,7 @@ export default function OrderDetailModal({
                 className="btn btn-sm btn-primary fw-bold"
                 disabled={!reassignDriverId || actionLoading}
                 onClick={handleReassignDriver}
+                style={{ borderRadius: 8 }}
               >
                 {actionLoading ? 'Assigning…' : 'Confirm Assignment'}
               </button>
