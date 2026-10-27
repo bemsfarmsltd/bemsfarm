@@ -230,46 +230,8 @@ export default function VerifyDocumentPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between flex-wrap gap-2 pt-2 text-xs text-gray-500">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span>Quick test references:</span>
-                <button
-                  type="button"
-                  onClick={() => { setInputRef('SOA-DRV-0004-2026'); setInputCode('618D-CDED-19C1-FDF3'); performVerification('SOA-DRV-0004-2026', '618D-CDED-19C1-FDF3'); }}
-                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
-                >
-                  SOA-DRV-0004-2026 (Driver Statement)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setInputRef('REC-2026-0007'); setInputCode('1E86-13B0-159F-8533'); performVerification('REC-2026-0007', '1E86-13B0-159F-8533'); }}
-                  className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-[#123d27] font-mono font-medium"
-                >
-                  REC-2026-0007
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setInputRef('INV-2026-0007'); setInputCode(''); performVerification('INV-2026-0007', ''); }}
-                  className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-[#123d27] font-mono font-medium"
-                >
-                  INV-2026-0007
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setInputRef('POS-1001'); setInputCode(''); performVerification('POS-1001', ''); }}
-                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
-                >
-                  POS-1001 (Store Sale)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setInputRef('BF-MUFN4UJ1'); setInputCode(''); performVerification('BF-MUFN4UJ1', ''); }}
-                  className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-mono font-semibold"
-                >
-                  BF-MUFN4UJ1 (Order Receipt)
-                </button>
-              </div>
-              <span className="text-gray-400">Primary Corporate Registry · Abia State</span>
+            <div className="flex items-center justify-end pt-2 text-xs text-gray-400">
+              <span>Primary Corporate Registry · Abia State</span>
             </div>
           </form>
         </div>
