@@ -31,6 +31,8 @@ scripts/generate_pdf.js
 
 # Local uploads
 server/uploads/
+!server/uploads/proofs/
+!server/uploads/proofs/*
 server/downloads/*.apk
 client/public/downloads/*.apk
 *.apk

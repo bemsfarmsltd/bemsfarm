@@ -143,19 +143,21 @@ router.patch("/deliveries/:orderId/decline", driverProtect, driverDeliveryContro
 router.put("/deliveries/:orderId/decline", driverProtect, driverDeliveryController.declineDelivery);
 router.post("/deliveries/:orderId/confirm-pickup", driverProtect, driverDeliveryController.confirmPickup);
 router.patch("/deliveries/:orderId/confirm-pickup", driverProtect, driverDeliveryController.confirmPickup);
-router.post("/deliveries/:orderId/confirm-delivery", driverProtect, driverDeliveryController.confirmDelivery);
-router.patch("/deliveries/:orderId/confirm-delivery", driverProtect, driverDeliveryController.confirmDelivery);
-router.post("/deliveries/:orderId/confirm", driverProtect, driverDeliveryController.confirmDelivery);
-router.patch("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
-router.post("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
-router.put("/deliveries/:orderId/status", driverProtect, driverDeliveryController.updateDeliveryStatus);
-router.patch("/deliveries/:orderId", driverProtect, driverDeliveryController.updateDeliveryStatus);
-router.put("/deliveries/:orderId", driverProtect, driverDeliveryController.updateDeliveryStatus);
+router.post("/deliveries/:orderId/confirm-delivery", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.confirmDelivery);
+router.patch("/deliveries/:orderId/confirm-delivery", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.confirmDelivery);
+router.post("/deliveries/:orderId/confirm", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.confirmDelivery);
+router.patch("/deliveries/:orderId/status", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
+router.post("/deliveries/:orderId/status", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
+router.put("/deliveries/:orderId/status", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
+router.patch("/deliveries/:orderId", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
+router.put("/deliveries/:orderId", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
 router.post("/deliveries/:orderId/request-return", driverProtect, driverDeliveryController.requestReturnByDriver);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 
 // ── 3. Proof of Delivery (POD) Image Upload & Retrieval ─────────────────
 router.post("/upload/proof", driverProtect, driverUploadController.proofUploadMiddleware, driverUploadController.uploadProofPhoto);
+router.get("/proofs/:filename", driverUploadController.serveDocumentFile);
+router.get("/proof/:filename", driverUploadController.serveDocumentFile);
 router.get("/deliveries/:orderId/pod", driverProtect, driverDeliveryController.getProofOfDelivery);
 router.get("/deliveries/:orderId/proof", driverProtect, driverDeliveryController.getProofOfDelivery);
 router.get("/orders/:orderId/pod", driverProtect, driverDeliveryController.getProofOfDelivery);

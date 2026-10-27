@@ -161,15 +161,72 @@ const uploadDoc = multer({
   }
 });
 
+// Helper to automatically link uploaded POD photo to deliveries and orders
+async function linkProofPhotoToOrderAndDelivery(targetId, fileUrl, note) {
+  if (!targetId || !fileUrl) return;
+  const cleanId = String(targetId).replace(/^#/, "").trim();
+  try {
+    // Update deliveries table
+    await pool.query(
+      `UPDATE deliveries
+       SET proof_photo = COALESCE($1, proof_photo),
+           proof_photos = CASE 
+             WHEN proof_photos IS NULL OR jsonb_array_length(proof_photos) = 0 THEN jsonb_build_array($1::text)
+             ELSE (
+               SELECT jsonb_agg(DISTINCT elem)
+               FROM jsonb_array_elements_text(COALESCE(proof_photos, '[]'::jsonb) || jsonb_build_array($1::text)) AS elem
+             )
+           END,
+           proof_note = COALESCE($2, proof_note),
+           updated_at = NOW()
+       WHERE id::text = $3 
+          OR order_id = $3 
+          OR delivery_ref = $3 
+          OR UPPER(order_id) = UPPER($3)`,
+      [fileUrl, note || null, cleanId]
+    );
+
+    // Update orders table
+    await pool.query(
+      `UPDATE orders
+       SET proof_photo = COALESCE($1, proof_photo),
+           proof_photos = CASE 
+             WHEN proof_photos IS NULL OR jsonb_array_length(proof_photos) = 0 THEN jsonb_build_array($1::text)
+             ELSE (
+               SELECT jsonb_agg(DISTINCT elem)
+               FROM jsonb_array_elements_text(COALESCE(proof_photos, '[]'::jsonb) || jsonb_build_array($1::text)) AS elem
+             )
+           END,
+           proof_note = COALESCE($2, proof_note),
+           updated_at = NOW()
+       WHERE id::text = $3 
+          OR id = $3 
+          OR order_ref = $3 
+          OR UPPER(id::text) = UPPER($3) 
+          OR UPPER(COALESCE(order_ref, '')) = UPPER($3)`,
+      [fileUrl, note || null, cleanId]
+    );
+  } catch (err) {
+    console.warn("Could not auto-link proof photo to DB:", err.message);
+  }
+}
+
 // ── POST /api/driver/upload/proof ────────────────────────────────────
 // Upload Proof of Delivery (POD) photo from mobile camera
 const uploadProofPhoto = async (req, res, next) => {
   try {
+    const targetOrderId = req.body?.order_id || req.body?.orderId || req.query?.order_id || req.query?.orderId || req.body?.delivery_id || req.body?.deliveryId || req.params?.orderId || null;
+    const proofNote = req.body?.proof_note || req.body?.note || req.body?.delivery_note || req.query?.note || null;
+
     // 1. If multipart file was uploaded via multer (accepts 'photo', 'image', 'file', 'proof', etc.)
     const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['photo', 'image', 'file', 'proof', 'proof_photo'].includes(f.fieldname)) || req.files[0])) || null;
     if (file) {
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const fileUrl = `${baseUrl}/uploads/proofs/${file.filename}`;
+
+      if (targetOrderId) {
+        await linkProofPhotoToOrderAndDelivery(targetOrderId, fileUrl, proofNote);
+      }
 
       return res.status(201).json({
         status: "success",
@@ -210,6 +267,10 @@ const uploadProofPhoto = async (req, res, next) => {
 
       const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const fileUrl = `${baseUrl}/uploads/proofs/${savedFilename}`;
+
+      if (targetOrderId) {
+        await linkProofPhotoToOrderAndDelivery(targetOrderId, fileUrl, proofNote);
+      }
 
       return res.status(201).json({
         status: "success",

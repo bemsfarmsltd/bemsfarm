@@ -1169,7 +1169,25 @@ const updateDeliveryStatus = async (req, res, next) => {
     const delivery = deliveryCheck.rows[0];
     const actualOrderId = delivery.actual_order_id;
     const finalProofNote = proof_note || note || null;
-    let finalProofPhoto = proof_photo || photo || req.body.photo_url || req.body.photoUrl || req.body.image || req.body.imageUrl || req.body.image_url || req.body.url || (Array.isArray(req.body.proof_photos) ? req.body.proof_photos[0] : null);
+    let finalProofPhoto = proof_photo || photo || req.body?.photo_url || req.body?.photoUrl || req.body?.image || req.body?.imageUrl || req.body?.image_url || req.body?.url || (Array.isArray(req.body?.proof_photos) ? req.body.proof_photos[0] : null);
+
+    // Check multipart file uploaded via multer middleware
+    let multiUploadedPhotos = [];
+    if (req.file) {
+      const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const fUrl = `${baseUrl}/uploads/proofs/${req.file.filename}`;
+      finalProofPhoto = finalProofPhoto || fUrl;
+      multiUploadedPhotos.push(fUrl);
+    }
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      for (const f of req.files) {
+        const fUrl = `${baseUrl}/uploads/proofs/${f.filename}`;
+        multiUploadedPhotos.push(fUrl);
+        if (!finalProofPhoto) finalProofPhoto = fUrl;
+      }
+    }
+
     if (finalProofPhoto && typeof finalProofPhoto === 'string' && (finalProofPhoto.startsWith('data:image') || finalProofPhoto.length > 500)) {
       try {
         let base64Data = finalProofPhoto;
@@ -1190,14 +1208,25 @@ const updateDeliveryStatus = async (req, res, next) => {
         fs.writeFileSync(path.join(proofUploadDir, filename), Buffer.from(base64Data, "base64"));
         const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
         finalProofPhoto = `${baseUrl}/uploads/proofs/${filename}`;
+        multiUploadedPhotos.push(finalProofPhoto);
       } catch (podErr) {
         console.warn("Could not save base64 proof photo to disk:", podErr.message);
       }
     }
-    const finalProofPhotos = Array.isArray(req.body.proof_photos)
-      ? JSON.stringify(req.body.proof_photos)
+
+    const photosCollector = [
+      ...(finalProofPhoto ? [finalProofPhoto] : []),
+      ...multiUploadedPhotos,
+      ...(Array.isArray(req.body?.proof_photos) ? req.body.proof_photos : []),
+    ].filter(Boolean);
+    const uniqueCollected = Array.from(new Set(photosCollector));
+    if (!finalProofPhoto && uniqueCollected.length > 0) {
+      finalProofPhoto = uniqueCollected[0];
+    }
+    const finalProofPhotos = uniqueCollected.length > 0
+      ? JSON.stringify(uniqueCollected)
       : (finalProofPhoto ? JSON.stringify([finalProofPhoto]) : null);
-    const finalItemProofs = Array.isArray(req.body.item_proofs)
+    const finalItemProofs = Array.isArray(req.body?.item_proofs)
       ? JSON.stringify(req.body.item_proofs)
       : null;
     const finalFailureReason = failure_reason || reason || null;

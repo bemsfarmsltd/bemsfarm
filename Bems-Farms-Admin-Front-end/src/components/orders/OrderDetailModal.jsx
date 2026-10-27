@@ -103,6 +103,8 @@ export default function OrderDetailModal({
   const [order, setOrder] = useState(null)
   const [expandModalItems, setExpandModalItems] = useState(false)
   const [activeReceiptModal, setActiveReceiptModal] = useState(null) // null | 'invoice' | 'receipt' | 'reassign'
+  const [activePhotoModal, setActivePhotoModal] = useState(null) // null | { url, index, total }
+  const [uploadingProof, setUploadingProof] = useState(false)
   const [driversList, setDriversList] = useState(availableDrivers || [])
   const [reassignDriverId, setReassignDriverId] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
@@ -265,6 +267,31 @@ export default function OrderDetailModal({
       toast.error(err.response?.data?.message || 'Failed to reassign courier')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // Admin upload/attach proof photo handler
+  const handleUploadProofPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const orderRef = order?.numericId || order?.id
+    if (!orderRef) return
+    setUploadingProof(true)
+    const formData = new FormData()
+    formData.append('photo', file)
+    formData.append('proof_note', order.proof_note || order.deliveryNotes || 'Admin confirmed handover photo')
+    try {
+      await api.post(`/admin/orders/${orderRef}/proof-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      toast.success('Proof of delivery photo attached successfully!')
+      await fetchOrderDetail()
+      if (onDriverUpdated) onDriverUpdated()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to attach delivery photo')
+    } finally {
+      setUploadingProof(false)
+      e.target.value = ''
     }
   }
 
@@ -958,7 +985,8 @@ export default function OrderDetailModal({
                 (Array.isArray(order.proof_photos) && order.proof_photos.length > 0) ||
                 (Array.isArray(order.item_proofs) && order.item_proofs.length > 0) ||
                 order.deliveryNotes ||
-                order.proof_note
+                order.proof_note ||
+                order.status === 'delivered'
               ) && (
                 <div
                   style={{
@@ -977,10 +1005,27 @@ export default function OrderDetailModal({
                       <i className="ri-camera-lens-line fs-16 text-success" />
                       Proof of Delivery (Handover Confirmed)
                     </span>
-                    <span className="badge bg-success text-white" style={{ fontSize: 10, padding: '4px 8px', borderRadius: 20 }}>
-                      <i className="ri-checkbox-circle-line me-1" />
-                      Courier Snapped
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <label
+                        className="btn btn-sm btn-outline-success fw-bold px-2.5 py-1"
+                        style={{ fontSize: 11, borderRadius: 8, cursor: 'pointer', margin: 0 }}
+                        title="Upload/Attach delivery confirmation photo"
+                      >
+                        <i className="ri-upload-cloud-line me-1" />
+                        {uploadingProof ? 'Uploading…' : 'Attach Photo'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleUploadProofPhoto}
+                          disabled={uploadingProof}
+                        />
+                      </label>
+                      <span className="badge bg-success text-white" style={{ fontSize: 10, padding: '4px 8px', borderRadius: 20 }}>
+                        <i className="ri-checkbox-circle-line me-1" />
+                        Courier Snapped
+                      </span>
+                    </div>
                   </div>
 
                   {(() => {
@@ -991,67 +1036,120 @@ export default function OrderDetailModal({
                     ].filter(Boolean)
 
                     const uniquePhotos = Array.from(new Set(rawPhotos))
-                    if (uniquePhotos.length === 0) return null
+                    if (uniquePhotos.length === 0) {
+                      return (
+                        <div style={{ background: '#F8FAFC', borderRadius: 12, padding: '14px 16px', border: '1px dashed #CBD5E1', textAlign: 'center' }}>
+                          <i className="ri-image-line fs-24 text-muted" style={{ display: 'block', marginBottom: 4 }} />
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>No Delivery Picture Attached Yet</div>
+                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                            The driver completed handover with a note. Click <strong>Attach Photo</strong> above to upload confirmation proof.
+                          </div>
+                        </div>
+                      )
+                    }
 
                     return (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        {uniquePhotos.map((url, pIdx) => (
-                          <a
-                            key={pIdx}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              width: 120,
-                              height: 120,
-                              borderRadius: 12,
-                              overflow: 'hidden',
-                              border: '1px solid #CBD5E1',
-                              position: 'relative',
-                              display: 'block',
-                              boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                            }}
-                            title="Click to inspect full photo in high resolution"
-                          >
-                            <img
-                              src={url}
-                              alt={`Proof ${pIdx + 1}`}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => { e.currentTarget.style.display = 'none' }}
-                            />
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Verified Delivery Snapshots ({uniquePhotos.length} {uniquePhotos.length === 1 ? 'Photo' : 'Photos'}):
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                          {uniquePhotos.map((url, pIdx) => (
                             <div
+                              key={pIdx}
+                              onClick={() => setActivePhotoModal({ url, index: pIdx + 1, total: uniquePhotos.length })}
                               style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                color: '#FFFFFF',
-                                textAlign: 'center',
-                                padding: '4px 0',
-                                fontSize: 10,
-                                fontWeight: 700,
-                                background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                                width: 150,
+                                height: 150,
+                                borderRadius: 14,
+                                overflow: 'hidden',
+                                border: '2px solid #10B981',
+                                position: 'relative',
+                                cursor: 'pointer',
+                                boxShadow: '0 6px 14px rgba(16, 185, 129, 0.15)',
+                                transition: 'all 0.2s ease',
                               }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'
+                                e.currentTarget.style.boxShadow = '0 12px 24px rgba(16, 185, 129, 0.3)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                                e.currentTarget.style.boxShadow = '0 6px 14px rgba(16, 185, 129, 0.15)'
+                              }}
+                              title="Click to inspect full photo in high-definition Lightbox viewer"
                             >
-                              <i className="ri-zoom-in-line me-1" />Photo #{pIdx + 1}
+                              <img
+                                src={url}
+                                alt={`Delivery Confirmation Proof ${pIdx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  if (url.includes('/uploads/proofs/')) {
+                                    const pathOnly = url.substring(url.indexOf('/uploads/proofs/'))
+                                    if (e.currentTarget.src !== window.location.origin + pathOnly) {
+                                      e.currentTarget.src = pathOnly
+                                    }
+                                  }
+                                }}
+                              />
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                  background: 'rgba(5, 150, 105, 0.95)',
+                                  color: '#FFFFFF',
+                                  borderRadius: '50%',
+                                  width: 24,
+                                  height: 24,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                                }}
+                              >
+                                ✓
+                              </div>
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  color: '#FFFFFF',
+                                  textAlign: 'center',
+                                  padding: '8px 4px 6px',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 5,
+                                }}
+                              >
+                                <i className="ri-zoom-in-line" /> Inspect Photo #{pIdx + 1}
+                              </div>
                             </div>
-                          </a>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     )
                   })()}
 
                   {(order.deliveryNotes || order.proof_note) && (
-                    <div style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>COURIER HANDOVER NOTE:</div>
-                      <div style={{ color: '#0F172A', marginTop: 2 }}>{order.deliveryNotes || order.proof_note}</div>
+                    <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: 12, border: '1px solid #E2E8F0', fontSize: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>COURIER HANDOVER NOTE:</div>
+                      <div style={{ color: '#0F172A', marginTop: 3, fontWeight: 600 }}>{order.deliveryNotes || order.proof_note}</div>
                     </div>
                   )}
 
-                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Delivered by: <strong>{order.driver?.name || 'Assigned Courier'}</strong></span>
+                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F1F5F9', paddingTop: 8 }}>
+                    <span>Delivered by: <strong>{order.driver?.name || 'Assigned Courier'}</strong> ({order.driver?.phone || 'No Phone'})</span>
                     {order.deliveredAt && (
-                      <span>Time: <strong>{safeFormatDate(order.deliveredAt, '')}</strong></span>
+                      <span>Time: <strong style={{ color: '#059669' }}>{safeFormatDate(order.deliveredAt, '')}</strong></span>
                     )}
                   </div>
                 </div>
@@ -1530,6 +1628,121 @@ export default function OrderDetailModal({
               >
                 {actionLoading ? 'Assigning…' : 'Confirm Assignment'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Submodal 4: High-Definition Delivery Proof Photo Lightbox ── */}
+      {activePhotoModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.88)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 1300,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={(e) => e.target === e.currentTarget && setActivePhotoModal(null)}
+        >
+          <div
+            style={{
+              background: '#0F172A',
+              borderRadius: 20,
+              maxWidth: 780,
+              width: '100%',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+              border: '1px solid #334155',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderBottom: '1px solid #1E293B',
+                background: '#1E293B',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="badge bg-success" style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20 }}>
+                  <i className="ri-shield-check-line me-1" /> Verified Proof of Delivery
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#F8FAFC' }}>
+                  Photo {activePhotoModal.index} of {activePhotoModal.total}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <a
+                  href={activePhotoModal.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-sm btn-outline-light"
+                  style={{ fontSize: 11, borderRadius: 8, padding: '4px 10px' }}
+                  title="Open original file in new tab"
+                >
+                  <i className="ri-external-link-line me-1" /> Full Resolution
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setActivePhotoModal(null)}
+                  className="btn btn-sm btn-outline-secondary text-white"
+                  style={{ borderRadius: 8 }}
+                >
+                  <i className="ri-close-line fs-16" />
+                </button>
+              </div>
+            </div>
+
+            {/* Photo Container */}
+            <div
+              style={{
+                background: '#020617',
+                padding: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 380,
+                maxHeight: '65vh',
+                overflow: 'hidden',
+              }}
+            >
+              <img
+                src={activePhotoModal.url}
+                alt="Delivery Proof"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '60vh',
+                  objectFit: 'contain',
+                  borderRadius: 12,
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                }}
+              />
+            </div>
+
+            {/* Footer with Courier Metadata */}
+            <div style={{ padding: '14px 20px', background: '#0F172A', borderTop: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ fontSize: 12, color: '#94A3B8' }}>
+                <div>Delivered by: <strong style={{ color: '#F1F5F9' }}>{order.driver?.name || 'Assigned Courier'}</strong> ({order.driver?.phone || 'No phone'})</div>
+                {(order.deliveryNotes || order.proof_note) && (
+                  <div style={{ marginTop: 2, color: '#CBD5E1' }}>Handover Note: <em>"{order.deliveryNotes || order.proof_note}"</em></div>
+                )}
+              </div>
+              {order.deliveredAt && (
+                <div style={{ fontSize: 12, color: '#10B981', fontWeight: 700 }}>
+                  <i className="ri-time-line me-1" />
+                  {safeFormatDate(order.deliveredAt, '')}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ const { restoreOrderStock, deductOrderStock } = require("../utils/orderStock");
 const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
 const { initiateMonnifyRefund } = require("../utils/monnify");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
+const driverUploadController = require("../controllers/driverUploadController");
 
 router.use(protect);
 
@@ -1677,6 +1678,99 @@ router.post(
       next(err);
     } finally {
       client.release();
+    }
+  }
+);
+
+// ── POST /api/admin/orders/:id/proof-photo ────────────────────────
+// Upload or attach Proof of Delivery (POD) photo directly by admin/dispatcher
+router.post(
+  "/:id/proof-photo",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  driverUploadController.proofUploadMiddleware,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const cleanId = String(id).replace(/^#/, "").trim();
+      let photoUrl = req.body?.proof_photo || req.body?.photo_url || req.body?.url || null;
+      const note = req.body?.proof_note || req.body?.note || null;
+
+      if (!photoUrl && req.file) {
+        const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        photoUrl = `${baseUrl}/uploads/proofs/${req.file.filename}`;
+      } else if (!photoUrl && Array.isArray(req.files) && req.files.length > 0) {
+        const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        photoUrl = `${baseUrl}/uploads/proofs/${req.files[0].filename}`;
+      }
+
+      if (!photoUrl && req.body?.image_base64) {
+        const crypto = require("crypto");
+        const fs = require("fs");
+        const path = require("path");
+        const matches = req.body.image_base64.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+        let ext = ".jpg";
+        let base64Data = req.body.image_base64;
+        if (matches && matches.length === 3) {
+          ext = `.${matches[1].toLowerCase() === "jpeg" ? "jpg" : matches[1].toLowerCase()}`;
+          base64Data = matches[2];
+        }
+        const savedFilename = `POD_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+        const proofUploadDir = path.join(__dirname, "../../uploads/proofs");
+        if (!fs.existsSync(proofUploadDir)) fs.mkdirSync(proofUploadDir, { recursive: true });
+        fs.writeFileSync(path.join(proofUploadDir, savedFilename), Buffer.from(base64Data, "base64"));
+        const baseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get("host")}`;
+        photoUrl = `${baseUrl}/uploads/proofs/${savedFilename}`;
+      }
+
+      if (!photoUrl) {
+        return res.status(400).json({ success: false, message: "No photo provided (file, url, or base64 required)" });
+      }
+
+      // Update orders table
+      const ordRes = await pool.query(
+        `UPDATE orders
+         SET proof_photo = COALESCE($1, proof_photo),
+             proof_photos = CASE 
+               WHEN proof_photos IS NULL OR jsonb_array_length(proof_photos) = 0 THEN jsonb_build_array($1::text)
+               ELSE (
+                 SELECT jsonb_agg(DISTINCT elem)
+                 FROM jsonb_array_elements_text(COALESCE(proof_photos, '[]'::jsonb) || jsonb_build_array($1::text)) AS elem
+               )
+             END,
+             proof_note = COALESCE($2, proof_note),
+             updated_at = NOW()
+         WHERE id = $3 OR order_ref = $3 OR id::text = $3
+         RETURNING id, proof_photo, proof_photos, proof_note`,
+        [photoUrl, note, cleanId]
+      );
+
+      // Update deliveries table
+      await pool.query(
+        `UPDATE deliveries
+         SET proof_photo = COALESCE($1, proof_photo),
+             proof_photos = CASE 
+               WHEN proof_photos IS NULL OR jsonb_array_length(proof_photos) = 0 THEN jsonb_build_array($1::text)
+               ELSE (
+                 SELECT jsonb_agg(DISTINCT elem)
+                 FROM jsonb_array_elements_text(COALESCE(proof_photos, '[]'::jsonb) || jsonb_build_array($1::text)) AS elem
+               )
+             END,
+             proof_note = COALESCE($2, proof_note),
+             updated_at = NOW()
+         WHERE order_id = $3 OR id::text = $3 OR delivery_ref = $3`,
+        [photoUrl, note, cleanId]
+      );
+
+      return res.json({
+        success: true,
+        message: "Proof of delivery photo saved successfully",
+        proof_photo: photoUrl,
+        proof_photos: ordRes.rows[0]?.proof_photos || [photoUrl],
+        proof_note: ordRes.rows[0]?.proof_note || note,
+      });
+    } catch (err) {
+      console.error("Admin upload proof photo error:", err.message);
+      next(err);
     }
   }
 );

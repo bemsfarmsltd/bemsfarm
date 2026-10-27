@@ -76,6 +76,16 @@ const uploadsStatic = express.static(path.join(__dirname, "../uploads"), {
 });
 app.use("/uploads", uploadsStatic);
 app.use("/api/uploads", uploadsStatic);
+
+// Resilient fallback for uploaded documents and proof photos across Hostinger multi-build environments
+app.use(["/uploads/proofs/:filename", "/api/uploads/proofs/:filename", "/uploads/documents/:filename", "/api/uploads/documents/:filename", "/uploads/avatars/:filename", "/api/uploads/avatars/:filename"], (req, res, next) => {
+  try {
+    const driverUploadController = require("./controllers/driverUploadController");
+    return driverUploadController.serveDocumentFile(req, res);
+  } catch (e) {
+    next();
+  }
+});
 const downloadsStatic = express.static(path.join(__dirname, "../downloads"), {
   setHeaders: (res, filepath) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
