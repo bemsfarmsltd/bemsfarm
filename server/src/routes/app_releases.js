@@ -450,7 +450,13 @@ router.post(
         releaseNotes = "",
       } = req.body;
 
-      const versionName = (req.body.versionName && req.body.versionName.trim()) || "latest";
+      let detectedVersion = null;
+      if (req.file.originalname) {
+        const fnMatch = req.file.originalname.match(/v?(\d+\.\d+(\.\d+)?)/i);
+        if (fnMatch) detectedVersion = fnMatch[1];
+      }
+
+      const versionName = (req.body.versionName && req.body.versionName.trim()) || detectedVersion || "1.0.1";
       const versionCode = parseInt(req.body.versionCode, 10) || Math.floor(Date.now() / 1000);
 
       if (!appType || (appType !== "customer" && appType !== "driver")) {
@@ -478,12 +484,12 @@ router.post(
         [appType]
       );
 
-      // Insert new active release
+      // Insert new active release (15 columns : 15 values)
       const insertResult = await pool.query(
         `INSERT INTO app_releases
           (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by, uploaded_by_email)
          VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12, $13)
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, $14)
          RETURNING *`,
         [
           appType,
@@ -504,6 +510,24 @@ router.post(
       );
 
       const savedRelease = insertResult.rows[0];
+
+      // Keep app_version.json in sync with latest deployed version
+      try {
+        const { getAppVersionConfig, updateAppVersionConfig } = require("../config/appVersion");
+        const currentCfg = getAppVersionConfig();
+        const typeKey = appType === "driver" ? "driver" : "customer";
+        if (currentCfg && currentCfg[typeKey]) {
+          if (versionName && versionName !== "latest" && /^\d+(\.\d+)*$/.test(versionName.trim())) {
+            currentCfg[typeKey].latest_version = versionName.trim();
+          }
+          if (releaseNotes && releaseNotes.trim()) {
+            currentCfg[typeKey].release_notes = releaseNotes.trim();
+          }
+          updateAppVersionConfig(currentCfg);
+        }
+      } catch (syncErr) {
+        console.warn("[app_releases] Notice: could not sync app_version config:", syncErr.message);
+      }
 
       res.status(201).json({
         success: true,
