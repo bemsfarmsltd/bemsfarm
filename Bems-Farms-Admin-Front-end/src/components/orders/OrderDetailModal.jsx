@@ -405,10 +405,11 @@ export default function OrderDetailModal({
             justifyContent: 'space-between',
             flexShrink: 0,
             zIndex: 10,
+            gap: 16,
           }}
         >
           {/* Brand & Order Identifiers */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
             <div
               style={{
                 width: 44,
@@ -419,17 +420,15 @@ export default function OrderDetailModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#FFFFFF',
-                fontSize: 22,
-                fontWeight: 800,
                 boxShadow: '0 6px 16px rgba(5, 150, 105, 0.25)',
                 flexShrink: 0,
               }}
             >
-              🛍️
+              <i className="ri-file-list-3-fill" style={{ fontSize: 22 }} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A', whiteSpace: 'nowrap' }}>
                   Bems Order Command &amp; Fulfillment Dossier
                 </h2>
                 <span
@@ -439,11 +438,12 @@ export default function OrderDetailModal({
                     border: '1px solid #A7F3D0',
                     padding: '2px 8px',
                     borderRadius: 20,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: 700,
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <span
@@ -453,13 +453,18 @@ export default function OrderDetailModal({
                       borderRadius: '50%',
                       background: '#10B981',
                       display: 'inline-block',
+                      boxShadow: '0 0 6px #10B981',
                     }}
                   />
-                  REAL-TIME DATABASE STREAM
+                  REAL-TIME STREAM
                 </span>
                 <span
+                  onClick={() => {
+                    navigator.clipboard?.writeText(order.id)
+                    toast.success(`Order ID #${order.id} copied!`)
+                  }}
                   style={{
-                    background: '#F1F5F9',
+                    background: '#F8FAFC',
                     color: '#334155',
                     border: '1px solid #CBD5E1',
                     padding: '2px 8px',
@@ -467,201 +472,314 @@ export default function OrderDetailModal({
                     fontSize: 11,
                     fontWeight: 700,
                     fontFamily: 'monospace',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
+                  title="Click to copy ID"
                 >
-                  ID: #{order.id}
+                  #{order.id}
+                  <i className="ri-file-copy-line" style={{ fontSize: 10, color: '#94A3B8' }} />
                 </span>
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {order.date} · {channelCfg.label} · Active order tracking &amp; dispatch operations
               </p>
             </div>
           </div>
 
-          {/* Header Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Header Action Controls (Unified & Aligned) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             {/* Status Pill */}
             <span
               style={{
                 background: cfg.bg,
                 color: cfg.color,
                 border: `1px solid ${cfg.color}35`,
-                padding: '6px 12px',
+                padding: '6px 14px',
                 borderRadius: 20,
                 fontSize: 12,
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
               }}
             >
               <i className={cfg.icon} />
               {cfg.label}
             </span>
 
-            {/* Live Fleet Map Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (onOpenFleetMap) onOpenFleetMap(order)
-                else if (onClose) onClose()
-              }}
+            {/* Quick Action Toolbar Capsule */}
+            <div
               style={{
-                padding: '8px 14px',
-                borderRadius: 10,
-                background: '#2563EB',
-                color: '#FFFFFF',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                padding: '3px 4px',
+                borderRadius: 12,
               }}
-              title="Focus in Live Fleet Command & GPS Tracking"
             >
-              <i className="ri-map-pin-2-line" />
-              <span>Live Fleet Map</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenFleetMap) onOpenFleetMap(order)
+                  else if (onClose) onClose()
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 9,
+                  background: '#2563EB',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Focus in Live Fleet Command & GPS Tracking"
+              >
+                <i className="ri-map-pin-2-line" />
+                <span>Fleet Map</span>
+              </button>
 
-            {/* Reprint Invoice */}
-            <button
-              type="button"
-              onClick={() => setActiveReceiptModal('invoice')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 10,
-                background: '#059669',
-                color: '#FFFFFF',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)',
-              }}
-              title="Print Warehouse Invoice & Packing List"
-            >
-              <i className="ri-file-text-line" />
-              <span>Reprint Invoice</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveReceiptModal('invoice')}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 9,
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  border: '1px solid #E2E8F0',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  transition: 'all 0.15s ease',
+                }}
+                title="Print Warehouse Invoice & Packing List"
+              >
+                <i className="ri-file-text-line" style={{ color: '#059669' }} />
+                <span>Invoice</span>
+              </button>
 
-            {/* Customer Receipt */}
-            <button
-              type="button"
-              onClick={() => setActiveReceiptModal('receipt')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 10,
-                background: '#FFFFFF',
-                color: '#0F172A',
-                border: '1px solid #CBD5E1',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-              title="Print Customer Payment Receipt"
-            >
-              <i className="ri-printer-line" />
-              <span>Customer Receipt</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveReceiptModal('receipt')}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 9,
+                  background: '#FFFFFF',
+                  color: '#334155',
+                  border: '1px solid #E2E8F0',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  transition: 'all 0.15s ease',
+                }}
+                title="Print Customer Payment Receipt"
+              >
+                <i className="ri-printer-line" style={{ color: '#6366F1' }} />
+                <span>Receipt</span>
+              </button>
+            </div>
 
-            {/* Close Button */}
+            {/* Circular Close Button */}
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '8px 16px',
-                borderRadius: 10,
-                background: '#EF4444',
-                color: '#FFFFFF',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 700,
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: '#F8FAFC',
+                color: '#64748B',
+                border: '1px solid #E2E8F0',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                justifyContent: 'center',
+                fontSize: 18,
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#FEE2E2'
+                e.currentTarget.style.color = '#DC2626'
+                e.currentTarget.style.borderColor = '#FCA5A5'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#F8FAFC'
+                e.currentTarget.style.color = '#64748B'
+                e.currentTarget.style.borderColor = '#E2E8F0'
               }}
               title="Close Order Dossier"
             >
-              <span>✕ Close</span>
+              <i className="ri-close-line" />
             </button>
           </div>
         </div>
 
-        {/* ── 7-Stage Pipeline Progress Stepper ── */}
-        {!['physical'].includes(order.channel) && !['dispute', 'cancelled'].includes(order.status) && (
-          <div
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #E2E8F0',
-              borderRadius: 18,
-              padding: '14px 20px',
-              margin: '16px 24px 0',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.02)',
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              {PIPELINE.map((step, i) => {
-                const c = getStatusCfg(step)
-                const done = i <= idx
-                const now = i === idx
-                return (
-                  <div key={step} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, gap: 4 }}>
+        {/* ── 7-Stage Mathematically Symmetrical Progress Stepper ── */}
+        {!['physical'].includes(order.channel) && !['dispute', 'cancelled'].includes(order.status) && (() => {
+          const STAGES = [
+            { key: 'paid',           label: 'Confirmed',        sub: 'Payment Done',     icon: 'ri-checkbox-circle-fill' },
+            { key: 'processing',     label: 'Packaging',        sub: 'Produce Prep',     icon: 'ri-box-3-fill' },
+            { key: 'packed',         label: 'Packed & Ready',   sub: 'At Dispatch',      icon: 'ri-archive-fill' },
+            { key: 'assigned',       label: 'Courier Assigned', sub: 'Awaiting Pickup',  icon: 'ri-user-location-fill' },
+            { key: 'shipped',        label: 'In Transit',       sub: 'En Route',         icon: 'ri-truck-fill' },
+            { key: 'driver_arrived', label: 'Courier Arrived',  sub: 'At Destination',   icon: 'ri-map-pin-user-fill' },
+            { key: 'delivered',      label: 'Delivered',        sub: 'Handover Settled', icon: 'ri-shield-check-fill' },
+          ]
+          const progressPercent = Math.min(100, Math.max(0, (idx / (STAGES.length - 1)) * 100))
+
+          return (
+            <div
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 16,
+                padding: '16px 20px 14px',
+                margin: '14px 24px 0',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              {/* Background Continuous Rail */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 29,
+                  left: 'calc(100% / 14)',
+                  right: 'calc(100% / 14)',
+                  height: 3,
+                  background: '#E2E8F0',
+                  borderRadius: 2,
+                  zIndex: 1,
+                }}
+              >
+                {/* Active Progress Fill */}
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progressPercent}%`,
+                    background: 'linear-gradient(90deg, #10B981 0%, #059669 100%)',
+                    borderRadius: 2,
+                    transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                />
+              </div>
+
+              {/* 7-Column Grid of Centered Nodes */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  position: 'relative',
+                  zIndex: 2,
+                }}
+              >
+                {STAGES.map((stage, i) => {
+                  const isDone = i <= idx
+                  const isCurrent = i === idx
+                  const isDelivered = order.status === 'delivered' || order.status === 'completed'
+
+                  return (
+                    <div
+                      key={stage.key}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        padding: '0 4px',
+                      }}
+                    >
+                      {/* Node Circle */}
                       <div
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: isCurrent && !isDelivered ? 30 : 26,
+                          height: isCurrent && !isDelivered ? 30 : 26,
                           borderRadius: '50%',
-                          background: done ? c.color : '#E2E8F0',
+                          background: isDone
+                            ? '#10B981'
+                            : '#FFFFFF',
+                          border: isDone
+                            ? 'none'
+                            : '2px solid #CBD5E1',
+                          color: isDone ? '#FFFFFF' : '#94A3B8',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          boxShadow: now ? `0 0 0 4px ${c.color}35` : 'none',
-                          transition: 'all 0.2s ease',
+                          boxShadow: isCurrent && !isDelivered
+                            ? '0 0 0 4px rgba(16, 185, 129, 0.25), 0 4px 10px rgba(5, 150, 105, 0.3)'
+                            : isDone
+                            ? '0 2px 6px rgba(16, 185, 129, 0.25)'
+                            : 'none',
+                          transition: 'all 0.25s ease',
+                          marginBottom: 6,
                         }}
                       >
-                        <i className={c.icon} style={{ color: done ? '#FFFFFF' : '#94A3B8', fontSize: 12 }} />
+                        {isDone ? (
+                          <i className="ri-check-line" style={{ fontSize: 14, fontWeight: 900 }} />
+                        ) : (
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              background: '#CBD5E1',
+                            }}
+                          />
+                        )}
                       </div>
+
+                      {/* Primary Label */}
                       <div
                         style={{
-                          fontSize: 9.5,
-                          color: done ? c.color : '#94A3B8',
+                          fontSize: 11,
+                          fontWeight: isCurrent ? 800 : isDone ? 700 : 600,
+                          color: isCurrent ? '#059669' : isDone ? '#0F172A' : '#94A3B8',
+                          lineHeight: 1.25,
                           whiteSpace: 'nowrap',
-                          fontWeight: now ? 800 : 600,
                         }}
                       >
-                        {c.label}
+                        {stage.label}
+                      </div>
+
+                      {/* Subtitle Details */}
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: isCurrent || isDone ? '#059669' : '#CBD5E1',
+                          fontWeight: isCurrent ? 700 : 500,
+                          marginTop: 2,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {stage.sub}
                       </div>
                     </div>
-                    {i < PIPELINE.length - 1 && (
-                      <div
-                        style={{
-                          flex: 1,
-                          margin: '0 6px',
-                          height: 2,
-                          background: i < idx ? '#10B981' : '#E2E8F0',
-                          borderRadius: 2,
-                        }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── Scrollable Body Grid ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}>
