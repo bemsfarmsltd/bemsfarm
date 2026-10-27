@@ -755,12 +755,55 @@ const serveDocumentFile = (req, res) => {
     path.join(process.cwd(), "../uploads"),
     path.join(process.cwd(), "public_html/uploads/documents"),
     path.join(process.cwd(), "public_html/uploads"),
+    // Persistent Hostinger shared directories outside build sandbox
+    "/home/u649760923/domains/api.bemsfarms.com/uploads/documents",
+    "/home/u649760923/domains/api.bemsfarms.com/uploads/avatars",
+    "/home/u649760923/domains/api.bemsfarms.com/uploads",
+    "/home/u649760923/domains/api.bemsfarms.com/public_html/uploads/documents",
+    "/home/u649760923/domains/api.bemsfarms.com/public_html/uploads",
+    "/home/u649760923/uploads/documents",
+    "/home/u649760923/uploads/avatars",
+    "/home/u649760923/uploads",
+    "/home/u649760923/public_html/uploads/documents",
+    "/home/u649760923/public_html/uploads",
   ];
+
+  // Dynamically inspect all previous Hostinger build version directories
+  const candidateVersionRoots = [
+    path.resolve(process.cwd(), "../.."),
+    path.resolve(__dirname, "../../../.."),
+  ];
+
+  for (const vRoot of candidateVersionRoots) {
+    try {
+      if (fs.existsSync(vRoot) && fs.statSync(vRoot).isDirectory()) {
+        const vDirs = fs.readdirSync(vRoot);
+        for (const v of vDirs) {
+          searchDirs.push(path.join(vRoot, v, "nodejs/uploads/documents"));
+          searchDirs.push(path.join(vRoot, v, "nodejs/uploads/avatars"));
+          searchDirs.push(path.join(vRoot, v, "nodejs/uploads/proofs"));
+          searchDirs.push(path.join(vRoot, v, "nodejs/uploads"));
+          searchDirs.push(path.join(vRoot, v, "uploads/documents"));
+          searchDirs.push(path.join(vRoot, v, "uploads/avatars"));
+          searchDirs.push(path.join(vRoot, v, "uploads"));
+        }
+      }
+    } catch (_) {}
+  }
 
   for (const dir of searchDirs) {
     try {
       const candidate = path.join(dir, filename);
-      if (fs.existsSync(candidate)) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        // Cache copy in local uploads dir to ensure fast subsequent hits
+        try {
+          const localTarget = path.join(process.cwd(), "uploads/documents", filename);
+          if (!fs.existsSync(localTarget)) {
+            fs.mkdirSync(path.dirname(localTarget), { recursive: true });
+            fs.copyFileSync(candidate, localTarget);
+          }
+        } catch (_) {}
+
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
         res.setHeader("Cache-Control", "public, max-age=86400");
@@ -772,9 +815,9 @@ const serveDocumentFile = (req, res) => {
   return res.status(404).json({
     status: "error",
     message: `Document file '${filename}' not found`,
-    searched_dirs: searchDirs.filter(d => {
+    searched_dirs: Array.from(new Set(searchDirs.filter(d => {
       try { return fs.existsSync(d); } catch (e) { return false; }
-    })
+    })))
   });
 };
 
@@ -792,6 +835,24 @@ const debugDisk = (req, res) => {
     path.join(process.cwd(), "../uploads/documents"),
     path.join(process.cwd(), "../uploads"),
   ];
+
+  const candidateVersionRoots = [
+    path.resolve(process.cwd(), "../.."),
+    path.resolve(__dirname, "../../../.."),
+  ];
+
+  for (const vRoot of candidateVersionRoots) {
+    try {
+      if (fs.existsSync(vRoot) && fs.statSync(vRoot).isDirectory()) {
+        const vDirs = fs.readdirSync(vRoot);
+        for (const v of vDirs) {
+          dirs.push(path.join(vRoot, v, "nodejs/uploads/documents"));
+          dirs.push(path.join(vRoot, v, "nodejs/uploads/avatars"));
+          dirs.push(path.join(vRoot, v, "nodejs/uploads"));
+        }
+      }
+    } catch (_) {}
+  }
 
   const results = {};
   for (const d of dirs) {

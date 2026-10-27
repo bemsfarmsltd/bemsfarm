@@ -194,9 +194,9 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
           progress: isInTransit ? 65 : 20,
         } : {
           hasMission: false,
-          origin: 'Bems Farm Produce Hub, Umuahia',
-          destination: 'No active delivery task assigned',
-          eta: 'Standby at Hub',
+          origin: 'Bems Farm Central Store, Umuahia',
+          destination: d.status === 'off_duty' ? 'Courier Shift Concluded (Off Duty)' : 'Idle · Awaiting Delivery Assignment',
+          eta: d.status === 'off_duty' ? 'Off Duty' : 'Available',
           progress: 0,
         }
       }
@@ -676,7 +676,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                       >
                         Task: #{activeVehicle.mission.order_id} ↗
                       </button>
-                    ) : 'Mission Standby'}
+                    ) : (activeVehicle.statusType === 'off_duty' || activeVehicle.status === 'Off Duty' ? 'Courier Shift Concluded' : 'Available for Dispatch')}
                   </span>
                   <span style={{ color: activeVehicle.statusType === 'in_transit' ? '#059669' : '#64748B' }}>
                     {activeVehicle.mission.eta}

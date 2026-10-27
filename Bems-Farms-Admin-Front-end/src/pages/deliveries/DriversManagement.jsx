@@ -2601,64 +2601,97 @@ export default function DriversManagement() {
                         </span>
                       </div>
 
-                      {/* Route Timeline Slider Bar */}
-                      <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 8 }}>
-                          <span>{activeDelivery ? `Task: #${activeDelivery.order_id}` : 'Mission Standby'}</span>
-                          <span style={{ color: activeDelivery ? '#059669' : '#64748B' }}>
-                            {activeDelivery ? (activeDelivery.eta_minutes ? `~${activeDelivery.eta_minutes} mins` : 'In Transit') : 'Standby at Hub'}
+                      {/* Active Dispatch & Shift Status Card */}
+                      <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 800, marginBottom: 8 }}>
+                          <span style={{ color: '#475569', textTransform: 'uppercase' }}>
+                            {activeDelivery ? 'Active Delivery Task' : 'Courier Duty Status'}
+                          </span>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            background: activeDelivery ? '#DCFCE7' : (selected.status === 'off_duty' ? '#F1F5F9' : '#FEF3C7'),
+                            color: activeDelivery ? '#166534' : (selected.status === 'off_duty' ? '#64748B' : '#92400E'),
+                          }}>
+                            {activeDelivery
+                              ? (activeDelivery.eta_minutes ? `En Route (~${activeDelivery.eta_minutes}m)` : 'En Route')
+                              : (selected.status === 'off_duty' ? 'Off Duty (Shift Ended)' : 'Available for Orders')}
                           </span>
                         </div>
 
-                        {/* Progress Bar Line */}
-                        <div style={{ position: 'relative', height: 6, background: '#E2E8F0', borderRadius: 10, margin: '8px 0' }}>
-                          <div
-                            style={{
-                              width: activeDelivery ? '65%' : '0%',
-                              height: '100%',
-                              background: 'linear-gradient(90deg, #10B981 0%, #059669 100%)',
-                              borderRadius: 10,
-                            }}
-                          />
-                          {activeDelivery && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: -5,
-                                left: 'calc(65% - 8px)',
-                                width: 16,
-                                height: 16,
-                                borderRadius: '50%',
-                                background: '#0F172A',
-                                border: '2px solid #FFFFFF',
-                                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 8,
-                                color: '#fff',
-                              }}
-                            >
-                              ▶
+                        {activeDelivery ? (
+                          <>
+                            {/* Delivery Progress Bar */}
+                            <div style={{ position: 'relative', height: 6, background: '#E2E8F0', borderRadius: 10, margin: '8px 0 12px' }}>
+                              <div
+                                style={{
+                                  width: '65%',
+                                  height: '100%',
+                                  background: 'linear-gradient(90deg, #10B981 0%, #059669 100%)',
+                                  borderRadius: 10,
+                                }}
+                              />
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: -5,
+                                  left: 'calc(65% - 8px)',
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: '50%',
+                                  background: '#0F172A',
+                                  border: '2px solid #FFFFFF',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 8,
+                                  color: '#fff',
+                                }}
+                              >
+                                ▶
+                              </div>
                             </div>
-                          )}
-                        </div>
 
-                        {/* Endpoints */}
-                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#64748B' }}>
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              Bems Farm Produce Hub, Umuahia
-                            </span>
+                            {/* Delivery Route Endpoints */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#64748B' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  Pickup: Bems Central Store, Umuahia
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: '#0F172A' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  Destination: {activeDelivery.delivery_address || activeDelivery.customer_name || 'Customer Address'}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : selected.status === 'off_duty' ? (
+                          <div style={{ padding: '6px 0', fontSize: 11, color: '#64748B', lineHeight: 1.45 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#475569', marginBottom: 2 }}>
+                              <span>🌙</span>
+                              <span>Courier Shift Concluded</span>
+                            </div>
+                            <div>
+                              Driver is currently off duty. Telemetry and live order routing will resume when courier goes on duty in the mobile app.
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: '#0F172A' }}>
-                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {activeDelivery ? (activeDelivery.delivery_address || activeDelivery.customer_name || 'Customer Delivery Address') : 'No active delivery task assigned'}
-                            </span>
+                        ) : (
+                          <div style={{ padding: '6px 0', fontSize: 11, color: '#065F46', lineHeight: 1.45 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, marginBottom: 2 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+                              <span>Online &amp; Ready for Dispatch</span>
+                            </div>
+                            <div style={{ color: '#047857' }}>
+                              Waiting for incoming customer produce orders. Automatic proximity assignment is active.
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* Courier Performance & History */}
@@ -2864,8 +2897,12 @@ export default function DriversManagement() {
                       >
                         <span style={{ fontSize: 14 }}>{vehicleIcon}</span>
                         <span>{vehicleModel} ({vehicleCapacityKg})</span>
-                        <span style={{ color: isLive ? '#059669' : '#D97706', fontSize: 11, fontWeight: 700 }}>
-                          • {isLive ? 'GPS Live Connected' : (lastPing ? `Last ping: ${formatRelativeTime(lastPing)}` : 'Signal Standby')}
+                        <span style={{ color: selected.status === 'off_duty' ? '#64748B' : (isLive ? '#059669' : '#D97706'), fontSize: 11, fontWeight: 700 }}>
+                          • {selected.status === 'off_duty'
+                              ? 'Courier Off Duty (Telemetry Inactive)'
+                              : (isLive
+                                  ? 'GPS Live Connected'
+                                  : (lastPing ? `Last ping: ${formatRelativeTime(lastPing)}` : 'Signal Standby'))}
                         </span>
                       </div>
 
@@ -2920,7 +2957,11 @@ export default function DriversManagement() {
                       >
                         <span>📦 Courier Task Status:</span>
                         <strong style={{ color: '#0F172A' }}>
-                          {activeDelivery ? `Active on Order #${activeDelivery.order_id}` : 'Available for Next Produce Dispatch'}
+                          {activeDelivery
+                            ? `Active on Order #${activeDelivery.order_id}`
+                            : (selected.status === 'off_duty'
+                                ? 'Off Duty · Shift Ended (Not Accepting Tasks)'
+                                : (selected.is_available ? 'Available for Next Produce Dispatch' : 'On Break / Standby'))}
                         </strong>
                       </div>
                     </div>
@@ -2943,18 +2984,38 @@ export default function DriversManagement() {
                             boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 16 }}>📍</span>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: '#065F46' }}>GPS TRACKING</span>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 16 }}>📍</span>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: selected.status === 'off_duty' ? '#64748B' : '#065F46' }}>
+                                GPS TRACKING
+                              </span>
+                            </div>
+                            {selected.status === 'off_duty' && (
+                              <span className="badge bg-secondary-subtle text-secondary fs-10 px-1.5 py-0.5">Off Duty</span>
+                            )}
                           </div>
 
                           <div style={{ marginTop: 8 }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
-                              {lat != null && lng != null ? `${Number(lat).toFixed(4)}°, ${Number(lng).toFixed(4)}°` : 'No GPS Fix'}
-                            </div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: isLive ? '#059669' : '#64748B', marginTop: 2 }}>
-                              {isLive ? '● Live Telemetry Signal' : (lastPing ? `Ping: ${formatRelativeTime(lastPing)}` : 'Standby')}
-                            </div>
+                            {selected.status === 'off_duty' ? (
+                              <>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: '#64748B' }}>
+                                  Signal Inactive
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', marginTop: 2 }}>
+                                  {lastPing ? `Last recorded: ${formatRelativeTime(lastPing)}` : 'Courier is currently off duty'}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
+                                  {lat != null && lng != null ? `${Number(lat).toFixed(4)}°, ${Number(lng).toFixed(4)}°` : 'No GPS Fix'}
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: isLive ? '#059669' : '#64748B', marginTop: 2 }}>
+                                  {isLive ? '● Live Telemetry Signal' : (lastPing ? `Ping: ${formatRelativeTime(lastPing)}` : 'Standby')}
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           <button
@@ -2977,7 +3038,7 @@ export default function DriversManagement() {
                               marginTop: 6,
                             }}
                           >
-                            <span>View on Map →</span>
+                            <span>{lat != null && lng != null ? 'View Last Location →' : 'View on Map →'}</span>
                           </button>
                         </div>
 
@@ -2999,10 +3060,23 @@ export default function DriversManagement() {
                           <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
                             Courier Speed
                           </div>
-                          <SpeedometerGauge speed={speed} />
-                          <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>
-                            Heading: {Math.round(heading)}°
-                          </div>
+                          {selected.status === 'off_duty' || !isLive ? (
+                            <div style={{ textAlign: 'center', margin: '8px 0' }}>
+                              <div style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', lineHeight: 1 }}>
+                                0 <span style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8' }}>km/h</span>
+                              </div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: selected.status === 'off_duty' ? '#64748B' : '#94A3B8', marginTop: 4 }}>
+                                {selected.status === 'off_duty' ? '🅿️ Vehicle Parked' : 'Signal Offline'}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <SpeedometerGauge speed={speed} />
+                              <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>
+                                Heading: {Math.round(heading)}°
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -3329,6 +3403,11 @@ export default function DriversManagement() {
                                 <img
                                   src={passportUrl}
                                   alt={selected.name}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                    const fb = e.currentTarget.parentElement?.querySelector('.passport-fallback')
+                                    if (fb) fb.style.display = 'flex'
+                                  }}
                                   style={{
                                     width: 62,
                                     height: 72,
@@ -3339,6 +3418,25 @@ export default function DriversManagement() {
                                     display: 'block',
                                   }}
                                 />
+                                <div
+                                  className="passport-fallback"
+                                  style={{
+                                    display: 'none',
+                                    width: 62,
+                                    height: 72,
+                                    borderRadius: 10,
+                                    background: '#ECFDF5',
+                                    border: '2px solid #059669',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexDirection: 'column',
+                                    color: '#059669',
+                                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.15)',
+                                  }}
+                                >
+                                  <span style={{ fontSize: 18, fontWeight: 900 }}>{getInitials(selected.name)}</span>
+                                  <span style={{ fontSize: 8, fontWeight: 800, marginTop: 2, textTransform: 'uppercase' }}>Photo</span>
+                                </div>
                                 <span
                                   style={{
                                     position: 'absolute',
