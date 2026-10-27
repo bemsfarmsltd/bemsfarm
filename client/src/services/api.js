@@ -77,6 +77,51 @@ api.interceptors.response.use(
       (typeof window !== "undefined" &&
         window.location.pathname.startsWith("/admin"));
 
+    const status = error.response?.status;
+    const errCode = error.response?.data?.code || "";
+    const errMsg = String(error.response?.data?.message || "");
+
+    const isDeactivatedOrSuspended =
+      errCode === "ACCOUNT_DEACTIVATED" ||
+      errCode === "ACCOUNT_SUSPENDED" ||
+      errCode === "USER_NOT_FOUND" ||
+      /account (deactivated|suspended|inactive|deleted)/i.test(errMsg) ||
+      /user not found/i.test(errMsg);
+
+    if (isDeactivatedOrSuspended && !isAuthRequest) {
+      const kickReason = /suspended|banned/i.test(errMsg)
+        ? "Your account has been suspended. Please contact customer support."
+        : "Your account is not active or has been deactivated. Please contact support.";
+
+      if (isAdminRequest) {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("admin_kick_reason", kickReason);
+          } catch {}
+          if (!window.location.pathname.startsWith("/admin/login")) {
+            window.location.href = `/admin/login?reason=deactivated&msg=${encodeURIComponent(kickReason)}`;
+          }
+        }
+      } else {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        delete api.defaults.headers.common.Authorization;
+
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("auth_kick_reason", kickReason);
+          } catch {}
+          window.dispatchEvent(new CustomEvent("auth:deactivated", { detail: { message: kickReason } }));
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = `/login?reason=deactivated&msg=${encodeURIComponent(kickReason)}`;
+          }
+        }
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !isAuthRequest && !originalRequest?._retry) {
       const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
       const isPublicPage = /^\/(login|register|verify-email|forgot-password|reset-password)/.test(currentPath);

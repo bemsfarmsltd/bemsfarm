@@ -103,11 +103,17 @@ export function AuthProvider({ children }) {
         .get("/auth/me", { headers: { Authorization: `Bearer ${savedToken}` } })
         .then((res) => {
           const freshUser = res.data.user || parsed;
-          if (STAFF_ROLES.includes(freshUser?.role)) {
+          const userStatus = String(freshUser?.status || "active").toLowerCase().trim();
+
+          if (userStatus !== "active" || STAFF_ROLES.includes(freshUser?.role)) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             setUser(null);
             setToken(null);
+            if (userStatus !== "active" && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+              sessionStorage.setItem("auth_kick_reason", userStatus === "suspended" ? "Your account has been suspended." : "Your account has been deactivated.");
+              window.location.href = `/login?reason=deactivated`;
+            }
           } else {
             setToken(savedToken);
             setUser(freshUser);
@@ -115,18 +121,62 @@ export function AuthProvider({ children }) {
           }
         })
         .catch((err) => {
-          if (err?.response?.status === 401) {
+          if (err?.response?.status === 401 || err?.response?.status === 403) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
+            setUser(null);
+            setToken(null);
+            if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+              window.location.href = `/login?reason=deactivated`;
+            }
           }
         })
         .finally(() => setLoading(false));
     } catch {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      setUser(null);
+      setToken(null);
       setLoading(false);
     }
   }, []);
+
+  // Listen to immediate ejection events from API interceptors
+  useEffect(() => {
+    const handleEjection = () => {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    };
+    window.addEventListener("auth:deactivated", handleEjection);
+    return () => window.removeEventListener("auth:deactivated", handleEjection);
+  }, []);
+
+  // Proactive background verification: kick out deactivated accounts on tab focus or 30s interval
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const verifyLiveness = async () => {
+      try {
+        await api.get("/auth/me");
+      } catch (err) {
+        // Handled automatically by api response interceptor
+      }
+    };
+
+    const handleFocus = () => {
+      verifyLiveness();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    const pulseTimer = setInterval(verifyLiveness, 30000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(pulseTimer);
+    };
+  }, [token, user]);
 
   // Restore Admin session on mount
   useEffect(() => {
@@ -147,19 +197,25 @@ export function AuthProvider({ children }) {
         .get("/auth/me", { headers: { Authorization: `Bearer ${savedAdminToken}` } })
         .then((res) => {
           const freshAdmin = res.data.user || parsedAdmin;
-          if (STAFF_ROLES.includes(freshAdmin?.role)) {
+          const adminStatus = String(freshAdmin?.status || "active").toLowerCase().trim();
+
+          if (adminStatus === "active" && STAFF_ROLES.includes(freshAdmin?.role)) {
             setAdminToken(savedAdminToken);
             setAdminUser(freshAdmin);
             localStorage.setItem("admin_user", JSON.stringify(freshAdmin));
           } else {
             localStorage.removeItem("admin_token");
             localStorage.removeItem("admin_user");
+            setAdminUser(null);
+            setAdminToken(null);
           }
         })
         .catch((err) => {
-          if (err?.response?.status === 401) {
+          if (err?.response?.status === 401 || err?.response?.status === 403) {
             localStorage.removeItem("admin_token");
             localStorage.removeItem("admin_user");
+            setAdminUser(null);
+            setAdminToken(null);
           }
         });
     } catch {

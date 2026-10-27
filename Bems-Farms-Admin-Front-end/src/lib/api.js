@@ -19,14 +19,33 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 globally
+// Handle 401 and deactivated/suspended accounts globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isDev = import.meta.env.DEV || localStorage.getItem('admin_token') === 'dev-token'
-    if (error.response?.status === 401 && !isDev) {
+    const status = error.response?.status
+    const errCode = error.response?.data?.code || ''
+    const errMsg = String(error.response?.data?.message || '')
+
+    const isDeactivatedOrSuspended =
+      errCode === 'ACCOUNT_DEACTIVATED' ||
+      errCode === 'ACCOUNT_SUSPENDED' ||
+      errCode === 'USER_NOT_FOUND' ||
+      /account (deactivated|suspended|inactive|deleted)/i.test(errMsg) ||
+      /user not found/i.test(errMsg)
+
+    if ((status === 401 || isDeactivatedOrSuspended) && !isDev) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
+      delete api.defaults.headers.common.Authorization
+
+      if (isDeactivatedOrSuspended) {
+        try {
+          sessionStorage.setItem('admin_kick_reason', errMsg || 'Account deactivated or suspended')
+        } catch {}
+      }
+
       if (!window.location.pathname.includes('/login')) {
         window.location.href = window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login'
       }

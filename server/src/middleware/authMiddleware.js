@@ -47,11 +47,13 @@ const protect = async (req, res, next) => {
     }
 
     const userStatus = String(result.rows[0].status || "active").toLowerCase().trim();
-    if (userStatus === "suspended") {
-      return res.status(403).json({ message: "Account suspended" });
-    }
-    if (userStatus === "inactive" || userStatus === "deactivated" || userStatus === "deleted") {
-      return res.status(403).json({ message: "Account deactivated" });
+    if (userStatus !== "active") {
+      const isSuspended = userStatus === "suspended" || userStatus === "banned";
+      return res.status(403).json({
+        message: isSuspended ? "Account suspended. Contact support." : "Account deactivated. Contact support.",
+        code: isSuspended ? "ACCOUNT_SUSPENDED" : "ACCOUNT_DEACTIVATED",
+        account_status: userStatus,
+      });
     }
 
     // Tokens issued before this field existed carry no tokenVersion claim —

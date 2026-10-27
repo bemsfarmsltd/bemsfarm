@@ -50,6 +50,25 @@ export default function LoginPage() {
   const location = useLocation();
 
   const from = customerHome(location.state?.from);
+
+  useEffect(() => {
+    try {
+      const kickReason = sessionStorage.getItem("auth_kick_reason");
+      if (kickReason) {
+        setError(kickReason);
+        sessionStorage.removeItem("auth_kick_reason");
+        return;
+      }
+      const params = new URLSearchParams(location.search);
+      const queryMsg = params.get("msg");
+      if (queryMsg) {
+        setError(queryMsg);
+      } else if (params.get("reason") === "deactivated") {
+        setError("Your account is not active or has been deactivated. Please contact support.");
+      }
+    } catch {}
+  }, [location.search]);
+
   useEffect(() => {
     if (!user) return;
     if (user.role === 'user' || user.role === 'customer') {

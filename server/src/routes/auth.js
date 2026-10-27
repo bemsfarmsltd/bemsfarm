@@ -790,13 +790,23 @@ router.post("/refresh", async (req, res, next) => {
     }
 
     const result = await pool.query(
-      "SELECT id, name, email, role FROM users WHERE id=$1 AND refresh_token=$2",
+      "SELECT id, name, email, role, status FROM users WHERE id=$1 AND refresh_token=$2",
       [decoded.id, token],
     );
     if (!result.rows.length)
       return res.status(401).json({ message: "Refresh token invalid" });
 
     const user = result.rows[0];
+    const userStatus = String(user.status || "active").toLowerCase().trim();
+    if (userStatus !== "active") {
+      const isSuspended = userStatus === "suspended" || userStatus === "banned";
+      return res.status(403).json({
+        message: isSuspended ? "Account suspended. Contact support." : "Account deactivated. Contact support.",
+        code: isSuspended ? "ACCOUNT_SUSPENDED" : "ACCOUNT_DEACTIVATED",
+        account_status: userStatus,
+      });
+    }
+
     const newAccess = generateAccessToken(user);
     const newRefresh = generateRefreshToken(user.id);
 
