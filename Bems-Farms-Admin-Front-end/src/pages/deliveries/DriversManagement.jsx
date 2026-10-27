@@ -157,8 +157,8 @@ function resolveDocUrl(driver, key) {
     rawUrl = docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license || null
   } else if (key === 'driver_license_back') {
     rawUrl = docs.driver_license_back || docs.license_back || null
-  } else if (key === 'passport_photo') {
-    rawUrl = docs.passport_photo || docs.photo || docs.avatar || docs.avatar_url || driver.avatar_url || null
+  } else if (key === 'passport_photo' || key === 'passport' || key === 'photo') {
+    rawUrl = docs.passport_photo || docs.passport || docs.photo || docs.avatar || docs.avatar_url || docs.driver_photo || driver.avatar_url || driver.photo || driver.passport_photo || null
   } else if (key === 'vehicle_registration') {
     rawUrl = docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || docs.vehicle_photo || docs.logbook || null
   } else if (key === 'nin_slip') {
@@ -2320,6 +2320,8 @@ export default function DriversManagement() {
               { key: 'guarantor_form', title: 'Guarantor Form', icon: '✍️' },
             ].map(doc => ({ ...doc, url: resolveDocUrl(selected, doc.key) }))
 
+            const passportUrl = resolveDocUrl(selected, 'passport_photo') || selected.avatar_url || null
+
             return (
               <div
                 style={{
@@ -2685,31 +2687,90 @@ export default function DriversManagement() {
                           borderTop: '1px solid #F1F5F9',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          {/* Driver Passport Photo Avatar */}
                           <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: '50%',
-                              background: '#059669',
-                              color: '#FFFFFF',
-                              fontWeight: 800,
-                              fontSize: 13,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                            style={{ position: 'relative', cursor: passportUrl ? 'pointer' : 'default', flexShrink: 0 }}
+                            onClick={() => {
+                              if (passportUrl) {
+                                setViewingDocument({
+                                  title: `${selected.name} - Driver Official Passport Photo`,
+                                  url: passportUrl,
+                                  isPdf: false,
+                                })
+                              }
                             }}
+                            title={passportUrl ? 'Click to inspect full-size Passport Photo' : selected.name}
                           >
-                            {selected.name
-                              ? selected.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-                              : 'DR'}
+                            {passportUrl ? (
+                              <img
+                                src={passportUrl}
+                                alt={selected.name}
+                                style={{
+                                  width: 46,
+                                  height: 46,
+                                  borderRadius: 12,
+                                  objectFit: 'cover',
+                                  border: '2px solid #059669',
+                                  boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)',
+                                  display: 'block',
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                  const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback')
+                                  if (fallback) fallback.style.display = 'flex'
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className="avatar-fallback"
+                              style={{
+                                display: passportUrl ? 'none' : 'flex',
+                                width: 46,
+                                height: 46,
+                                borderRadius: 12,
+                                background: 'linear-gradient(135deg, #059669, #10b981)',
+                                color: '#FFFFFF',
+                                fontWeight: 800,
+                                fontSize: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)',
+                              }}
+                            >
+                              {selected.name
+                                ? selected.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                                : 'DR'}
+                            </div>
+                            {selected.status === 'active' && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  bottom: -2,
+                                  right: -2,
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: '50%',
+                                  background: '#10B981',
+                                  border: '2px solid #FFFFFF',
+                                }}
+                                title="Signal Live & Streaming"
+                              />
+                            )}
                           </div>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
-                              {selected.name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
+                                {selected.name}
+                              </span>
+                              {passportUrl && (
+                                <span className="badge bg-emerald-subtle text-emerald border border-emerald-subtle fs-10 px-1.5 py-0" title="Verified Biometric Passport Photo Attached">
+                                  ✓ Passport Verified
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: 11, color: '#64748B' }}>
-                              {(selected.vehicle_type || 'Motorcycle').toUpperCase()} Courier
+                              {(selected.vehicle_type || 'Motorcycle').toUpperCase()} Courier · {selected.phone}
                             </div>
                           </div>
                         </div>
@@ -3241,6 +3302,135 @@ export default function DriversManagement() {
                           </button>
                         </div>
 
+                        {/* Driver Official Passport Photo Highlight Card */}
+                        <div
+                          style={{
+                            background: '#F8FAFC',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 14,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {passportUrl ? (
+                              <div
+                                style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+                                onClick={() => setViewingDocument({
+                                  title: `${selected.name} - Driver Official Passport Photo`,
+                                  url: passportUrl,
+                                  isPdf: false,
+                                })}
+                                title="Click to view full-size Driver Passport Photo"
+                              >
+                                <img
+                                  src={passportUrl}
+                                  alt={selected.name}
+                                  style={{
+                                    width: 62,
+                                    height: 72,
+                                    borderRadius: 10,
+                                    objectFit: 'cover',
+                                    border: '2px solid #059669',
+                                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.15)',
+                                    display: 'block',
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: -4,
+                                    right: -4,
+                                    background: '#059669',
+                                    color: '#fff',
+                                    borderRadius: '50%',
+                                    width: 18,
+                                    height: 18,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 10,
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                  }}
+                                  title="Biometric Passport Verified"
+                                >
+                                  ✓
+                                </span>
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  width: 62,
+                                  height: 72,
+                                  borderRadius: 10,
+                                  background: '#F1F5F9',
+                                  border: '2px dashed #CBD5E1',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#94A3B8',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <i className="ri-user-smile-line fs-20" />
+                                <span style={{ fontSize: 9, marginTop: 2 }}>No Photo</span>
+                              </div>
+                            )}
+
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: '#0F172A' }}>
+                                  Driver Official Passport Photo
+                                </span>
+                                {passportUrl ? (
+                                  <span className="badge bg-success-subtle text-success fs-10 px-1.5 py-0.5 border border-success-subtle">
+                                    Verified Passport ID
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-warning-subtle text-warning fs-10 px-1.5 py-0.5 border border-warning-subtle">
+                                    Photo Pending
+                                  </span>
+                                )}
+                              </div>
+                              <p style={{ margin: '3px 0 0', fontSize: 11, color: '#64748B', lineHeight: 1.4 }}>
+                                {passportUrl
+                                  ? 'Official biometric headshot registered during onboarding for delivery verification and security badge.'
+                                  : 'Driver has not uploaded a standard passport portrait photo yet.'}
+                              </p>
+                              {passportUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingDocument({
+                                    title: `${selected.name} - Driver Official Passport Photo`,
+                                    url: passportUrl,
+                                    isPdf: false,
+                                  })}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    color: '#2563EB',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  <i className="ri-zoom-in-line" />
+                                  <span>Inspect High-Resolution Passport Photo</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Candidate Key Attributes */}
                         <div className="row g-2 fs-12">
                           <div className="col-6">
@@ -3273,28 +3463,71 @@ export default function DriversManagement() {
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
                             {complianceDocItems.map((doc) => {
                               if (!doc.url) return null
-                              const isPdf = doc.url.toLowerCase().includes('.pdf')
+                              const isPdf = typeof doc.url === 'string' && doc.url.toLowerCase().includes('.pdf')
                               return (
                                 <div
                                   key={doc.key}
                                   onClick={() => setViewingDocument({ title: doc.title, url: doc.url, isPdf })}
                                   style={{
-                                    background: '#F8FAFC',
+                                    background: '#FFFFFF',
                                     border: '1px solid #E2E8F0',
                                     borderRadius: 10,
-                                    padding: '8px 6px',
-                                    textAlign: 'center',
+                                    overflow: 'hidden',
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
                                   }}
                                   title={`Click to view ${doc.title}`}
                                   className="shadow-xs hover-shadow"
                                 >
-                                  <div style={{ fontSize: 18, marginBottom: 2 }}>{doc.icon}</div>
-                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {doc.title}
+                                  <div
+                                    style={{
+                                      height: 64,
+                                      background: '#F1F5F9',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      position: 'relative',
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    {isPdf ? (
+                                      <div style={{ textAlign: 'center' }}>
+                                        <i className="ri-file-pdf-2-line text-danger fs-24" />
+                                        <span style={{ fontSize: 9, display: 'block', color: '#EF4444', fontWeight: 700 }}>PDF</span>
+                                      </div>
+                                    ) : (
+                                      <img
+                                        src={doc.url}
+                                        alt={doc.title}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none'
+                                          if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'flex'
+                                        }}
+                                      />
+                                    )}
+                                    <div
+                                      style={{
+                                        display: 'none',
+                                        width: '100%',
+                                        height: '100%',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 20,
+                                      }}
+                                    >
+                                      {doc.icon}
+                                    </div>
                                   </div>
-                                  <span style={{ fontSize: 9, color: '#2563EB', fontWeight: 600 }}>Click to Inspect</span>
+                                  <div style={{ padding: '5px 6px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {doc.title}
+                                    </div>
+                                    <span style={{ fontSize: 9, color: '#2563EB', fontWeight: 600 }}>Inspect 🔍</span>
+                                  </div>
                                 </div>
                               )
                             })}
