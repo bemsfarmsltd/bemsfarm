@@ -167,9 +167,39 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
     const isEmailAllowed = emailGlobal && emailSpecific;
 
     if (isEmailAllowed) {
-      const recipientEmail = settings['dispatch_email'] || settings['store_email'] || process.env.ADMIN_NOTIF_EMAIL || process.env.SUPPORT_EMAIL || 'info@bemsfarms.com';
+      // Gather all superadmins (system account owners) and configured dispatch/admin emails
+      const recipientSet = new Set();
+
+      try {
+        const superadmins = await pool.query(
+          "SELECT email FROM users WHERE role = 'superadmin' AND (is_active = true OR is_active IS NULL)"
+        );
+        superadmins.rows.forEach(r => {
+          if (r.email && r.email.includes('@')) recipientSet.add(r.email.trim().toLowerCase());
+        });
+      } catch (_) {}
+
+      if (settings['dispatch_email'] && settings['dispatch_email'].includes('@')) {
+        recipientSet.add(settings['dispatch_email'].trim().toLowerCase());
+      }
+      if (settings['store_email'] && settings['store_email'].includes('@')) {
+        recipientSet.add(settings['store_email'].trim().toLowerCase());
+      }
+      if (settings['admin_notification_emails']) {
+        settings['admin_notification_emails'].split(',').forEach(e => {
+          if (e.includes('@')) recipientSet.add(e.trim().toLowerCase());
+        });
+      }
+      if (process.env.ADMIN_NOTIF_EMAIL && process.env.ADMIN_NOTIF_EMAIL.includes('@')) {
+        recipientSet.add(process.env.ADMIN_NOTIF_EMAIL.trim().toLowerCase());
+      }
+
+      if (recipientSet.size === 0) recipientSet.add('info@bemsfarms.com');
+
+      const recipients = Array.from(recipientSet);
+
       sendAdminAlertEmail({
-        to: recipientEmail,
+        to: recipients,
         type,
         title,
         message,
@@ -182,19 +212,29 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
 
     // 3. Automatically record into God Eye Audit Trail
     const categoryMap = {
-      customer_register:      'auth',
-      order_placed:           'financial',
-      pos_sale:               'financial',
-      order_delivery:         'admin',
-      driver_support_message: 'admin',
-      support_message:        'comms',
-      ai_chat:                'ai',
-      low_stock:              'admin',
-      batch_expiry:           'admin',
-      refund_request:         'financial',
-      system_error:           'system',
-      security_event:         'security',
-      staff_action:           'admin',
+      customer_register:          'auth',
+      order_placed:               'financial',
+      pos_sale:                   'financial',
+      order_delivery:             'admin',
+      driver_support_message:     'admin',
+      support_message:            'comms',
+      ai_chat:                    'ai',
+      low_stock:                  'admin',
+      batch_expiry:               'admin',
+      refund_request:             'financial',
+      refund_processed:           'financial',
+      system_error:               'system',
+      security_event:             'security',
+      staff_action:               'admin',
+      driver_wallet_adjustment:   'financial',
+      payout_disbursed:           'financial',
+      payout_approved:            'financial',
+      payout_rejected:            'financial',
+      wallet_frozen:              'financial',
+      wallet_unfrozen:            'financial',
+      customer_wallet_adjustment: 'financial',
+      stock_adjustment:           'inventory',
+      store_sales_reconciliation: 'financial',
     };
 
     recordAudit({

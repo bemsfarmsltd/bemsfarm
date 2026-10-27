@@ -18,6 +18,7 @@ export default function Sidebar() {
     deliveries: '/deliveries/active',
     customers: '/customers',
     finance: '/accounts/transactions',
+    reports: '/reports/sales',
     chef: '/chef-bems/conversations',
     settings: '/settings/general',
     godeye: '/god-eye',
@@ -31,6 +32,7 @@ export default function Sidebar() {
   const showDelivery  = is('superadmin', 'admin', 'manager', 'delivery_manager')
   const showCustomers = is('superadmin', 'admin', 'manager', 'cashier')
   const showFinance   = is('superadmin', 'admin', 'manager', 'accountant')
+  const showReports   = is('superadmin', 'admin', 'manager', 'accountant')
   const showStaff     = is('superadmin', 'admin', 'manager')
   const showChefAI    = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showStores    = is('superadmin', 'admin')
@@ -49,6 +51,7 @@ export default function Sidebar() {
     if (path.startsWith('/deliveries')) return 'deliveries'
     if (path.startsWith('/customers')) return 'customers'
     if (path.startsWith('/accounts')) return 'finance'
+    if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
     if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings')) return 'settings'
     if (path.startsWith('/god-eye') || path.startsWith('/audit')) return 'godeye'
@@ -530,7 +533,20 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 9. Chef Bems AI */}
+            {/* 9. Reports & Analytics */}
+            {showReports && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('reports')}
+                title="Reports & Analytics"
+              >
+                <i className="ri-bar-chart-box-line rail-icon"></i>
+                <span className="rail-label">Reports</span>
+              </button>
+            )}
+
+            {/* 10. Chef Bems AI */}
             {showChefAI && (
               <button
                 type="button"
@@ -543,7 +559,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 10. Settings & Onboarding */}
+            {/* 11. Settings & Onboarding */}
             {showSettings && (
               <button
                 type="button"
@@ -556,7 +572,7 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 13. Audit Log — superadmin / admin */}
+            {/* 12. Audit Log — superadmin / admin */}
             {showGodEye && (
               <button
                 type="button"
@@ -717,6 +733,11 @@ export default function Sidebar() {
                     <span>Lost &amp; Damaged</span>
                   </NavLink>
                 )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/god-eye?category=inventory" className={() => `dual-sub-link ${location.pathname.startsWith('/god-eye') && location.search.includes('category=inventory') ? 'active' : ''}`}>
+                    <span>Inventory Audit Log</span>
+                  </NavLink>
+                )}
               </>
             )}
 
@@ -765,6 +786,11 @@ export default function Sidebar() {
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/orders/refunds" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Refunds &amp; Returns</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/god-eye?category=orders" className={() => `dual-sub-link ${location.pathname.startsWith('/god-eye') && location.search.includes('category=orders') ? 'active' : ''}`}>
+                    <span>Orders Audit Trail</span>
                   </NavLink>
                 )}
               </>
@@ -840,6 +866,37 @@ export default function Sidebar() {
                 <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Wallet &amp; Gateway Hub</span>
                 </NavLink>
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/god-eye?category=finance" className={() => `dual-sub-link ${location.pathname.startsWith('/god-eye') && location.search.includes('category=finance') ? 'active' : ''}`}>
+                    <span>Financial Audit Log</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 8. REPORTS */}
+            {activeTab === 'reports' && (
+              <>
+                <NavLink to="/reports/sales" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Store Sales &amp; POS</span>
+                </NavLink>
+                <NavLink to="/reports/inventory" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Inventory &amp; Stock</span>
+                </NavLink>
+                <NavLink to="/reports/finance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Finance &amp; Revenue</span>
+                </NavLink>
+                <NavLink to="/reports/customers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Customer Analytics</span>
+                </NavLink>
+                <NavLink to="/reports/purchases" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Purchase Orders</span>
+                </NavLink>
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/god-eye?category=pos" className={() => `dual-sub-link ${location.pathname.startsWith('/god-eye') && location.search.includes('category=pos') ? 'active' : ''}`}>
+                    <span>Store &amp; POS Audit</span>
+                  </NavLink>
+                )}
               </>
             )}
 

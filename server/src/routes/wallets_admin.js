@@ -10,6 +10,8 @@ const {
   initiateMonnifyDisbursement,
   validateMonnifyBankAccount,
 } = require("../utils/monnify");
+const { notifyAdmin } = require("../services/notificationService");
+const { recordAudit } = require("../services/auditService");
 
 // Staff authorization
 router.use(protect);
@@ -621,6 +623,53 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
 
     await client.query("COMMIT");
 
+    // Comprehensive Audit & Notification
+    notifyAdmin({
+      type: 'payout_disbursed',
+      title: `💸 Payout Disbursed: ₦${parseFloat(payout.amount).toLocaleString()}`,
+      message: `${req.user?.name || 'Admin'} approved & disbursed ₦${parseFloat(payout.amount).toLocaleString()} payout to ${driver.name} (${payout.bank_name || 'Bank'} - ${payout.account_number}) via ${disbursement_method}. Ref: ${gatewayRef}.`,
+      link: '/accounts/wallets',
+      severity: 'info',
+      data: {
+        payout_id: id,
+        driver_id: payout.driver_id,
+        driver_name: driver.name,
+        amount: payout.amount,
+        bank_name: payout.bank_name,
+        account_number: payout.account_number,
+        method: disbursement_method,
+        reference: gatewayRef,
+        disbursed_by: req.user?.name || req.user?.email,
+        disbursed_by_role: req.user?.role,
+      },
+      actor: req.user,
+    }).catch(e => console.warn('notifyAdmin payout disburse notice:', e.message));
+
+    recordAudit({
+      source: 'admin',
+      action: 'PAYOUT_DISBURSED',
+      category: 'financial',
+      severity: 'info',
+      outcome: 'success',
+      resource: `driver_payouts/${id}`,
+      actor_id: req.user?.id,
+      actor_name: req.user?.name || req.user?.email,
+      actor_role: req.user?.role,
+      entity_type: 'payout',
+      entity_id: String(id),
+      details: {
+        driver_id: payout.driver_id,
+        driver_name: driver.name,
+        amount: payout.amount,
+        bank_name: payout.bank_name,
+        account_number: payout.account_number,
+        method: disbursement_method,
+        reference: gatewayRef,
+        disbursed_by: req.user?.name || req.user?.email,
+        notes: updatedNotes,
+      }
+    }).catch(() => {});
+
     res.json({
       message: `Payout of ₦${parseFloat(payout.amount).toLocaleString()} successfully disbursed!`,
       payout: updated.rows[0],
@@ -691,6 +740,41 @@ router.post("/payouts/:id/reject", requireRole("superadmin", "manager", "admin",
     );
 
     await client.query("COMMIT");
+
+    notifyAdmin({
+      type: 'payout_rejected',
+      title: `❌ Payout Rejected: ₦${parseFloat(payout.amount).toLocaleString()}`,
+      message: `${req.user?.name || 'Admin'} rejected payout #${payout.payout_ref || id} of ₦${parseFloat(payout.amount).toLocaleString()}. Reason: ${rejection_reason}. Funds unheld & restored to driver.`,
+      link: '/accounts/wallets',
+      severity: 'warning',
+      data: {
+        payout_id: id,
+        amount: payout.amount,
+        rejection_reason,
+        rejected_by: req.user?.name || req.user?.email,
+      },
+      actor: req.user,
+    }).catch(() => {});
+
+    recordAudit({
+      source: 'admin',
+      action: 'PAYOUT_REJECTED',
+      category: 'financial',
+      severity: 'warning',
+      outcome: 'success',
+      resource: `driver_payouts/${id}`,
+      actor_id: req.user?.id,
+      actor_name: req.user?.name || req.user?.email,
+      actor_role: req.user?.role,
+      entity_type: 'payout',
+      entity_id: String(id),
+      details: {
+        driver_id: payout.driver_id,
+        amount: payout.amount,
+        rejection_reason,
+        rejected_by: req.user?.name || req.user?.email,
+      }
+    }).catch(() => {});
 
     res.json({
       message: "Payout rejected. Funds restored to driver available balance.",
@@ -1297,6 +1381,58 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
 
     await client.query("COMMIT");
 
+    notifyAdmin({
+      type: 'driver_wallet_adjustment',
+      title: `👛 Driver Wallet ${type === 'credit' ? 'Credited' : 'Debited'}: ₦${numAmount.toLocaleString()}`,
+      message: `${req.user?.name || 'Admin'} adjusted Driver ${driver.name}'s wallet (${type === 'credit' ? '+' : '-'}₦${numAmount.toLocaleString()}). Category: ${categoryTitle}. Reason: ${cleanReason}. Balance: ₦${balanceBefore.toLocaleString()} → ₦${balanceAfter.toLocaleString()}.`,
+      link: '/accounts/wallets',
+      severity: type === 'debit' ? 'warning' : 'info',
+      data: {
+        driver_id: id,
+        driver_name: driver.name,
+        type,
+        category: effectiveCategory,
+        category_title: categoryTitle,
+        amount: numAmount,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        reason: cleanReason,
+        reference: adjRef,
+        adjusted_by: req.user?.name || req.user?.email,
+        adjusted_by_role: req.user?.role,
+      },
+      actor: req.user,
+    }).catch(e => console.warn('notifyAdmin driver adjust notice:', e.message));
+
+    recordAudit({
+      source: 'admin',
+      action: 'DRIVER_WALLET_ADJUSTED',
+      category: 'financial',
+      severity: type === 'debit' ? 'warning' : 'info',
+      outcome: 'success',
+      resource: `drivers/${id}/wallet`,
+      actor_id: req.user?.id,
+      actor_name: req.user?.name || req.user?.email,
+      actor_role: req.user?.role,
+      entity_type: 'driver_wallet',
+      entity_id: String(id),
+      old_value: { balance: balanceBefore },
+      new_value: { balance: balanceAfter },
+      details: {
+        driver_id: id,
+        driver_name: driver.name,
+        type,
+        category: effectiveCategory,
+        category_title: categoryTitle,
+        amount: numAmount,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        reason: cleanReason,
+        reference: adjRef,
+        adjusted_by: req.user?.name || req.user?.email,
+      }
+    }).catch(() => {});
+
     res.status(201).json({
       message: `Driver wallet successfully ${type === "credit" ? "credited" : "debited"} with ₦${numAmount.toLocaleString()} (${categoryTitle})`,
       ledger: ledgerEntry.rows[0],
@@ -1351,6 +1487,43 @@ router.patch("/drivers/:id/freeze", requireRole("superadmin", "manager", "admin"
         [id]
       );
     }
+
+    notifyAdmin({
+      type: willFreeze ? 'wallet_frozen' : 'wallet_unfrozen',
+      title: willFreeze ? `🔒 Driver Wallet Frozen: ${result.rows[0].name}` : `🔓 Driver Wallet Unfrozen: ${result.rows[0].name}`,
+      message: `${req.user?.name || 'Admin'} ${willFreeze ? 'froze' : 'unfroze'} the wallet for Driver ${result.rows[0].name}.${reason ? ` Reason: ${reason}` : ''}`,
+      link: '/accounts/wallets',
+      severity: willFreeze ? 'warning' : 'info',
+      data: {
+        driver_id: id,
+        driver_name: result.rows[0].name,
+        is_frozen: willFreeze,
+        reason: reason || null,
+        performed_by: req.user?.name || req.user?.email,
+      },
+      actor: req.user,
+    }).catch(() => {});
+
+    recordAudit({
+      source: 'admin',
+      action: willFreeze ? 'DRIVER_WALLET_FROZEN' : 'DRIVER_WALLET_UNFROZEN',
+      category: 'financial',
+      severity: willFreeze ? 'warning' : 'info',
+      outcome: 'success',
+      resource: `drivers/${id}/wallet`,
+      actor_id: req.user?.id,
+      actor_name: req.user?.name || req.user?.email,
+      actor_role: req.user?.role,
+      entity_type: 'driver_wallet',
+      entity_id: String(id),
+      details: {
+        driver_id: id,
+        driver_name: result.rows[0].name,
+        is_frozen: willFreeze,
+        reason: reason || null,
+        performed_by: req.user?.name || req.user?.email,
+      }
+    }).catch(() => {});
 
     res.json({
       message: is_frozen ? "Driver wallet has been FROZEN. Withdrawals restricted." : "Driver wallet has been UNFROZEN.",

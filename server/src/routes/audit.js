@@ -213,10 +213,16 @@ function buildWhere(query) {
   // Category mapping
   if (query.category && query.category !== 'all') {
     const cat = String(query.category).toLowerCase();
-    if (cat === 'orders' || cat === 'financial') {
-      where.push(`(category = 'financial' OR action ILIKE '%order%')`);
+    if (cat === 'finance' || cat === 'financial') {
+      where.push(`(category = 'financial' OR action ILIKE '%wallet%' OR action ILIKE '%payout%' OR action ILIKE '%disburse%' OR action ILIKE '%refund%' OR action ILIKE '%transaction%' OR action ILIKE '%commission%')`);
+    } else if (cat === 'orders') {
+      where.push(`(action ILIKE '%order%' OR entity_type = 'order' OR resource ILIKE '%orders%')`);
+    } else if (cat === 'pos' || cat === 'store_sales') {
+      where.push(`(action ILIKE '%pos%' OR details->>'channel' = 'pos' OR resource ILIKE '%pos%')`);
+    } else if (cat === 'inventory') {
+      where.push(`(category = 'inventory' OR entity_type IN ('inventory', 'product', 'product_stock', 'batch', 'warehouse') OR action ILIKE '%stock%' OR action ILIKE '%adjust%')`);
     } else if (cat === 'staff' || cat === 'admin') {
-      where.push(`(category = 'admin' OR actor_role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff'))`);
+      where.push(`(category = 'admin' OR actor_role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff') OR action ILIKE '%staff%' OR action ILIKE '%role%')`);
     } else if (cat === 'auth' || cat === 'security') {
       where.push(`(category IN ('auth', 'security') OR action ILIKE '%login%' OR action ILIKE '%password%')`);
     } else if (cat === 'system' || cat === 'developer') {
@@ -321,7 +327,7 @@ router.get('/stats', async (req, res, next) => {
       action NOT ILIKE 'GET /api/categories%'
     )`;
 
-    const [today, week, month, bySeverity, byCategory, activeActors, staffCount, orderCount, authCount] = await Promise.all([
+    const [today, week, month, bySeverity, byCategory, activeActors, staffCount, orderCount, authCount, financeCount] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '1 day'`).catch(() => ({ rows: [{ count: 0 }] })),
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ count: 0 }] })),
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
@@ -331,18 +337,20 @@ router.get('/stats', async (req, res, next) => {
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE ${NOISE_FILTER} AND (category = 'admin' OR actor_role IN ('superadmin', 'admin', 'manager', 'cashier')) AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE (category = 'financial' OR action ILIKE '%order%') AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
       pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE (category IN ('auth', 'security') OR action ILIKE '%login%') AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE (category = 'finance' OR category = 'financial' OR action ILIKE '%wallet%' OR action ILIKE '%payout%' OR action ILIKE '%refund%') AND occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
     ]);
 
     res.json({
-      today:         Number(today.rows[0]?.count || 0),
-      week:          Number(week.rows[0]?.count || 0),
-      month:         Number(month.rows[0]?.count || 0),
-      staff_actions: Number(staffCount.rows[0]?.count || 0),
-      order_events:  Number(orderCount.rows[0]?.count || 0),
-      auth_events:   Number(authCount.rows[0]?.count || 0),
-      by_severity:   bySeverity.rows,
-      by_category:   byCategory.rows,
-      active_actors: Number(activeActors.rows[0]?.count || 0),
+      today:          Number(today.rows[0]?.count || 0),
+      week:           Number(week.rows[0]?.count || 0),
+      month:          Number(month.rows[0]?.count || 0),
+      staff_actions:  Number(staffCount.rows[0]?.count || 0),
+      order_events:   Number(orderCount.rows[0]?.count || 0),
+      auth_events:    Number(authCount.rows[0]?.count || 0),
+      finance_events: Number(financeCount.rows[0]?.count || 0),
+      by_severity:    bySeverity.rows,
+      by_category:    byCategory.rows,
+      active_actors:  Number(activeActors.rows[0]?.count || 0),
     });
   } catch (err) {
     console.error('GET /api/audit/stats error:', err.message);

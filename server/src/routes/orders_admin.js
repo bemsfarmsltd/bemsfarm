@@ -14,6 +14,8 @@ const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAud
 const { initiateMonnifyRefund } = require("../utils/monnify");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 const driverUploadController = require("../controllers/driverUploadController");
+const { notifyAdmin } = require("../services/notificationService");
+const { recordAudit } = require("../services/auditService");
 
 router.use(protect);
 
@@ -33,6 +35,35 @@ async function logStatusChange(
   `,
     [orderId, fromStatus, toStatus, userId || null, notes || null],
   );
+
+  recordAudit({
+    source: 'admin',
+    action: `ORDER_STATUS_${(toStatus || 'updated').toUpperCase()}`,
+    category: 'financial',
+    severity: toStatus === 'cancelled' ? 'warning' : 'info',
+    outcome: 'success',
+    resource: `orders/${orderId}`,
+    actor_id: userId || null,
+    entity_type: 'order',
+    entity_id: String(orderId),
+    details: {
+      order_id: orderId,
+      from_status: fromStatus,
+      to_status: toStatus,
+      notes,
+    }
+  }).catch(() => {});
+
+  if (toStatus === 'cancelled' || toStatus === 'delivered' || toStatus === 'confirmed') {
+    notifyAdmin({
+      type: 'order_status_update',
+      title: `📦 Order #${orderId} Status: ${(toStatus || '').toUpperCase()}`,
+      message: `Order #${orderId} was updated from "${fromStatus}" to "${toStatus}"${notes ? ` (Notes: ${notes})` : ''}.`,
+      link: `/orders/${orderId}`,
+      severity: toStatus === 'cancelled' ? 'warning' : 'info',
+      data: { order_id: orderId, from_status: fromStatus, to_status: toStatus, notes },
+    }).catch(() => {});
+  }
 }
 
 async function logTrackingEvent(
@@ -1415,6 +1446,47 @@ router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"
     );
 
     await client.query("COMMIT");
+
+    if (status === "refunded") {
+      notifyAdmin({
+        type: 'refund_processed',
+        title: `↩️ Refund Processed: Order #${ret.order_id || ret.id} (₦${parseFloat(finalRefundAmount || 0).toLocaleString()})`,
+        message: `${req.user?.name || 'Staff'} processed refund of ₦${parseFloat(finalRefundAmount || 0).toLocaleString()} for Return #${ret.id}. Method: ${finalRefundMethod || 'Manual'}. Outcome: ${refundOutcome || 'success'}.`,
+        link: '/orders/refunds',
+        severity: 'warning',
+        data: {
+          return_id: ret.id,
+          order_id: ret.order_id,
+          refund_amount: finalRefundAmount,
+          refund_method: finalRefundMethod,
+          outcome: refundOutcome,
+          processed_by: req.user?.name || req.user?.email,
+        },
+        actor: req.user,
+      }).catch(() => {});
+
+      recordAudit({
+        source: 'admin',
+        action: 'ORDER_REFUND_PROCESSED',
+        category: 'financial',
+        severity: 'warning',
+        outcome: 'success',
+        resource: `returns/${ret.id}`,
+        actor_id: req.user?.id,
+        actor_name: req.user?.name || req.user?.email,
+        actor_role: req.user?.role,
+        entity_type: 'refund',
+        entity_id: String(ret.id),
+        details: {
+          return_id: ret.id,
+          order_id: ret.order_id,
+          refund_amount: finalRefundAmount,
+          refund_method: finalRefundMethod,
+          outcome: refundOutcome,
+        }
+      }).catch(() => {});
+    }
+
     res.json({ message: "Return updated", status, refund_outcome: refundOutcome });
   } catch (err) {
     await client.query("ROLLBACK");

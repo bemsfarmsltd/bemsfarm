@@ -88,6 +88,8 @@ const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { COA, postInventoryDoubleEntry, ensureDoubleEntryTables } = require("../utils/doubleEntryLedger");
+const { notifyAdmin } = require("../services/notificationService");
+const { recordAudit } = require("../services/auditService");
 
 let inventoryTablesReady = false;
 async function ensureInventoryTables() {
@@ -976,11 +978,58 @@ router.post(
 
       await client.query("COMMIT");
 
+      // Comprehensive Stock Adjustment Audit & Notification
+      const prodName = cur.rows[0].name || `Product #${product_id}`;
+      notifyAdmin({
+        type: 'stock_adjustment',
+        title: `📦 Stock Adjustment: ${prodName} (${delta >= 0 ? '+' : ''}${delta})`,
+        message: `${req.user?.name || 'Staff'} adjusted stock for "${prodName}". Reason: ${reason}.${notes ? ` Notes: ${notes}.` : ''} Stock: ${beforeQty} → ${afterQty}.`,
+        link: '/inventory/adjustment',
+        severity: delta < 0 ? 'warning' : 'info',
+        data: {
+          product_id,
+          product_name: prodName,
+          before_qty: beforeQty,
+          after_qty: afterQty,
+          delta,
+          reason,
+          notes: notes || null,
+          adjusted_by: req.user?.name || req.user?.email,
+          adjusted_by_role: req.user?.role,
+        },
+        actor: req.user,
+      }).catch(() => {});
+
+      recordAudit({
+        source: 'admin',
+        action: 'STOCK_ADJUSTED',
+        category: 'inventory',
+        severity: delta < 0 ? 'warning' : 'info',
+        outcome: 'success',
+        resource: `products/${product_id}/stock`,
+        actor_id: req.user?.id,
+        actor_name: req.user?.name || req.user?.email,
+        actor_role: req.user?.role,
+        entity_type: 'product_stock',
+        entity_id: String(product_id),
+        old_value: { stock: beforeQty },
+        new_value: { stock: afterQty },
+        details: {
+          product_id,
+          product_name: prodName,
+          before_qty: beforeQty,
+          after_qty: afterQty,
+          delta,
+          reason,
+          notes: notes || null,
+          adjusted_by: req.user?.name || req.user?.email,
+        }
+      }).catch(() => {});
+
       try {
         const { broadcastStockUpdated } = require("../services/socketService");
         broadcastStockUpdated({
           product_id,
-          variant_id,
           warehouse_id,
           before_qty: beforeQty,
           after_qty: afterQty,

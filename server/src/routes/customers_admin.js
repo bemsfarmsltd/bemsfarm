@@ -11,7 +11,8 @@ const validate = require("../middleware/validate");
 const customerAdminSchemas = require("../schemas/customerAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
 const { initCrmTables } = require("../db/migrate_crm_chat_broadcast");
-const { recordAuditRich } = require('../services/auditService');
+const { recordAudit, recordAuditRich } = require('../services/auditService');
+const { notifyAdmin } = require('../services/notificationService');
 
 let schemaEnsured = false;
 async function ensureCustomerChannelColumns() {
@@ -1441,6 +1442,55 @@ router.post(
       );
 
       await client.query("COMMIT");
+
+      notifyAdmin({
+        type: 'customer_wallet_adjustment',
+        title: `👛 Customer Wallet ${type === 'topup' ? 'Top-Up' : 'Debit'}: ₦${amt.toLocaleString()}`,
+        message: `${req.user?.name || 'Admin'} ${type === 'topup' ? 'credited' : 'debited'} customer ${custRow.rows[0].name}'s wallet with ₦${amt.toLocaleString()}.${note ? ` Reason: ${note}.` : ''} Balance: ₦${currentBalance.toLocaleString()} → ₦${newBalance.toLocaleString()}.`,
+        link: `/customers/${customerId}`,
+        severity: type === 'debit' ? 'warning' : 'info',
+        data: {
+          customer_id: customerId,
+          customer_name: custRow.rows[0].name,
+          type,
+          amount: amt,
+          balance_before: currentBalance,
+          balance_after: newBalance,
+          note: note || null,
+          reference,
+          adjusted_by: req.user?.name || req.user?.email,
+          adjusted_by_role: req.user?.role,
+        },
+        actor: req.user,
+      }).catch(() => {});
+
+      recordAudit({
+        source: 'admin',
+        action: 'CUSTOMER_WALLET_ADJUSTED',
+        category: 'financial',
+        severity: type === 'debit' ? 'warning' : 'info',
+        outcome: 'success',
+        resource: `customers/${customerId}/wallet`,
+        actor_id: req.user?.id,
+        actor_name: req.user?.name || req.user?.email,
+        actor_role: req.user?.role,
+        entity_type: 'customer_wallet',
+        entity_id: String(customerId),
+        old_value: { balance: currentBalance },
+        new_value: { balance: newBalance },
+        details: {
+          customer_id: customerId,
+          customer_name: custRow.rows[0].name,
+          type,
+          amount: amt,
+          balance_before: currentBalance,
+          balance_after: newBalance,
+          note: note || null,
+          reference,
+          adjusted_by: req.user?.name || req.user?.email,
+        }
+      }).catch(() => {});
+
       res.json({ message: "Wallet updated", balance: newBalance, reference });
     } catch (err) {
       await client.query("ROLLBACK");

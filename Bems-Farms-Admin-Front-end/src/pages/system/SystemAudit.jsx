@@ -1,14 +1,17 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 const CATEGORIES = [
-  { id: 'all',    label: 'All Activity',     icon: '📋' },
-  { id: 'orders', label: 'Orders & Payments', icon: '🛍️' },
-  { id: 'staff',  label: 'Staff & Admin',    icon: '👤' },
-  { id: 'auth',   label: 'Security & Logins',icon: '🔐' },
-  { id: 'system', label: 'System & Settings',icon: '⚙️' },
+  { id: 'all',       label: 'All Activity',         icon: '📋' },
+  { id: 'finance',   label: 'Financial Audit',      icon: '💰' },
+  { id: 'orders',    label: 'Orders & Payments',    icon: '🛍️' },
+  { id: 'pos',       label: 'Store Sales & POS',    icon: '🏪' },
+  { id: 'inventory', label: 'Inventory Movements',  icon: '📦' },
+  { id: 'staff',     label: 'Staff & Security',     icon: '👤' },
+  { id: 'auth',      label: 'Security & Logins',    icon: '🔐' },
+  { id: 'system',    label: 'System & Settings',    icon: '⚙️' },
 ]
 
 function relativeTime(ts) {
@@ -26,6 +29,11 @@ function fmtDate(ts) {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   })
+}
+
+function fmtCurrency(val) {
+  const num = Number(val || 0)
+  return `₦${num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function parseDevice(ua) {
@@ -62,6 +70,145 @@ export function getHumanNarrative(e) {
   const action = (e.action || '').trim()
   const details = e.details || {}
   const isSuccess = e.outcome === 'success' || e.outcome === 'committed'
+
+  // 1. Driver Wallet Adjustments (Manual admin credit/debit)
+  if (action === 'DRIVER_WALLET_ADJUSTED' || action.includes('wallets/drivers') || details.action_type === 'driver_wallet_adjustment') {
+    const isCredit = details.type === 'credit'
+    return {
+      title: 'Driver Wallet Adjustment',
+      story: `${actor} manually ${isCredit ? 'credited' : 'debited'} driver ${details.driver_name || 'Driver'} wallet with ${fmtCurrency(details.amount)}. Reason: "${details.reason || 'Manual adjustment'}"`,
+      icon: isCredit ? '💳' : '💸',
+      isFinancial: true,
+      amount: details.amount,
+      type: details.type || 'credit',
+      target: details.driver_name ? `Driver: ${details.driver_name}` : 'Driver Wallet',
+      before: details.balance_before,
+      after: details.balance_after,
+      reason: details.reason,
+      ref: details.reference || details.transaction_id,
+    }
+  }
+
+  // 2. Customer Wallet Adjustments
+  if (action === 'CUSTOMER_WALLET_ADJUSTED' || (action.includes('customers') && action.includes('wallet')) || details.action_type === 'customer_wallet_adjustment') {
+    const isCredit = details.type === 'credit'
+    return {
+      title: 'Customer Wallet Adjustment',
+      story: `${actor} manually ${isCredit ? 'credited' : 'debited'} customer ${details.customer_name || 'Customer'} wallet with ${fmtCurrency(details.amount)}. Reason: "${details.reason || 'Manual adjustment'}"`,
+      icon: '👛',
+      isFinancial: true,
+      amount: details.amount,
+      type: details.type || 'credit',
+      target: details.customer_name ? `Customer: ${details.customer_name}` : 'Customer Wallet',
+      before: details.balance_before,
+      after: details.balance_after,
+      reason: details.reason,
+      ref: details.reference,
+    }
+  }
+
+  // 3. Driver Payout Disbursement
+  if (action === 'PAYOUT_DISBURSED' || action.includes('payouts') && action.includes('disburse')) {
+    return {
+      title: 'Driver Payout Disbursed',
+      story: `${actor} approved & disbursed payout of ${fmtCurrency(details.amount)} to ${details.driver_name || 'Driver'}${details.bank_name ? ` (${details.bank_name} · ${details.account_number || ''})` : ''}. Method: ${details.method || 'Manual Bank Transfer'}.`,
+      icon: '💸',
+      isFinancial: true,
+      amount: details.amount,
+      type: 'debit',
+      target: details.driver_name ? `Driver: ${details.driver_name}` : 'Driver Payout',
+      bank: details.bank_name ? `${details.bank_name} (${details.account_number || ''})` : null,
+      ref: details.reference,
+      reason: details.notes || 'Payout Disbursed',
+    }
+  }
+
+  // 4. Driver Payout Rejection
+  if (action === 'PAYOUT_REJECTED' || (action.includes('payouts') && action.includes('reject'))) {
+    return {
+      title: 'Driver Payout Rejected',
+      story: `${actor} rejected payout request of ${fmtCurrency(details.amount)} for ${details.driver_name || 'Driver'}. Reason: "${details.reason || 'Rejected by admin'}"`,
+      icon: '❌',
+      isFinancial: true,
+      amount: details.amount,
+      type: 'neutral',
+      target: details.driver_name ? `Driver: ${details.driver_name}` : 'Driver Payout',
+      reason: details.reason,
+      ref: details.payout_id ? `Payout #${details.payout_id}` : null,
+    }
+  }
+
+  // 5. Driver Wallet Freeze / Unfreeze
+  if (action === 'DRIVER_WALLET_FROZEN' || action === 'DRIVER_WALLET_UNFROZEN') {
+    const isFrozen = action === 'DRIVER_WALLET_FROZEN'
+    return {
+      title: isFrozen ? 'Driver Wallet Frozen' : 'Driver Wallet Unfrozen',
+      story: `${actor} ${isFrozen ? 'froze' : 'unfroze'} wallet for driver ${details.driver_name || 'Driver'}. Reason: "${details.reason || 'Administrative action'}"`,
+      icon: isFrozen ? '🔒' : '🔓',
+      isFinancial: true,
+      target: details.driver_name ? `Driver: ${details.driver_name}` : 'Driver Wallet',
+      reason: details.reason,
+    }
+  }
+
+  // 6. Order Refunds
+  if (action === 'ORDER_REFUND_PROCESSED' || details.action_type === 'refund_processed' || (action.includes('refund') && e.entity_type === 'order')) {
+    const amt = details.refund_amount || details.amount || 0
+    return {
+      title: 'Order Refund Processed',
+      story: `${actor} processed a refund of ${fmtCurrency(amt)} for Order #${details.order_number || e.entity_id}. Reason: "${details.refund_reason || details.reason || 'Customer refund'}"`,
+      icon: '↩️',
+      isFinancial: true,
+      amount: amt,
+      type: 'debit',
+      target: `Order #${details.order_number || e.entity_id}`,
+      reason: details.refund_reason || details.reason,
+    }
+  }
+
+  // 7. Inventory Stock Adjustments
+  if (action === 'STOCK_ADJUSTED' || action.includes('inventory/adjust') || details.action_type === 'stock_adjustment') {
+    const delta = Number(details.quantity_delta || 0)
+    return {
+      title: 'Inventory Stock Adjusted',
+      story: `${actor} adjusted inventory for "${details.product_name || 'Product'}". Stock: ${details.previous_stock ?? '—'} → ${details.new_stock ?? '—'} (${delta >= 0 ? `+${delta}` : delta} units). Reason: "${details.reason || 'Manual count'}"`,
+      icon: '📦',
+      isInventory: true,
+      target: details.product_name || 'Product',
+      delta,
+      before: details.previous_stock,
+      after: details.new_stock,
+      reason: details.reason,
+    }
+  }
+
+  // 8. Order Status Transitions
+  if (action === 'ORDER_STATUS_CHANGED' || (action.includes('order') && details.new_status)) {
+    const orderNum = details.order_number || e.entity_id || ''
+    const newStatus = (details.new_status || '').toUpperCase()
+    const prevStatus = (details.previous_status || '').toUpperCase()
+    return {
+      title: `Order Status: ${newStatus}`,
+      story: `${actor} transitioned Order #${orderNum} from ${prevStatus || 'CREATED'} to ${newStatus}.${details.total_amount ? ` Value: ${fmtCurrency(details.total_amount)}` : ''}`,
+      icon: newStatus === 'DELIVERED' ? '✅' : newStatus === 'CANCELLED' ? '🚫' : '🛍️',
+      target: `Order #${orderNum}`,
+      isFinancial: !!details.total_amount,
+      amount: details.total_amount,
+    }
+  }
+
+  // 9. Store Sales & POS
+  if (action.includes('pos') || details.channel === 'pos' || action === 'STORE_SALES_RECONCILIATION') {
+    return {
+      title: 'In-Store POS Sale / Reconciliation',
+      story: `${actor} recorded store register transaction. Amount: ${fmtCurrency(details.amount || details.total || 0)}.`,
+      icon: '🏪',
+      isFinancial: true,
+      amount: details.amount || details.total,
+      type: 'credit',
+      target: 'Store Cash Register',
+    }
+  }
 
   // Notifications
   if (action.startsWith('NOTIF_')) {
@@ -244,7 +391,7 @@ function EventDrawer({ event, onClose }) {
       right: 0,
       bottom: 0,
       width: '100%',
-      maxWidth: 520,
+      maxWidth: 540,
       background: '#fff',
       boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
       zIndex: 9999,
@@ -299,17 +446,111 @@ function EventDrawer({ event, onClose }) {
           </div>
         </div>
 
+        {/* ── Specialized Financial Breakdown ── */}
+        {narrative.isFinancial && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>💰</span> Financial Audit Snapshot
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
+              <div>
+                <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Approved / Performed By</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>{event.actor_name || 'System Admin'} ({event.actor_role || 'Staff'})</span>
+              </div>
+              {narrative.target && (
+                <div>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Beneficiary / Target</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{narrative.target}</span>
+                </div>
+              )}
+              {narrative.amount !== undefined && (
+                <div>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Transaction Amount</span>
+                  <span style={{ fontWeight: 800, color: narrative.type === 'debit' ? '#dc2626' : '#16a34a' }}>
+                    {narrative.type === 'debit' ? '🔻 ' : '🔺 '}{fmtCurrency(narrative.amount)}
+                  </span>
+                </div>
+              )}
+              {(narrative.before !== undefined || narrative.after !== undefined) && (
+                <div>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Balance Transition</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {fmtCurrency(narrative.before)} → {fmtCurrency(narrative.after)}
+                  </span>
+                </div>
+              )}
+              {narrative.bank && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Disbursement Destination</span>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{narrative.bank}</span>
+                </div>
+              )}
+              {narrative.ref && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Reference / Transaction ID</span>
+                  <span style={{ fontWeight: 600, color: '#0f172a', fontFamily: 'monospace' }}>{narrative.ref}</span>
+                </div>
+              )}
+              {narrative.reason && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#78350f', display: 'block', fontSize: 11 }}>Audit Justification / Reason</span>
+                  <span style={{ fontStyle: 'italic', color: '#1e293b' }}>"{narrative.reason}"</span>
+                </div>
+              )}
+            </div>
+
+            {/* Notification Dispatch Badge */}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed #fcd34d', fontSize: 11, color: '#78350f', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🔔</span>
+              <span>Account Owners (Email & In-App Notification) dispatched for this audit event.</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Specialized Inventory Breakdown ── */}
+        {narrative.isInventory && (
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#1e40af', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📦</span> Inventory Movement Snapshot
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
+              <div>
+                <span style={{ color: '#1e40af', display: 'block', fontSize: 11 }}>Item / Product</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>{narrative.target}</span>
+              </div>
+              <div>
+                <span style={{ color: '#1e40af', display: 'block', fontSize: 11 }}>Quantity Delta</span>
+                <span style={{ fontWeight: 800, color: narrative.delta > 0 ? '#16a34a' : '#dc2626' }}>
+                  {narrative.delta > 0 ? `+${narrative.delta}` : narrative.delta} units
+                </span>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <span style={{ color: '#1e40af', display: 'block', fontSize: 11 }}>Stock Before & After</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {narrative.before} units → {narrative.after} units
+                </span>
+              </div>
+              {narrative.reason && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <span style={{ color: '#1e40af', display: 'block', fontSize: 11 }}>Audit Reason</span>
+                  <span style={{ fontStyle: 'italic', color: '#1e293b' }}>"{narrative.reason}"</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Core Attributes */}
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
-            Event Details
+            Session & Security Context
           </div>
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
             {[
               { label: 'Timestamp', value: fmtDate(event.occurred_at) },
               { label: 'Status / Outcome', value: isSuccess ? '✅ Successful' : `⚠️ ${event.outcome || 'Failed'}` },
-              { label: 'Actor Name', value: event.actor_name || 'System / Automated' },
-              { label: 'Role', value: event.actor_role || 'User' },
+              { label: 'Authorizing Actor', value: event.actor_name || 'System / Automated' },
+              { label: 'Staff Role', value: event.actor_role || 'User' },
               { label: 'Location', value: `${loc.flag} ${loc.display}` },
               { label: 'Device / Client', value: `${dev.icon} ${dev.label}` },
               { label: 'IP Address', value: event.ip_address || '—' },
@@ -334,7 +575,7 @@ function EventDrawer({ event, onClose }) {
         {event.details && Object.keys(event.details).length > 0 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
-              Technical Data
+              Technical Payload Data
             </div>
             <pre style={{
               background: '#0f172a',
@@ -376,7 +617,7 @@ function EventDrawer({ event, onClose }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SystemAudit() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const initialCategory = searchParams.get('category') || 'all'
 
   const [activeCategory, setActiveCategory] = useState(initialCategory)
@@ -393,6 +634,24 @@ export default function SystemAudit() {
   const [refreshIndex, setRefreshIndex]     = useState(0)
 
   const debounceRef = useRef(null)
+
+  // Sync category state when URL search param changes
+  useEffect(() => {
+    const cat = searchParams.get('category') || 'all'
+    setActiveCategory(cat)
+  }, [searchParams])
+
+  // Handle switching category tab
+  const handleCategoryChange = (catId) => {
+    setActiveCategory(catId)
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (catId === 'all') next.delete('category')
+      else next.set('category', catId)
+      return next
+    })
+    setPage(1)
+  }
 
   // 1. Fetch live summary statistics
   useEffect(() => {
@@ -471,7 +730,7 @@ export default function SystemAudit() {
             <span>📋</span> Activity & Audit Log
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
-            Comprehensive timeline of staff actions, customer orders, sign-ins, and system operations.
+            Audited financial disbursements, wallet adjustments, stock changes, order lifecycles, and staff security logs.
           </p>
         </div>
 
@@ -526,11 +785,11 @@ export default function SystemAudit() {
           subtext="Verified business operations"
         />
         <StatCard
-          label="Today's Activity"
-          value={stats?.today || 0}
-          icon="⚡"
-          color="#10b981"
-          subtext="Actions recorded today"
+          label="Financial Audits (30d)"
+          value={stats?.finance_events || 0}
+          icon="💰"
+          color="#059669"
+          subtext="Wallet edits & disbursements"
         />
         <StatCard
           label="Orders & Sales"
@@ -557,7 +816,7 @@ export default function SystemAudit() {
             return (
               <button
                 key={cat.id}
-                onClick={() => { setActiveCategory(cat.id); setPage(1) }}
+                onClick={() => handleCategoryChange(cat.id)}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -588,7 +847,7 @@ export default function SystemAudit() {
             <span style={{ position: 'absolute', left: 12, top: 10, fontSize: 14, color: '#94a3b8' }}>🔍</span>
             <input
               type="text"
-              placeholder="Search by staff, action, customer, or order #..."
+              placeholder="Search by staff, driver, customer, amount, reference..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setPage(1) }}
               style={{
@@ -676,11 +935,11 @@ export default function SystemAudit() {
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 140 }}>When</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b' }}>Action & Description</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 180 }}>User / Staff</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b' }}>Action & Narrative</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 180 }}>Authorizing Staff</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 160 }}>Channel & Location</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 100 }}>Status</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 90, textAlign: 'right' }}>Details</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748b', width: 90, textAlign: 'right' }}>Audit</th>
               </tr>
             </thead>
             <tbody>
@@ -688,15 +947,15 @@ export default function SystemAudit() {
                 <tr>
                   <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: '#64748b' }}>
                     <div style={{ fontSize: 24, marginBottom: 8 }}>🔄</div>
-                    <div>Loading activity log records…</div>
+                    <div>Loading verified audit trail…</div>
                   </td>
                 </tr>
               ) : !data?.events?.length ? (
                 <tr>
                   <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: '#94a3b8' }}>
                     <div style={{ fontSize: 24, marginBottom: 8 }}>📭</div>
-                    <div style={{ fontWeight: 600, color: '#475569' }}>No activity records found</div>
-                    <div style={{ fontSize: 12, marginTop: 4 }}>Try clearing search or adjusting your date range.</div>
+                    <div style={{ fontWeight: 600, color: '#475569' }}>No audit records found for this view</div>
+                    <div style={{ fontSize: 12, marginTop: 4 }}>Try clearing search or adjusting the date range.</div>
                   </td>
                 </tr>
               ) : (
@@ -728,9 +987,74 @@ export default function SystemAudit() {
                         <div style={{ color: '#475569', fontSize: 12.5, lineHeight: 1.4 }}>
                           {narrative.story}
                         </div>
+
+                        {/* Financial Snapshot Pill */}
+                        {narrative.isFinancial && (
+                          <div style={{
+                            marginTop: 8,
+                            padding: '6px 12px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 12,
+                            alignItems: 'center'
+                          }}>
+                            {narrative.amount !== undefined && (
+                              <span style={{ fontWeight: 700, color: narrative.type === 'debit' ? '#dc2626' : '#15803d' }}>
+                                {narrative.type === 'debit' ? '🔻 ' : '🔺 '}{fmtCurrency(narrative.amount)}
+                              </span>
+                            )}
+                            {(narrative.before !== undefined && narrative.after !== undefined) && (
+                              <span style={{ color: '#475569', fontSize: 11.5 }}>
+                                Balance: <b>{fmtCurrency(narrative.before)}</b> → <b>{fmtCurrency(narrative.after)}</b>
+                              </span>
+                            )}
+                            {narrative.target && (
+                              <span style={{ color: '#0f172a', fontWeight: 600, fontSize: 11.5 }}>
+                                {narrative.target}
+                              </span>
+                            )}
+                            {narrative.ref && (
+                              <span style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>
+                                Ref: {narrative.ref}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Inventory Snapshot Pill */}
+                        {narrative.isInventory && (
+                          <div style={{
+                            marginTop: 8,
+                            padding: '6px 12px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 12,
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontWeight: 700, color: '#1d4ed8' }}>
+                              Stock: {narrative.delta > 0 ? `+${narrative.delta}` : narrative.delta} units
+                            </span>
+                            <span style={{ color: '#475569', fontSize: 11.5 }}>
+                              Level: <b>{narrative.before}</b> → <b>{narrative.after}</b>
+                            </span>
+                            {narrative.reason && (
+                              <span style={{ color: '#334155', fontStyle: 'italic', fontSize: 11.5 }}>
+                                Reason: "{narrative.reason}"
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
-                      {/* User */}
+                      {/* Authorizing Staff / User */}
                       <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
                         <div style={{ fontWeight: 600, color: '#0f172a' }}>
                           {event.actor_name || 'System'}
