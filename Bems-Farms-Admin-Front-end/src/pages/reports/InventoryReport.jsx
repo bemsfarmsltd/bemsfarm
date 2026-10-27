@@ -1,69 +1,235 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
+import { toast } from 'react-hot-toast'
+
+const formatNaira = (val) => {
+  const num = parseFloat(val) || 0
+  return '₦' + num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function InventoryReport() {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
+
+  // Filters
+  const [lowThreshold, setLowThreshold] = useState(10)
+  const [dateRange, setDateRange] = useState('month')
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
+  })
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const fetchInventoryReport = useCallback(async () => {
+    try {
+      setLoading(true)
+      let from = fromDate
+      let to = toDate
+
+      const now = new Date()
+      if (dateRange === 'today') {
+        from = now.toISOString().slice(0, 10)
+        to = now.toISOString().slice(0, 10)
+      } else if (dateRange === 'week') {
+        const first = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)
+        from = new Date(now.setDate(first)).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'month') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'year') {
+        from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      }
+
+      const res = await api.get('/admin/reports/inventory', {
+        params: { from, to, low_stock_threshold: lowThreshold },
+      })
+      setData(res.data)
+    } catch (err) {
+      console.error('Failed to load inventory report:', err)
+      toast.error('Failed to load live inventory analytics')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange, fromDate, toDate, lowThreshold])
+
+  useEffect(() => {
+    fetchInventoryReport()
+  }, [fetchInventoryReport])
+
+  const summary = data?.summary || {}
+  const stockByCategory = data?.stock_by_category || []
+  const lowStock = data?.low_stock || []
+  const outOfStock = data?.out_of_stock || []
+  const topMovers = data?.top_movers || []
+  const recentMovements = data?.recent_movements || []
+
+  // Filter low stock by search
+  const filteredLowStock = lowStock.filter(p => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q)
+  })
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Products</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
-                  <li className="breadcrumb-item active">Products</li>
-              </ul>
+      {/* Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
+        <div>
+          <h6 className="mb-0 fw-bold">Live Inventory & Stock Audit Report</h6>
+          <p className="text-muted fs-sm mb-0">Real-time stock valuation, warehouse units, low-stock reorder warnings, and movement audit trail.</p>
+        </div>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
+          <li className="breadcrumb-item active">Inventory</li>
+        </ul>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body p-3">
+          <div className="row g-2 align-items-center justify-content-between">
+            <div className="col-md-7 d-flex flex-wrap align-items-center gap-2">
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'today' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('today')}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('week')}
+                >
+                  This Week
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('month')}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'year' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('year')}
+                >
+                  This Year
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('custom')}
+                >
+                  Custom Range
+                </button>
+              </div>
+
+              {dateRange === 'custom' && (
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-5 text-md-end d-flex align-items-center justify-content-md-end gap-2">
+              <label className="form-label mb-0 fs-xs text-muted fw-bold">Low Stock Alert Level:</label>
+              <select
+                className="form-select form-select-sm w-auto"
+                value={lowThreshold}
+                onChange={(e) => setLowThreshold(parseInt(e.target.value) || 10)}
+              >
+                <option value={5}>&le; 5 units</option>
+                <option value={10}>&le; 10 units</option>
+                <option value={20}>&le; 20 units</option>
+                <option value={50}>&le; 50 units</option>
+              </select>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={fetchInventoryReport}
+                title="Refresh Inventory Report"
+              >
+                <i className="ri-refresh-line"></i>
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* KPI Stats Cards */}
       <div className="row g-3 mb-4">
         {[
           {
-            label: 'Total Products',
-            value: '9,423',
+            label: 'Total Catalog Products',
+            value: summary.total_products || 0,
             glow: 'bg-card-glow-indigo',
             iconBg: '#EEF2FF',
             iconColor: '#4F46E5',
             icon: 'ri-store-2-line',
-            subLeft: 'Catalog Items',
-            subRight: '+9.8% Growth'
+            subLeft: 'Live Farm Items',
+            subRight: `${summary.active_products || 0} Active`
           },
           {
-            label: 'Published Products',
-            value: '7,856',
+            label: 'Warehouse Stock Units',
+            value: Number(summary.total_units || 0).toLocaleString(),
             glow: 'bg-card-glow-green',
             iconBg: '#ECFDF5',
             iconColor: '#059669',
-            icon: 'ri-checkbox-circle-line',
-            subLeft: 'Live Online & POS',
-            subRight: '83.4% Active'
+            icon: 'ri-archive-line',
+            subLeft: 'Physical Inventory',
+            subRight: 'Available Units'
           },
           {
-            label: 'Inactive Products',
-            value: '1,142',
+            label: 'Stock Cost Valuation',
+            value: formatNaira(summary.stock_value),
+            glow: 'bg-card-glow-teal',
+            iconBg: '#F0FDFA',
+            iconColor: '#0D9488',
+            icon: 'ri-money-cny-box-line',
+            subLeft: 'Current Asset Value',
+            subRight: 'At Cost/Retail'
+          },
+          {
+            label: 'Low Stock Warnings',
+            value: summary.low_stock_count || 0,
             glow: 'bg-card-glow-amber',
             iconBg: '#FEF3C7',
             iconColor: '#D97706',
-            icon: 'ri-pause-circle-line',
-            subLeft: 'Drafts & Paused',
-            subRight: 'Archived'
+            icon: 'ri-error-warning-line',
+            subLeft: `Below ${summary.low_stock_threshold || lowThreshold} units`,
+            subRight: 'Reorder Needed'
           },
           {
-            label: 'Out of Stock',
-            value: '425',
+            label: 'Out of Stock Items',
+            value: summary.out_of_stock_count || 0,
             glow: 'bg-card-glow-red',
             iconBg: '#FFF1F2',
             iconColor: '#E11D48',
             icon: 'ri-alert-line',
             subLeft: 'Zero Inventory',
-            subRight: 'Restock Needed'
-          },
-          {
-            label: 'Inventory Value',
-            value: '₦42.8M',
-            glow: 'bg-card-glow-teal',
-            iconBg: '#F0FDFA',
-            iconColor: '#0D9488',
-            icon: 'ri-money-cny-box-line',
-            subLeft: 'Stock Cost Valuation',
-            subRight: '+12.4% MoM'
+            subRight: 'Action Required'
           },
         ].map(c => (
-          <div className="col-12 col-sm-6 col-xl" key={c.label}>
+          <div key={c.label} className="col-12 col-sm-6 col-xl">
             <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
               <div className="card-body p-3.5">
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -86,1172 +252,240 @@ export default function InventoryReport() {
           </div>
         ))}
       </div>
-          <div className="card">
-              <div className="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                  <h5 className="card-title mb-0">Product List</h5>
-                  <div className="d-flex flex-wrap gap-2 align-items-center">
-                      <div className="position-relative">
-                          <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search products..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                      <div className="position-relative flex-shrink-0 w-56">
-                          <input type="text" className="form-control ps-10" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
-                          <i data-lucide="calendar" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                      <div id="filterCategory" className="w-40"></div>
-                      <div id="filterStock" className="w-40"></div>
-                      <div id="filterStatus" className="w-40"></div>
-                      <div id="filterPrice" className="w-40"></div>
-                  </div>
+
+      {/* Main Stock Tables Row */}
+      <div className="row g-3 mb-4">
+        {/* Low Stock Reorder List */}
+        <div className="col-xl-8">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <h5 className="card-title mb-0">
+                <i className="ri-alarm-warning-line me-2 text-danger"></i>Low Stock Items &amp; Reorder Thresholds
+              </h5>
+              <div className="d-flex align-items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Filter low stock..."
+                  className="form-control form-control-sm"
+                  style={{ width: '180px' }}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <span className="badge bg-danger text-white">{filteredLowStock.length} items</span>
               </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table text-nowrap align-middle mb-0">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="checkAllSales" />
-                                      </div>
-                                  </th>
-                                  <th className="fw-medium text-muted">Product ID</th>
-                                  <th className="fw-medium text-muted">Product</th>
-                                  <th className="fw-medium text-muted">Category</th>
-                                  <th className="fw-medium text-muted">Stock</th>
-                                  <th className="fw-medium text-muted">Price</th>
-                                  <th className="fw-medium text-muted">Status</th>
-                                  <th className="fw-medium text-muted">Action</th>
-                              </tr>
-                          </thead>
-                          <tbody className="accordion" id="salesAccordion">
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19115</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-01-BBWp8t8E.png" className="img-fluid" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Blouse Ruffle Tube top</a>
-                                      </div>
-                                  </td>
-                                  <td>Fashion</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch1" defaultChecked />
-                                          <label className="label" htmlFor="switch1"></label>
-                                      </div>
-                                  </td>
-                                  <td>$159</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">
-                                          Published
-                                      </span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale1" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale1" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-01-BBWp8t8E.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19115" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Blouse Ruffle Tube top" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="159" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19112</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-02-ClVfz9I5.png" className="img-fluid" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Blouse Ruffle Tube top</a>
-                                      </div>
-                                  </td>
-                                  <td>Fashion</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch2" />
-                                          <label className="label" htmlFor="switch2"></label>
-                                      </div>
-                                  </td>
-                                  <td>$159</td>
-                                  <td><span className="badge bg-success-subtle border border-success-subtle text-success">Published</span></td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale2" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale2" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-02-ClVfz9I5.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19112" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Blouse Ruffle Tube top" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="159" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check1" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19113</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-03-oTTY_McP.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Casual Shirt Summer</a>
-                                      </div>
-                                  </td>
-                                  <td>Apparel</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch3" defaultChecked />
-                                          <label className="label" htmlFor="switch3"></label>
-                                      </div>
-                                  </td>
-                                  <td>$89</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">Published
-                                      </span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale3" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale3" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-03-oTTY_McP.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19113" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Casual Shirt Summer" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="89" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check2" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19114</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-04-DZ4OtBxS.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Elegant Leather Bag</a>
-                                      </div>
-                                  </td>
-                                  <td>Bags</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch4" defaultChecked />
-                                          <label className="label" htmlFor="switch4"></label>
-                                      </div>
-                                  </td>
-                                  <td>$120</td>
-                                  <td>
-                                      <span className="badge bg-warning-subtle border border-warning-subtle text-warning">
-                                          Inactive
-                                      </span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale4" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale4" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-04-DZ4OtBxS.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19114" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Elegant Leather Bag" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="120" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check3" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19115</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-05-DPzi-ptA.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Summer Sandals</a>
-                                      </div>
-                                  </td>
-                                  <td>Footwear</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch5" defaultChecked />
-                                          <label className="label" htmlFor="switch5"></label>
-                                      </div>
-                                  </td>
-                                  <td>$49</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">
-                                          Published
-                                      </span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale5" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale5" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-05-DPzi-ptA.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19115" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Summer Sandals" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="49" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check4" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19116</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-06-DdkuSG6a.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Wireless Earbuds</a>
-                                      </div>
-                                  </td>
-                                  <td>Electronics</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch6" defaultChecked />
-                                          <label className="label" htmlFor="switch6"></label>
-                                      </div>
-                                  </td>
-                                  <td>$79</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">
-                                          Published
-                                      </span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale6" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale6" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-06-DdkuSG6a.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19116" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Wireless Earbuds" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="79" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check5" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19117</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-07-9mjzrP7h.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Denim Jacket</a>
-                                      </div>
-                                  </td>
-                                  <td>Apparel</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch7" defaultChecked />
-                                          <label className="label" htmlFor="switch7"></label>
-                                      </div>
-                                  </td>
-                                  <td>$79</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">Published</span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale7" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale7" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-07-9mjzrP7h.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19117" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Denim Jacket" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="79" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check6" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19118</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-08-BXmGY-HZ.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Leather Belt</a>
-                                      </div>
-                                  </td>
-                                  <td>Accessories</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch8" />
-                                          <label className="label" htmlFor="switch8"></label>
-                                      </div>
-                                  </td>
-                                  <td>$45</td>
-                                  <td>
-                                      <span className="badge bg-warning-subtle border border-warning-subtle text-warning">Inactive</span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale8" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale8" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-08-BXmGY-HZ.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19118" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Leather Belt" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="45" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check7" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19119</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-09-CqG2QIp1.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Sports Sneakers</a>
-                                      </div>
-                                  </td>
-                                  <td>Footwear</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch9" defaultChecked />
-                                          <label className="label" htmlFor="switch9"></label>
-                                      </div>
-                                  </td>
-                                  <td>$99</td>
-                                  <td>
-                                      <span className="badge bg-success-subtle border border-success-subtle text-success">Published</span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale9" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale9" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-09-CqG2QIp1.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19119" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Sports Sneakers" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="99" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="check8" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">PEP-19120</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <div className="avatar size-9 border rounded-1 p-1">
-                                              <img src="../assets/img-10-DqnuMbAd.png" className="img-fluid" alt="Product Image" />
-                                          </div>
-                                          <a href="#" className="text-reset fw-medium">Silk Scarf</a>
-                                      </div>
-                                  </td>
-                                  <td>Accessories</td>
-                                  <td>
-                                      <div className="form-switch switch-light-secondary">
-                                          <input type="checkbox" id="switch10" defaultChecked />
-                                          <label className="label" htmlFor="switch10"></label>
-                                      </div>
-                                  </td>
-                                  <td>$35</td>
-                                  <td>
-                                      <span className="badge bg-warning-subtle border border-warning-subtle text-warning">Inactive</span>
-                                  </td>
-                                  <td>
-                                      <button className="accordion-button collapsed bg-body-secondary border shadow-none rounded text-muted py-1 edit-btn" type="button" data-bs-toggle="collapse" data-bs-target="#sale10" aria-expanded="false">Edit</button>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td colSpan="10" className="p-0 border-0 bg-light bg-opacity-75">
-                                      <div id="sale10" className="accordion-collapse collapse" data-bs-parent="#salesAccordion">
-                                          <div className="accordion-body py-7 px-0">
-                                              <form>
-                                                  <div className="row g-5">
-                                                      <div className="col-3 col-md-2">
-                                                          <div className="avatar size-40 bg-body-secondary border rounded p-1 mb-6">
-                                                              <img src="../assets/img-10-DqnuMbAd.png" className="img-fluid" alt="Product Image" />
-                                                          </div>
-                                                          <div>
-                                                              <p className="fw-medium mb-2">Stock available :</p>
-                                                              <div className="form-switch switch-light-secondary">
-                                                                  <input type="checkbox" id="editswitch1" defaultChecked />
-                                                                  <label className="label" htmlFor="editswitch1"></label>
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-7 col-md-8">
-                                                          <div className="row g-5">
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="productId">Product ID</label>
-                                                                  <input type="text" className="form-control" id="productId" defaultValue="PEP-19120" />
-                                                              </div>
-                                                              <div className="col-7">
-                                                                  <label className="form-label" htmlFor="productName">Product Name</label>
-                                                                  <input type="text" className="form-control" id="productName" defaultValue="Silk Scarf" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="category">Category</label>
-                                                                  <div id="category" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="price">Price</label>
-                                                                  <input type="number" className="form-control" id="price" defaultValue="35" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="qty">QTY</label>
-                                                                  <input type="number" className="form-control" id="qty" defaultValue="154" />
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="status">Status</label>
-                                                                  <div id="status" className="d-block"></div>
-                                                              </div>
-                                                              <div className="col-4">
-                                                                  <label className="form-label" htmlFor="brand">Brand</label>
-                                                                  <input type="text" className="form-control" id="brand" defaultValue="Zara" />
-                                                              </div>
-                                                              <div className="col-3">
-                                                                  <label className="form-label" htmlFor="stock">Stock</label>
-                                                                  <input type="number" className="form-control" id="stock" defaultValue="154" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                      <div className="col-2">
-                                                          <div className="row g-5">
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="discount">Discount</label>
-                                                                  <input type="number" className="form-control" id="discount" defaultValue="0" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="revenue">Revenue</label>
-                                                                  <input type="text" className="form-control" id="revenue" defaultValue="$15,236" />
-                                                              </div>
-                                                              <div className="col-12">
-                                                                  <label className="form-label" htmlFor="cost">Cost</label>
-                                                                  <input type="number" className="form-control" id="cost" defaultValue="8.50" />
-                                                              </div>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </form>
-                                              <div className="col-12 mt-5 text-end">
-                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
-                                                  <button type="submit" className="btn btn-secondary">Update</button>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
-                  </div>
-                  <div className="row align-items-center g-3 mt-3">
-                      <div className="col-md-6">
-                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">23</b> Results</p>
-                      </div>
-                      <div className="col-md-6">
-                          <nav aria-label="Page navigation example">
-                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                              </ul>
-                          </nav>
-                      </div>
-                  </div>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '380px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Produce Item</th>
+                      <th className="text-center">Current Stock</th>
+                      <th className="text-center">Threshold</th>
+                      <th className="text-end">Unit Cost</th>
+                      <th className="text-end pe-3">Inventory Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">
+                          <span className="spinner-border spinner-border-sm me-2"></span>Loading inventory data...
+                        </td>
+                      </tr>
+                    ) : filteredLowStock.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">
+                          ✅ No items are below the {lowThreshold} unit threshold.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredLowStock.map((p, idx) => (
+                        <tr key={p.id || idx}>
+                          <td className="ps-3">
+                            <div className="fw-bold text-dark">{p.name}</div>
+                            <div className="text-muted fs-xs font-monospace">{p.sku}</div>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 fw-bold">
+                              {p.stock} units
+                            </span>
+                          </td>
+                          <td className="text-center text-muted fs-sm">
+                            &le; {p.reorder_level || lowThreshold}
+                          </td>
+                          <td className="text-end font-monospace text-dark">
+                            {formatNaira(p.unit_cost)}
+                          </td>
+                          <td className="text-end pe-3 fw-bold text-primary font-monospace">
+                            {formatNaira(p.stock_value)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
+            </div>
           </div>
+        </div>
+
+        {/* Stock Valuation by Category */}
+        <div className="col-xl-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom">
+              <h5 className="card-title mb-0">
+                <i className="ri-pie-chart-line me-2 text-primary"></i>Valuation by Category
+              </h5>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '380px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Category</th>
+                      <th className="text-center">Units</th>
+                      <th className="text-end pe-3">Valuation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">Loading categories...</td>
+                      </tr>
+                    ) : stockByCategory.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">No category inventory records.</td>
+                      </tr>
+                    ) : (
+                      stockByCategory.map((c, idx) => (
+                        <tr key={idx}>
+                          <td className="ps-3 fw-bold text-dark">{c.category || 'Uncategorized'}</td>
+                          <td className="text-center text-muted fs-sm">{Number(c.total_units || 0).toLocaleString()}</td>
+                          <td className="text-end pe-3 fw-bold text-success font-monospace">
+                            {formatNaira(c.stock_value)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Velocity Movers & Stock Movements Audit Trail */}
+      <div className="row g-3 mb-4">
+        {/* Top Movers */}
+        <div className="col-xl-5">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom">
+              <h5 className="card-title mb-0">
+                <i className="ri-speed-up-line me-2 text-success"></i>Fastest Moving Inventory
+              </h5>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="ps-3">Item</th>
+                      <th className="text-center">Units Sold</th>
+                      <th className="text-end pe-3">Gross Sales</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">Loading velocity data...</td>
+                      </tr>
+                    ) : topMovers.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">No sales movements in this period.</td>
+                      </tr>
+                    ) : (
+                      topMovers.map((m, idx) => (
+                        <tr key={m.id || idx}>
+                          <td className="ps-3">
+                            <div className="fw-bold text-dark">{m.name}</div>
+                            <div className="text-muted fs-xs">Stock left: {m.stock}</div>
+                          </td>
+                          <td className="text-center fw-bold text-primary">{m.units_sold}</td>
+                          <td className="text-end pe-3 fw-bold text-success font-monospace">
+                            {formatNaira(m.revenue)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Movements Audit Log */}
+        <div className="col-xl-7">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+              <h5 className="card-title mb-0">
+                <i className="ri-history-line me-2 text-primary"></i>Stock Movement Audit Trail
+              </h5>
+              <span className="badge bg-light text-dark border">{recentMovements.length} log events</span>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '360px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">When</th>
+                      <th>Product</th>
+                      <th className="text-center">Change</th>
+                      <th>Reason / Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="4" className="text-center py-4 text-muted">Loading movements...</td>
+                      </tr>
+                    ) : recentMovements.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="text-center py-4 text-muted">No stock movements recorded in this period.</td>
+                      </tr>
+                    ) : (
+                      recentMovements.map((sm, idx) => {
+                        const qty = Number(sm.quantity || 0)
+                        return (
+                          <tr key={idx}>
+                            <td className="ps-3 text-muted fs-xs">
+                              {sm.created_at ? new Date(sm.created_at).toLocaleDateString('en-GB') : '—'}
+                            </td>
+                            <td>
+                              <div className="fw-bold text-dark fs-sm">{sm.product_name}</div>
+                              <div className="text-muted fs-xs font-monospace">{sm.sku || sm.reference}</div>
+                            </td>
+                            <td className="text-center">
+                              <span className={`badge ${qty >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} font-monospace`}>
+                                {qty >= 0 ? `+${qty}` : qty}
+                              </span>
+                            </td>
+                            <td className="text-muted fs-xs">
+                              {sm.reason || sm.type || 'Manual adjustment'}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

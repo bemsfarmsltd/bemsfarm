@@ -1,453 +1,291 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
+import { toast } from 'react-hot-toast'
+
+const formatNaira = (val) => {
+  const num = parseFloat(val) || 0
+  return '₦' + num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function SupplierReport() {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
+
+  // Filters
+  const [dateRange, setDateRange] = useState('year')
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), 0, 1).toISOString().slice(0, 10)
+  })
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+
+  const fetchSupplierReport = useCallback(async () => {
+    try {
+      setLoading(true)
+      let from = fromDate
+      let to = toDate
+
+      const now = new Date()
+      if (dateRange === 'today') {
+        from = now.toISOString().slice(0, 10)
+        to = now.toISOString().slice(0, 10)
+      } else if (dateRange === 'week') {
+        const first = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)
+        from = new Date(now.setDate(first)).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'month') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'year') {
+        from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      }
+
+      const res = await api.get('/admin/reports/suppliers', {
+        params: { from, to },
+      })
+      setData(res.data)
+    } catch (err) {
+      console.error('Failed to load supplier report:', err)
+      toast.error('Failed to load supplier procurement report')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange, fromDate, toDate])
+
+  useEffect(() => {
+    fetchSupplierReport()
+  }, [fetchSupplierReport])
+
+  const kpis = data?.kpis || {}
+  const topSuppliers = data?.top_suppliers || []
+  const byCategory = data?.by_category || []
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Supplier</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
-                  <li className="breadcrumb-item active">Supplier</li>
-              </ul>
-          </div>
-          <div className="row">
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-shopping-cart-2-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">256</h5>
-                              <p className="text-muted">Total Suppliers</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-wallet-3-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">$208,000</h5>
-                              <p className="text-muted">Total Purchases</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-bank-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">$170,000</h5>
-                              <p className="text-muted">Total Paid</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-stack-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">133</h5>
-                              <p className="text-muted">Total Items</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-user-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">120</h5>
-                              <p className="text-muted">Active Suppliers</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-2 col-md-4 col-sm-6">
-                  <div className="card">
-                      <div className="card-body d-flex align-items-center gap-5">
-                          <div className="avatar size-11 bg-primary text-white rounded-1">
-                              <i className="ri-user-3-line fs-xl"></i>
-                          </div>
-                          <div>
-                              <h5 className="mb-1">36</h5>
-                              <p className="text-muted">Inactive Suppliers</p>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          <div className="card">
-              <div className="card-header d-flex flex-wrap justify-content-between gap-2 align-items-center">
-                  <div className="position-relative">
-                      <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search products..." />
-                      <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                  </div>
-                  <div className="d-flex flex-wrap align-items-center gap-2">
-                      <input type="number" className="form-control w-32" placeholder="Min Items" />
-                      <span>-</span>
-                      <input type="number" className="form-control w-32" placeholder="Max Items" />
-                      <div className="position-relative flex-shrink-0 w-48">
-                          <input type="text" id="filterDate" className="form-control ps-10" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
-                          <i data-lucide="calendar" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                      <div id="vsStatusFilter" className="w-40"></div>
-                      <div id="vsPaymentMethod" className="w-44"></div>
-                      <button type="button" className="btn btn-primary">Generate</button>
-                      <div className="dropdown">
-                          <button type="button" className="btn btn-light btn-icon" data-bs-toggle="dropdown" aria-expanded="false"><i data-lucide="arrow-down-to-line" className="size-4"></i></button>
-                          <ul className="dropdown-menu dropdown-menu-end">
-                              <li><a className="dropdown-item" href="#" id="exportPrint">Print PDF</a></li>
-                              <li><a className="dropdown-item" href="#" id="exportJSON">Export CSV</a></li>
-                              <li><a className="dropdown-item" href="#" id="exportXML">Export XML</a></li>
-                          </ul>
-                      </div>
-                  </div>
-              </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table text-nowrap align-middle mb-0">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="checkAllSuppliers" />
-                                      </div>
-                                  </th>
-                                  <th className="text-muted fw-medium">Supplier ID</th>
-                                  <th className="text-muted fw-medium">Supplier</th>
-                                  <th className="text-muted fw-medium">Total Purchase</th>
-                                  <th className="text-muted fw-medium">Total Paid</th>
-                                  <th className="text-muted fw-medium">Total Items</th>
-                                  <th className="text-muted fw-medium">Payment</th>
-                                  <th className="text-muted fw-medium">Last Purchase</th>
-                                  <th className="text-muted fw-medium">Avg Order Value</th>
-                                  <th className="text-muted fw-medium">Status</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0001</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-6-BIO7_TUU.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Sunrise Wholesale</a>
-                                      </div>
-                                  </td>
-                                  <td>$42,380</td>
-                                  <td>$38,000</td>
-                                  <td>25</td>
-                                  <td>Cash</td>
-                                  <td>12 Dec, 2025</td>
-                                  <td>$2,118</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0002</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-7-BMyy-xCq.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Fresh Valley Traders</a>
-                                      </div>
-                                  </td>
-                                  <td>$18,920</td>
-                                  <td>$12,500</td>
-                                  <td>14</td>
-                                  <td>Bank</td>
-                                  <td>01 Dec, 2025</td>
-                                  <td>$1,351</td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0003</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-8-BAGm131G.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Global Foods Ltd.</a>
-                                      </div>
-                                  </td>
-                                  <td>$30,500</td>
-                                  <td>$30,500</td>
-                                  <td>18</td>
-                                  <td>Online</td>
-                                  <td>08 Dec, 2025</td>
-                                  <td>$1,694</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0004</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-9-DB-6OyMr.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">EcoMart Suppliers</a>
-                                      </div>
-                                  </td>
-                                  <td>$25,700</td>
-                                  <td>$21,300</td>
-                                  <td>16</td>
-                                  <td>Cheque</td>
-                                  <td>05 Dec, 2025</td>
-                                  <td>$1,606</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0005</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-10-CzpspsdB.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">FreshMart Co.</a>
-                                      </div>
-                                  </td>
-                                  <td>$12,800</td>
-                                  <td>$9,200</td>
-                                  <td>11</td>
-                                  <td>Cash</td>
-                                  <td>29 Nov, 2025</td>
-                                  <td>$1,163</td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0006</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-11-bzS6tHsV.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">GreenLeaf Traders</a>
-                                      </div>
-                                  </td>
-                                  <td>$8,450</td>
-                                  <td>$8,450</td>
-                                  <td>9</td>
-                                  <td>Online</td>
-                                  <td>02 Dec, 2025</td>
-                                  <td>$939</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0007</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-12-CfsiEgBV.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Oceanic Suppliers</a>
-                                      </div>
-                                  </td>
-                                  <td>$21,900</td>
-                                  <td>$15,000</td>
-                                  <td>13</td>
-                                  <td>Bank</td>
-                                  <td>27 Nov, 2025</td>
-                                  <td>$1,684</td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0008</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-13-NgroKY8u.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">GreenFields Co.</a>
-                                      </div>
-                                  </td>
-                                  <td>$15,600</td>
-                                  <td>$15,600</td>
-                                  <td>12</td>
-                                  <td>Cash</td>
-                                  <td>30 Nov, 2025</td>
-                                  <td>$1,300</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0009</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-14-BWimhkHc.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Harvest Traders</a>
-                                      </div>
-                                  </td>
-                                  <td>$9,750</td>
-                                  <td>$7,100</td>
-                                  <td>8</td>
-                                  <td>Cheque</td>
-                                  <td>20 Nov, 2025</td>
-                                  <td>$1,219</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">#SUP-0010</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-15-Bm8xnKEs.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                          <a href="#" className="text-reset fw-medium d-block">Evergreen Suppliers</a>
-                                      </div>
-                                  </td>
-                                  <td>$28,400</td>
-                                  <td>$26,000</td>
-                                  <td>19</td>
-                                  <td>Online</td>
-                                  <td>10 Dec, 2025</td>
-                                  <td>$1,495</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                              </tr>
-                          </tbody>
-                      </table>
-                  </div>
-                  <div className="row align-items-center g-3 mt-3">
-                      <div className="col-md-6">
-                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">19</b> Results</p>
-                      </div>
-                      <div className="col-md-6">
-                          <nav aria-label="Page navigation example">
-                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                              </ul>
-                          </nav>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          <div className="modal fade" id="financeModal" tabIndex="-1" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content">
-                      <div className="h-24 rounded-top-2 pattern-bg"></div>
-                      <div className="modal-body position-relative">
-                          <form>
-                              <input type="hidden" id="stockInId" />
-                              <div className="text-center mb-2">
-                                  <label className="avatar border bg-body-secondary size-24 rounded p-3 mt-n20 cursor-pointer position-relative d-inline-block overflow-hidden" htmlFor="supplierLogoInput" id="logoPreviewLabel">
-                                      <img id="supplierLogoPreview" src="#" className="w-100 h-100 object-fit-cover rounded d-none" />
-                                      <div id="uploadIcon" className="d-flex align-items-center justify-content-center w-100 h-100 position-absolute top-0 start-0">
-                                          <i className="ri-upload-cloud-2-line fs-2xl text-muted"></i>
-                                      </div>
-                                      <input type="file" id="supplierLogoInput" className="d-none" accept="image/*" />
-                                  </label>
-                              </div>
-                              <div className="row g-5">
-                                  <div className="col-md-7">
-                                      <label htmlFor="financeProduct" className="form-label">Product</label>
-                                      <input id="financeProduct" type="text" className="form-control" placeholder="Enter product name" />
-                                  </div>
-                                  <div className="col-md-5">
-                                      <label htmlFor="financeSKU" className="form-label">SKU</label>
-                                      <input id="financeSKU" type="text" className="form-control" placeholder="Enter SKU" />
-                                  </div>
-                                  <div className="col-md-5">
-                                      <label htmlFor="financeCategory" className="form-label">Category</label>
-                                      <input id="financeCategory" type="text" className="form-control" placeholder="Product category" />
-                                  </div>
-                                  <div className="col-md-4">
-                                      <label htmlFor="financeUnitsSold" className="form-label">Units Sold</label>
-                                      <input id="financeUnitsSold" type="number" className="form-control" placeholder="e.g. 120" />
-                                  </div>
-                                  <div className="col-md-3">
-                                      <label htmlFor="financeDiscount" className="form-label">Discount (%)</label>
-                                      <input id="financeDiscount" type="number" className="form-control" placeholder="0" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="financeCostPrice" className="form-label">Cost Price</label>
-                                      <input id="financeCostPrice" type="number" className="form-control" placeholder="e.g. 10.00" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="financeSellingPrice" className="form-label">Selling Price</label>
-                                      <input id="financeSellingPrice" type="number" className="form-control" placeholder="e.g. 18.00" />
-                                  </div>
-                                  <div className="col-md-4">
-                                      <label htmlFor="financeTaxAmount" className="form-label">Tax Amount</label>
-                                      <input id="financeTaxAmount" type="number" className="form-control" placeholder="e.g. 180.00" />
-                                  </div>
-                                  <div className="col-md-4">
-                                      <label htmlFor="financeTotalCost" className="form-label">Total Cost</label>
-                                      <input id="financeTotalCost" type="text" className="form-control" placeholder="$0.00" />
-                                  </div>
-                                  <div className="col-md-4">
-                                      <label htmlFor="financeMargin" className="form-label">Margin (%)</label>
-                                      <input id="financeMargin" type="text" className="form-control" placeholder="0%" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="financeGrossProfit" className="form-label">Gross Profit</label>
-                                      <input id="financeGrossProfit" type="text" className="form-control text-success" placeholder="$0.00" readOnly />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="financeRevenue" className="form-label">Revenue</label>
-                                      <input id="financeRevenue" type="text" className="form-control" placeholder="$0.00" />
-                                  </div>
-                                  <div className="col-md-12">
-                                      <label htmlFor="financeStatus" className="form-label">Status</label>
-                                      <div id="financeStatus"></div>
-                                  </div>
-                              </div>
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
-                                  <button type="submit" className="btn btn-primary w-100">Add Finance</button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-          </div>
+      {/* Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
+        <div>
+          <h6 className="mb-0 fw-bold">Supplier Directory &amp; Performance Report</h6>
+          <p className="text-muted fs-sm mb-0">Live vendor relationships, historical purchase commitments, settled invoices, and outstanding balances.</p>
+        </div>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
+          <li className="breadcrumb-item active">Suppliers</li>
+        </ul>
+      </div>
 
-
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered modal-xs">
-                  <div className="modal-content p-7 text-center">
-                      <div className="d-flex justify-content-center mb-4">
-                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
-                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
-                          </div>
-                      </div>
-                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Finance?</h5>
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                  </div>
+      {/* Filter Bar */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body p-3">
+          <div className="row g-2 align-items-center justify-content-between">
+            <div className="col-md-7 d-flex flex-wrap align-items-center gap-2">
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'today' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('today')}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('week')}
+                >
+                  This Week
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('month')}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'year' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('year')}
+                >
+                  This Year
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('custom')}
+                >
+                  Custom Range
+                </button>
               </div>
+
+              {dateRange === 'custom' && (
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-5 text-md-end">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={fetchSupplierReport}
+                title="Refresh Supplier Report"
+              >
+                <i className="ri-refresh-line me-1"></i>Refresh
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* KPI Stats Cards */}
+      <div className="row g-3 mb-4">
+        {[
+          {
+            label: 'Total Suppliers',
+            value: kpis.total_suppliers || 0,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-team-line',
+            subLeft: 'Vendor Network',
+            subRight: `${kpis.active_suppliers || 0} Active`
+          },
+          {
+            label: 'Total Purchases Volume',
+            value: formatNaira(kpis.total_purchased),
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-shopping-cart-2-line',
+            subLeft: 'Historical Procurement',
+            subRight: 'Gross Total'
+          },
+          {
+            label: 'Settled Payments',
+            value: formatNaira(kpis.total_paid),
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Total Disbursed',
+            subRight: 'Cleared'
+          },
+          {
+            label: 'Outstanding Payables',
+            value: formatNaira(kpis.total_outstanding),
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-alert-line',
+            subLeft: 'Pending Balance',
+            subRight: 'Unpaid'
+          },
+        ].map(c => (
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Suppliers Table */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+          <h5 className="card-title mb-0">
+            <i className="ri-building-line me-2 text-primary"></i>Active Vendor Performance Ledger
+          </h5>
+          <span className="badge bg-light text-dark border">{topSuppliers.length} vendors</span>
+        </div>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0 text-nowrap">
+              <thead className="table-light">
+                <tr>
+                  <th className="ps-3">Vendor / Supplier</th>
+                  <th>Category</th>
+                  <th className="text-center">Orders in Period</th>
+                  <th className="text-end">Spend in Period</th>
+                  <th className="text-end">Total Purchased</th>
+                  <th className="text-end pe-3">Outstanding Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4 text-muted">
+                      <span className="spinner-border spinner-border-sm me-2"></span>Loading suppliers...
+                    </td>
+                  </tr>
+                ) : topSuppliers.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4 text-muted">
+                      No suppliers registered in the database.
+                    </td>
+                  </tr>
+                ) : (
+                  topSuppliers.map((s, idx) => (
+                    <tr key={s.id || idx}>
+                      <td className="ps-3">
+                        <div className="fw-bold text-dark">{s.name}</div>
+                        <div className="text-muted fs-xs font-monospace">{s.supplier_code || s.phone || '—'}</div>
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border text-capitalize">
+                          {s.category || 'Produce'}
+                        </span>
+                      </td>
+                      <td className="text-center font-monospace">
+                        {s.orders_in_period || 0}
+                      </td>
+                      <td className="text-end font-monospace fw-semibold text-primary">
+                        {formatNaira(s.spend_in_period)}
+                      </td>
+                      <td className="text-end font-monospace text-dark">
+                        {formatNaira(s.total_purchases)}
+                      </td>
+                      <td className="text-end pe-3 font-monospace fw-bold text-danger">
+                        {formatNaira(s.balance)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

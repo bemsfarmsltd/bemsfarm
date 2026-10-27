@@ -1,115 +1,216 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
+import { toast } from 'react-hot-toast'
 
-function useApexChart(ref, options, deps = []) {
-  useEffect(() => {
-    if (!ref.current || !window.ApexCharts) return
-    ref.current.innerHTML = ''
-    const chart = new window.ApexCharts(ref.current, options)
-    chart.render()
-    return () => chart.destroy()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+const formatNaira = (val) => {
+  const num = parseFloat(val) || 0
+  return '₦' + num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const TOP_CUSTOMERS = [
-  { rank: 1, name: 'Mrs. Okonkwo',   orders: 34, spent: '₦420,000', tier: 'Platinum', trend: '+12%' },
-  { rank: 2, name: 'Amara Obi',      orders: 18, spent: '₦248,000', tier: 'Gold',     trend: '+8%'  },
-  { rank: 3, name: 'Tunde Adeyemi',  orders: 15, spent: '₦174,000', tier: 'Silver',   trend: '+5%'  },
-  { rank: 4, name: 'Seun Abiodun',   orders: 10, spent: '₦118,000', tier: 'Silver',   trend: '+3%'  },
-  { rank: 5, name: 'Kemi Balogun',   orders:  5, spent: '₦62,000',  tier: 'Bronze',   trend: 'New'  },
-]
-
-const tierColor = { Platinum: 'primary', Gold: 'warning', Silver: 'secondary', Bronze: 'danger' }
-
 export default function CustomerReport() {
-  const growthRef = useRef(null)
-  const tierRef   = useRef(null)
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
 
-  useApexChart(growthRef, {
-    chart: { type: 'area', height: 240, toolbar: { show: false } },
-    series: [{ name: 'New Customers', data: [12, 18, 14, 22, 19, 28, 31] }],
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 2 },
-    fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
-    colors: ['#405189'],
-    xaxis: { categories: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], axisBorder: { show: false } },
-    grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-  }, [])
+  // Filters
+  const [dateRange, setDateRange] = useState('year')
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), 0, 1).toISOString().slice(0, 10)
+  })
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [searchQuery, setSearchQuery] = useState('')
 
-  useApexChart(tierRef, {
-    chart: { type: 'donut', height: 240 },
-    series: [1, 1, 2, 1],
-    labels: ['Platinum', 'Gold', 'Silver', 'Bronze'],
-    colors: ['#405189', '#f7b84b', '#878a99', '#f06548'],
-    legend: { position: 'bottom' },
-    dataLabels: { enabled: true },
-  }, [])
+  const fetchCustomerReport = useCallback(async () => {
+    try {
+      setLoading(true)
+      let from = fromDate
+      let to = toDate
+
+      const now = new Date()
+      if (dateRange === 'today') {
+        from = now.toISOString().slice(0, 10)
+        to = now.toISOString().slice(0, 10)
+      } else if (dateRange === 'week') {
+        const first = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)
+        from = new Date(now.setDate(first)).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'month') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'year') {
+        from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      }
+
+      const res = await api.get('/admin/reports/customers', {
+        params: { from, to },
+      })
+      setData(res.data)
+    } catch (err) {
+      console.error('Failed to load customer report:', err)
+      toast.error('Failed to load customer analytics')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange, fromDate, toDate])
+
+  useEffect(() => {
+    fetchCustomerReport()
+  }, [fetchCustomerReport])
+
+  const kpis = data?.kpis || {}
+  const topSpenders = data?.top_spenders || []
+  const timeline = data?.timeline || []
+
+  const filteredSpenders = topSpenders.filter(c => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').includes(q)
+  })
 
   return (
     <div className="container-fluid">
-      <div className="d-flex align-items-center justify-content-between mb-5">
+      {/* Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
         <div>
-          <h4 className="fs-xl mb-1">Customer Report</h4>
-          <p className="text-muted mb-0">Customer growth, retention, and spending analytics.</p>
+          <h6 className="mb-0 fw-bold">Customer Growth &amp; Purchasing Report</h6>
+          <p className="text-muted fs-sm mb-0">Live customer retention, lifetime spending value, repeat buyer frequency, and acquisition analytics.</p>
         </div>
-        <div className="d-flex gap-2">
-          <select className="form-select form-select-sm">
-            <option>Last 7 months</option>
-            <option>Last 30 days</option>
-            <option>This year</option>
-          </select>
-          <button className="btn btn-outline-light border btn-sm">
-            <i className="ri-download-2-line me-1"></i>Export
-          </button>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
+          <li className="breadcrumb-item active">Customers</li>
+        </ul>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body p-3">
+          <div className="row g-2 align-items-center justify-content-between">
+            <div className="col-md-7 d-flex flex-wrap align-items-center gap-2">
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'today' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('today')}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('week')}
+                >
+                  This Week
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('month')}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'year' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('year')}
+                >
+                  This Year
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('custom')}
+                >
+                  Custom Range
+                </button>
+              </div>
+
+              {dateRange === 'custom' && (
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-5 text-md-end d-flex align-items-center justify-content-md-end gap-2">
+              <input
+                type="text"
+                placeholder="Search customers..."
+                className="form-control form-control-sm w-auto"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={fetchCustomerReport}
+                title="Refresh Customer Report"
+              >
+                <i className="ri-refresh-line"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* KPI Stats Cards */}
       <div className="row g-3 mb-4">
         {[
           {
-            label: 'Total Customers',
-            value: '1,247',
+            label: 'Total Registered Customers',
+            value: kpis.total_customers || 0,
             glow: 'bg-card-glow-blue',
             iconBg: '#EFF6FF',
             iconColor: '#2563EB',
             icon: 'ri-user-3-line',
-            subLeft: 'Registered Profiles',
-            subRight: '+18 This Week'
+            subLeft: 'Customer Accounts',
+            subRight: `${kpis.new_customers || 0} New in Range`
           },
           {
-            label: 'Active (30 Days)',
-            value: '892',
+            label: 'Active Purchasing Buyers',
+            value: kpis.active_buyers || 0,
             glow: 'bg-card-glow-green',
             iconBg: '#ECFDF5',
             iconColor: '#059669',
             icon: 'ri-user-heart-line',
-            subLeft: 'Monthly Active Share',
-            subRight: '71.5% Base'
+            subLeft: 'Active in Period',
+            subRight: 'Verified Buyers'
           },
           {
-            label: 'Avg. Order Value',
-            value: '₦14,200',
+            label: 'Repeat Buyers Base',
+            value: kpis.repeat_buyers || 0,
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-repeat-line',
+            subLeft: 'Loyal Customers',
+            subRight: '> 1 Order'
+          },
+          {
+            label: 'Average Customer LTV',
+            value: formatNaira(kpis.avg_customer_ltv),
             glow: 'bg-card-glow-amber',
             iconBg: '#FEF3C7',
             iconColor: '#D97706',
             icon: 'ri-money-dollar-circle-line',
-            subLeft: 'Spend Benchmark',
-            subRight: '↑ 6% MoM'
-          },
-          {
-            label: 'Retention Rate',
-            value: '74%',
-            glow: 'bg-card-glow-teal',
-            iconBg: '#F0FDFA',
-            iconColor: '#0D9488',
-            icon: 'ri-repeat-line',
-            subLeft: 'Cohort Loyalty',
-            subRight: 'Above Avg'
+            subLeft: 'Lifetime Value',
+            subRight: 'Per Customer'
           },
         ].map(c => (
-          <div className="col-12 col-sm-6 col-xl-3" key={c.label}>
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
             <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
               <div className="card-body p-3.5">
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -120,7 +221,7 @@ export default function CustomerReport() {
                     <i className={`${c.icon} fs-18`}></i>
                   </span>
                 </div>
-                <div className="fs-24 fw-bolder text-dark mb-1 font-display">
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
                   {c.value}
                 </div>
                 <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
@@ -133,58 +234,112 @@ export default function CustomerReport() {
         ))}
       </div>
 
-
-      {/* Charts */}
-      <div className="row g-4 mb-4">
+      {/* Main Breakdown Row */}
+      <div className="row g-3 mb-4">
+        {/* Top Customers Table */}
         <div className="col-xl-8">
-          <div className="card mb-0">
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Customer Growth</h6>
-              <p className="text-muted fs-xs mb-3">New customers per month</p>
-              <div ref={growthRef}></div>
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+              <h5 className="card-title mb-0">
+                <i className="ri-vip-crown-line me-2 text-warning"></i>Top Customers by Total Volume
+              </h5>
+              <span className="badge bg-light text-dark border">{filteredSpenders.length} customers</span>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '400px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Customer</th>
+                      <th className="text-center">Orders</th>
+                      <th className="text-end pe-3">Lifetime Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">
+                          <span className="spinner-border spinner-border-sm me-2"></span>Loading customer profiles...
+                        </td>
+                      </tr>
+                    ) : filteredSpenders.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">
+                          No customer purchase records found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSpenders.map((c, idx) => (
+                        <tr key={c.id || idx}>
+                          <td className="ps-3">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="badge rounded-pill bg-light text-dark border">#{idx + 1}</span>
+                              <div>
+                                <div className="fw-bold text-dark">{c.name || 'Customer'}</div>
+                                <div className="text-muted fs-xs">{c.email || c.phone || '—'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge bg-light text-dark border px-2 py-1">
+                              {c.order_count || 0} orders
+                            </span>
+                          </td>
+                          <td className="text-end pe-3 fw-bold text-success font-monospace">
+                            {formatNaira(c.total_spend)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-        <div className="col-xl-4">
-          <div className="card mb-0">
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Tier Distribution</h6>
-              <p className="text-muted fs-xs mb-3">Loyalty tier breakdown</p>
-              <div ref={tierRef}></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Top customers */}
-      <div className="card mb-0">
-        <div className="card-header d-flex align-items-center justify-content-between">
-          <h6 className="fw-semibold mb-0">Top Customers by Spend</h6>
-          <Link to="/customers" className="link link-custom fs-sm">View all →</Link>
-        </div>
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover table-nowrap mb-0">
-              <thead className="table-light">
-                <tr><th>#</th><th>Customer</th><th>Orders</th><th>Total Spent</th><th>Tier</th><th>Trend</th></tr>
-              </thead>
-              <tbody>
-                {TOP_CUSTOMERS.map(c => (
-                  <tr key={c.rank}>
-                    <td className="text-muted fw-medium">{c.rank}</td>
-                    <td>
-                      <Link to="/customers" className="fw-medium link link-custom">{c.name}</Link>
-                    </td>
-                    <td>{c.orders}</td>
-                    <td className="fw-semibold">{c.spent}</td>
-                    <td>
-                      <span className={`badge bg-${tierColor[c.tier]}-subtle text-${tierColor[c.tier]}`}>{c.tier}</span>
-                    </td>
-                    <td className={c.trend === 'New' ? 'text-muted' : 'text-success fw-medium'}>{c.trend}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Customer Sign-Up Cadence */}
+        <div className="col-xl-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom">
+              <h5 className="card-title mb-0">
+                <i className="ri-user-add-line me-2 text-primary"></i>Customer Acquisition Timeline
+              </h5>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '400px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Month / Period</th>
+                      <th className="text-end pe-3">New Sign-ups</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="2" className="text-center py-4 text-muted">Loading timeline...</td>
+                      </tr>
+                    ) : timeline.length === 0 ? (
+                      <tr>
+                        <td colSpan="2" className="text-center py-4 text-muted">No registration records in this period.</td>
+                      </tr>
+                    ) : (
+                      timeline.map((t, idx) => (
+                        <tr key={idx}>
+                          <td className="ps-3 fw-bold text-dark">{t.period || t.label}</td>
+                          <td className="text-end pe-3">
+                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
+                              +{t.new_customers} users
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>

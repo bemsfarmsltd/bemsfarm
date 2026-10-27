@@ -1,438 +1,342 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
+import { toast } from 'react-hot-toast'
+
+const formatNaira = (val) => {
+  const num = parseFloat(val) || 0
+  return '₦' + num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function PurchaseReport() {
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
+
+  // Filters
+  const [dateRange, setDateRange] = useState('year')
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), 0, 1).toISOString().slice(0, 10)
+  })
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+
+  const fetchPurchaseReport = useCallback(async () => {
+    try {
+      setLoading(true)
+      let from = fromDate
+      let to = toDate
+
+      const now = new Date()
+      if (dateRange === 'today') {
+        from = now.toISOString().slice(0, 10)
+        to = now.toISOString().slice(0, 10)
+      } else if (dateRange === 'week') {
+        const first = now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)
+        from = new Date(now.setDate(first)).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'month') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      } else if (dateRange === 'year') {
+        from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10)
+        to = new Date().toISOString().slice(0, 10)
+      }
+
+      const res = await api.get('/admin/reports/purchases', {
+        params: { from, to },
+      })
+      setData(res.data)
+    } catch (err) {
+      console.error('Failed to load purchase report:', err)
+      toast.error('Failed to load purchase procurement data')
+    } finally {
+      setLoading(false)
+    }
+  }, [dateRange, fromDate, toDate])
+
+  useEffect(() => {
+    fetchPurchaseReport()
+  }, [fetchPurchaseReport])
+
+  const kpis = data?.kpis || {}
+  const topSuppliers = data?.top_suppliers || []
+  const byStatus = data?.by_status || []
+  const timeline = data?.timeline || []
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Purchases</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
-                  <li className="breadcrumb-item active">Purchases</li>
-              </ul>
-          </div>
-          <div className="row">
-              <div className="col-lg-6 col-xxl-4">
-                  <div className="card card-h-100">
-                      <div className="card-body">
-                          <div className="d-flex justify-content-between gap-2 mb-8">
-                              <h6 className="mb-0">Purchase Overview</h6>
-                              <div className="dropdown">
-                                  <a href="#" className="link link-custom-success" data-bs-toggle="dropdown">
-                                      <i className="ri-more-2-fill fs-lg"></i>
-                                  </a>
-                                  <ul className="dropdown-menu dropdown-menu-end">
-                                      <li><a className="dropdown-item" href="#">Weekly</a></li>
-                                      <li><a className="dropdown-item" href="#">Monthly</a></li>
-                                      <li><a className="dropdown-item" href="#">Yearly</a></li>
-                                  </ul>
-                              </div>
-                          </div>
-                          <div className="row g-5 align-items-center">
-                              <div className="col-md-6">
-                                  <div id="purchaseOverview" dir="ltr"></div>
-                              </div>
-                              <div className="col-md-6">
-                                  <div className="d-flex h-100 flex-column gap-6 ps-6">
-                                      <div className="d-flex align-items-center justify-content-between">
-                                          <div className="d-flex align-items-center gap-2">
-                                              <span className="d-block h-5 w-1 bg-primary rounded-pill"></span>
-                                              <h6 className="mb-0">60%</h6>
-                                          </div>
-                                          <p className="text-muted">Paid Orders</p>
-                                      </div>
-                                      <div className="d-flex align-items-center justify-content-between">
-                                          <div className="d-flex align-items-center gap-2">
-                                              <span className="d-block h-5 w-1 bg-secondary rounded-pill"></span>
-                                              <h6 className="mb-0">25%</h6>
-                                          </div>
-                                          <p className="text-muted">Pending Orders</p>
-                                      </div>
-                                      <div className="d-flex align-items-center justify-content-between">
-                                          <div className="d-flex align-items-center gap-2">
-                                              <span className="d-block h-5 w-1 bg-success rounded-pill"></span>
-                                              <h6 className="mb-0">15%</h6>
-                                          </div>
-                                          <p className="text-muted">Overdue Orders</p>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-lg-6 col-xxl-4">
-                  <div className="card">
-                      <div className="card-body">
-                          <div className="d-flex justify-content-between gap-2">
-                              <div>
-                                  <p className="text-muted mb-2">Overall Purchase Growth Rate in Last 6 Months</p>
-                                  <div className="d-flex align-items-center gap-3">
-                                      <h4 className="font-base mb-0">$12,459.06</h4>
-                                      <span className="bg-success-subtle text-success border border-success-subtle badge"><i data-lucide="trending-up" className="size-3 me-1"></i>5.2%</span>
-                                  </div>
-                              </div>
-                              <div className="dropdown">
-                                  <a href="#" className="link link-custom-success" data-bs-toggle="dropdown">
-                                      <i className="ri-more-2-fill fs-lg"></i>
-                                  </a>
-                                  <ul className="dropdown-menu dropdown-menu-end">
-                                      <a className="dropdown-item" href="#">Weekly</a>
-                                      <a className="dropdown-item" href="#">Monthly</a>
-                                      <a className="dropdown-item" href="#">Yearly</a>
-                                  </ul>
-                              </div>
-                          </div>
-                          <div id="purchaseGrowth"></div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-4">
-                  <div className="card card-h-100">
-                      <div className="card-body">
-                          <div className="d-flex justify-content-between gap-2 mb-8">
-                              <div>
-                                  <h6 className="mb-2">On-time Payments Rate</h6>
-                                  <p className="text-muted">Most supplier payments were completed within the agreed payment terms.</p>
-                              </div>
-                              <div className="dropdown">
-                                  <a href="#" className="link link-custom-success" data-bs-toggle="dropdown">
-                                      <i className="ri-more-2-fill fs-lg"></i>
-                                  </a>
-                                  <ul className="dropdown-menu dropdown-menu-end">
-                                      <li><a className="dropdown-item" href="#">Weekly</a></li>
-                                      <li><a className="dropdown-item" href="#">Monthly</a></li>
-                                      <li><a className="dropdown-item" href="#">Yearly</a></li>
-                                  </ul>
-                              </div>
-                          </div>
-                          <div className="d-flex justify-content-between gap-2 mb-5">
-                              <h4 className="mb-0">90%</h4>
-                              <p className="text-muted fs-sm mb-0">
-                                  <span className="text-success me-1 fw-medium">
-                                      <i data-lucide="arrow-up-right" className="size-4"></i> 8%
-                                  </span>
-                                  Compared to last month
-                              </p>
-                          </div>
-                          <div className="d-flex gap-1 mb-5">
-                              <div className="progress progress-1 flex-shrink-0 paid-progress" role="progressbar">
-                                  <div className="progress-bar bg-primary" style={{width: "100%"}}></div>
-                              </div>
-                              <div className="progress progress-1 flex-shrink-0 due-progress" role="progressbar">
-                                  <div className="progress-bar bg-secondary" style={{width: "100%"}}></div>
-                              </div>
-                              <div className="progress progress-1 flex-shrink-0 unpaid-progress" role="progressbar">
-                                  <div className="progress-bar bg-success" style={{width: "100%"}}></div>
-                              </div>
-                          </div>
-                          <div className="d-flex flex-wrap gap-4">
-                              <div className="d-flex align-items-center gap-2">
-                                  <i data-lucide="diamond" className="text-primary size-3"></i>
-                                  <span className="text-muted">On-time</span>
-                              </div>
-                              <div className="d-flex align-items-center gap-2">
-                                  <i data-lucide="diamond" className="text-secondary size-3"></i>
-                                  <span className="text-muted">Delayed</span>
-                              </div>
-                              <div className="d-flex align-items-center gap-2">
-                                  <i data-lucide="diamond" className="text-success size-3"></i>
-                                  <span className="text-muted">Overdue</span>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-xxl-7">
-                  <div className="card">
-                      <div className="card-header d-flex flex-wrap justify-content-between align-items-center">
-                          <h5 className="card-title mb-0">Purchase Chart</h5>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary badge d-flex align-items-center fs-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                  Monthly
-                              </a>
-                              <div className="dropdown-menu dropdown-menu-end">
-                                  <a className="dropdown-item" href="#">Weekly</a>
-                                  <a className="dropdown-item" href="#">Monthly</a>
-                                  <a className="dropdown-item" href="#">Yearly</a>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="card-body">
-                          <div id="basicColumnChart" dir="ltr"></div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-lg-6 col-xxl-5">
-                  <div className="card card-h-100">
-                      <div className="card-header d-flex flex-wrap justify-content-between align-items-center">
-                          <h6 className="card-title mb-0">Purchase Distribution</h6>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary badge d-flex align-items-center fs-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                  Weekly
-                              </a>
-                              <div className="dropdown-menu dropdown-menu-end">
-                                  <a className="dropdown-item" href="#">Weekly</a>
-                                  <a className="dropdown-item" href="#">Monthly</a>
-                                  <a className="dropdown-item" href="#">Yearly</a>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="card-body">
-                          <div id="purchaseDistribution"></div>
-                      </div>
-                  </div>
-              </div>
-              <div className="col-lg-6 col-xl-6 col-xxl-3">
-                  <div className="card">
-                      <div className="card-header">
-                          <h5 className="card-title mb-0">Top Suppliers</h5>
-                      </div>
-                      <div className="card-body">
-                          <div className="px-5 mx-n5" style={{height: "406px"}} data-simplebar>
-                              <div className="d-flex flex-column gap-3">
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-6-BIO7_TUU.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Sunrise Wholesale</h6>
-                                              <p className="text-muted">12 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$128,450</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-2-CroG7YJ0.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Global Traders</h6>
-                                              <p className="text-muted">9 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$96,300</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-3-Bz6g7hsE.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Prime Supplies</h6>
-                                              <p className="text-muted">7 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$74,890</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-4-7l52E1Lo.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Elite Distributors</h6>
-                                              <p className="text-muted">6 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$62,500</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-5-BsT8d_Co.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Oceanic Imports</h6>
-                                              <p className="text-muted">5 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$41,200</h6>
-                                  </div>
+      {/* Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
+        <div>
+          <h6 className="mb-0 fw-bold">Procurement &amp; Purchase Orders Report</h6>
+          <p className="text-muted fs-sm mb-0">Track farm supply procurement, vendor commitments, paid bills, and outstanding payables.</p>
+        </div>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
+          <li className="breadcrumb-item active">Purchases</li>
+        </ul>
+      </div>
 
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-7-BMyy-xCq.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Metro Supply Co.</h6>
-                                              <p className="text-muted mb-0">6 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$65,240</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-26-Chn9LYhC.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Nova Enterprises</h6>
-                                              <p className="text-muted mb-0">5 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$52,880</h6>
-                                  </div>
-                                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3">
-                                      <div className="d-flex align-items-center gap-3">
-                                          <img src="../assets/user-9-DB-6OyMr.png" className="size-10 rounded" alt="Supplier" />
-                                          <div>
-                                              <h6 className="mb-0 fw-medium">Vertex Traders</h6>
-                                              <p className="text-muted mb-0">4 Orders</p>
-                                          </div>
-                                      </div>
-                                      <h6 className="mb-0 ms-auto">$44,190</h6>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
+      {/* Filter Bar */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body p-3">
+          <div className="row g-2 align-items-center justify-content-between">
+            <div className="col-md-7 d-flex flex-wrap align-items-center gap-2">
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'today' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('today')}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'week' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('week')}
+                >
+                  This Week
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'month' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('month')}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'year' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('year')}
+                >
+                  This Year
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${dateRange === 'custom' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setDateRange('custom')}
+                >
+                  Custom Range
+                </button>
               </div>
-              <div className="col-xxl-9">
-                  <div className="card">
-                      <div className="card-header d-flex justify-content-between align-items-center">
-                          <h5 className="card-title mb-0">Summary</h5>
-                          <a href="apps-purchase.html" className="link link-custom-primary">View All <i className="ri-arrow-right-line"></i></a>
-                      </div>
-                      <div className="card-body pt-0">
-                          <div className="table-card table-responsive">
-                              <table className="table text-nowrap align-middle mb-0">
-                                  <thead>
-                                      <tr className="bg-light border-bottom">
-                                          <th>
-                                              <div className="form-check check-primary">
-                                                  <input className="form-check-input" type="checkbox" id="checkAllPurchases" />
-                                              </div>
-                                          </th>
-                                          <th className="fw-medium text-muted">Supplier</th>
-                                          <th className="fw-medium text-muted">Items</th>
-                                          <th className="fw-medium text-muted">Total Amount</th>
-                                          <th className="fw-medium text-muted">Payment Status</th>
-                                          <th className="fw-medium text-muted">Date</th>
-                                          <th className="fw-medium text-muted">Actions</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody>
-                                      <tr>
-                                          <td>
-                                              <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                          </td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <img src="../assets/user-6-BIO7_TUU.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                                  <a href="#" className="text-reset fw-medium d-block">Sunrise Wholesale</a>
-                                              </div>
-                                          </td>
-                                          <td>25 Items</td>
-                                          <td>$42,380.00</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                          <td>23 Dec, 2025</td>
-                                          <td>
-                                              <div className="d-flex gap-2">
-                                                  <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                      <tr>
-                                          <td>
-                                              <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                          </td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <img src="../assets/user-2-CroG7YJ0.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                                  <a href="#" className="text-reset fw-medium d-block">Global Traders</a>
-                                              </div>
-                                          </td>
-                                          <td>40 Items</td>
-                                          <td>$28,500.00</td>
-                                          <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
-                                          <td>20 Dec, 2025</td>
-                                          <td>
-                                              <div className="d-flex gap-2">
-                                                  <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                      <tr>
-                                          <td>
-                                              <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                          </td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <img src="../assets/user-3-Bz6g7hsE.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                                  <a href="#" className="text-reset fw-medium d-block">Prime Supplies</a>
-                                              </div>
-                                          </td>
-                                          <td>15 Items</td>
-                                          <td>$18,750.00</td>
-                                          <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Overdue</span></td>
-                                          <td>18 Dec, 2025</td>
-                                          <td>
-                                              <div className="d-flex gap-2">
-                                                  <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                      <tr>
-                                          <td>
-                                              <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                          </td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <img src="../assets/user-4-7l52E1Lo.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                                  <a href="#" className="text-reset fw-medium d-block">Elite Distributors</a>
-                                              </div>
-                                          </td>
-                                          <td>30 Items</td>
-                                          <td>$35,600.00</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                          <td>15 Dec, 2025</td>
-                                          <td>
-                                              <div className="d-flex gap-2">
-                                                  <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                      <tr>
-                                          <td>
-                                              <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                          </td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <img src="../assets/user-5-BsT8d_Co.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
-                                                  <a href="#" className="text-reset fw-medium d-block">Oceanic Imports</a>
-                                              </div>
-                                          </td>
-                                          <td>10 Items</td>
-                                          <td>$12,450.00</td>
-                                          <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
-                                          <td>12 Dec, 2025</td>
-                                          <td>
-                                              <div className="d-flex gap-2">
-                                                  <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                                  <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                  </tbody>
-                              </table>
-                          </div>
-                          <div className="row align-items-center g-3 mt-3">
-                              <div className="col-md-6">
-                                  <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">16</b> Results</p>
-                              </div>
-                              <div className="col-md-6">
-                                  <nav aria-label="Page navigation example">
-                                      <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                          <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                          <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                                      </ul>
-                                  </nav>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+
+              {dateRange === 'custom' && (
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="col-md-5 text-md-end">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={fetchPurchaseReport}
+                title="Refresh Report"
+              >
+                <i className="ri-refresh-line me-1"></i>Refresh
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* KPI Stats Cards */}
+      <div className="row g-3 mb-4">
+        {[
+          {
+            label: 'Total Procurement Volume',
+            value: formatNaira(kpis.total_value),
+            glow: 'bg-card-glow-indigo',
+            iconBg: '#EEF2FF',
+            iconColor: '#4F46E5',
+            icon: 'ri-truck-line',
+            subLeft: 'Purchase Commitments',
+            subRight: `${kpis.active_orders || 0} Orders`
+          },
+          {
+            label: 'Total Amount Disbursed',
+            value: formatNaira(kpis.total_paid),
+            glow: 'bg-card-glow-green',
+            iconBg: '#ECFDF5',
+            iconColor: '#059669',
+            icon: 'ri-checkbox-circle-line',
+            subLeft: 'Paid Invoices',
+            subRight: 'Settled'
+          },
+          {
+            label: 'Outstanding Payables',
+            value: formatNaira(kpis.outstanding),
+            glow: 'bg-card-glow-red',
+            iconBg: '#FFF1F2',
+            iconColor: '#E11D48',
+            icon: 'ri-money-cny-box-line',
+            subLeft: 'Vendor Liabilities',
+            subRight: `${kpis.unpaid_count || 0} Pending`
+          },
+          {
+            label: 'Deliveries Fulfilled',
+            value: kpis.fully_received || 0,
+            glow: 'bg-card-glow-blue',
+            iconBg: '#EFF6FF',
+            iconColor: '#2563EB',
+            icon: 'ri-archive-line',
+            subLeft: 'Received to Warehouse',
+            subRight: 'Inspected'
+          },
+        ].map(c => (
+          <div key={c.label} className="col-12 col-sm-6 col-xl-3">
+            <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${c.glow}`}>
+              <div className="card-body p-3.5">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2" title={c.label}>
+                    {c.label}
+                  </span>
+                  <span className="kpi-icon-pill" style={{ background: c.iconBg, color: c.iconColor }}>
+                    <i className={`${c.icon} fs-18`}></i>
+                  </span>
+                </div>
+                <div className="fs-22 fw-bolder text-dark mb-1 font-display text-truncate">
+                  {c.value}
+                </div>
+                <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
+                  <span className="text-truncate me-2">{c.subLeft}</span>
+                  <strong className="text-dark font-monospace flex-shrink-0">{c.subRight}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Breakdown Row */}
+      <div className="row g-3 mb-4">
+        {/* Top Suppliers Table */}
+        <div className="col-xl-8">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+              <h5 className="card-title mb-0">
+                <i className="ri-team-line me-2 text-primary"></i>Top Suppliers by Purchase Volume
+              </h5>
+              <span className="badge bg-light text-dark border">{topSuppliers.length} vendors</span>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '380px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Supplier</th>
+                      <th className="text-center">Orders</th>
+                      <th className="text-end">Total Purchased</th>
+                      <th className="text-end">Paid Amount</th>
+                      <th className="text-end pe-3">Outstanding</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">
+                          <span className="spinner-border spinner-border-sm me-2"></span>Loading supplier procurement records...
+                        </td>
+                      </tr>
+                    ) : topSuppliers.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">
+                          No purchase orders recorded for suppliers in this period.
+                        </td>
+                      </tr>
+                    ) : (
+                      topSuppliers.map((s, idx) => (
+                        <tr key={s.id || idx}>
+                          <td className="ps-3">
+                            <div className="fw-bold text-dark">{s.supplier_name}</div>
+                            <div className="text-muted fs-xs font-monospace">{s.supplier_code}</div>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge bg-light text-dark border px-2 py-1">
+                              {s.orders}
+                            </span>
+                          </td>
+                          <td className="text-end fw-bold font-monospace text-dark">
+                            {formatNaira(s.total_purchased)}
+                          </td>
+                          <td className="text-end font-monospace text-success">
+                            {formatNaira(s.total_paid)}
+                          </td>
+                          <td className="text-end pe-3 font-monospace fw-bold text-danger">
+                            {formatNaira(s.outstanding)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PO Status Breakdown */}
+        <div className="col-xl-4">
+          <div className="card shadow-sm border-0 h-100">
+            <div className="card-header bg-transparent border-bottom">
+              <h5 className="card-title mb-0">
+                <i className="ri-pie-chart-line me-2 text-primary"></i>PO Status Breakdown
+              </h5>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive" style={{ maxHeight: '380px' }}>
+                <table className="table table-hover align-middle mb-0 text-nowrap">
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th className="ps-3">Status</th>
+                      <th className="text-center">Count</th>
+                      <th className="text-end pe-3">Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">Loading PO status...</td>
+                      </tr>
+                    ) : byStatus.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="text-center py-4 text-muted">No PO records found.</td>
+                      </tr>
+                    ) : (
+                      byStatus.map((st, idx) => (
+                        <tr key={idx}>
+                          <td className="ps-3">
+                            <span className="badge bg-light text-dark border text-uppercase">
+                              {st.status}
+                            </span>
+                          </td>
+                          <td className="text-center text-muted fs-sm">{st.count}</td>
+                          <td className="text-end pe-3 font-monospace fw-bold text-primary">
+                            {formatNaira(st.value)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
