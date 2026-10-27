@@ -1021,6 +1021,45 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                 <div style={{ marginTop: 10, fontSize: 11, color: '#64748B' }}>
                   Total Lifetime Completed: <strong style={{ color: '#0F172A' }}>{activeVehicle.completedCount} Deliveries</strong>
                 </div>
+
+                {/* Selected Order Driver Earning Pill */}
+                {orderParam && (() => {
+                  const focusedOrd = (data?.orders || []).find(o => String(o.order_id) === String(orderParam) || String(o.order_ref) === String(orderParam))
+                  if (!focusedOrd) return null
+                  const earned = Number(focusedOrd.driver_earning || Math.round((focusedOrd.delivery_fee || 0) * 0.70) || 700)
+                  const isDelivered = focusedOrd.status === 'delivered' || focusedOrd.delivery_status === 'delivered'
+                  return (
+                    <div style={{
+                      marginTop: 12,
+                      padding: '8px 12px',
+                      background: '#F0FDF4',
+                      border: '1px solid #BBF7D0',
+                      borderRadius: 10,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#166534' }}>
+                          Order #{focusedOrd.order_ref || focusedOrd.order_id} Courier Payout:
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: '#047857', marginTop: 1 }}>
+                          ₦{earned.toLocaleString()}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        background: isDelivered ? '#DCFCE7' : '#FEF3C7',
+                        color: isDelivered ? '#166534' : '#92400E'
+                      }}>
+                        {isDelivered ? '✓ Credited' : 'Est. Drop Fee'}
+                      </span>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -1301,6 +1340,7 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                     <th style={{ padding: '8px 10px' }}>COURIER</th>
                     <th style={{ padding: '8px 10px' }}>DELIVERY DESTINATION</th>
                     <th style={{ padding: '8px 10px' }}>TOTAL</th>
+                    <th style={{ padding: '8px 10px', color: '#047857' }}>DRIVER EARNING</th>
                     <th style={{ padding: '8px 10px', textAlign: 'right' }}>STATUS</th>
                   </tr>
                 </thead>
@@ -1359,6 +1399,26 @@ export default function FleetCommand({ isModal = false, orderId = null, onClose 
                         </td>
                         <td style={{ padding: '12px 10px', fontWeight: 800, color: '#16A34A' }}>
                           ₦{Number(ord.total || 0).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '12px 10px' }}>
+                          {ord.driver_id || ord.driver_name ? (
+                            <div>
+                              <span style={{ fontWeight: 800, color: '#047857', fontSize: 12.5 }}>
+                                ₦{Number(ord.driver_earning || Math.round((ord.delivery_fee || 0) * 0.70) || 700).toLocaleString()}
+                              </span>
+                              {status === 'delivered' ? (
+                                <span style={{ display: 'block', fontSize: 9.5, color: '#16A34A', fontWeight: 700 }}>
+                                  ✓ Credited
+                                </span>
+                              ) : (
+                                <span style={{ display: 'block', fontSize: 9.5, color: '#94A3B8', fontWeight: 600 }}>
+                                  Est. Payout
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#CBD5E1', fontSize: 11 }}>—</span>
+                          )}
                         </td>
                         <td style={{ padding: '12px 10px', textAlign: 'right' }}>
                           <span style={{

@@ -97,6 +97,7 @@ router.get("/fleet-command", requireRole("superadmin", "manager", "admin", "deli
         o.order_ref,
         o.status,
         o.total,
+        COALESCE(o.delivery_fee, dz.delivery_fee, d.delivery_fee, 0) AS delivery_fee,
         COALESCE(o.address, 'Farm Pick-up Point') AS delivery_address,
         o.created_at,
         COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
@@ -109,11 +110,18 @@ router.get("/fleet-command", requireRole("superadmin", "manager", "admin", "deli
         d.id AS delivery_id,
         d.delivery_ref,
         d.status AS delivery_status,
-        d.eta_minutes
+        d.eta_minutes,
+        COALESCE(
+          d.driver_commission_amount,
+          dz.driver_earning_fee,
+          ROUND(COALESCE(d.delivery_fee, dz.delivery_fee, o.delivery_fee, 0) * 0.70, 2),
+          COALESCE(dr.commission_per_delivery, 700)
+        ) AS driver_earning
       FROM orders o
       LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
       LEFT JOIN drivers dr ON (d.driver_id = dr.id OR o.driver_id = dr.id)
+      LEFT JOIN delivery_zones dz ON (d.zone_id = dz.zone_id OR o.zone_id = dz.zone_id)
       ORDER BY o.created_at DESC
       LIMIT 40
     `);

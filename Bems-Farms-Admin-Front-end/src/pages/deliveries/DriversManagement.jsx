@@ -8,6 +8,9 @@ import api from '../../lib/api'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
 import DriverDispatchConsole from './DriverDispatchConsole'
+import fleetMotoImg from '../../assets/fleet/fleet_moto.jpg'
+import fleetTruckImg from '../../assets/fleet/fleet_truck.jpg'
+import fleetVanImg from '../../assets/fleet/fleet_van.jpg'
 
 // ─── Fix Leaflet default marker icons in Vite ─────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl
@@ -104,6 +107,77 @@ function formatRelativeTime(dateStr) {
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
   return `${Math.floor(diffSec / 86400)}d ago`
+}
+
+function SpeedometerGauge({ speed = 0, maxSpeed = 100 }) {
+  const clampedSpeed = Math.min(Math.max(Number(speed) || 0, 0), maxSpeed)
+  const ratio = clampedSpeed / maxSpeed
+  const angle = Math.PI * (1 - ratio)
+  const cx = 50, cy = 50, r = 38
+  const x = cx + r * Math.cos(angle)
+  const y = cy - r * Math.sin(angle)
+  const largeArcFlag = ratio > 0.5 ? 1 : 0
+  const arcD = ratio > 0.01 ? `M 12 50 A ${r} ${r} 0 ${largeArcFlag} 1 ${x.toFixed(1)} ${y.toFixed(1)}` : ''
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '4px 0' }}>
+      <svg width="88" height="48" viewBox="0 0 100 55">
+        <path
+          d="M 12 50 A 38 38 0 0 1 88 50"
+          fill="none"
+          stroke="#F1F5F9"
+          strokeWidth="8"
+          strokeLinecap="round"
+        />
+        {ratio > 0.01 && (
+          <path
+            d={arcD}
+            fill="none"
+            stroke={clampedSpeed > 70 ? '#EF4444' : (clampedSpeed > 40 ? '#F59E0B' : '#10B981')}
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+        )}
+      </svg>
+      <div style={{ fontSize: 17, fontWeight: 900, color: '#0F172A', marginTop: -6 }}>
+        {Math.round(clampedSpeed)} <span style={{ fontSize: 10, fontWeight: 600, color: '#64748B' }}>km/h</span>
+      </div>
+    </div>
+  )
+}
+
+function resolveDocUrl(driver, key) {
+  if (!driver) return null
+  const docs = (typeof driver.documents === 'object' && driver.documents !== null)
+    ? driver.documents
+    : (typeof driver.documents === 'string' ? (() => { try { return JSON.parse(driver.documents) } catch(e) { return {} } })() : {})
+  
+  let rawUrl = null
+  if (key === 'drivers_license' || key === 'driver_license') {
+    rawUrl = docs.driver_license_front || docs.driver_license || docs.drivers_license || docs.license || null
+  } else if (key === 'driver_license_back') {
+    rawUrl = docs.driver_license_back || docs.license_back || null
+  } else if (key === 'passport_photo') {
+    rawUrl = docs.passport_photo || docs.photo || docs.avatar || docs.avatar_url || driver.avatar_url || null
+  } else if (key === 'vehicle_registration') {
+    rawUrl = docs.vehicle_registration || docs.vehicle_reg || docs.vehicle || docs.vehicle_photo || docs.logbook || null
+  } else if (key === 'nin_slip') {
+    rawUrl = docs.nin_slip || docs.nin || docs.nin_document || null
+  } else if (key === 'guarantor_form') {
+    rawUrl = docs.guarantor_form || docs.guarantor || docs.guarantor_document || null
+  } else {
+    rawUrl = docs[key] || null
+  }
+
+  if (!rawUrl || typeof rawUrl !== 'string') return null
+
+  if (rawUrl.includes('/uploads/documents/') || (rawUrl.includes('api.bemsfarms.com') && rawUrl.includes('/uploads/'))) {
+    const filename = rawUrl.split('/').pop().split('?')[0]
+    if (filename) {
+      return `https://api.bemsfarms.com/api/driver/documents/file/${filename}`
+    }
+  }
+  return rawUrl
 }
 
 const STATUS_CFG = {
@@ -391,14 +465,14 @@ export default function DriversManagement() {
     setComplianceRejectNotes('')
     setViewingDocument(null)
 
-    if (type === 'location' && driver) {
+    if ((type === 'location' || type === 'profile') && driver) {
       setLoadingLocation(true)
       setLocationData(null)
       api.get(`/admin/deliveries/drivers/${driver.id}/location`)
         .then((res) => setLocationData(res.data))
         .catch((err) => {
           console.error('Failed to load driver live location:', err)
-          toast.error('Failed to load driver GPS coordinates')
+          if (type === 'location') toast.error('Failed to load driver GPS coordinates')
         })
         .finally(() => setLoadingLocation(false))
     }
@@ -2187,313 +2261,911 @@ export default function DriversManagement() {
             </div>
           )}
 
-          {/* ── 2. DRIVER PROFILE & CREDENTIALS MODAL ─────────── */}
+          {/* ── 2. DRIVER PROFILE & EXECUTIVE COCKPIT MODAL ─────────── */}
           {activeModal === 'profile' && selected && (() => {
             const cfg = STATUS_CFG[selected.status] || STATUS_CFG.active
             const onbCfg =
               ONBOARDING_STATUS_CFG[selected.onboarding_status] || ONBOARDING_STATUS_CFG.approved
             const successRate = Number(selected.success_rate || 0)
 
+            const vType = (selected.vehicle_type || 'motorcycle').toLowerCase()
+            let vehicleImage = fleetMotoImg
+            let vehicleModel = 'Express Produce Motorcycle'
+            let vehicleCapacityKg = '65kg'
+            let vehicleIcon = '🛵'
+
+            if (vType.includes('truck')) {
+              vehicleImage = fleetTruckImg
+              vehicleModel = 'Refrigerated Produce Truck'
+              vehicleCapacityKg = '750kg'
+              vehicleIcon = '🚚'
+            } else if (vType.includes('van') || vType.includes('car') || vType.includes('sprinter')) {
+              vehicleImage = fleetVanImg
+              vehicleModel = 'Commercial Cold-Box Vehicle'
+              vehicleCapacityKg = '420kg'
+              vehicleIcon = '🚐'
+            }
+
+            // Location telemetry from locationData or driver object
+            const liveLoc = locationData?.current_location || locationData?.location || null
+            const lat = liveLoc?.latitude ?? selected.current_lat
+            const lng = liveLoc?.longitude ?? selected.current_lng
+            const speed = liveLoc?.speed ?? selected.current_speed ?? 0
+            const heading = liveLoc?.heading ?? selected.current_heading ?? 0
+            const isLive = liveLoc?.is_gps_live ?? selected.is_gps_live ?? false
+            const lastPing = liveLoc?.recorded_at ?? selected.last_gps_at
+
+            // Active delivery from locationData if available
+            const activeDelivery = locationData?.active_delivery || null
+
+            // Bank accounts resolution
+            const accounts = (Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0)
+              ? selected.bank_accounts
+              : (selected.account_number ? [{
+                  id: 'primary',
+                  bank_name: selected.bank_name || 'Personal Bank',
+                  account_number: selected.account_number,
+                  account_name: selected.account_name || selected.name,
+                  is_default: true,
+                  is_verified: true,
+                }] : [])
+
+            // Document keys to inspect
+            const complianceDocItems = [
+              { key: 'drivers_license', title: "Driver's License (Front)", icon: '🪪' },
+              ...(resolveDocUrl(selected, 'driver_license_back') ? [{ key: 'driver_license_back', title: "Driver's License (Back)", icon: '🪪' }] : []),
+              { key: 'passport_photo', title: 'Passport Photo', icon: '👤' },
+              { key: 'vehicle_registration', title: 'Vehicle Registration', icon: '🚙' },
+              { key: 'nin_slip', title: 'National ID / NIN Slip', icon: '📜' },
+              { key: 'guarantor_form', title: 'Guarantor Form', icon: '✍️' },
+            ].map(doc => ({ ...doc, url: resolveDocUrl(selected, doc.key) }))
+
             return (
               <div
                 style={{
-                  background: '#fff',
-                  borderRadius: 20,
+                  background: '#F1F5F9',
+                  borderRadius: 24,
                   width: '100%',
-                  maxWidth: 640,
-                  maxHeight: '90vh',
-                  overflowY: 'auto',
+                  maxWidth: 1240,
+                  maxHeight: '94vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
+                  border: '1px solid #E2E8F0',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                 }}
-                className="shadow-2xl overflow-hidden"
+                className="shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Header band */}
-                <div style={{ background: '#1e293b', padding: '24px 28px', color: '#fff' }}>
-                  <div className="d-flex align-items-center gap-3">
+                {/* ── Top Bar / Cockpit Header (Sticky) ── */}
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderBottom: '1px solid #E2E8F0',
+                    padding: '16px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexShrink: 0,
+                    zIndex: 10,
+                  }}
+                >
+                  {/* Brand & Driver Identifiers */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div
-                      className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold fs-18"
                       style={{
-                        width: 56,
-                        height: 56,
-                        background: cfg.color + '30',
-                        border: `2px solid ${cfg.color}`,
-                        color: cfg.color,
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#FFFFFF',
+                        fontSize: 22,
+                        fontWeight: 800,
+                        boxShadow: '0 6px 16px rgba(5, 150, 105, 0.25)',
                       }}
                     >
-                      {selected.name
-                        ? selected.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                        : 'DR'}
+                      🌱
                     </div>
-                    <div className="flex-grow-1">
-                      <div className="fw-bold fs-18">{selected.name}</div>
-                      <div style={{ fontSize: 12, opacity: 0.8 }}>
-                        {selected.phone} · {selected.email || 'No email recorded'}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: '#0F172A' }}>
+                          Bems Courier Command &amp; Fleet Operations Dossier
+                        </h2>
+                        <span
+                          style={{
+                            background: '#ECFDF5',
+                            color: '#065F46',
+                            border: '1px solid #A7F3D0',
+                            padding: '2px 8px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              background: '#10B981',
+                              display: 'inline-block',
+                            }}
+                          />
+                          REAL-TIME DATABASE STREAM
+                        </span>
+                        <span
+                          style={{
+                            background: '#F1F5F9',
+                            color: '#334155',
+                            border: '1px solid #CBD5E1',
+                            padding: '2px 8px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          ID: DRV-{String(selected.id).padStart(4, '0')}
+                        </span>
                       </div>
-                      <div style={{ fontSize: 12, opacity: 0.8 }}>
-                        {selected.vehicle_type || 'Motorcycle'} · {selected.vehicle_plate || 'No Plate'}
-                      </div>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>
+                        Live courier telemetry, active produce delivery tracking &amp; multi-zone fleet operations
+                      </p>
                     </div>
-                    <div className="text-end">
-                      <span className="badge mb-1 d-block" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
-                        <i className={`${cfg.icon} me-1`} />
-                        {cfg.label}
-                      </span>
-                      <span
-                        className="badge"
-                        style={{ background: onbCfg.bg, color: onbCfg.color, fontSize: 10 }}
-                      >
-                        {onbCfg.label}
-                      </span>
-                      {selected.status === 'no_signal' && (
-                        <div className="mt-1 text-warning font-monospace" style={{ fontSize: 9 }}>
-                          No ping &gt;5m (Data/GPS Off)
-                        </div>
-                      )}
-                      {selected.status === 'active' && (
-                        <div className="mt-1 text-emerald font-monospace" style={{ fontSize: 9 }}>
-                          Signal live &amp; fresh
-                        </div>
-                      )}
-                    </div>
+                  </div>
+
+                  {/* Header Navigation & Action Pills */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const drvId = selected.id
+                        closeModal()
+                        setSelectedChatDriverId(drvId)
+                        setTabMode('chat')
+                        setSearchParams({ tab: 'chat', driverId: drvId }, { replace: true })
+                      }}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+                      }}
+                    >
+                      <i className="ri-message-3-line" style={{ fontSize: 14 }} />
+                      <span>Courier Chat</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeModal()
+                        setTimeout(() => openModal('location', selected), 100)
+                      }}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: '#2563EB',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                      }}
+                    >
+                      <i className="ri-map-pin-range-line" style={{ fontSize: 14 }} />
+                      <span>Live GPS Map</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openModal('statement', selected)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: '#0F766E',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)',
+                      }}
+                    >
+                      <i className="ri-file-list-3-line" style={{ fontSize: 14 }} />
+                      <span>Statement</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: 10,
+                        background: '#EF4444',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)',
+                      }}
+                    >
+                      <span>✕ Close</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="p-4">
-                  {/* KPI row */}
-                  <div className="row g-3 mb-4">
-                    {[
-                      { label: 'Total Deliveries', value: selected.total_deliveries || 0, color: '#6366f1' },
-                      {
-                        label: 'Success Rate',
-                        value: `${successRate}%`,
-                        color: successRate >= 95 ? '#22c55e' : successRate >= 85 ? '#f59e0b' : '#ef4444',
-                      },
-                      { label: 'Accrued Earnings', value: fmt(selected.earnings || selected.total_earnings), color: '#10b981' },
-                    ].map((k) => (
-                      <div key={k.label} className="col-4">
-                        <div className="border rounded-3 p-3 text-center bg-light">
-                          <div className="fw-bold fs-18" style={{ color: k.color }}>
-                            {k.value}
+                {/* ── Scrollable Body ── */}
+                <div
+                  style={{
+                    padding: '20px 24px',
+                    overflowY: 'auto',
+                    flexGrow: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 18,
+                  }}
+                >
+                  {/* ── Cockpit Hero Section (3-Column Grid) ── */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(280px, 1fr) minmax(340px, 1.35fr) minmax(280px, 1fr)',
+                      gap: 16,
+                      alignItems: 'stretch',
+                    }}
+                  >
+                    {/* ── Left Card: Vehicle Plate, Mission & Rating ── */}
+                    <div
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.98)',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 20,
+                        padding: '20px 22px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: 14,
+                      }}
+                    >
+                      {/* Vehicle Plate & Status */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>
+                            VEHICLE PLATE
+                          </span>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                            {selected.vehicle_plate || `BF-${(selected.vehicle_type || 'COURIER').slice(0, 3).toUpperCase()}-${selected.id}`}
                           </div>
-                          <div className="text-muted fs-11">{k.label}</div>
+                        </div>
+                        <span
+                          style={{
+                            background: cfg.bg,
+                            color: cfg.color,
+                            border: `1px solid ${cfg.color}35`,
+                            padding: '4px 10px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              background: cfg.color,
+                              display: 'inline-block',
+                            }}
+                          />
+                          {cfg.label}
+                        </span>
+                      </div>
+
+                      {/* Route Timeline Slider Bar */}
+                      <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 8 }}>
+                          <span>{activeDelivery ? `Task: #${activeDelivery.order_id}` : 'Mission Standby'}</span>
+                          <span style={{ color: activeDelivery ? '#059669' : '#64748B' }}>
+                            {activeDelivery ? (activeDelivery.eta_minutes ? `~${activeDelivery.eta_minutes} mins` : 'In Transit') : 'Standby at Hub'}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar Line */}
+                        <div style={{ position: 'relative', height: 6, background: '#E2E8F0', borderRadius: 10, margin: '8px 0' }}>
+                          <div
+                            style={{
+                              width: activeDelivery ? '65%' : '0%',
+                              height: '100%',
+                              background: 'linear-gradient(90deg, #10B981 0%, #059669 100%)',
+                              borderRadius: 10,
+                            }}
+                          />
+                          {activeDelivery && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: -5,
+                                left: 'calc(65% - 8px)',
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                background: '#0F172A',
+                                border: '2px solid #FFFFFF',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 8,
+                                color: '#fff',
+                              }}
+                            >
+                              ▶
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Endpoints */}
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#64748B' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#94A3B8', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              Bems Farm Produce Hub, Umuahia
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, color: '#0F172A' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {activeDelivery ? (activeDelivery.delivery_address || activeDelivery.customer_name || 'Customer Delivery Address') : 'No active delivery task assigned'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Present GPS Telemetry & Live Location Card */}
-                  <div className="border rounded-3 p-3 mb-4 bg-light-subtle shadow-xs">
-                    <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                      <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
-                        <i className="ri-map-pin-user-line text-success fs-16" />
-                        Driver Exact Present Location &amp; Telemetry
-                      </span>
-                      {selected.current_lat != null && selected.current_lng != null ? (
-                        <span className={`badge ${selected.is_gps_live ? 'bg-success text-white' : 'bg-secondary-subtle text-secondary border'} fs-11`}>
-                          {selected.is_gps_live ? '● Live GPS Streaming' : 'Saved Telemetry Fix'}
-                        </span>
-                      ) : (
-                        <span className="badge bg-warning-subtle text-warning-emphasis fs-11">No GPS Fix</span>
-                      )}
-                    </div>
-
-                    {selected.current_lat != null && selected.current_lng != null ? (
+                      {/* Courier Performance & History */}
                       <div>
-                        <div className="row g-2 mb-2.5">
-                          <div className="col-7">
-                            <div className="text-muted fs-11 text-uppercase fw-semibold">Exact GPS Coordinates</div>
-                            <div className="fw-bold font-monospace text-dark fs-13 mt-0.5">
-                              {Number(selected.current_lat).toFixed(5)}°, {Number(selected.current_lng).toFixed(5)}°
-                            </div>
-                            <div className="text-muted fs-11 mt-0.5">
-                              {selected.zone ? `Zone: ${selected.zone}` : 'Assigned Territory'}
-                            </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>Completed Shipments</span>
+                          <span style={{ fontSize: 11, color: '#059669', fontWeight: 800 }}>
+                            {selected.total_deliveries || 0} Deliveries Total
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC', padding: '8px 12px', borderRadius: 10 }}>
+                          <span style={{ fontSize: 11, color: '#64748B' }}>Courier Rating:</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#F59E0B' }}>
+                            ⭐ {selected.rating ? Number(selected.rating).toFixed(1) : '5.0'} / 5.0
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Driver Profile & Action Row */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingTop: 12,
+                          borderTop: '1px solid #F1F5F9',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: '50%',
+                              background: '#059669',
+                              color: '#FFFFFF',
+                              fontWeight: 800,
+                              fontSize: 13,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {selected.name
+                              ? selected.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                              : 'DR'}
                           </div>
-                          <div className="col-5 text-end">
-                            <div className="text-muted fs-11 text-uppercase fw-semibold">Last Recorded Ping</div>
-                            <div className="fw-semibold text-dark fs-12 font-monospace mt-0.5">
-                              {selected.last_gps_at ? formatRelativeTime(selected.last_gps_at) : 'Recent'}
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
+                              {selected.name}
                             </div>
-                            {selected.current_speed != null && (
-                              <div className="text-primary fs-11 fw-medium mt-0.5">
-                                Speed: {selected.current_speed} km/h
-                              </div>
-                            )}
+                            <div style={{ fontSize: 11, color: '#64748B' }}>
+                              {(selected.vehicle_type || 'Motorcycle').toUpperCase()} Courier
+                            </div>
                           </div>
                         </div>
 
-                        <div className="d-flex flex-wrap gap-2 pt-2 border-top">
+                        {/* Direct Action Buttons */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {selected.phone && (
+                            <a
+                              href={`tel:${selected.phone}`}
+                              title={`Call ${selected.name} (${selected.phone})`}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                background: '#ECFDF5',
+                                border: '1px solid #A7F3D0',
+                                color: '#059669',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textDecoration: 'none',
+                                fontSize: 13,
+                              }}
+                            >
+                              📞
+                            </a>
+                          )}
                           <button
                             type="button"
-                            className="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center gap-1 px-3 py-1.5 shadow-sm"
+                            onClick={() => {
+                              const drvId = selected.id
+                              closeModal()
+                              setSelectedChatDriverId(drvId)
+                              setTabMode('chat')
+                              setSearchParams({ tab: 'chat', driverId: drvId }, { replace: true })
+                            }}
+                            title={`Open Dispatch Chat with ${selected.name}`}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 8,
+                              background: '#ECFDF5',
+                              border: '1px solid #A7F3D0',
+                              color: '#059669',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              fontSize: 13,
+                            }}
+                          >
+                            💬
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Center 3D Vehicle Showcase ── */}
+                    <div
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(255, 255, 255, 0.75)',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 20,
+                        padding: '16px 20px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                      }}
+                    >
+                      {/* Floating Top Model Pill */}
+                      <div
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.95)',
+                          backdropFilter: 'blur(8px)',
+                          border: '1px solid #E2E8F0',
+                          padding: '6px 14px',
+                          borderRadius: 30,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: '#0F172A',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                          marginBottom: 8,
+                          zIndex: 5,
+                        }}
+                      >
+                        <span style={{ fontSize: 14 }}>{vehicleIcon}</span>
+                        <span>{vehicleModel} ({vehicleCapacityKg})</span>
+                        <span style={{ color: isLive ? '#059669' : '#D97706', fontSize: 11, fontWeight: 700 }}>
+                          • {isLive ? 'GPS Live Connected' : (lastPing ? `Last ping: ${formatRelativeTime(lastPing)}` : 'Signal Standby')}
+                        </span>
+                      </div>
+
+                      {/* Vehicle Graphic Container */}
+                      <div
+                        style={{
+                          width: '100%',
+                          maxWidth: 480,
+                          height: 230,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
+                        }}
+                      >
+                        <img
+                          src={vehicleImage}
+                          alt={vehicleModel}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                            filter: 'drop-shadow(0 20px 30px rgba(0, 0, 0, 0.12))',
+                          }}
+                        />
+
+                        {/* Ambient ground reflection shadow */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 5,
+                            width: '85%',
+                            height: 16,
+                            borderRadius: '50%',
+                            background: 'radial-gradient(ellipse at center, rgba(15, 23, 42, 0.18) 0%, rgba(255, 255, 255, 0) 75%)',
+                            zIndex: -1,
+                          }}
+                        />
+                      </div>
+
+                      {/* Cargo / Mission Footer */}
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#64748B',
+                          marginTop: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <span>📦 Courier Task Status:</span>
+                        <strong style={{ color: '#0F172A' }}>
+                          {activeDelivery ? `Active on Order #${activeDelivery.order_id}` : 'Available for Next Produce Dispatch'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* ── Right Telemetry Panels ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Split Top Row: GPS Status + Speed Gauge */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {/* Card 1: GPS Live Telemetry Connection */}
+                        <div
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: 18,
+                            padding: '16px 14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            minHeight: 120,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 16 }}>📍</span>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: '#065F46' }}>GPS TRACKING</span>
+                          </div>
+
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
+                              {lat != null && lng != null ? `${Number(lat).toFixed(4)}°, ${Number(lng).toFixed(4)}°` : 'No GPS Fix'}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: isLive ? '#059669' : '#64748B', marginTop: 2 }}>
+                              {isLive ? '● Live Telemetry Signal' : (lastPing ? `Ping: ${formatRelativeTime(lastPing)}` : 'Standby')}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
                             onClick={() => {
                               closeModal()
                               setTimeout(() => openModal('location', selected), 100)
                             }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#2563EB',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              marginTop: 6,
+                            }}
                           >
-                            <i className="ri-map-pin-line" />
-                            <span>Track on Interactive Map</span>
+                            <span>View on Map →</span>
                           </button>
-
-                          <a
-                            href={`https://www.google.com/maps?q=${selected.current_lat},${selected.current_lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 py-1.5"
-                          >
-                            <i className="ri-google-fill" />
-                            <span>Open in Google Maps</span>
-                            <i className="ri-external-link-line fs-11" />
-                          </a>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="p-2.5 bg-white rounded border text-muted fs-12">
-                        <i className="ri-information-line me-1 text-primary" />
-                        No live GPS signal received yet. The courier needs to be logged into the Bems Courier app with location enabled.
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Driver Wallet & Payout Account Summary */}
-                  <div className="border rounded-3 p-3.5 mb-4 bg-light-subtle">
-                    <div className="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
-                      <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
-                        <i className="ri-wallet-3-line text-emerald fs-16" />
-                        Driver Internal Earnings Wallet &amp; Payouts
-                      </span>
-                      {selected.payout_locked || selected.wallet_is_frozen ? (
-                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle fs-11">
-                          <i className="ri-lock-2-line me-1" />Payouts Restricted / Locked
-                        </span>
-                      ) : (
-                        <span className="badge bg-emerald-subtle text-emerald fs-11">Internal Wallet Active</span>
-                      )}
-                    </div>
-
-                    {/* Security Payout Lock Alert Banner */}
-                    {(selected.payout_locked || selected.wallet_is_frozen || (selected.pin_failed_attempts >= 5)) && (
-                      <div className="alert alert-danger border-danger d-flex align-items-center justify-content-between p-3 mb-3 rounded-2 shadow-xs">
-                        <div>
-                          <div className="fw-bold text-dark fs-13 d-flex align-items-center gap-1.5">
-                            <i className="ri-error-warning-fill text-danger fs-16" />
-                            Payouts &amp; Cashouts Locked
-                          </div>
-                          <div className="text-muted fs-11 mt-0.5">
-                            {selected.payout_locked_reason || selected.wallet_frozen_reason || 'Security lock active: Exceeded maximum PIN attempts.'}
-                            {selected.pin_failed_attempts > 0 && ` (${selected.pin_failed_attempts} failed PIN attempt${selected.pin_failed_attempts === 1 ? '' : 's'})`}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger text-white fw-bold d-flex align-items-center gap-1 shadow-sm px-3 py-1.5"
-                          disabled={unlockingPayout}
-                          onClick={() => handleUnlockPayout(selected)}
+                        {/* Card 2: Courier Speedometer Gauge */}
+                        <div
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: 18,
+                            padding: '12px 14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: 120,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                          }}
                         >
-                          <i className="ri-lock-unlock-line" />
-                          <span>{unlockingPayout ? 'Unlocking…' : 'Unlock Payouts'}</span>
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Internal Wallet Details */}
-                    <div className="bg-white p-2.5 rounded-2 border mb-2.5 d-flex align-items-center justify-content-between">
-                      <div>
-                        <div className="text-muted fs-11 text-uppercase fw-bold mb-0.5">
-                          Internal Driver Wallet ID
-                        </div>
-                        <div className="fw-bold text-dark fs-14 font-monospace">
-                          {selected.wallet_account_number || (`DRV-${String(selected.id).padStart(4, '0')}`)}
-                        </div>
-                        <div className="text-muted fs-11">
-                          Bems Farms Internal Settlement Wallet
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                            Courier Speed
+                          </div>
+                          <SpeedometerGauge speed={speed} />
+                          <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>
+                            Heading: {Math.round(heading)}°
+                          </div>
                         </div>
                       </div>
-                      <div className="text-end">
-                        <div className="text-muted fs-11 text-uppercase fw-bold mb-0.5">
-                          Wallet Earnings Balance
+
+                      {/* Card 3: Courier Wallet Balance */}
+                      <div
+                        style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: 18,
+                          padding: '16px 18px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                            Courier Wallet Balance
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => openModal('statement', selected)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#059669',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Statement →
+                          </button>
                         </div>
-                        <div className="fw-bold text-emerald fs-15 font-monospace">
+                        <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: '6px 0 2px' }}>
                           {fmt(selected.earnings || selected.total_earnings || 0)}
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Zonal Delivery Earning Rate */}
-                    <div className="mb-2.5 pb-2 border-bottom d-flex align-items-center justify-content-between">
-                      <div>
-                        <span className="text-muted fs-12 d-block">Earning Model</span>
-                        <strong className="text-dark fs-13">
-                          {selected.zone ? selected.zone : (selected.zone_id ? `Assigned Zone: ${selected.zone_id}` : 'Dynamic Zonal Pricing')}
-                        </strong>
-                      </div>
-                      <div className="text-end">
-                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-11 px-2 py-0.5">
-                          Destination-Based Drop Payout
-                        </span>
-                        <div className="text-muted fs-11 mt-1 font-monospace fw-semibold text-dark">
-                          {selected.zone_driver_earning_fee 
-                            ? `${fmt(selected.zone_driver_earning_fee)} / drop`
-                            : '₦700 – ₦5,600 / drop (by zone)'}
+                        <div style={{ fontSize: 11, color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Total Lifetime Completed: <strong>{selected.total_deliveries || 0} Deliveries</strong></span>
+                          <span>Success: <strong style={{ color: successRate >= 95 ? '#16A34A' : '#D97706' }}>{successRate}%</strong></span>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Withdrawal Outflow Bank Accounts */}
-                    <div className="mb-1">
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <span className="text-muted fs-11 text-uppercase fw-bold d-flex align-items-center gap-1">
-                          <i className="ri-bank-line text-primary" />
-                          Registered Withdrawal &amp; Payout Accounts
+                  {/* ── Bottom Operational Command Grid (2 Wide Columns) ── */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(340px, 1.15fr) minmax(320px, 1fr)',
+                      gap: 16,
+                      alignItems: 'start',
+                    }}
+                  >
+                    {/* ── Left Column: Driver Earnings, Settlement & Accounts ── */}
+                    <div
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 20,
+                        padding: '20px 22px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i className="ri-wallet-3-line text-emerald fs-16" />
+                          Driver Internal Earnings Wallet &amp; Payouts
                         </span>
-                        <span className="badge bg-light text-muted border fs-10">
-                          {((Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0) ? selected.bank_accounts.length : (selected.account_number ? 1 : 0))} account{((Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0) ? selected.bank_accounts.length : (selected.account_number ? 1 : 0)) === 1 ? '' : 's'}
-                        </span>
+                        {selected.payout_locked || selected.wallet_is_frozen ? (
+                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle fs-11">
+                            <i className="ri-lock-2-line me-1" />Payouts Restricted / Locked
+                          </span>
+                        ) : (
+                          <span className="badge bg-emerald-subtle text-emerald fs-11">Internal Wallet Active</span>
+                        )}
                       </div>
 
-                      {(() => {
-                        const accounts = (Array.isArray(selected.bank_accounts) && selected.bank_accounts.length > 0)
-                          ? selected.bank_accounts
-                          : (selected.account_number ? [{
-                              id: 'legacy',
-                              bank_name: selected.bank_name || 'Personal Bank',
-                              account_number: selected.account_number,
-                              account_name: selected.account_name || selected.name,
-                              is_default: true,
-                              is_verified: true,
-                            }] : [])
-
-                        if (accounts.length === 0) {
-                          return (
-                            <div className="p-2.5 bg-light rounded text-muted fs-12 text-center">
-                              No withdrawal bank accounts configured yet.
+                      {/* Security Payout Lock Alert Banner */}
+                      {(selected.payout_locked || selected.wallet_is_frozen || (selected.pin_failed_attempts >= 5)) && (
+                        <div className="alert alert-danger border-danger d-flex align-items-center justify-content-between p-3 rounded-3 shadow-xs mb-0">
+                          <div>
+                            <div className="fw-bold text-dark fs-13 d-flex align-items-center gap-1.5">
+                              <i className="ri-error-warning-fill text-danger fs-16" />
+                              Payouts &amp; Cashouts Locked
                             </div>
-                          )
-                        }
+                            <div className="text-muted fs-11 mt-0.5">
+                              {selected.payout_locked_reason || selected.wallet_frozen_reason || 'Security lock active: Exceeded maximum PIN attempts.'}
+                              {selected.pin_failed_attempts > 0 && ` (${selected.pin_failed_attempts} failed PIN attempt${selected.pin_failed_attempts === 1 ? '' : 's'})`}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger text-white fw-bold d-flex align-items-center gap-1 shadow-sm px-3 py-1.5"
+                            disabled={unlockingPayout}
+                            onClick={() => handleUnlockPayout(selected)}
+                          >
+                            <i className="ri-lock-unlock-line" />
+                            <span>{unlockingPayout ? 'Unlocking…' : 'Unlock Payouts'}</span>
+                          </button>
+                        </div>
+                      )}
 
-                        return (
-                          <div className="d-flex flex-column gap-2">
+                      {/* Internal Wallet Details Box */}
+                      <div
+                        style={{
+                          background: '#F8FAFC',
+                          borderRadius: 14,
+                          padding: '14px 16px',
+                          border: '1px solid #E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
+                            Internal Settlement Wallet ID
+                          </div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', fontFamily: 'monospace', marginTop: 2 }}>
+                            {selected.wallet_account_number || `DRV-${String(selected.id).padStart(4, '0')}`}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                            Bems Farms Central Courier Settlement Ledger
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
+                            Wallet Balance
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: '#059669', fontFamily: 'monospace', marginTop: 2 }}>
+                            {fmt(selected.earnings || selected.total_earnings || 0)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Zonal Delivery Earning Rate */}
+                      <div
+                        style={{
+                          background: '#F8FAFC',
+                          borderRadius: 14,
+                          padding: '12px 16px',
+                          border: '1px solid #E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontSize: 11, color: '#64748B', display: 'block', fontWeight: 600 }}>Earning Model</span>
+                          <strong style={{ fontSize: 13, color: '#0F172A' }}>
+                            {selected.zone ? selected.zone : (selected.zone_id ? `Assigned Zone: ${selected.zone_id}` : 'Dynamic Zonal Pricing')}
+                          </strong>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-11 px-2 py-0.5">
+                            Destination-Based Drop Payout
+                          </span>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace', marginTop: 4 }}>
+                            {selected.zone_driver_earning_fee 
+                              ? `${fmt(selected.zone_driver_earning_fee)} / drop`
+                              : '₦700 – ₦5,600 / drop'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Registered Withdrawal & Payout Accounts */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <i className="ri-bank-line text-primary" />
+                            Registered Withdrawal &amp; Payout Accounts
+                          </span>
+                          <span className="badge bg-light text-muted border fs-10">
+                            {accounts.length} account{accounts.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+
+                        {accounts.length === 0 ? (
+                          <div style={{ padding: 14, background: '#F8FAFC', borderRadius: 12, textAlign: 'center', color: '#64748B', fontSize: 12 }}>
+                            No withdrawal bank accounts configured yet.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {accounts.map((acc, idx) => (
                               <div
                                 key={acc.id || idx}
-                                className="bg-white p-2.5 rounded-2 border d-flex align-items-center justify-content-between shadow-xs"
                                 style={{
-                                  borderLeft: acc.is_default ? '3px solid #16a34a' : '1px solid #e5e7eb',
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E2E8F0',
+                                  borderLeft: acc.is_default ? '4px solid #16a34a' : '1px solid #E2E8F0',
+                                  borderRadius: 12,
+                                  padding: '10px 14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
                                 }}
                               >
-                                <div className="d-flex align-items-center gap-2.5">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <div
-                                    className="d-flex align-items-center justify-content-center rounded-circle text-primary bg-primary-subtle"
-                                    style={{ width: 32, height: 32, flexShrink: 0 }}
+                                    style={{
+                                      width: 32,
+                                      height: 32,
+                                      borderRadius: '50%',
+                                      background: '#EFF6FF',
+                                      color: '#2563EB',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
+                                    }}
                                   >
-                                    <i className="ri-bank-line fs-14" />
+                                    <i className="ri-bank-line" style={{ fontSize: 14 }} />
                                   </div>
                                   <div>
-                                    <div className="d-flex align-items-center gap-1.5">
-                                      <span className="fw-bold text-dark fs-12">{acc.bank_name || 'Bank'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 12, fontWeight: 800, color: '#0F172A' }}>
+                                        {acc.bank_name || 'Bank'}
+                                      </span>
                                       {acc.is_default && (
                                         <span className="badge bg-success-subtle text-success fs-10 px-1.5 py-0.5 border border-success-subtle">
                                           Default
@@ -2505,8 +3177,8 @@ export default function DriversManagement() {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="d-flex align-items-center gap-2 text-muted fs-11 mt-0.5">
-                                      <span className="font-monospace text-dark fw-semibold">{acc.account_number}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A' }}>{acc.account_number}</span>
                                       <span>•</span>
                                       <span>{acc.account_name || selected.name}</span>
                                     </div>
@@ -2514,7 +3186,7 @@ export default function DriversManagement() {
                                 </div>
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-outline-light text-muted border d-flex align-items-center gap-1 px-2 py-1 fs-11"
+                                  className="btn btn-sm btn-outline-light text-muted border d-flex align-items-center gap-1 px-2.5 py-1 fs-11"
                                   title="Copy NUBAN"
                                   onClick={() => {
                                     navigator.clipboard.writeText(acc.account_number)
@@ -2522,92 +3194,191 @@ export default function DriversManagement() {
                                   }}
                                 >
                                   <i className="ri-file-copy-line" />
+                                  <span>Copy</span>
                                 </button>
                               </div>
                             ))}
                           </div>
-                        )
-                      })()}
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Rating */}
-                  <div className="d-flex align-items-center gap-2 mb-4">
-                    <StarRating rating={selected.rating} />
-                    <span className="text-muted small">({selected.total_deliveries || 0} customer reviews)</span>
-                  </div>
-
-                  {/* Compliance documents trigger */}
-                  <div className="p-3 rounded-3 border bg-light-subtle mb-3 d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong className="fs-13 text-dark d-block">Compliance &amp; Identity Documentation</strong>
-                      <span className="text-muted fs-11">
-                        Status: <strong style={{ color: onbCfg.color }}>{onbCfg.label}</strong>
-                      </span>
-                    </div>
-                    <button
-                      className="btn btn-sm btn-outline-primary fw-bold"
-                      onClick={() => {
-                        closeModal()
-                        setTimeout(() => openModal('compliance', selected), 100)
-                      }}
-                    >
-                      <i className="ri-shield-check-line me-1"></i> View Compliance Dossier
-                    </button>
-                  </div>
-
-                  {/* Driver App Credentials & Reset Link */}
-                  <div className="border rounded-3 p-3 mb-3 bg-light-subtle">
-                    <div className="d-flex align-items-center justify-content-between mb-1.5">
-                      <span className="fw-bold small text-dark">
-                        <i className="ri-shield-keyhole-line me-1 text-primary" />
-                        Driver Login &amp; Account Security
-                      </span>
-                      <span className="badge bg-success-subtle text-success fs-xs">Self-Service Protected</span>
-                    </div>
-                    <p className="text-muted mb-2.5" style={{ fontSize: 11, lineHeight: 1.5 }}>
-                      Send official login instructions, account credentials overview, or a secure password reset link directly to the driver's verified email.
-                    </p>
-                    <div className="d-flex flex-column gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
-                        disabled={!selected.email || resendingLoginEmail || updatingPassword}
-                        onClick={handleResendLoginEmail}
+                    {/* ── Right Column: Compliance Dossier & Account Security ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {/* Card 1: Compliance & Identity Documentation */}
+                      <div
+                        style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: 20,
+                          padding: '20px 22px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 14,
+                        }}
                       >
-                        <i className="ri-mail-send-line" />
-                        <span>{resendingLoginEmail ? 'Sending Login Email…' : `Resend Login Email to ${selected.email || 'Driver'}`}</span>
-                      </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <i className="ri-shield-check-line text-primary fs-16" />
+                              Compliance &amp; Identity Documentation
+                            </span>
+                            <span style={{ fontSize: 11, color: '#64748B' }}>
+                              Status: <strong style={{ color: onbCfg.color }}>{onbCfg.label}</strong>
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary fw-bold px-3"
+                            onClick={() => {
+                              closeModal()
+                              setTimeout(() => openModal('compliance', selected), 100)
+                            }}
+                          >
+                            <i className="ri-shield-check-line me-1" />
+                            View Full Dossier
+                          </button>
+                        </div>
 
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
-                        disabled={!selected.email || updatingPassword || resendingLoginEmail}
-                        onClick={handleSendPasswordResetLink}
+                        {/* Candidate Key Attributes */}
+                        <div className="row g-2 fs-12">
+                          <div className="col-6">
+                            <span className="text-muted fs-11 text-uppercase fw-semibold d-block">National ID (NIN)</span>
+                            <strong className="text-dark font-monospace">{selected.nin_number || 'Pending'}</strong>
+                          </div>
+                          <div className="col-6">
+                            <span className="text-muted fs-11 text-uppercase fw-semibold d-block">Driver License No.</span>
+                            <strong className="text-dark font-monospace">{selected.license_number || 'Pending'}</strong>
+                          </div>
+                          <div className="col-12">
+                            <span className="text-muted fs-11 text-uppercase fw-semibold d-block">Residential Address</span>
+                            <span className="text-dark">{selected.address || 'Address not recorded'}</span>
+                          </div>
+                          <div className="col-6">
+                            <span className="text-muted fs-11 text-uppercase fw-semibold d-block">Next of Kin</span>
+                            <span className="text-dark">{selected.emergency_contact_name || selected.emergency_contact_phone || '—'}</span>
+                          </div>
+                          <div className="col-6">
+                            <span className="text-muted fs-11 text-uppercase fw-semibold d-block">Guarantor Contact</span>
+                            <span className="text-dark">{selected.guarantor_name || selected.guarantor_phone || '—'}</span>
+                          </div>
+                        </div>
+
+                        {/* Interactive Document Scan Thumbnails */}
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+                            Audited Document Scans ({complianceDocItems.filter(d => d.url).length})
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
+                            {complianceDocItems.map((doc) => {
+                              if (!doc.url) return null
+                              const isPdf = doc.url.toLowerCase().includes('.pdf')
+                              return (
+                                <div
+                                  key={doc.key}
+                                  onClick={() => setViewingDocument({ title: doc.title, url: doc.url, isPdf })}
+                                  style={{
+                                    background: '#F8FAFC',
+                                    border: '1px solid #E2E8F0',
+                                    borderRadius: 10,
+                                    padding: '8px 6px',
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  title={`Click to view ${doc.title}`}
+                                  className="shadow-xs hover-shadow"
+                                >
+                                  <div style={{ fontSize: 18, marginBottom: 2 }}>{doc.icon}</div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {doc.title}
+                                  </div>
+                                  <span style={{ fontSize: 9, color: '#2563EB', fontWeight: 600 }}>Click to Inspect</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Driver App Credentials & Security */}
+                      <div
+                        style={{
+                          background: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: 20,
+                          padding: '20px 22px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                        }}
                       >
-                        <i className="ri-lock-password-line" />
-                        <span>{updatingPassword ? 'Sending Reset Link…' : 'Send Password Reset Link'}</span>
-                      </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <i className="ri-shield-keyhole-line text-primary fs-16" />
+                            Driver Login &amp; Account Security
+                          </span>
+                          <span className="badge bg-success-subtle text-success fs-xs">Self-Service Protected</span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 11, color: '#64748B', lineHeight: 1.5 }}>
+                          Send official login instructions, account credentials overview, or a secure password reset link directly to the driver's verified email.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1.5 py-2"
+                            disabled={!selected.email || resendingLoginEmail || updatingPassword}
+                            onClick={handleResendLoginEmail}
+                          >
+                            <i className="ri-mail-send-line" />
+                            <span>{resendingLoginEmail ? 'Sending Login Email…' : `Resend Official Login Email to ${selected.email || 'Driver'}`}</span>
+                          </button>
 
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                            disabled={!selected.email || updatingPassword || resendingLoginEmail}
+                            onClick={handleSendPasswordResetLink}
+                          >
+                            <i className="ri-lock-password-line" />
+                            <span>{updatingPassword ? 'Sending Reset Link…' : 'Send Password Reset Link'}</span>
+                          </button>
 
-
-                      {selected.onboarding_status === 'invited' && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-warning w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
-                          onClick={() => handleResendInvite(selected)}
-                        >
-                          <i className="ri-user-received-line" />
-                          <span>Resend Onboarding Invitation Link</span>
-                        </button>
-                      )}
+                          {selected.onboarding_status === 'invited' && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-warning w-100 fw-semibold d-flex align-items-center justify-content-center gap-1.5 py-1.5"
+                              onClick={() => handleResendInvite(selected)}
+                            >
+                              <i className="ri-user-received-line" />
+                              <span>Resend Onboarding Invitation Link</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="d-flex flex-wrap gap-2 pt-2">
+                {/* ── Sticky Bottom Command Action Bar ── */}
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderTop: '1px solid #E2E8F0',
+                    padding: '14px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexShrink: 0,
+                    zIndex: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      className="btn btn-sm fw-bold text-white d-flex align-items-center gap-1 shadow-sm"
+                      className="btn btn-sm fw-bold text-white d-flex align-items-center gap-1.5 px-3 py-1.5 shadow-sm"
                       style={{ background: '#059669', borderColor: '#059669' }}
                       onClick={() => {
                         const drvId = selected.id
@@ -2624,16 +3395,34 @@ export default function DriversManagement() {
 
                     <button
                       type="button"
-                      className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1 shadow-sm"
+                      className="btn btn-sm fw-bold text-white d-flex align-items-center gap-1.5 px-3 py-1.5 shadow-sm"
+                      style={{ background: '#2563EB', borderColor: '#2563EB' }}
+                      onClick={() => {
+                        closeModal()
+                        setTimeout(() => openModal('location', selected), 100)
+                      }}
+                      title="Open Real-Time Interactive GPS Map"
+                    >
+                      <i className="ri-map-pin-line" />
+                      <span>Track on Interactive Map</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-sm fw-semibold text-white d-flex align-items-center gap-1.5 px-3 py-1.5 shadow-sm"
                       style={{ background: '#0F766E', borderColor: '#0F766E' }}
                       onClick={() => openModal('statement', selected)}
                       title="View & Download Official Statement of Account"
                     >
                       <i className="ri-file-list-3-line" />
-                      View Statement of Account
+                      <span>View Statement of Account</span>
                     </button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button
-                      className="btn btn-outline-primary btn-sm fw-semibold"
+                      type="button"
+                      className="btn btn-outline-primary btn-sm fw-semibold px-3 py-1.5"
                       onClick={() => {
                         closeModal()
                         setTimeout(() => openModal('edit', selected), 100)
@@ -2642,9 +3431,11 @@ export default function DriversManagement() {
                       <i className="ri-edit-line me-1" />
                       Edit Profile
                     </button>
+
                     {selected.status !== 'suspended' && selected.status !== 'on_delivery' && (
                       <button
-                        className="btn btn-outline-danger btn-sm fw-semibold"
+                        type="button"
+                        className="btn btn-outline-danger btn-sm fw-semibold px-3 py-1.5"
                         onClick={() => {
                           closeModal()
                           setTimeout(() => openModal('suspend', selected), 100)
@@ -2654,9 +3445,11 @@ export default function DriversManagement() {
                         Suspend
                       </button>
                     )}
+
                     {selected.status === 'suspended' && (
                       <button
-                        className="btn btn-outline-success btn-sm fw-semibold"
+                        type="button"
+                        className="btn btn-outline-success btn-sm fw-semibold px-3 py-1.5"
                         onClick={() => {
                           activateDriver(selected)
                           closeModal()
@@ -2666,7 +3459,12 @@ export default function DriversManagement() {
                         Reinstate
                       </button>
                     )}
-                    <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={closeModal}>
+
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm px-3 py-1.5"
+                      onClick={closeModal}
+                    >
                       Close
                     </button>
                   </div>

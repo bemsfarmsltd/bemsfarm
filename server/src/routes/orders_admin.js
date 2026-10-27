@@ -163,6 +163,12 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         COALESCE(d.item_proofs, o.item_proofs) AS item_proofs,
         COALESCE(d.proof_note, o.proof_note) AS proof_note,
         COALESCE(d.proof_note, o.proof_note) AS delivery_notes,
+        COALESCE(
+          d.driver_commission_amount,
+          dz.driver_earning_fee,
+          ROUND(COALESCE(d.delivery_fee, dz.delivery_fee, o.delivery_fee, 0) * 0.70, 2),
+          COALESCE(dr.commission_per_delivery, 700)
+        ) AS driver_earning,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
         (
           SELECT STRING_AGG(COALESCE(p.name, 'Item'), ', ' ORDER BY oi.id) 
@@ -211,6 +217,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         LIMIT 1
       ) dl ON true
       LEFT JOIN deliveries d ON d.order_id = o.id
+      LEFT JOIN delivery_zones dz ON (d.zone_id = dz.zone_id OR o.zone_id = dz.zone_id)
       LEFT JOIN LATERAL (
         SELECT driver_response, created_at, response_at
         FROM delivery_assignments
@@ -1472,6 +1479,14 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         COALESCE(d.item_proofs, o.item_proofs) AS item_proofs,
         COALESCE(d.proof_note, o.proof_note) AS proof_note,
         COALESCE(d.proof_note, o.proof_note) AS delivery_notes,
+        COALESCE(
+          d.driver_commission_amount,
+          dz.driver_earning_fee,
+          ROUND(COALESCE(d.delivery_fee, dz.delivery_fee, o.delivery_fee, 0) * 0.70, 2),
+          COALESCE(dr.commission_per_delivery, 700)
+        ) AS driver_earning,
+        dz.zone_name,
+        COALESCE(dz.delivery_fee, o.delivery_fee, 0) AS zone_delivery_fee,
         d.failure_reason
       FROM orders o
       LEFT JOIN users c ON o.user_id = c.id
@@ -1485,6 +1500,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         LIMIT 1
       ) dl ON true
       LEFT JOIN deliveries d ON d.order_id = o.id
+      LEFT JOIN delivery_zones dz ON (d.zone_id = dz.zone_id OR o.zone_id = dz.zone_id)
       LEFT JOIN LATERAL (
         SELECT driver_response, created_at, response_at
         FROM delivery_assignments

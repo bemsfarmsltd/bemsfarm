@@ -41,6 +41,14 @@ const STATUS_COLOR = {
   dispute: 'danger',
 }
 
+const ORDER_STAGES = [
+  { key: 'confirmed', label: '1. Confirmed', icon: 'ri-file-check-line', desc: 'Payment / COD Verified' },
+  { key: 'packing', label: '2. Preparation', icon: 'ri-box-3-line', desc: 'Weighing, Picking & Warehouse Packing' },
+  { key: 'dispatch', label: '3. Courier Dispatch', icon: 'ri-e-bike-2-line', desc: 'Driver Proximity Search & Assignment' },
+  { key: 'in_transit', label: '4. In Transit', icon: 'ri-roadster-line', desc: 'Store Handover Confirmed & En Route' },
+  { key: 'delivered', label: '5. Delivered', icon: 'ri-checkbox-circle-line', desc: 'Customer Confirmation & Proof Recorded' },
+]
+
 const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 
 export default function OrderDetail() {
@@ -51,6 +59,15 @@ export default function OrderDetail() {
   const [updating, setUpdating] = useState(false)
   const [printModalType, setPrintModalType] = useState(null) // null | 'invoice' | 'receipt'
   const [printFormat, setPrintFormat] = useState('a4') // 'a4' | 'thermal'
+
+  // Driver Assignment & Supervisor Controls
+  const [showDriverModal, setShowDriverModal] = useState(false)
+  const [drivers, setDrivers] = useState([])
+  const [driverSearch, setDriverSearch] = useState('')
+  const [loadingDrivers, setLoadingDrivers] = useState(false)
+  const [assigningDriver, setAssigningDriver] = useState(false)
+  const [selectedDriverId, setSelectedDriverId] = useState(null)
+  const [showSupervisorControls, setShowSupervisorControls] = useState(false)
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -115,6 +132,69 @@ export default function OrderDetail() {
     } finally {
       setUpdating(false)
     }
+  }
+
+  const openDriverModal = () => {
+    setShowDriverModal(true)
+    fetchDrivers()
+  }
+
+  const fetchDrivers = async () => {
+    setLoadingDrivers(true)
+    try {
+      const res = await api.get('/admin/deliveries/drivers')
+      const list = res.data?.drivers || res.data || []
+      setDrivers(Array.isArray(list) ? list : [])
+    } catch (err) {
+      toast.error('Could not load drivers list')
+    } finally {
+      setLoadingDrivers(false)
+    }
+  }
+
+  const handleAssignDriver = async (driverId) => {
+    if (!driverId || !order) return
+    setAssigningDriver(true)
+    try {
+      await api.patch(`/admin/orders/${id}/assign-driver`, { driver_id: driverId })
+      toast.success('Driver assigned successfully!')
+      setShowDriverModal(false)
+      fetchOrder()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to assign driver')
+    } finally {
+      setAssigningDriver(false)
+    }
+  }
+
+  const handleFastPackAndDispatch = async () => {
+    if (!order) return
+    setUpdating(true)
+    try {
+      await api.patch(`/admin/orders/${id}/status`, { status: 'packed_ready', notes: 'Packed and verified by admin' })
+      toast.success('Order marked as Packed & Ready!')
+      try {
+        const res = await api.post(`/orders/${id}/auto-assign-driver`)
+        toast.success(res.data?.message || 'Courier proximity dispatch initiated!')
+      } catch (dispErr) {
+        console.warn('Auto dispatch notice:', dispErr.response?.data?.message)
+      }
+      fetchOrder()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to pack order')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleSupervisorOverride = async (targetStatus, label) => {
+    if (['driver_assigned', 'picked_up', 'out_for_delivery'].includes(targetStatus) && !order.driver_id) {
+      toast.error(`Please assign a driver first before moving to "${label}".`)
+      return
+    }
+    const confirmed = window.confirm(`Are you sure you want to administratively override the status to "${label}"? This action is recorded in the audit log.`)
+    if (!confirmed) return
+    handleUpdateStatus(targetStatus)
   }
 
   const handlePrintInvoice = async () => {
@@ -194,6 +274,38 @@ export default function OrderDetail() {
   const color = STATUS_COLOR[statusKey] || 'primary'
   const isInvoicePrinted = Boolean(order.invoice_printed)
   const canPrintInvoice = !['delivered', 'cancelled', 'completed'].includes(statusKey)
+
+  const driverEarning = Number(order.driver_earning || Math.round(deliveryFee * 0.70) || (order.driver_id ? 700 : 0))
+  const companyMargin = Math.max(0, deliveryFee - driverEarning)
+
+  const getStageIndex = () => {
+    if (['delivered', 'completed'].includes(statusKey)) return 4
+    if (['picked_up', 'in_transit', 'shipped', 'out_for_delivery', 'driver_arrived', 'arrived'].includes(statusKey)) return 3
+    if (order.driver_id || ['assigned', 'driver_assigned', 'awaiting_pickup'].includes(statusKey)) return 2
+    if (statusKey === 'awaiting_driver_confirmation' || ['packed', 'packed_ready'].includes(statusKey)) return 2
+    if (['processing', 'packaging', 'partially_packed'].includes(statusKey) || isInvoicePrinted) return 1
+    return 0 // Confirmed / Placed
+  }
+
+  const currentStageIndex = getStageIndex()
+  const isTerminal = ['cancelled', 'dispute'].includes(statusKey)
+  const isAwaitingDriver = statusKey === 'awaiting_driver_confirmation' || (['packed', 'packed_ready'].includes(statusKey) && !order.driver_id)
+  const isDriverAssigned = Boolean(order.driver_id) && !order.driver_picked_up && !['delivered', 'completed', 'cancelled'].includes(statusKey)
+  const isOutForDelivery = ['picked_up', 'out_for_delivery', 'in_transit', 'shipped', 'driver_arrived', 'arrived'].includes(statusKey)
+  const isDelivered = ['delivered', 'completed'].includes(statusKey)
+  const isProcessing = ['processing', 'packaging', 'partially_packed'].includes(statusKey) || (isInvoicePrinted && !['packed', 'packed_ready', 'awaiting_driver_confirmation', 'driver_assigned', 'picked_up', 'out_for_delivery', 'delivered'].includes(statusKey))
+  const isNewOrConfirmed = ['paid', 'confirmed', 'new_order', 'pending'].includes(statusKey) && !isInvoicePrinted
+
+  const filteredDrivers = drivers.filter(d => {
+    if (!driverSearch) return true
+    const q = driverSearch.toLowerCase()
+    return (
+      d.name?.toLowerCase().includes(q) ||
+      d.phone?.toLowerCase().includes(q) ||
+      d.vehicle_type?.toLowerCase().includes(q) ||
+      d.vehicle_plate?.toLowerCase().includes(q)
+    )
+  })
 
   const orderDocData = {
     id: order.order_ref || `INV-${order.id}`,
@@ -307,101 +419,380 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      {/* Advisory Banner: Order always prints invoice first for warehouse packing */}
-      {!isInvoicePrinted && canPrintInvoice && (
-        <div
-          className="alert alert-warning border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
-          style={{ background: '#fffbeb', borderLeft: '4px solid #f59e0b' }}
-        >
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-              style={{ width: 36, height: 36, background: '#fef3c7', color: '#b45309' }}
-            >
-              <i className="ri-file-list-3-line fs-18" />
-            </div>
+      {/* ── VISUAL ORDER LIFECYCLE STEPPER ── */}
+      <div className="card mb-4 border-0 shadow-sm overflow-hidden" style={{ borderRadius: '1rem' }}>
+        <div className="card-body p-3 p-md-4">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <div>
-              <div className="fw-bold text-dark fs-14">Order Awaiting Packing Invoice</div>
-              <div className="text-muted fs-12">
-                Orders must always print the <strong>Official Invoice (Packing List)</strong> first so the warehouse team can pick and pack items. Printing advances this order to Packaging and initiates courier dispatch.
-              </div>
+              <span className="text-uppercase tracking-wider fw-bold text-muted" style={{ fontSize: '11px' }}>
+                Order Fulfillment Pipeline
+              </span>
+              <h5 className="fw-bold mb-0 text-dark">
+                {isTerminal ? (
+                  <span className="text-danger"><i className="ri-close-circle-line me-1" />Order {order.status?.toUpperCase()}</span>
+                ) : (
+                  <span>Stage {currentStageIndex + 1} of 5 · {ORDER_STAGES[currentStageIndex]?.label}</span>
+                )}
+              </h5>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className={`badge bg-${color}-subtle text-${color} px-3 py-1.5 text-uppercase fs-xs fw-bold rounded-pill border border-${color}-subtle`}>
+                {order.status?.replace(/_/g, ' ')}
+              </span>
             </div>
           </div>
-          <button
-            className="btn btn-sm btn-warning text-dark px-3 fw-bold text-nowrap ms-3"
-            onClick={() => setPrintModalType('invoice')}
-          >
-            <i className="ri-printer-line me-1" />Print Invoice Now
-          </button>
-        </div>
-      )}
 
-      {/* Advisory Banner: Order in Packaging / POS Barcode Verification */}
-      {['packaging', 'processing', 'partially_packed', 'packaging_exception'].includes(statusKey) && (
-        <div
-          className="alert alert-info border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
-          style={{ background: '#eff6ff', borderLeft: '4px solid #3b82f6' }}
-        >
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-              style={{ width: 36, height: 36, background: '#dbeafe', color: '#1d4ed8' }}
-            >
-              <i className="ri-barcode-box-line fs-18" />
+          {/* Stepper Progress Bar */}
+          <div className="position-relative my-3 pt-1">
+            <div className="progress" style={{ height: 4, backgroundColor: '#e2e8f0', margin: '0 20px' }}>
+              <div
+                className="progress-bar bg-success"
+                style={{
+                  width: `${Math.min(100, Math.max(5, (currentStageIndex / (ORDER_STAGES.length - 1)) * 100))}%`,
+                  transition: 'width 0.4s ease'
+                }}
+              />
             </div>
-            <div>
-              <div className="fw-bold text-dark fs-14">Order in Physical Packaging (POS Verification)</div>
-              <div className="text-muted fs-12">
-                Under the strict BEMS Farms specification, inventory is <strong>only deducted when scanned at the POS packing terminal</strong>. Once all items are scanned, the order is automatically marked <code>PACKED</code> and courier dispatch begins.
-              </div>
+            <div className="d-flex justify-content-between position-relative" style={{ marginTop: -19 }}>
+              {ORDER_STAGES.map((stg, idx) => {
+                const isCompleted = idx < currentStageIndex || isDelivered
+                const isCurrent = idx === currentStageIndex && !isDelivered && !isTerminal
+                return (
+                  <div key={stg.key} className="text-center" style={{ width: 110 }}>
+                    <div
+                      className={`rounded-circle d-inline-flex align-items-center justify-content-center mx-auto shadow-xs ${
+                        isCompleted
+                          ? 'bg-success text-white'
+                          : isCurrent
+                          ? 'bg-primary text-white shadow'
+                          : 'bg-white text-muted border'
+                      }`}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        fontSize: 15,
+                        boxShadow: isCurrent ? '0 0 0 4px rgba(13, 110, 253, 0.25)' : 'none',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      <i className={isCompleted ? 'ri-check-line fw-bold' : stg.icon} />
+                    </div>
+                    <div className="mt-1.5">
+                      <div className={`fs-xs fw-bold ${isCurrent ? 'text-primary' : isCompleted ? 'text-success' : 'text-muted'}`}>
+                        {stg.label}
+                      </div>
+                      <div className="text-muted d-none d-md-block" style={{ fontSize: 10 }}>
+                        {isCompleted ? 'Completed' : isCurrent ? 'Active Now' : 'Pending'}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-          <Link
-            to="/pos"
-            className="btn btn-sm btn-primary px-3 fw-bold text-nowrap ms-3 shadow-sm"
-          >
-            <i className="ri-qr-scan-line me-1" />Open POS Packing
-          </Link>
         </div>
-      )}
+      </div>
 
-      {/* Advisory Banner: Awaiting Driver Confirmation (Exception Modal Trigger) */}
-      {statusKey === 'awaiting_driver_confirmation' && (
-        <div
-          className="alert alert-danger border-0 shadow-xs mb-4 d-flex align-items-center justify-content-between p-3 rounded-3"
-          style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444' }}
-        >
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-              style={{ width: 36, height: 36, background: '#fee2e2', color: '#b91c1c' }}
-            >
-              <i className="ri-e-bike-2-line fs-18" />
+      {/* ── UNIFIED ORDER PROCESSING COMMAND CENTER ── */}
+      <div
+        className="card mb-4 border-0 shadow-sm overflow-hidden"
+        style={{
+          borderRadius: '1rem',
+          background: isAwaitingDriver
+            ? 'linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)'
+            : isDelivered
+            ? 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)'
+            : isProcessing
+            ? 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)'
+            : isDriverAssigned
+            ? 'linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%)'
+            : isOutForDelivery
+            ? 'linear-gradient(135deg, #fdf4ff 0%, #ffffff 100%)'
+            : 'linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)',
+          borderLeft: isAwaitingDriver
+            ? '6px solid #ef4444'
+            : isDelivered
+            ? '6px solid #10b981'
+            : isProcessing
+            ? '6px solid #3b82f6'
+            : isDriverAssigned
+            ? '6px solid #8b5cf6'
+            : isOutForDelivery
+            ? '6px solid #d946ef'
+            : '6px solid #f59e0b'
+        }}
+      >
+        <div className="card-body p-3 p-md-4">
+          <div className="row align-items-center g-3">
+            {/* Left: Context, Stage Description & Checklist */}
+            <div className="col-lg-7">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <span className={`badge ${
+                  isAwaitingDriver ? 'bg-danger text-white' :
+                  isDelivered ? 'bg-success text-white' :
+                  isProcessing ? 'bg-primary text-white' :
+                  isDriverAssigned ? 'bg-purple text-white' :
+                  isOutForDelivery ? 'bg-fuchsia text-white' :
+                  'bg-warning text-dark'
+                } px-2.5 py-1 fw-bold fs-xs text-uppercase`}>
+                  {isAwaitingDriver ? '⚠️ Action Required' :
+                   isDelivered ? '✓ Completed' :
+                   isProcessing ? '📦 In Packaging' :
+                   isDriverAssigned ? '🤝 Driver Handover' :
+                   isOutForDelivery ? '🚀 In Transit' :
+                   '🛍️ Order Received'}
+                </span>
+                <span className="text-muted fs-xs">
+                  Source: <strong>{order.source || (order.channel === 'physical' ? 'POS Counter' : 'Online Store')}</strong> · Ref: <code>#{order.order_ref || order.id}</code>
+                </span>
+              </div>
+
+              <h5 className="fw-bold text-dark mb-1">
+                {isAwaitingDriver && 'Courier Driver Required · Automated Dispatch Timed Out'}
+                {isNewOrConfirmed && 'New Order Ready for Preparation & Packaging'}
+                {isProcessing && 'Order Currently in Physical Packaging / Verification'}
+                {isDriverAssigned && `Driver Assigned (${order.driver_name || 'Courier'}) · Awaiting Store Collection`}
+                {isOutForDelivery && `Out for Delivery · Courier Handover Completed`}
+                {isDelivered && 'Order Successfully Delivered & Reconciled'}
+                {isTerminal && `Order Marked as ${order.status?.toUpperCase()}`}
+              </h5>
+
+              <p className="text-muted small mb-3" style={{ lineHeight: '1.5' }}>
+                {isAwaitingDriver && 'All automatic proximity searches timed out or no drivers accepted. You can restart the automated dispatch engine, quickly pick an active courier, or open the dispatch console.'}
+                {isNewOrConfirmed && 'Print the Official Invoice & Packing List so warehouse staff can assemble commodities. Inventory will be verified and deducted via POS or marked packed.'}
+                {isProcessing && 'Items are currently being picked and boxed. Once complete, click "Mark as Packed & Ready" to automatically trigger proximity driver dispatch, or open the POS packing terminal to scan barcodes.'}
+                {isDriverAssigned && `Driver ${order.driver_name} is en route to the store. Once the driver arrives and collects the commodities, confirm store handover.`}
+                {isOutForDelivery && 'The courier has collected the order and is on the way to the customer address. Live location is tracked on the map.'}
+                {isDelivered && 'The customer has received their goods and the transaction has been closed.'}
+                {isTerminal && (order.cancel_reason || 'This order has been cancelled or disputed. No further fulfillment actions are required.')}
+              </p>
+
+              {/* Quick Status Checklist Chips */}
+              <div className="d-flex flex-wrap gap-2 pt-1">
+                <span className={`badge ${isInvoicePrinted ? 'bg-success-subtle text-success' : 'bg-light text-muted border'} px-2.5 py-1.5 fs-xs d-flex align-items-center gap-1`}>
+                  <i className={isInvoicePrinted ? 'ri-checkbox-circle-fill text-success' : 'ri-time-line text-muted'} />
+                  Invoice Printed
+                </span>
+                <span className={`badge ${['packed', 'packed_ready', 'driver_assigned', 'picked_up', 'out_for_delivery', 'delivered'].includes(statusKey) ? 'bg-success-subtle text-success' : 'bg-light text-muted border'} px-2.5 py-1.5 fs-xs d-flex align-items-center gap-1`}>
+                  <i className={['packed', 'packed_ready', 'driver_assigned', 'picked_up', 'out_for_delivery', 'delivered'].includes(statusKey) ? 'ri-checkbox-circle-fill text-success' : 'ri-time-line text-muted'} />
+                  Items Packed
+                </span>
+                <span className={`badge ${order.driver_id ? 'bg-success-subtle text-success' : 'bg-light text-muted border'} px-2.5 py-1.5 fs-xs d-flex align-items-center gap-1`}>
+                  <i className={order.driver_id ? 'ri-checkbox-circle-fill text-success' : 'ri-time-line text-muted'} />
+                  Driver Assigned {order.driver_name ? `(${order.driver_name})` : ''}
+                </span>
+                <span className={`badge ${order.driver_picked_up ? 'bg-success-subtle text-success' : 'bg-light text-muted border'} px-2.5 py-1.5 fs-xs d-flex align-items-center gap-1`}>
+                  <i className={order.driver_picked_up ? 'ri-checkbox-circle-fill text-success' : 'ri-time-line text-muted'} />
+                  Store Handover Confirmed
+                </span>
+              </div>
             </div>
-            <div>
-              <div className="fw-bold text-danger fs-14">Action Required: Awaiting Driver Confirmation</div>
-              <div className="text-muted fs-12">
-                All automatic driver assignment attempts timed out or were declined. The order requires manual administrative assignment or a proximity dispatch restart.
+
+            {/* Right: Contextual Primary & Secondary Actions */}
+            <div className="col-lg-5">
+              <div className="p-3 rounded-3 bg-white border shadow-xs d-flex flex-column gap-2.5">
+                <div className="d-flex align-items-center justify-content-between mb-1">
+                  <span className="text-uppercase fw-bold text-muted fs-xxs">Recommended Action</span>
+                  {updating && <span className="spinner-border spinner-border-sm text-primary" />}
+                </div>
+
+                {/* Scenario 1: Awaiting Driver / No Driver Found */}
+                {isAwaitingDriver && (
+                  <>
+                    <button
+                      className="btn btn-primary fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={handleAutoAssignDriver}
+                      disabled={updating}
+                    >
+                      <i className="ri-radar-line fs-16" />
+                      <span>⚡ Auto-Assign Nearest Driver</span>
+                    </button>
+                    <button
+                      className="btn btn-outline-danger fw-bold py-2 d-flex align-items-center justify-content-center gap-2"
+                      onClick={openDriverModal}
+                      disabled={updating}
+                    >
+                      <i className="ri-user-add-line fs-16" />
+                      <span>👤 Quick-Assign Driver (Modal)</span>
+                    </button>
+                    <div className="d-flex gap-2">
+                      <Link
+                        to={`/pos?orderId=${order.id}`}
+                        className="btn btn-sm btn-outline-secondary flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                      >
+                        <i className="ri-qr-scan-line" />Pack in POS
+                      </Link>
+                      <Link
+                        to="/fleet/dispatch"
+                        className="btn btn-sm btn-outline-secondary flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                      >
+                        <i className="ri-steering-2-line" />Dispatch Hub
+                      </Link>
+                    </div>
+                  </>
+                )}
+
+                {/* Scenario 2: Brand New / Confirmed Order */}
+                {isNewOrConfirmed && (
+                  <>
+                    <button
+                      className="btn btn-success fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={() => setPrintModalType('invoice')}
+                      disabled={updating}
+                    >
+                      <i className="ri-printer-line fs-16" />
+                      <span>🖨️ Print Invoice & Start Packing</span>
+                    </button>
+                    <button
+                      className="btn btn-primary fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={handleFastPackAndDispatch}
+                      disabled={updating}
+                    >
+                      <i className="ri-box-3-line fs-16" />
+                      <span>📦 Fast-Pack & Initiate Dispatch</span>
+                    </button>
+                    <Link
+                      to={`/pos?orderId=${order.id}`}
+                      className="btn btn-outline-secondary btn-sm py-1.5 d-flex align-items-center justify-content-center gap-1"
+                    >
+                      <i className="ri-qr-scan-line text-primary" />
+                      <span>Scan & Pack on POS Terminal</span>
+                    </Link>
+                  </>
+                )}
+
+                {/* Scenario 3: In Processing / Packaging */}
+                {isProcessing && (
+                  <>
+                    <button
+                      className="btn btn-primary fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={() => handleUpdateStatus('packed_ready')}
+                      disabled={updating}
+                    >
+                      <i className="ri-checkbox-circle-line fs-16" />
+                      <span>📦 Mark as Packed & Ready</span>
+                    </button>
+                    <Link
+                      to={`/pos?orderId=${order.id}`}
+                      className="btn btn-outline-primary fw-bold py-2 d-flex align-items-center justify-content-center gap-2"
+                    >
+                      <i className="ri-qr-scan-line fs-16" />
+                      <span>Scan Barcodes on POS Terminal</span>
+                    </Link>
+                    <button
+                      className="btn btn-outline-secondary btn-sm py-1.5 d-flex align-items-center justify-content-center gap-1"
+                      onClick={() => setPrintModalType('invoice')}
+                    >
+                      <i className="ri-printer-line" />Reprint Packing Invoice
+                    </button>
+                  </>
+                )}
+
+                {/* Scenario 4: Driver Assigned - Ready for Counter Handover */}
+                {isDriverAssigned && (
+                  <>
+                    <button
+                      className="btn btn-success fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={handleConfirmDriverPickup}
+                      disabled={updating}
+                    >
+                      <i className="ri-hand-coin-line fs-16" />
+                      <span>🤝 Confirm Store Handover to Driver</span>
+                    </button>
+                    <div className="d-flex gap-2">
+                      {order.driver_phone && (
+                        <a
+                          href={`tel:${order.driver_phone}`}
+                          className="btn btn-sm btn-outline-secondary flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                        >
+                          <i className="ri-phone-line text-success" />Call Driver
+                        </a>
+                      )}
+                      <button
+                        className="btn btn-sm btn-outline-danger flex-grow-1 d-flex align-items-center justify-content-center gap-1"
+                        onClick={openDriverModal}
+                        disabled={updating}
+                      >
+                        <i className="ri-user-shared-line" />Reassign Driver
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Scenario 5: Out for Delivery */}
+                {isOutForDelivery && (
+                  <>
+                    <div className="p-2 rounded bg-light border text-center fs-xs text-muted">
+                      <i className="ri-roadster-line text-primary me-1 fs-14" />
+                      Driver {order.driver_name || 'Courier'} has custody of commodities.
+                    </div>
+                    <button
+                      className="btn btn-warning fw-bold py-2 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      onClick={handleAdminDeliveryOverride}
+                      disabled={updating}
+                    >
+                      <i className="ri-shield-check-line fs-16" />
+                      <span>🛡️ Authorized Delivery Override</span>
+                    </button>
+                    <div className="d-flex gap-2">
+                      {order.driver_phone && (
+                        <a href={`tel:${order.driver_phone}`} className="btn btn-sm btn-outline-secondary flex-grow-1 text-center">
+                          <i className="ri-phone-line me-1" />Driver
+                        </a>
+                      )}
+                      {order.customer_phone && (
+                        <a href={`tel:${order.customer_phone}`} className="btn btn-sm btn-outline-secondary flex-grow-1 text-center">
+                          <i className="ri-user-line me-1" />Customer
+                        </a>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Scenario 6: Delivered / Completed */}
+                {isDelivered && (
+                  <>
+                    <div className="alert alert-success border-0 mb-0 py-2.5 px-3 text-center fs-xs fw-bold">
+                      <div className="d-flex align-items-center justify-content-center gap-1">
+                        <i className="ri-checkbox-circle-fill text-success" />
+                        <span>Fulfillment Complete · Ledger Reconciled</span>
+                      </div>
+                      {(order.driver_name || order.driver_id) && (
+                        <div className="mt-2 pt-2 border-top border-success-subtle d-flex justify-content-between align-items-center">
+                          <span className="text-muted fw-normal fs-xxs">Courier Payout ({order.driver_name || 'Driver'}):</span>
+                          <span className="badge bg-success text-white fs-xs px-2.5 py-1">
+                            {fmt(driverEarning)} (Credited)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm py-1.5 fw-bold d-flex align-items-center justify-content-center gap-1"
+                      onClick={() => setPrintModalType('receipt')}
+                    >
+                      <i className="ri-printer-line" />Print Customer Receipt
+                    </button>
+                    <button
+                      className="btn btn-outline-secondary btn-sm py-1.5 d-flex align-items-center justify-content-center gap-1"
+                      onClick={() => setPrintModalType('invoice')}
+                    >
+                      <i className="ri-file-text-line" />Reprint Official Invoice
+                    </button>
+                  </>
+                )}
+
+                {/* Scenario 7: Terminal / Cancelled */}
+                {isTerminal && (
+                  <div className="alert alert-danger border-0 mb-0 py-2.5 px-3 text-center fs-xs fw-bold">
+                    <i className="ri-close-circle-fill me-1" />
+                    Order Cancelled or Disputed
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <div className="d-flex gap-2 ms-3 flex-shrink-0">
-            <button
-              className="btn btn-sm btn-primary fw-bold text-nowrap"
-              onClick={handleAutoAssignDriver}
-              disabled={updating}
-            >
-              <i className="ri-restart-line me-1" />Restart Dispatch
-            </button>
-            <Link
-              to="/fleet/dispatch"
-              className="btn btn-sm btn-outline-danger fw-bold text-nowrap"
-            >
-              <i className="ri-user-follow-line me-1" />Manual Assignment
-            </Link>
-          </div>
         </div>
-      )}
+      </div>
 
       <div className="row g-4">
         {/* Left Column: Items and Status Actions */}
@@ -491,32 +882,52 @@ export default function OrderDetail() {
             </div>
           </div>
 
-          {/* Quick status controls */}
-          <div className="card mb-4 shadow-sm border-0">
-            <div className="card-header bg-light">
-              <h6 className="fw-bold mb-0">Workflow Status Transition</h6>
-            </div>
-            <div className="card-body">
-              <div className="d-flex flex-wrap gap-2">
-                {[
-                  { key: 'processing', label: 'Processing' },
-                  { key: 'packed_ready', label: 'Packed & Ready' },
-                  { key: 'picked_up', label: 'Driver Picked Up' },
-                  { key: 'out_for_delivery', label: 'Out for Delivery' },
-                  { key: 'delivered', label: 'Delivered' },
-                  { key: 'cancelled', label: 'Cancelled' },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    className={`btn btn-sm ${statusKey === s.key ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => handleUpdateStatus(s.key)}
-                    disabled={updating}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+          {/* Supervisor Emergency Status Override (Collapsible Accordion) */}
+          <div className="card mb-4 shadow-sm border-0" style={{ borderRadius: '0.75rem', overflow: 'hidden' }}>
+            <div
+              className="card-header bg-light d-flex justify-content-between align-items-center py-2.5 cursor-pointer"
+              onClick={() => setShowSupervisorControls(!showSupervisorControls)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-shield-user-line text-secondary fs-16" />
+                <span className="fw-bold fs-13 text-dark">Supervisor Controls: Manual Status Override</span>
+                <span className="badge bg-secondary-subtle text-secondary" style={{ fontSize: 10 }}>Audit Logged</span>
+              </div>
+              <div className="d-flex align-items-center gap-2 text-muted">
+                <span className="fs-xs d-none d-md-inline">{showSupervisorControls ? 'Hide overrides' : 'Show overrides'}</span>
+                <i className={`ri-arrow-${showSupervisorControls ? 'up' : 'down'}-s-line fs-18`} />
               </div>
             </div>
+            {showSupervisorControls && (
+              <div className="card-body bg-light-subtle p-3 border-top">
+                <div className="p-2.5 rounded-2 bg-warning-subtle text-warning-emphasis fs-xs mb-3 border border-warning-subtle d-flex align-items-start gap-2">
+                  <i className="ri-alert-line fs-16 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <strong>Administrative Override Notice:</strong> Standard fulfillment updates automatically via POS scanning and the Driver mobile app. Use manual overrides only for in-house fulfillment, phone orders, or resolving edge cases.
+                  </div>
+                </div>
+                <div className="d-flex flex-wrap gap-2">
+                  {[
+                    { key: 'processing', label: 'Processing' },
+                    { key: 'packed_ready', label: 'Packed & Ready' },
+                    { key: 'picked_up', label: 'Driver Picked Up' },
+                    { key: 'out_for_delivery', label: 'Out for Delivery' },
+                    { key: 'delivered', label: 'Delivered' },
+                    { key: 'cancelled', label: 'Cancelled' },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      className={`btn btn-sm ${statusKey === s.key ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                      onClick={() => handleSupervisorOverride(s.key, s.label)}
+                      disabled={updating}
+                    >
+                      {statusKey === s.key ? `✓ Current: ${s.label}` : `Set ${s.label}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -624,6 +1035,28 @@ export default function OrderDetail() {
                 <div className="d-flex justify-content-between">
                   <span className="text-muted">Delivered Time</span>
                   <span className="text-success fw-bold">{new Date(order.delivered_at).toLocaleTimeString()}</span>
+                </div>
+              )}
+
+              {/* Courier Delivery Compensation & Economics */}
+              {(order.driver_id || order.driver_name) && (
+                <div className="p-2.5 rounded-3 border mt-2" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="text-muted fs-xs">Courier Remuneration</span>
+                    <span className={`badge ${['delivered', 'completed'].includes(statusKey) ? 'bg-success text-white' : 'bg-warning-subtle text-warning-emphasis'} fs-xxs`}>
+                      {['delivered', 'completed'].includes(statusKey) ? '✓ Credited to Wallet' : 'Estimated Payout'}
+                    </span>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-baseline">
+                    <span className="fw-bold text-dark fs-13">Driver Earned:</span>
+                    <span className="fw-bold text-success fs-15">{fmt(driverEarning)}</span>
+                  </div>
+                  {deliveryFee > 0 && (
+                    <div className="d-flex justify-content-between text-muted fs-xxs mt-1 pt-1 border-top" style={{ borderColor: '#dcfce7' }}>
+                      <span>Zone Fee: {fmt(deliveryFee)}</span>
+                      <span>Company Cut: {fmt(companyMargin)}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -758,6 +1191,12 @@ export default function OrderDetail() {
                 <span className="text-muted">Total Paid</span>
                 <span className="fw-bold text-primary fs-15">{fmt(total)}</span>
               </div>
+              {(order.driver_id || order.driver_name) && (
+                <div className="d-flex justify-content-between pt-1 border-top mt-1">
+                  <span className="text-muted">Courier Commission</span>
+                  <span className="fw-bold text-success">{fmt(driverEarning)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -915,6 +1354,153 @@ export default function OrderDetail() {
                     />
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── QUICK DRIVER ASSIGNMENT MODAL ── */}
+      {showDriverModal && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+          onClick={() => setShowDriverModal(false)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered modal-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4 border-bottom bg-light d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="modal-title fw-bold mb-0 text-dark">
+                    <i className="ri-steering-2-line text-primary me-2" />
+                    Assign Delivery Driver to Order #{order.order_ref || order.id}
+                  </h6>
+                  <span className="text-muted fs-xs">
+                    Assign delivery custody to an active courier. The driver will receive an instant assignment notification.
+                  </span>
+                </div>
+                <button className="btn-close" onClick={() => setShowDriverModal(false)} />
+              </div>
+
+              <div className="p-3 border-bottom bg-white">
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0">
+                    <i className="ri-search-line text-muted" />
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control border-start-0"
+                    placeholder="Search available drivers by name, phone, or vehicle..."
+                    value={driverSearch}
+                    onChange={(e) => setDriverSearch(e.target.value)}
+                    autoFocus
+                  />
+                  {driverSearch && (
+                    <button className="btn btn-outline-secondary" onClick={() => setDriverSearch('')}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-body p-3" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                {loadingDrivers ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-primary me-2" role="status" />
+                    <span className="text-muted">Loading fleet...</span>
+                  </div>
+                ) : filteredDrivers.length === 0 ? (
+                  <div className="text-center py-5 text-muted">
+                    <i className="ri-user-unfollow-line fs-32 text-muted mb-2 d-block" />
+                    <div className="fw-semibold">No active drivers found matching search</div>
+                    <div className="fs-xs mt-1">Ensure drivers are registered and logged into the BEMS Driver Mobile App.</div>
+                    <div className="mt-3">
+                      <Link to="/fleet/dispatch" className="btn btn-sm btn-outline-primary" onClick={() => setShowDriverModal(false)}>
+                        <i className="ri-external-link-line me-1" />Open Full Dispatch Console
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-2">
+                    {filteredDrivers.map((drv) => {
+                      const isOnline = drv.is_available === true || drv.status === 'active'
+                      const isSelected = selectedDriverId === drv.id
+                      return (
+                        <div
+                          key={drv.id}
+                          className={`p-3 rounded-3 border transition-all d-flex align-items-center justify-content-between ${
+                            isSelected ? 'border-primary bg-primary-subtle shadow-xs' : 'bg-white'
+                          }`}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setSelectedDriverId(drv.id)}
+                        >
+                          <div className="d-flex align-items-center gap-3">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-xs"
+                              style={{ width: 42, height: 42, background: isOnline ? '#10b981' : '#94a3b8' }}
+                            >
+                              {drv.name ? drv.name.charAt(0).toUpperCase() : 'D'}
+                            </div>
+                            <div>
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="fw-bold text-dark">{drv.name}</span>
+                                <span className={`badge ${isOnline ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} fs-xxs`}>
+                                  {isOnline ? '● Online' : 'Off-duty'}
+                                </span>
+                                {drv.vehicle_type && (
+                                  <span className="badge bg-light text-muted border fs-xxs text-capitalize">
+                                    <i className="ri-e-bike-2-line me-1" />{drv.vehicle_type}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-muted fs-xs mt-0.5 d-flex align-items-center gap-3">
+                                <span><i className="ri-phone-line me-1" />{drv.phone || 'No phone'}</span>
+                                {drv.vehicle_plate && <span><i className="ri-car-line me-1" />{drv.vehicle_plate}</span>}
+                                {drv.active_deliveries_count != null && (
+                                  <span><i className="ri-box-3-line me-1" />{drv.active_deliveries_count} active orders</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <button
+                              className="btn btn-sm btn-primary fw-bold px-3 text-nowrap"
+                              disabled={assigningDriver}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleAssignDriver(drv.id)
+                              }}
+                            >
+                              {assigningDriver && selectedDriverId === drv.id ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-1" />
+                                  Assigning...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="ri-user-add-line me-1" />Assign Driver
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer py-2.5 px-3 bg-light d-flex justify-content-between align-items-center">
+                <Link to="/fleet/dispatch" className="text-primary text-decoration-none fs-xs fw-semibold" onClick={() => setShowDriverModal(false)}>
+                  <i className="ri-external-link-line me-1" />Open Full Dispatch Console
+                </Link>
+                <button className="btn btn-sm btn-secondary" onClick={() => setShowDriverModal(false)}>
+                  Close
+                </button>
               </div>
             </div>
           </div>

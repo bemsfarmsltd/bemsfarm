@@ -602,6 +602,25 @@ export default function POS() {
     }
 
     loadPOSData()
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const targetOrderId = urlParams.get('orderId') || urlParams.get('loadOrder')
+      if (targetOrderId) {
+        const cleanId = String(targetOrderId).replace(/^ORD-/i, '').replace(/^#/, '').trim()
+        api.get(`/admin/pos/packing/${cleanId}`).then(res => {
+          if (res.data?.order && isMounted) {
+            setPackingOrder(res.data.order)
+            setPackingItems(res.data.items || [])
+            setActiveModal('packing')
+            showToast(`Order #${targetOrderId} loaded into POS Packing Counter`, 'info', '📦')
+          }
+        }).catch(err => {
+          console.warn('Auto-open packing order notice:', err?.message)
+        })
+      }
+    } catch (_) {}
+
     const pollInterval = setInterval(() => {
       api.get('/admin/orders?limit=40').then(ordRes => {
         const ords = ordRes?.data?.orders || []
