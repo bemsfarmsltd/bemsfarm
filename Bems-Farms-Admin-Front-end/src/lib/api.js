@@ -1,7 +1,13 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
-
-export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://api.bemsfarms.com/api')
+export const API_BASE_URL = (() => {
+  const envUrl = import.meta.env.VITE_API_URL
+  if (envUrl && envUrl.startsWith('http')) return envUrl
+  if (import.meta.env.DEV || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))) {
+    return envUrl || '/api'
+  }
+  return 'https://api.bemsfarms.com/api'
+})()
 
 const api = axios.create({
   baseURL: API_BASE_URL,

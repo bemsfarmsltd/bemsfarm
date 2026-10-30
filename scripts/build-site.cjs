@@ -30,7 +30,7 @@ console.log('Building admin and POS portal...');
 execFileSync(npm, ['run', 'build'], {
   cwd: path.join(root, 'Bems-Farms-Admin-Front-end'),
   stdio: 'inherit',
-  env: { ...process.env, VITE_BASE_PATH: '/admin/' },
+  env: { ...process.env, VITE_BASE_PATH: '/admin/', VITE_API_URL: 'https://api.bemsfarms.com/api' },
 });
 
 const staging = path.join(root, 'dist_staging');
@@ -70,6 +70,9 @@ DirectoryIndex index.html
   RewriteRule ^downloads/BemsDriver\\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
   RewriteRule ^downloads/BemsCustomer\\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
   RewriteRule ^download/?$ /#apps [R=302,L]
+
+  # Direct API fallback routing to live Express API
+  RewriteRule ^api/(.*)$ https://api.bemsfarms.com/api/$1 [R=307,L]
 
   # 1. Admin SPA Routing (/admin/*)
   RewriteRule ^admin/index\\.html$ - [L]
