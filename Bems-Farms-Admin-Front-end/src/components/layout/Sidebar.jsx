@@ -8,6 +8,10 @@ export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Role helpers
+  const is = (...roles) => hasRole(...roles)
+  const isAppDeveloper = user?.role === 'app_developer'
+
   // First sub-category route mapping for each rail category
   const CATEGORY_FIRST_ROUTES = {
     dashboards: '/dashboard?tab=overview',
@@ -20,12 +24,10 @@ export default function Sidebar() {
     finance: '/accounts/transactions',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
-    settings: '/settings/general',
+    settings: isAppDeveloper ? '/settings/mobile-apps' : '/settings/general',
     godeye: '/god-eye',
   }
 
-  // Role helpers
-  const is = (...roles) => hasRole(...roles)
   const showInventory = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showProducts  = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showOrders    = is('superadmin', 'admin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff')
@@ -36,7 +38,7 @@ export default function Sidebar() {
   const showStaff     = is('superadmin', 'admin', 'manager')
   const showChefAI    = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showStores    = is('superadmin', 'admin')
-  const showSettings  = is('superadmin', 'admin', 'manager')
+  const showSettings  = is('superadmin', 'admin', 'manager', 'app_developer')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
   // Audit log is accessible to superadmins and administrators
   const showGodEye    = is('superadmin', 'admin')
@@ -442,17 +444,18 @@ export default function Sidebar() {
 
           <div className="rail-nav-list">
 
-            {/* Dashboards */}
-            {/* 1. Dashboards */}
-            <button
-              type="button"
-              className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
-              onClick={() => handleCategoryClick('dashboards')}
-              title="Dashboards"
-            >
-              <i className="ri-dashboard-2-line rail-icon"></i>
-              <span className="rail-label">Dashboards</span>
-            </button>
+            {/* Dashboards — hidden for app developers */}
+            {!isAppDeveloper && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('dashboards')}
+                title="Dashboards"
+              >
+                <i className="ri-dashboard-2-line rail-icon"></i>
+                <span className="rail-label">Dashboards</span>
+              </button>
+            )}
 
 
             {/* 3. Inventory (BEFORE Products) */}
@@ -559,16 +562,16 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* 11. Settings & Onboarding */}
+            {/* 11. Settings & Onboarding / Mobile Apps */}
             {showSettings && (
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
                 onClick={() => handleCategoryClick('settings')}
-                title="Settings & Onboarding"
+                title={isAppDeveloper ? "Mobile Apps" : "Settings & Onboarding"}
               >
-                <i className="ri-settings-3-line rail-icon"></i>
-                <span className="rail-label">Settings</span>
+                <i className={`${isAppDeveloper ? 'ri-smartphone-line' : 'ri-settings-3-line'} rail-icon`}></i>
+                <span className="rail-label">{isAppDeveloper ? 'Mobile Apps' : 'Settings'}</span>
               </button>
             )}
 
@@ -617,7 +620,7 @@ export default function Sidebar() {
                 {activeTab === 'finance' && 'Finance & Accounts'}
                 {activeTab === 'chef' && 'Chef Bems AI'}
                 {activeTab === 'stores' && 'Multi-Store Network'}
-                {activeTab === 'settings' && 'Settings & Onboarding'}
+                {activeTab === 'settings' && (isAppDeveloper ? 'Mobile Apps Ecosystem' : 'Settings & Onboarding')}
               </div>
             </div>
 
@@ -935,16 +938,18 @@ export default function Sidebar() {
             {/* 10. SETTINGS & ONBOARDING */}
             {activeTab === 'settings' && (
               <>
-                <div className="sub-section-header">Store &amp; Account</div>
+                <div className="sub-section-header">{isAppDeveloper ? 'Account' : 'Store & Account'}</div>
                 <NavLink to="/settings/profile" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>My Profile &amp; Security</span>
                 </NavLink>
-                <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Store Profile</span>
-                </NavLink>
+                {!isAppDeveloper && (
+                  <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Store Profile</span>
+                  </NavLink>
+                )}
 
                 {/* Team Onboarding & Staff Management */}
-                {showStaff && (
+                {showStaff && !isAppDeveloper && (
                   <>
                     <div className="sub-section-header">Team &amp; Access</div>
                     <Link
@@ -967,30 +972,34 @@ export default function Sidebar() {
                     </Link>
                   </>
                 )}
-                {is('superadmin', 'admin') && (
+                {is('superadmin', 'admin') && !isAppDeveloper && (
                   <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Admin System Access</span>
                   </NavLink>
                 )}
 
                 {/* Store Operations & Billing Settings */}
-                <div className="sub-section-header">Billing &amp; Store Ops</div>
-                <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Payment &amp; Tax</span>
-                </NavLink>
-                {is('superadmin', 'admin', 'manager', 'accountant') && (
-                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Invoices &amp; Bank Details</span>
-                  </NavLink>
+                {!isAppDeveloper && (
+                  <>
+                    <div className="sub-section-header">Billing &amp; Store Ops</div>
+                    <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                      <span>Payment &amp; Tax</span>
+                    </NavLink>
+                    {is('superadmin', 'admin', 'manager', 'accountant') && (
+                      <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                        <span>Invoices &amp; Bank Details</span>
+                      </NavLink>
+                    )}
+                    {is('superadmin', 'admin', 'manager', 'cashier') && (
+                      <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                        <span>POS Thermal Receipts</span>
+                      </NavLink>
+                    )}
+                    <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                      <span>Notifications</span>
+                    </NavLink>
+                  </>
                 )}
-                {is('superadmin', 'admin', 'manager', 'cashier') && (
-                  <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>POS Thermal Receipts</span>
-                  </NavLink>
-                )}
-                <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Notifications</span>
-                </NavLink>
 
                 {/* Mobile Apps & Distribution */}
                 <div className="sub-section-header">Mobile Ecosystem</div>

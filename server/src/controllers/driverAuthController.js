@@ -36,6 +36,52 @@ function isDriverApproved(driver) {
   return true;
 }
 
+function makeAbsoluteUrl(rawUrl, req) {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const protocol = req?.headers?.["x-forwarded-proto"] || req?.protocol || "https";
+  const host = req?.get ? req.get("host") : (process.env.SERVER_BASE_URL?.replace(/^https?:\/\//, "") || "api.bemsfarms.com");
+  const baseUrl = process.env.SERVER_BASE_URL || `${protocol}://${host}`;
+  return `${baseUrl.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+}
+
+function resolveDriverProfile(driver, req) {
+  if (!driver) return null;
+
+  let docs = {};
+  if (typeof driver.documents === "object" && driver.documents !== null) {
+    docs = driver.documents;
+  } else if (typeof driver.documents === "string") {
+    try {
+      docs = JSON.parse(driver.documents);
+    } catch (_) {
+      docs = {};
+    }
+  }
+
+  // 1. Resolve passport photo url from documents or driver.avatar_url
+  const passportRaw = docs.passport_photo || docs.passport || docs.avatar || docs.profile_photo || docs.photo || driver.avatar_url || null;
+  const passportPhotoUrl = makeAbsoluteUrl(passportRaw, req);
+
+  // 2. Resolve avatar url (prioritize approved passport photo / avatar)
+  const avatarRaw = driver.avatar_url || passportRaw || null;
+  const avatarUrl = makeAbsoluteUrl(avatarRaw, req);
+
+  // 3. Resolve emergency contact
+  const emergencyContact = driver.emergency_contact || driver.emergency_contact_phone || null;
+  const emergencyPhone = driver.emergency_contact_phone || driver.emergency_contact || null;
+
+  return {
+    ...driver,
+    avatar_url: avatarUrl,
+    passport_photo_url: passportPhotoUrl || avatarUrl,
+    emergency_contact: emergencyContact,
+    emergency_contact_phone: emergencyPhone,
+  };
+}
+
 // ── POST /api/driver/auth/register & /api/driver/register ────────────
 // Self-Service Driver Registration (Awaiting Admin Verification)
 const register = async (req, res, next) => {
@@ -423,6 +469,13 @@ const login = async (req, res, next) => {
         d.license_number,
         d.nin_number,
         d.address,
+        COALESCE(d.emergency_contact, d.emergency_contact_phone) AS emergency_contact,
+        d.emergency_contact_phone,
+        d.emergency_contact_name,
+        d.emergency_contact_relationship,
+        d.guarantor_name,
+        d.guarantor_phone,
+        d.guarantor_address,
         d.bank_name,
         d.account_number,
         d.account_name,
@@ -562,15 +615,25 @@ const login = async (req, res, next) => {
       }
     }
 
+    const formattedDriver = resolveDriverProfile(driver, req);
+    const driverPayload = {
+      ...formattedDriver,
+      wallet_account_number: walletAccountNumber,
+      wallet_bank_name: walletBankName,
+      wallet_account_name: walletAccountName,
+      is_available: isVerified ? driver.is_available : false,
+    };
+
     res.json({
       token,
-      driver: {
-        ...driver,
-        wallet_account_number: walletAccountNumber,
-        wallet_bank_name: walletBankName,
-        wallet_account_name: walletAccountName,
-        is_available: isVerified ? driver.is_available : false,
-      },
+      id: driverPayload.id,
+      name: driverPayload.name,
+      phone: driverPayload.phone,
+      avatar_url: driverPayload.avatar_url,
+      passport_photo_url: driverPayload.passport_photo_url,
+      emergency_contact: driverPayload.emergency_contact,
+      emergency_contact_phone: driverPayload.emergency_contact_phone,
+      driver: driverPayload,
       wallet: {
         account_number: walletAccountNumber,
         bank_name: walletBankName,
@@ -657,31 +720,49 @@ const getVerificationStatus = async (req, res, next) => {
 // ── GET /api/driver/auth/me ─────────────────────────────────────────
 const getMe = async (req, res, next) => {
   try {
-    const driver = req.driver;
-    const isVerified = isDriverApproved(driver);
+    const rawDriver = req.driver;
+    const isVerified = isDriverApproved(rawDriver);
 
     // Fetch driver saved bank accounts for mobile profile
     let savedBankAccounts = [];
     try {
       const bRes = await pool.query(
         "SELECT id, bank_name, bank_code, account_number, account_name, is_default, is_verified, created_at FROM driver_bank_accounts WHERE driver_id = $1 ORDER BY is_default DESC, updated_at DESC",
-        [driver.id]
+        [rawDriver.id]
       );
       savedBankAccounts = bRes.rows;
     } catch (e) {
       // table check
     }
 
+    const formattedDriver = resolveDriverProfile(rawDriver, req);
+    formattedDriver.is_available = isVerified ? rawDriver.is_available : false;
+    formattedDriver.saved_bank_accounts = savedBankAccounts;
+
     res.json({
-      driver: {
-        ...driver,
-        is_available: isVerified ? driver.is_available : false,
-        saved_bank_accounts: savedBankAccounts,
-      },
+      // Root-level fields to strictly satisfy the Driver Profile API specification:
+      // { id, name, phone, avatar_url, passport_photo_url, emergency_contact }
+      id: formattedDriver.id,
+      name: formattedDriver.name,
+      phone: formattedDriver.phone,
+      avatar_url: formattedDriver.avatar_url,
+      passport_photo_url: formattedDriver.passport_photo_url,
+      emergency_contact: formattedDriver.emergency_contact,
+      emergency_contact_phone: formattedDriver.emergency_contact_phone,
+      email: formattedDriver.email,
+      vehicle_type: formattedDriver.vehicle_type,
+      vehicle_plate: formattedDriver.vehicle_plate,
+      zone_id: formattedDriver.zone_id,
+      rating: formattedDriver.rating,
+      status: formattedDriver.status,
+      onboarding_status: formattedDriver.onboarding_status,
+      is_available: formattedDriver.is_available,
+      // Full nested driver object for existing app components
+      driver: formattedDriver,
       saved_bank_accounts: savedBankAccounts,
       verification: {
-        status: driver.status,
-        onboarding_status: driver.onboarding_status || (isVerified ? "verified" : "pending_verification"),
+        status: rawDriver.status,
+        onboarding_status: rawDriver.onboarding_status || (isVerified ? "verified" : "pending_verification"),
         is_verified: isVerified,
         can_accept_orders: isVerified,
       },
@@ -691,7 +772,7 @@ const getMe = async (req, res, next) => {
   }
 };
 
-// ── PATCH /api/driver/auth/profile ──────────────────────────────────
+// ── PATCH /api/driver/auth/profile & PATCH /api/driver/profile ───────
 const updateProfile = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
@@ -699,6 +780,7 @@ const updateProfile = async (req, res, next) => {
       phone,
       email,
       avatar_url,
+      passport_photo_url,
       photo,
       bank_name,
       account_number,
@@ -708,8 +790,9 @@ const updateProfile = async (req, res, next) => {
       address,
       vehicle_type,
       vehicle_plate,
-      emergency_contact_name,
+      emergency_contact,
       emergency_contact_phone,
+      emergency_contact_name,
       emergency_contact_relationship,
       guarantor_name,
       guarantor_phone,
@@ -775,8 +858,9 @@ const updateProfile = async (req, res, next) => {
         });
       }
     }
-    if (avatar_url !== undefined || photo !== undefined) {
-      params.push(avatar_url || photo);
+    if (avatar_url !== undefined || photo !== undefined || passport_photo_url !== undefined) {
+      const picUrl = avatar_url || photo || passport_photo_url;
+      params.push(picUrl);
       updates.push(`avatar_url = $${params.length}`);
     }
     if (bank_name !== undefined) {
@@ -811,13 +895,27 @@ const updateProfile = async (req, res, next) => {
       params.push(vehicle_plate.trim().toUpperCase());
       updates.push(`vehicle_plate = $${params.length}`);
     }
+    if (emergency_contact !== undefined) {
+      const cleanContact = typeof emergency_contact === "string" ? emergency_contact.trim() : String(emergency_contact || "");
+      params.push(cleanContact);
+      updates.push(`emergency_contact = $${params.length}`);
+      if (emergency_contact_phone === undefined) {
+        params.push(cleanContact);
+        updates.push(`emergency_contact_phone = $${params.length}`);
+      }
+    }
     if (emergency_contact_name !== undefined) {
       params.push(emergency_contact_name.trim());
       updates.push(`emergency_contact_name = $${params.length}`);
     }
     if (emergency_contact_phone !== undefined) {
-      params.push(emergency_contact_phone.trim());
+      const cleanPhone = emergency_contact_phone.trim();
+      params.push(cleanPhone);
       updates.push(`emergency_contact_phone = $${params.length}`);
+      if (emergency_contact === undefined) {
+        params.push(cleanPhone);
+        updates.push(`emergency_contact = $${params.length}`);
+      }
     }
     if (emergency_contact_relationship !== undefined) {
       params.push(emergency_contact_relationship.trim());
@@ -844,12 +942,21 @@ const updateProfile = async (req, res, next) => {
       if (pendingZoneDetails) {
         const curRes = await pool.query("SELECT * FROM drivers WHERE id = $1", [driverId]);
         const d = curRes.rows[0];
+        const formattedD = resolveDriverProfile(d, req);
+        formattedD.is_available = isDriverApproved(d) ? req.driver.is_available : false;
+        formattedD.is_on_delivery = req.driver.is_on_delivery;
+
         return res.json({
-          driver: {
-            ...d,
-            is_available: isDriverApproved(d) ? req.driver.is_available : false,
-            is_on_delivery: req.driver.is_on_delivery,
-          },
+          status: "success",
+          success: true,
+          id: formattedD.id,
+          name: formattedD.name,
+          phone: formattedD.phone,
+          avatar_url: formattedD.avatar_url,
+          passport_photo_url: formattedD.passport_photo_url,
+          emergency_contact: formattedD.emergency_contact,
+          emergency_contact_phone: formattedD.emergency_contact_phone,
+          driver: formattedD,
           zone_change: pendingZoneDetails,
           message: "Zone change request submitted and awaiting admin approval.",
         });
@@ -885,18 +992,28 @@ const updateProfile = async (req, res, next) => {
       }
     }
 
+    const formattedDriver = resolveDriverProfile(updatedDriver, req);
+    formattedDriver.is_available = isDriverApproved(updatedDriver) ? req.driver.is_available : false;
+    formattedDriver.is_on_delivery = req.driver.is_on_delivery;
+
     res.json({
-      driver: {
-        ...updatedDriver,
-        is_available: isDriverApproved(updatedDriver) ? req.driver.is_available : false,
-        is_on_delivery: req.driver.is_on_delivery,
-      },
+      status: "success",
+      success: true,
+      message: "Profile updated successfully" + (pendingZoneDetails ? ". Zone change is pending admin approval." : ""),
+      // Provide direct root-level fields as specified
+      id: formattedDriver.id,
+      name: formattedDriver.name,
+      phone: formattedDriver.phone,
+      avatar_url: formattedDriver.avatar_url,
+      passport_photo_url: formattedDriver.passport_photo_url,
+      emergency_contact: formattedDriver.emergency_contact,
+      emergency_contact_phone: formattedDriver.emergency_contact_phone,
+      driver: formattedDriver,
       zone_change: pendingZoneDetails || {
         status: updatedDriver.zone_change_status || "none",
         current_zone_id: updatedDriver.primary_zone_id,
         requested_zone_id: updatedDriver.requested_zone_id,
       },
-      message: "Profile updated successfully" + (pendingZoneDetails ? ". Zone change is pending admin approval." : ""),
     });
   } catch (err) {
     console.error("Driver updateProfile error:", err.message);

@@ -45,6 +45,10 @@ const DEV_USERS = {
     password: 'staff123',
     user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'staff@bemsfarms.com', role: 'cashier' },
   },
+  'developer@bemsfarms.com': {
+    password: 'dev123',
+    user: { id: 'dev-7', first_name: 'Mobile', last_name: 'Engineer', email: 'developer@bemsfarms.com', role: 'app_developer' },
+  },
 }
 
 const DEV_MODE = import.meta.env.DEV || import.meta.env.VITE_API_URL?.includes('localhost')

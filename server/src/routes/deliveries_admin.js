@@ -1520,7 +1520,21 @@ router.patch(
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      const driver = driverRes.rows[0];
+      let driver = driverRes.rows[0];
+
+      // Auto-set approved passport photo as driver's avatar_url if not already set
+      try {
+        let docs = {};
+        if (typeof driver.documents === 'object' && driver.documents) docs = driver.documents;
+        else if (typeof driver.documents === 'string') try { docs = JSON.parse(driver.documents); } catch (_) {}
+        const passportUrl = docs.passport_photo || docs.passport || docs.avatar || docs.profile_photo;
+        if ((!driver.avatar_url || driver.avatar_url.trim() === '') && passportUrl) {
+          const syncRes = await pool.query("UPDATE drivers SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *", [passportUrl, driver.id]);
+          if (syncRes.rows.length) driver = syncRes.rows[0];
+        }
+      } catch (errSync) {
+        console.warn("Notice syncing avatar on driver approval:", errSync.message);
+      }
 
       await pool.query(
         "UPDATE driver_availability SET is_available=true, last_toggled_at=NOW() WHERE driver_id=$1",

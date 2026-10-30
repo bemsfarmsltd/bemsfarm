@@ -17,6 +17,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'staff', label: 'Staff & User Accounts', desc: 'Create employee profiles, credentials, and manage system roles' },
   { id: 'customers', label: 'Customer Directory', desc: 'View customer accounts, purchase history, and store credits' },
   { id: 'settings', label: 'System Configuration', desc: 'Manage payment gateways, store settings, and tax policies' },
+  { id: 'mobile_apps', label: 'Mobile App Ecosystem', desc: 'Upload Android APK packages & configure app version gates' },
 ]
 
 const DEFAULT_SYSTEM_ROLES = [
@@ -65,6 +66,14 @@ const DEFAULT_SYSTEM_ROLES = [
     name: 'accountant',
     description: 'Financial ledger, revenue & expenditure reporting.',
     permissions: ['reports', 'dashboard'],
+    is_system: true,
+    staff_count: 0,
+  },
+  {
+    id: 7,
+    name: 'app_developer',
+    description: 'Mobile App Developer with access strictly to upload & configure mobile apps.',
+    permissions: ['mobile_apps'],
     is_system: true,
     staff_count: 0,
   },
@@ -393,6 +402,7 @@ export default function TeamOnboarding({ initialTab }) {
       case 'storekeeper':      return 'Storekeeper'
       case 'delivery_manager': return 'Delivery Manager'
       case 'accountant':       return 'Accountant'
+      case 'app_developer':    return 'Mobile App Developer'
       default:
         return role ? role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Member'
     }
@@ -409,6 +419,7 @@ export default function TeamOnboarding({ initialTab }) {
       case 'storekeeper':      return { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' }
       case 'delivery_manager': return { bg: '#cffafe', text: '#0e7490', border: '#a5f3fc' }
       case 'accountant':       return { bg: '#ede9fe', text: '#6d28d9', border: '#ddd6fe' }
+      case 'app_developer':    return { bg: '#e0f2fe', text: '#0284c7', border: '#bae6fd' }
       default:                 return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' }
     }
   }
@@ -601,7 +612,16 @@ export default function TeamOnboarding({ initialTab }) {
                     <select
                       className="form-select"
                       value={systemRole}
-                      onChange={(e) => setSystemRole(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setSystemRole(val)
+                        if (val === 'app_developer') setDepartment('Engineering & Mobile')
+                        else if (val === 'cashier') setDepartment('Sales & POS')
+                        else if (val === 'kitchen_staff') setDepartment('Kitchen & Processing')
+                        else if (val === 'delivery_manager') setDepartment('Logistics & Dispatch')
+                        else if (val === 'accountant') setDepartment('Finance & Accounts')
+                        else if (val === 'superadmin' || val === 'admin') setDepartment('Administration')
+                      }}
                     >
                       <option value="cashier">POS Cashier (Storefront &amp; Sales)</option>
                       <option value="kitchen_staff">Kitchen / Storekeeper (Inventory &amp; Batches)</option>
@@ -609,6 +629,7 @@ export default function TeamOnboarding({ initialTab }) {
                       <option value="manager">Store Manager (Full Operations &amp; Reports)</option>
                       <option value="admin">Administrator (Settings &amp; Store Management)</option>
                       <option value="accountant">Accountant (Financial Statements &amp; Reports)</option>
+                      <option value="app_developer">Mobile App Developer (Mobile Apps Upload Only)</option>
                       {user?.role === 'superadmin' && (
                         <option value="superadmin">Super Admin (Unrestricted System Access)</option>
                       )}
@@ -628,6 +649,7 @@ export default function TeamOnboarding({ initialTab }) {
                       <option value="Kitchen & Processing">Kitchen &amp; Processing</option>
                       <option value="Logistics & Dispatch">Logistics &amp; Dispatch</option>
                       <option value="Finance & Accounts">Finance &amp; Accounts</option>
+                      <option value="Engineering & Mobile">Engineering &amp; Mobile</option>
                       <option value="Administration">Administration</option>
                     </select>
                   </div>
@@ -923,11 +945,13 @@ export default function TeamOnboarding({ initialTab }) {
                   >
                     <option value="">All System Roles</option>
                     <option value="superadmin">Super Admin</option>
+                    <option value="admin">Administrator</option>
                     <option value="manager">Store Manager</option>
                     <option value="cashier">POS Cashier</option>
                     <option value="kitchen_staff">Kitchen Staff</option>
                     <option value="delivery_manager">Delivery Manager</option>
                     <option value="accountant">Accountant</option>
+                    <option value="app_developer">Mobile App Developer</option>
                   </select>
                 </div>
 

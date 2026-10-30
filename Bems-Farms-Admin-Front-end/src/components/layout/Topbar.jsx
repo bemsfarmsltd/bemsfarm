@@ -182,37 +182,47 @@ export default function Topbar({ onToggleSidebar }) {
 
   return (
     <header className="main-topbar" id="main-topbar">
-      {/* ── Left Zone: Add New Action + POS ── */}
+      {/* ── Left Zone: Add New Action + POS (Hidden for App Developers) ── */}
       <div className="d-flex align-items-center gap-2">
-        {/* Add New Creation Center Button */}
-        <button
-          className="btn topbar-action-pill btn-primary-bf"
-          type="button"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setShowQuickCreate(true)
-          }}
-          title="Quick Add Anything to Bems Farms (Alt+N)"
-          style={{ position: 'relative', zIndex: 10, cursor: 'pointer' }}
-        >
-          <i className="ri-add-line"></i>
-          <span className="d-none d-sm-inline">Add New</span>
-        </button>
+        {user?.role === 'app_developer' ? (
+          <span className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-3 py-1.5 fs-12 fw-semibold" style={{ backgroundColor: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD' }}>
+            <i className="ri-smartphone-line"></i>
+            <span>Mobile App Deployment Console</span>
+          </span>
+        ) : (
+          <>
+            {/* Add New Creation Center Button */}
+            <button
+              className="btn topbar-action-pill btn-primary-bf"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowQuickCreate(true)
+              }}
+              title="Quick Add Anything to Bems Farms (Alt+N)"
+              style={{ position: 'relative', zIndex: 10, cursor: 'pointer' }}
+            >
+              <i className="ri-add-line"></i>
+              <span className="d-none d-sm-inline">Add New</span>
+            </button>
 
-        {/* Standalone Point of Sale Button on Topbar */}
-        <Link
-          to="/pos"
-          className="btn topbar-action-pill-light d-inline-flex align-items-center gap-1.5 text-decoration-none"
-          title="Open Point of Sale (POS)"
-        >
-          <i className="ri-computer-line text-success"></i>
-          <span className="fw-bold">Point of Sale</span>
-          <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#166534', fontSize: 9 }}>Live</span>
-        </Link>
+            {/* Standalone Point of Sale Button on Topbar */}
+            <Link
+              to="/pos"
+              className="btn topbar-action-pill-light d-inline-flex align-items-center gap-1.5 text-decoration-none"
+              title="Open Point of Sale (POS)"
+            >
+              <i className="ri-computer-line text-success"></i>
+              <span className="fw-bold">Point of Sale</span>
+              <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#166534', fontSize: 9 }}>Live</span>
+            </Link>
+          </>
+        )}
       </div>
 
-      {/* ── Center Zone: Global Executive Command Search Bar ── */}
+      {/* ── Center Zone: Global Executive Command Search Bar (Hidden for App Developers) ── */}
+      {user?.role !== 'app_developer' && (
       <div ref={searchBoxRef} className="topbar-search-container d-none d-md-flex align-items-center mx-auto position-relative">
         <i
           className="ri-search-line position-absolute"
@@ -317,6 +327,7 @@ export default function Topbar({ onToggleSidebar }) {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Right Zone: Live Store + Notifications + Profile ── */}
       <div className="d-flex align-items-center gap-2 ms-auto">

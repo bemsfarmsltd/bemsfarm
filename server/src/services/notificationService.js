@@ -194,6 +194,16 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
         recipientSet.add(process.env.ADMIN_NOTIF_EMAIL.trim().toLowerCase());
       }
 
+      // Automatically include registered superadmins & system administrators
+      try {
+        const adminUsers = await pool.query(
+          "SELECT email FROM users WHERE role IN ('superadmin', 'admin') AND (status = 'active' OR status IS NULL) LIMIT 5"
+        );
+        adminUsers.rows.forEach(r => {
+          if (r.email && r.email.includes('@')) recipientSet.add(r.email.trim().toLowerCase());
+        });
+      } catch (_) {}
+
       if (recipientSet.size === 0) recipientSet.add('info@bemsfarms.com');
 
       const recipients = Array.from(recipientSet);
@@ -226,6 +236,7 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
       system_error:               'system',
       security_event:             'security',
       staff_action:               'admin',
+      mobile_app_action:          'system',
       driver_wallet_adjustment:   'financial',
       payout_disbursed:           'financial',
       payout_approved:            'financial',

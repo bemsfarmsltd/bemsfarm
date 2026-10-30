@@ -14,6 +14,7 @@ export const ROLES = {
   SALES_PERSON:     'sales_person',
   SALES:            'sales',
   KITCHEN_STAFF:    'kitchen_staff',
+  APP_DEVELOPER:    'app_developer',
 }
 
 // ── Permission Groups ──────────────────────────────────────────────
@@ -28,6 +29,13 @@ export const SALES_ROLES = ['cashier', 'salesperson', 'sales_person', 'sales', '
 export const isSalesRole = (role) => {
   return role ? SALES_ROLES.includes(String(role).toLowerCase()) : false
 }
+
+export const isAppDeveloperRole = (role) => {
+  return role ? String(role).toLowerCase() === 'app_developer' : false
+}
+
+/** Can access and manage mobile apps releases & versioning */
+export const MOBILE_APP_ROLES = ['admin', 'superadmin', 'manager', 'app_developer']
 
 /** Superadmin + Admin + Manager only */
 export const ADMIN_ONLY = ['admin', 'superadmin', 'manager']
@@ -80,6 +88,7 @@ export const STAFF_HOME = {
   kitchen_staff: '/inventory/stock',
   delivery_manager: '/deliveries/active',
   accountant: '/accounts/overview',
+  app_developer: '/settings/mobile-apps',
 }
 
 // ── UI Labels & Colors ─────────────────────────────────────────────
@@ -173,5 +182,14 @@ export const ROLE_META = {
     icon:        'ri-restaurant-line',
     email:       'kitchen@bemsfarms.com',
     password:    'kitchen123',
+  },
+  app_developer: {
+    label:       'Mobile App Developer',
+    description: 'Mobile APK deployment & version control',
+    color:       '#0284c7',
+    bg:          '#e0f2fe',
+    icon:        'ri-smartphone-line',
+    email:       'developer@bemsfarms.com',
+    password:    'dev123',
   },
 }

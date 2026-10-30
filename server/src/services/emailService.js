@@ -714,6 +714,7 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
     system_error:           "🔴 System Error / Exception",
     security_event:         "🔑 Security & Password Change",
     staff_action:           "👥 Staff Management Action",
+    mobile_app_action:      "📱 Mobile App Control Panel Activity",
   };
 
   const badgeTitle = typeLabels[type] || title || "BemsFarms Notification";

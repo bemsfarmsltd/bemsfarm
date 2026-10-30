@@ -94,6 +94,10 @@ ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS account_number VARCHAR(30);
 ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS account_name VARCHAR(100);
+ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR(100);
+ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50);
+ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100);
+ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_relationship VARCHAR(50);
 
 -- 8. Ensure delivery_assignments table exists for dispatch mapping and timeout tracking
 CREATE TABLE IF NOT EXISTS public.delivery_assignments (

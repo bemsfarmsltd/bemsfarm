@@ -91,6 +91,8 @@ router.post("/auth/reset-password", driverAuthController.resetPassword);
 router.post("/reset-password", driverAuthController.resetPassword);
 router.get("/auth/me", driverProtect, driverAuthController.getMe);
 router.get("/me", driverProtect, driverAuthController.getMe);
+router.get("/profile", driverProtect, driverAuthController.getMe);
+router.get("/auth/profile", driverProtect, driverAuthController.getMe);
 router.patch("/auth/profile", driverProtect, driverAuthController.updateProfile);
 router.patch("/profile", driverProtect, driverAuthController.updateProfile);
 router.put("/profile", driverProtect, driverAuthController.updateProfile);

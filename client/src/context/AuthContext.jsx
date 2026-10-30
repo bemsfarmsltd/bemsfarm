@@ -28,7 +28,7 @@ import { useChefStore } from "../store/useChefStore";
   - The old login() is kept as _storeSession() for internal use
 */
 
-const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff"];
+const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "app_developer"];
 
 const AuthContext = createContext(null);
 

@@ -173,7 +173,7 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
     }
 
     // Enforce portal separation
-    const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider"];
+    const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider", "app_developer"];
     const portal = String(req.body.portal || "").toLowerCase().trim();
 
     if ((portal === "storefront" || portal === "customer" || portal === "client") && STAFF_ROLES.includes(user.role)) {
@@ -1072,7 +1072,7 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
           .json({ message: "Account inactive. Contact support." });
       }
 
-      const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider"];
+      const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider", "app_developer"];
       const portal = String(req.body.portal || "").toLowerCase().trim();
 
       // Mark email as verified since Google has cryptographically verified this identity

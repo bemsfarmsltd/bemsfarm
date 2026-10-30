@@ -90,8 +90,19 @@ const uploadsStatic = express.static(path.join(__dirname, "../uploads"), {
 app.use("/uploads", uploadsStatic);
 app.use("/api/uploads", uploadsStatic);
 
-// Resilient fallback for uploaded documents and proof photos across Hostinger multi-build environments
-app.use(["/uploads/proofs/:filename", "/api/uploads/proofs/:filename", "/uploads/documents/:filename", "/api/uploads/documents/:filename", "/uploads/avatars/:filename", "/api/uploads/avatars/:filename"], (req, res, next) => {
+// Resilient fallback for uploaded documents, avatars, proof photos and storage files across Hostinger multi-build environments
+app.use([
+  "/uploads/proofs/:filename", 
+  "/api/uploads/proofs/:filename", 
+  "/uploads/documents/:filename", 
+  "/api/uploads/documents/:filename", 
+  "/uploads/avatars/:filename", 
+  "/api/uploads/avatars/:filename",
+  "/storage/drivers/:filename",
+  "/storage/:filename",
+  "/api/storage/drivers/:filename",
+  "/api/storage/:filename"
+], (req, res, next) => {
   try {
     const driverUploadController = require("./controllers/driverUploadController");
     return driverUploadController.serveDocumentFile(req, res);
@@ -156,6 +167,21 @@ app.use('/api/audit', require('./routes/audit'));
       }
     } catch (e) {
       console.warn('[driver-tables] Migration notice:', e.message?.slice(0,120));
+    }
+
+    // Driver Profile & Emergency Contact schema guarantee
+    try {
+      await pool.query(`
+        ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR(100);
+        ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50);
+        ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100);
+        ALTER TABLE public.drivers ADD COLUMN IF NOT EXISTS emergency_contact_relationship VARCHAR(50);
+        UPDATE public.drivers SET emergency_contact = emergency_contact_phone WHERE emergency_contact IS NULL AND emergency_contact_phone IS NOT NULL;
+        UPDATE public.drivers SET avatar_url = documents->>'passport_photo' WHERE (avatar_url IS NULL OR avatar_url = '') AND documents->>'passport_photo' IS NOT NULL;
+      `);
+      console.log('✅ Driver profile & emergency contact schema ready.');
+    } catch (e) {
+      console.warn('[driver-schema] Column check notice:', e.message?.slice(0, 120));
     }
 
     // Chat Support & Order Referencing schema migration

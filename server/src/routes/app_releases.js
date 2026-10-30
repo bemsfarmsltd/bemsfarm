@@ -6,6 +6,16 @@ const multer = require("multer");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { getAppVersionConfig, updateAppVersionConfig } = require("../config/appVersion");
+const { recordAudit } = require("../services/auditService");
+const { notifyAdmin } = require("../services/notificationService");
+
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  return req.socket?.remoteAddress || req.ip || "Unknown IP";
+}
 
 // Persistent storage directory that survives Hostinger ephemeral hbuilds deployments
 function getStorageDir() {
@@ -368,7 +378,7 @@ router.get("/version-config", protect, async (req, res) => {
 router.put(
   "/version-config",
   protect,
-  requireRole("superadmin", "admin", "manager"),
+  requireRole("superadmin", "admin", "manager", "app_developer"),
   async (req, res) => {
     try {
       const { customer, driver } = req.body || {};
@@ -402,6 +412,69 @@ router.put(
       await updateAppVersionConfig(updatedConfig, pool);
 
       console.log('✅ Updated app version gate config from Admin Portal:', updatedConfig);
+
+      // 1. Record in God Eye System Log (system_audit_events)
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers["user-agent"] || "Unknown";
+      const performerName = req.user?.name || req.user?.first_name || "Staff Member";
+      const performerEmail = req.user?.email || "Unknown Email";
+      const performerRole = req.user?.role || "staff";
+
+      recordAudit({
+        source: "admin",
+        action: "MOBILE_APP_VERSION_GATE_UPDATE",
+        category: "system",
+        severity: "warning",
+        outcome: "success",
+        actor_id: req.user?.id || null,
+        actor_name: `${performerName} (${performerEmail})`,
+        actor_role: performerRole,
+        ip_address: clientIp,
+        user_agent: userAgent,
+        resource: "/settings/mobile-apps",
+        entity_type: "app_version_gate",
+        entity_id: "version_config",
+        old_value: current,
+        new_value: updatedConfig,
+        details: {
+          event: "Mobile App Version Gates & Upgrade Rules Modified",
+          customer_min_version: updatedConfig.customer.minimum_version,
+          customer_latest_version: updatedConfig.customer.latest_version,
+          customer_force_update: updatedConfig.customer.force_update,
+          driver_min_version: updatedConfig.driver.minimum_version,
+          driver_latest_version: updatedConfig.driver.latest_version,
+          driver_force_update: updatedConfig.driver.force_update,
+          performed_by: `${performerName} (${performerEmail})`,
+          role: performerRole,
+          ip_address: clientIp,
+          user_agent: userAgent,
+          occurred_at: new Date().toISOString(),
+        },
+      }).catch((err) => console.warn("[app_releases] Audit log error:", err.message));
+
+      // 2. Dispatch real-time system notification and email alert to Administrators
+      notifyAdmin({
+        type: "mobile_app_action",
+        title: `⚙️ Mobile App Version Gates Modified by ${performerName}`,
+        message: `${performerName} (${performerEmail}, role: ${performerRole}) updated the live upgrade rules & version threshold gates for Customer and Driver mobile apps.`,
+        link: "/settings/mobile-apps",
+        actor: {
+          id: req.user?.id,
+          name: performerName,
+          email: performerEmail,
+          role: performerRole,
+        },
+        data: {
+          action: "App Version Rules & Forced Upgrade Gates Updated",
+          customer_app_rule: `Min: ${updatedConfig.customer.minimum_version} | Latest: ${updatedConfig.customer.latest_version} (Force Update: ${updatedConfig.customer.force_update ? "Active" : "Off"})`,
+          driver_app_rule: `Min: ${updatedConfig.driver.minimum_version} | Latest: ${updatedConfig.driver.latest_version} (Force Update: ${updatedConfig.driver.force_update ? "Active" : "Off"})`,
+          performed_by: `${performerName} (${performerEmail})`,
+          user_role: performerRole,
+          date_and_time: `${new Date().toUTCString()} (Local: ${new Date().toLocaleString("en-US", { timeZone: "Africa/Lagos" })})`,
+          ip_address: clientIp,
+          user_agent: userAgent,
+        },
+      }).catch((err) => console.warn("[app_releases] Notification dispatch error:", err.message));
 
       res.json({
         success: true,
@@ -449,7 +522,7 @@ router.get("/history", protect, async (req, res) => {
 router.delete(
   "/:id",
   protect,
-  requireRole("superadmin", "admin", "manager"),
+  requireRole("superadmin", "admin", "manager", "app_developer"),
   async (req, res) => {
     await initSchema();
     try {
@@ -476,6 +549,71 @@ router.delete(
         `, [release.app_type]);
       }
 
+      // 1. Record in God Eye System Log (system_audit_events)
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers["user-agent"] || "Unknown";
+      const performerName = req.user?.name || req.user?.first_name || "Staff Member";
+      const performerEmail = req.user?.email || "Unknown Email";
+      const performerRole = req.user?.role || "staff";
+
+      recordAudit({
+        source: "admin",
+        action: "MOBILE_APP_RELEASE_DELETE",
+        category: "system",
+        severity: "warning",
+        outcome: "success",
+        actor_id: req.user?.id || null,
+        actor_name: `${performerName} (${performerEmail})`,
+        actor_role: performerRole,
+        ip_address: clientIp,
+        user_agent: userAgent,
+        resource: "/settings/mobile-apps",
+        entity_type: "app_releases",
+        entity_id: String(release.id),
+        old_value: release,
+        details: {
+          event: "Mobile App Release Record Deleted",
+          deleted_release_id: release.id,
+          app_type: release.app_type,
+          app_name: release.app_name,
+          version_name: release.version_name,
+          version_code: release.version_code,
+          file_name: release.file_name,
+          performed_by: `${performerName} (${performerEmail})`,
+          role: performerRole,
+          ip_address: clientIp,
+          user_agent: userAgent,
+          occurred_at: new Date().toISOString(),
+        },
+      }).catch((err) => console.warn("[app_releases] Audit log error:", err.message));
+
+      // 2. Dispatch real-time system notification and email alert to Administrators
+      notifyAdmin({
+        type: "mobile_app_action",
+        title: `🗑️ Mobile App Release Deleted: ${release.app_name || release.app_type} (v${release.version_name})`,
+        message: `${performerName} (${performerEmail}, role: ${performerRole}) deleted release record #${release.id} for ${release.app_name || release.app_type} (v${release.version_name}, file: ${release.file_name}) from the mobile release repository.`,
+        link: "/settings/mobile-apps",
+        actor: {
+          id: req.user?.id,
+          name: performerName,
+          email: performerEmail,
+          role: performerRole,
+        },
+        data: {
+          action: "Mobile App Release Record Deleted",
+          deleted_release_id: release.id,
+          app_name: release.app_name,
+          app_type: release.app_type,
+          version_name: release.version_name,
+          file_name: release.file_name,
+          performed_by: `${performerName} (${performerEmail})`,
+          user_role: performerRole,
+          date_and_time: `${new Date().toUTCString()} (Local: ${new Date().toLocaleString("en-US", { timeZone: "Africa/Lagos" })})`,
+          ip_address: clientIp,
+          user_agent: userAgent,
+        },
+      }).catch((err) => console.warn("[app_releases] Notification dispatch error:", err.message));
+
       res.json({ success: true, message: "Release record deleted successfully" });
     } catch (err) {
       console.error("Error deleting release:", err);
@@ -489,7 +627,7 @@ router.delete(
 router.post(
   "/upload",
   protect,
-  requireRole("superadmin", "admin", "manager"),
+  requireRole("superadmin", "admin", "manager", "app_developer"),
   (req, res, next) => {
     upload.single("apk")(req, res, (err) => {
       if (err instanceof multer.MulterError) {
@@ -591,6 +729,83 @@ router.post(
       } catch (syncErr) {
         console.warn("[app_releases] Notice: could not sync app_version config:", syncErr.message);
       }
+
+      // 1. Record in God Eye System Log (system_audit_events)
+      const clientIp = getClientIp(req);
+      const userAgent = req.headers["user-agent"] || "Unknown";
+      const performerName = req.user?.name || req.user?.first_name || "Staff Member";
+      const performerEmail = req.user?.email || "Unknown Email";
+      const performerRole = req.user?.role || "staff";
+
+      recordAudit({
+        source: "admin",
+        action: "MOBILE_APP_UPLOAD",
+        category: "system",
+        severity: "info",
+        outcome: "success",
+        actor_id: req.user?.id || null,
+        actor_name: `${performerName} (${performerEmail})`,
+        actor_role: performerRole,
+        ip_address: clientIp,
+        user_agent: userAgent,
+        resource: "/settings/mobile-apps",
+        entity_type: "app_releases",
+        entity_id: String(savedRelease.id),
+        new_value: {
+          app_type: appType,
+          app_name: appName,
+          version_name: versionName,
+          version_code: versionCode,
+          file_size: fileSize,
+          file_name: standardFileName,
+          stored_filename: storedFilename,
+        },
+        details: {
+          event: "Mobile APK Build Published",
+          app_type: appType,
+          app_name: appName,
+          package_name: packageName,
+          version_name: versionName,
+          version_code: versionCode,
+          file_size: fileSize,
+          min_android: minAndroid,
+          release_notes: releaseNotes,
+          performed_by: `${performerName} (${performerEmail})`,
+          role: performerRole,
+          ip_address: clientIp,
+          user_agent: userAgent,
+          occurred_at: new Date().toISOString(),
+        },
+      }).catch((err) => console.warn("[app_releases] Audit log error:", err.message));
+
+      // 2. Dispatch real-time system notification and email alert to Administrators
+      notifyAdmin({
+        type: "mobile_app_action",
+        title: `📱 New Mobile APK Uploaded: ${appName} (v${versionName})`,
+        message: `${performerName} (${performerEmail}, role: ${performerRole}) successfully uploaded and published a new build for ${appName} (version ${versionName}, build code ${versionCode}, ${fileSize}).`,
+        link: "/settings/mobile-apps",
+        actor: {
+          id: req.user?.id,
+          name: performerName,
+          email: performerEmail,
+          role: performerRole,
+        },
+        data: {
+          action: "New Mobile APK Uploaded & Published",
+          app_name: appName,
+          app_type: appType,
+          version_name: versionName,
+          version_code: versionCode,
+          file_size: fileSize,
+          minimum_android: minAndroid,
+          release_notes: releaseNotes || "N/A",
+          performed_by: `${performerName} (${performerEmail})`,
+          user_role: performerRole,
+          date_and_time: `${new Date().toUTCString()} (Local: ${new Date().toLocaleString("en-US", { timeZone: "Africa/Lagos" })})`,
+          ip_address: clientIp,
+          user_agent: userAgent,
+        },
+      }).catch((err) => console.warn("[app_releases] Notification dispatch error:", err.message));
 
       res.status(201).json({
         success: true,

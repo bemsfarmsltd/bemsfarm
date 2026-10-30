@@ -181,7 +181,8 @@ async function ensureStaffTables() {
         ('storekeeper', 'Warehouse inventory & stock-in receipt manager', true, '["inventory","products"]'::jsonb),
         ('delivery_manager', 'Delivery operations, dispatch & rider assignment', true, '["deliveries","orders"]'::jsonb),
         ('accountant', 'Finance overview, ledger & sales/expense reporting', true, '["reports","dashboard"]'::jsonb),
-        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb)
+        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb),
+        ('app_developer', 'Mobile App Developer with access strictly to upload & configure mobile apps', true, '["mobile_apps"]'::jsonb)
       ON CONFLICT (name) DO NOTHING;
 
       CREATE TABLE IF NOT EXISTS staff_invitations (
@@ -215,6 +216,7 @@ async function ensureStaffTables() {
                WHEN u.role = 'kitchen_staff' THEN 'Kitchen & Operations'
                WHEN u.role = 'delivery_manager' THEN 'Logistics'
                WHEN u.role = 'accountant' THEN 'Finance'
+               WHEN u.role = 'app_developer' THEN 'Engineering & Mobile'
                ELSE 'Store Operations'
              END,
              REPLACE(INITCAP(REPLACE(u.role, '_', ' ')), 'Superadmin', 'Super Admin'),
@@ -223,7 +225,7 @@ async function ensureStaffTables() {
              NOW(),
              NOW()
       FROM users u
-      WHERE u.role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff', 'delivery_manager', 'accountant')
+      WHERE u.role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff', 'delivery_manager', 'accountant', 'app_developer')
         AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id = u.id)
       ON CONFLICT DO NOTHING;
     `);
@@ -1424,7 +1426,8 @@ router.get("/roles", requireRole("superadmin", "admin", "manager"), async (req, 
         ('storekeeper', 'Warehouse inventory & stock-in receipt manager', true, '["inventory","products"]'::jsonb),
         ('delivery_manager', 'Delivery operations, dispatch & rider assignment', true, '["deliveries","orders"]'::jsonb),
         ('accountant', 'Finance overview, ledger & sales/expense reporting', true, '["reports","dashboard"]'::jsonb),
-        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb)
+        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb),
+        ('app_developer', 'Mobile App Developer with access strictly to upload & configure mobile apps', true, '["mobile_apps"]'::jsonb)
       ON CONFLICT (name) DO NOTHING;
     `);
 

@@ -61,6 +61,13 @@ const driverProtect = async (req, res, next) => {
         d.license_number,
         d.nin_number,
         d.address,
+        COALESCE(d.emergency_contact, d.emergency_contact_phone) AS emergency_contact,
+        d.emergency_contact_phone,
+        d.emergency_contact_name,
+        d.emergency_contact_relationship,
+        d.guarantor_name,
+        d.guarantor_phone,
+        d.guarantor_address,
         d.bank_name,
         d.account_number,
         d.account_name,
@@ -96,7 +103,16 @@ const driverProtect = async (req, res, next) => {
     }
 
     if (status === "pending" || ["pending_verification", "documents_submitted", "invited"].includes(onboarding)) {
-      if (!req.path.includes("/documents") && !req.path.includes("/upload") && !req.path.includes("/kyc") && !req.path.includes("/status")) {
+      if (
+        !req.path.includes("/documents") &&
+        !req.path.includes("/upload") &&
+        !req.path.includes("/kyc") &&
+        !req.path.includes("/status") &&
+        !req.path.includes("/verification") &&
+        !req.path.includes("/me") &&
+        !req.path.includes("/profile") &&
+        !req.path.includes("/auth")
+      ) {
         return res.status(403).json({
           code: "ACCOUNT_PENDING_APPROVAL",
           message: "Driver account is awaiting admin approval before deliveries can be accessed.",
@@ -132,7 +148,9 @@ const optionalDriverProtect = async (req, res, next) => {
       const driverResult = await pool.query(
         `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate,
                 license_number, nin_number, status, onboarding_status, documents,
-                compliance_notes, bank_name, account_number, account_name
+                compliance_notes, bank_name, account_number, account_name,
+                COALESCE(emergency_contact, emergency_contact_phone) AS emergency_contact,
+                emergency_contact_phone, emergency_contact_name, emergency_contact_relationship
          FROM drivers WHERE id = $1`,
         [decoded.id]
       );

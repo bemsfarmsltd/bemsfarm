@@ -11,6 +11,7 @@ const ROLES = Object.freeze({
   SALES: "sales",
   STOREKEEPER: "storekeeper",
   KITCHEN_STAFF: "kitchen_staff",
+  APP_DEVELOPER: "app_developer",
 });
 
 const STAFF_ROLES = Object.freeze([
@@ -25,10 +26,12 @@ const STAFF_ROLES = Object.freeze([
   ROLES.SALES,
   ROLES.STOREKEEPER,
   ROLES.KITCHEN_STAFF,
+  ROLES.APP_DEVELOPER,
 ]);
 
 const ALL_ROLES = Object.freeze([ROLES.USER, ...STAFF_ROLES]);
 const ADMIN_ROLES = Object.freeze([ROLES.SUPERADMIN, ROLES.ADMIN, ROLES.MANAGER]);
+const MOBILE_APP_ROLES = Object.freeze([ROLES.SUPERADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.APP_DEVELOPER]);
 const CUSTOMER_ROLE = ROLES.USER;
 
-module.exports = { ROLES, ALL_ROLES, STAFF_ROLES, ADMIN_ROLES, CUSTOMER_ROLE };
+module.exports = { ROLES, ALL_ROLES, STAFF_ROLES, ADMIN_ROLES, MOBILE_APP_ROLES, CUSTOMER_ROLE };

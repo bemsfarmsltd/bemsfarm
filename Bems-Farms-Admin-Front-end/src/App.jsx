@@ -11,7 +11,7 @@ import {
   ALL_ROLES, ADMIN_ONLY, FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES, MULTISTORE_ROLES,
-  isSalesRole, STAFF_HOME,
+  MOBILE_APP_ROLES, isSalesRole, isAppDeveloperRole, STAFF_HOME,
 } from './lib/roles'
 
 // Auth & Errors
@@ -154,6 +154,18 @@ function AdminLayoutGuard() {
   return <Layout />
 }
 
+/**
+ * Dashboard Route Guard:
+ * Mobile app developers are restricted strictly to mobile APK management.
+ */
+function DashboardRoute() {
+  const { user } = useAuth()
+  if (isAppDeveloperRole(user?.role)) {
+    return <Navigate to="/settings/mobile-apps" replace />
+  }
+  return <Dashboard />
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -181,8 +193,8 @@ function App() {
 
             {/* Admin layout — strictly guarded against sales roles */}
             <Route element={<AdminLayoutGuard />}>
-              {/* Dashboard — everyone except sales roles */}
-              <Route path="/dashboard" element={<Dashboard />} />
+              {/* Dashboard — everyone except sales roles and app developers */}
+              <Route path="/dashboard" element={<DashboardRoute />} />
               {/* My Profile — management and non-sales staff */}
               <Route path="/settings/profile" element={<Profile />} />
 
@@ -334,6 +346,10 @@ function App() {
                 <Route path="/settings/currencies"    element={<Navigate to="/settings/general" replace />} />
                 <Route path="/settings/invoices"      element={<InvoiceSettings />} />
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
+              </Route>
+
+              {/* ── Mobile Apps Ecosystem & APK Releases (Accessible to Settings Roles + Mobile App Developer) ── */}
+              <Route element={<ProtectedRoute allowedRoles={MOBILE_APP_ROLES} />}>
                 <Route path="/settings/mobile-apps"   element={<MobileAppsSettings />} />
                 <Route path="/deliveries/mobile-apps" element={<Navigate to="/settings/mobile-apps" replace />} />
               </Route>
