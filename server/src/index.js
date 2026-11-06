@@ -334,6 +334,7 @@ const notificationsRoutes = require("./routes/notifications");
 const verifyRoutes = require("./routes/verify_public");
 const appReleasesRoutes = require("./routes/app_releases");
 const cartRoutes = require("./routes/cart");
+const paymentsRoutes = require("./routes/payments");
 
 // Public App Version Gates & Configuration Endpoint (Customer App & Driver App)
 const { getAppVersionConfig } = require("./config/appVersion");
@@ -364,6 +365,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
+app.use("/api/payments", paymentLimiter, paymentsRoutes);
 app.use("/api/issues", issuesRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);

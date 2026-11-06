@@ -11,7 +11,7 @@ const createOrder = z.object({
         price: z.union([z.number(), z.string()]).optional(),
       }),
     )
-    .min(1, "No items in order"),
+    .optional(),
   payment_method: z.union([
     z.enum(["monnify", "cod", "card", "cashOnDelivery", "cash_on_delivery", "pay_on_delivery", "transfer", "online"]),
     z.string()
@@ -36,11 +36,13 @@ const createCheckoutIntent = z.object({
       quantity: z.union([z.number(), z.string()]),
     }))
     .min(1, "No items in checkout"),
-  payment_ref: z.string().trim().min(1).max(100),
+  payment_ref: z.string().trim().min(1).max(100).optional(),
   address: z.string().trim().min(1).max(1000),
   latitude: z.union([z.number(), z.string()]).nullish(),
   longitude: z.union([z.number(), z.string()]).nullish(),
   coupon_code: z.string().trim().max(100).optional(),
+  payment_method: z.string().optional(),
+  redirect_url: z.string().optional(),
 }).passthrough();
 
 const updateStatus = (validStatuses) =>

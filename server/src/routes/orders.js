@@ -5,7 +5,7 @@ const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
 // NOTE: prices in the products table are plain Naira — no unit conversion needed.
-const { verifyMonnifyTransaction } = require("../utils/monnify");
+const { verifyMonnifyTransaction, initiateMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const validate = require("../middleware/validate");
 const orderSchemas = require("../schemas/orderSchemas");
@@ -245,6 +245,31 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
 
     const id = crypto.randomUUID();
     const total = subtotal - discount + zoneInfo.delivery_fee;
+    const paymentRef = req.body.payment_ref || req.body.payment_reference || `BF_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+
+    // Pre-initialize Monnify hosted transaction for Web & Mobile SDK/Browser handoff
+    let monnifyData = null;
+    const paymentMethod = String(req.body.payment_method || "monnify").toLowerCase().trim();
+    if (!["cod", "cashondelivery", "cash"].includes(paymentMethod)) {
+      try {
+        monnifyData = await initiateMonnifyTransaction({
+          amount: total,
+          customerEmail: req.user.email,
+          customerName: req.user.name || req.body.full_name || req.body.fullName || "Bems Customer",
+          customerPhoneNumber: req.user.phone || req.body.phone || "",
+          paymentReference: paymentRef,
+          paymentDescription: "Bems Farms Order Checkout",
+          redirectUrl: req.body.redirect_url,
+          metadata: {
+            checkout_intent_id: id,
+            user_id: req.user.id,
+          },
+        });
+      } catch (mErr) {
+        console.warn("⚠️ Monnify transaction initialization warning in checkout-intent:", mErr.message);
+      }
+    }
+
     await client.query(
       `INSERT INTO checkout_intents
        (id, user_id, payment_ref, items, coupon_code, address, latitude, longitude, zone_id, delivery_fee, total, status, expires_at)
@@ -252,7 +277,7 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
       [
         id,
         req.user.id,
-        req.body.payment_ref,
+        paymentRef,
         JSON.stringify(items),
         req.body.coupon_code || null,
         req.body.address,
@@ -267,9 +292,15 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
     res.status(201).json({ 
       intentId: id, 
       total, 
+      subtotal,
+      discount,
       deliveryFee: zoneInfo.delivery_fee, 
       zoneId: zoneInfo.zone_id, 
       zoneName: zoneInfo.zone_name,
+      paymentReference: paymentRef,
+      transactionReference: monnifyData?.transactionReference || null,
+      checkoutUrl: monnifyData?.checkoutUrl || null,
+      apiKey: monnifyData?.apiKey || process.env.MONNIFY_API_KEY || null,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() 
     });
   } catch (err) {
@@ -336,6 +367,31 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
   // Normalize address & payment reference aliases
   address = (address || delivery_address || "").trim();
   const effectivePaymentRef = payment_ref || payment_reference || transaction_reference || null;
+
+  // If checkout_intent_id is provided, populate items & delivery details if not sent in body
+  if (checkout_intent_id) {
+    const intentCheck = await pool.query(
+      `SELECT * FROM checkout_intents WHERE id = $1 AND user_id = $2`,
+      [checkout_intent_id, req.user.id]
+    );
+    if (!intentCheck.rows.length || intentCheck.rows[0].status !== "pending" || new Date(intentCheck.rows[0].expires_at) <= new Date()) {
+      return res.status(400).json({ message: "Checkout has expired. Please start checkout again." });
+    }
+    const savedIntent = intentCheck.rows[0];
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      items = typeof savedIntent.items === "string" ? JSON.parse(savedIntent.items) : savedIntent.items;
+    }
+    address = (address || savedIntent.address || "").trim();
+    latitude = latitude ?? savedIntent.latitude;
+    longitude = longitude ?? savedIntent.longitude;
+    zone_id = zone_id ?? savedIntent.zone_id;
+    delivery_fee = delivery_fee ?? savedIntent.delivery_fee;
+    coupon_code = coupon_code || savedIntent.coupon_code || undefined;
+  }
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "No items in order" });
+  }
 
   // Normalize + dedupe requested items
   const requested = new Map();

@@ -24,6 +24,11 @@ function getMonnifyBaseUrl() {
 
 const MONNIFY_BASE_URL = getMonnifyBaseUrl();
 
+const DEFAULT_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Accept": "application/json",
+};
+
 let cachedToken = null;
 let tokenExpiresAt = 0;
 
@@ -47,7 +52,7 @@ async function getMonnifyToken() {
   const { data } = await axios.post(
     `${baseUrl}/api/v1/auth/login`,
     {},
-    { headers: { Authorization: `Basic ${basic}` } }
+    { headers: { ...DEFAULT_HEADERS, Authorization: `Basic ${basic}` } }
   );
 
   if (!data?.requestSuccessful || !data?.responseBody?.accessToken) {
@@ -95,7 +100,7 @@ async function createMonnifyReservedAccount({
   const { data } = await axios.post(
     `${baseUrl}/api/v2/bank-transfer/reserved-accounts`,
     payload,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
   );
 
   if (!data?.requestSuccessful || !data?.responseBody) {
@@ -118,7 +123,7 @@ async function getMonnifyWalletBalance(accountNumber) {
 
   const { data } = await axios.get(
     `${baseUrl}/api/v2/disbursements/wallet-balance?accountNumber=${encodeURIComponent(acct)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
   );
 
   if (!data?.requestSuccessful || !data?.responseBody) {
@@ -171,7 +176,7 @@ async function initiateMonnifyDisbursement({
     const { data } = await axios.post(
       `${baseUrl}/api/v2/disbursements/single`,
       payload,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
     );
 
     if (!data?.requestSuccessful || !data?.responseBody) {
@@ -208,7 +213,7 @@ async function validateMonnifyBankAccount(accountNumber, bankCode) {
 
   const { data } = await axios.get(
     `${baseUrl}/api/v2/disbursements/account/validate?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
   );
 
   if (!data?.requestSuccessful || !data?.responseBody) {
@@ -232,7 +237,7 @@ async function verifyMonnifyTransaction(reference) {
     try {
       const { data } = await axios.get(
         `${baseUrl}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
       );
       if (data?.requestSuccessful && data?.responseBody) {
         return data.responseBody;
@@ -246,7 +251,7 @@ async function verifyMonnifyTransaction(reference) {
   try {
     const { data } = await axios.get(
       `${baseUrl}/api/v1/merchant/transactions/query?paymentReference=${encodeURIComponent(cleanRef)}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
     );
     if (data?.requestSuccessful && data?.responseBody) {
       return data.responseBody;
@@ -256,7 +261,7 @@ async function verifyMonnifyTransaction(reference) {
     if (!cleanRef.startsWith("MNFY") && !cleanRef.includes("|")) {
       const { data } = await axios.get(
         `${baseUrl}/api/v2/transactions/${encodeURIComponent(cleanRef)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
       );
       if (data?.requestSuccessful && data?.responseBody) {
         return data.responseBody;
@@ -286,6 +291,93 @@ function verifyMonnifyWebhookSignature(rawBody, signature) {
   }
 }
 
+/**
+ * 8. Initialize Hosted Payment Transaction API
+ * POST /api/v1/merchant/transactions/init-transaction
+ * Returns checkoutUrl, transactionReference, paymentReference
+ */
+async function initiateMonnifyTransaction({
+  amount,
+  customerEmail,
+  customerName,
+  customerPhoneNumber,
+  paymentReference,
+  paymentDescription,
+  currencyCode,
+  redirectUrl,
+  paymentMethods,
+  metadata,
+}) {
+  const token = await getMonnifyToken();
+  const contractCode = process.env.MONNIFY_CONTRACT_CODE;
+  if (!contractCode) {
+    throw new Error("Monnify contract code is not configured (MONNIFY_CONTRACT_CODE)");
+  }
+  if (!amount || Number(amount) <= 0) {
+    throw new Error("Valid amount is required to initialize payment");
+  }
+  if (!customerEmail) {
+    throw new Error("Customer email is required to initialize payment");
+  }
+
+  const generatedRef = paymentReference || `BF_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  const baseUrl = getMonnifyBaseUrl();
+
+  // Monnify production requires a valid public HTTPS redirectUrl (rejects localhost / non-https with 403)
+  let resolvedRedirect = redirectUrl || process.env.PAYMENT_REDIRECT_URL || process.env.FRONTEND_URL;
+  if (!resolvedRedirect || resolvedRedirect.includes("localhost") || !resolvedRedirect.startsWith("https://")) {
+    resolvedRedirect = "https://bemsfarms.com/checkout/callback";
+  }
+
+  const payload = {
+    amount: parseFloat(Number(amount).toFixed(2)),
+    customerName: customerName || "Bems Customer",
+    customerEmail: String(customerEmail).trim().toLowerCase(),
+    paymentReference: generatedRef,
+    paymentDescription: paymentDescription || "Bems Farms Order Payment",
+    currencyCode: currencyCode || "NGN",
+    contractCode: contractCode,
+    redirectUrl: resolvedRedirect,
+    paymentMethods: paymentMethods || ["CARD", "ACCOUNT_TRANSFER", "USSD"],
+  };
+
+  if (customerPhoneNumber && String(customerPhoneNumber).trim()) {
+    payload.customerPhoneNumber = String(customerPhoneNumber).replace(/\s+/g, "");
+  }
+
+  if (metadata && typeof metadata === "object" && Object.keys(metadata).length > 0) {
+    payload.metadata = metadata;
+  }
+
+  try {
+    const { data } = await axios.post(
+      `${baseUrl}/api/v1/merchant/transactions/init-transaction`,
+      payload,
+      { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
+    );
+
+    if (!data?.requestSuccessful || !data?.responseBody) {
+      throw new Error(data?.responseMessage || "Failed to initialize Monnify transaction");
+    }
+
+    return {
+      ...data.responseBody,
+      paymentReference: data.responseBody.paymentReference || generatedRef,
+    };
+  } catch (err) {
+    const errMsg =
+      err.response?.data?.responseMessage ||
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to initialize Monnify transaction";
+    const enhancedErr = new Error(errMsg);
+    enhancedErr.responseCode = err.response?.data?.responseCode;
+    enhancedErr.status = err.response?.status;
+    enhancedErr.responseData = err.response?.data;
+    throw enhancedErr;
+  }
+}
+
 module.exports = {
   getMonnifyBaseUrl,
   MONNIFY_BASE_URL,
@@ -296,4 +388,5 @@ module.exports = {
   validateMonnifyBankAccount,
   verifyMonnifyTransaction,
   verifyMonnifyWebhookSignature,
+  initiateMonnifyTransaction,
 };
