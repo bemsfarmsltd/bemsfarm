@@ -334,7 +334,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
         p.pcs_per_mid_unit, p.mid_price, p.mid_barcode, p.mid_unit_name, p.carton_cost_price,
         p.status, p.is_featured, p.available_for_sale,
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
-        p.barcode_last_printed_at,
+        p.barcode_last_printed_at, p.carton_barcode_last_printed_at, p.mid_barcode_last_printed_at,
         cat.name AS category,
         COALESCE(
           SUM(oi.subtotal) FILTER (WHERE o.status NOT IN ('cancelled','failed')),
@@ -385,11 +385,17 @@ router.post(
       }
 
       const now = new Date();
+      const colToUpdate = req.body.target === 'carton'
+        ? 'carton_barcode_last_printed_at'
+        : req.body.target === 'row'
+        ? 'mid_barcode_last_printed_at'
+        : 'barcode_last_printed_at';
+
       const result = await pool.query(
         `UPDATE products 
-         SET barcode_last_printed_at = $1 
+         SET ${colToUpdate} = $1 
          WHERE id = ANY($2::int[]) 
-         RETURNING id, barcode_last_printed_at`,
+         RETURNING id, barcode_last_printed_at, carton_barcode_last_printed_at, mid_barcode_last_printed_at`,
         [now, validIds]
       );
 

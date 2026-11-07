@@ -58,26 +58,19 @@ export default function Barcode() {
       
       const prods = prodRes.data?.products || []
 
-      // Merge backend barcode_last_printed_at with localStorage cache
-      let localCache = {}
+      // Clean up legacy unscoped localStorage cache so it does not falsely mark unprinted tiers
       try {
-        localCache = JSON.parse(localStorage.getItem('bems_barcode_last_printed') || '{}')
+        localStorage.removeItem('bems_barcode_last_printed')
       } catch {}
 
-      const mergedProds = prods.map((p) => {
-        const cached = localCache[p.id]?.timestamp || localCache[p.id] || null
-        const lastPrinted = p.barcode_last_printed_at || cached || null
-        return { ...p, barcode_last_printed_at: lastPrinted }
-      })
-
-      setProducts(mergedProds)
+      setProducts(prods)
       if (formRes.data?.categories) {
         setCategories(formRes.data.categories)
       }
 
       // If productId URL param is provided, auto-queue it with its stock quantity
-      if (targetProductId && mergedProds.length > 0) {
-        const found = mergedProds.find((p) => String(p.id) === String(targetProductId))
+      if (targetProductId && prods.length > 0) {
+        const found = prods.find((p) => String(p.id) === String(targetProductId))
         if (found) {
           const stockCount = Math.max(1, parseInt(found.stock ?? found.stock_quantity ?? found.quantity ?? 1) || 1)
           setPrintQueue({ [found.id]: { product: found, copies: stockCount } })
@@ -175,7 +168,12 @@ export default function Barcode() {
   const productsUnprinted = useMemo(() => {
     return packagingScopedProducts.filter((p) => {
       const bc = printTarget === 'carton' ? p.carton_barcode : printTarget === 'row' ? p.mid_barcode : p.barcode
-      return bc && bc.trim() && !p.barcode_last_printed_at
+      const printedAt = printTarget === 'carton'
+        ? p.carton_barcode_last_printed_at
+        : printTarget === 'row'
+        ? p.mid_barcode_last_printed_at
+        : p.barcode_last_printed_at
+      return bc && bc.trim() && !printedAt
     })
   }, [packagingScopedProducts, printTarget])
 
@@ -212,7 +210,12 @@ export default function Barcode() {
           : printTarget === 'row'
           ? Boolean(p.mid_barcode && p.mid_barcode.trim())
           : Boolean(p.barcode && p.barcode.trim())
-        if (!hasBc || p.barcode_last_printed_at) return false
+        const printedAt = printTarget === 'carton'
+          ? p.carton_barcode_last_printed_at
+          : printTarget === 'row'
+          ? p.mid_barcode_last_printed_at
+          : p.barcode_last_printed_at
+        if (!hasBc || printedAt) return false
       }
       if (activeTab === 'queue' && !printQueue[p.id]) return false
 
@@ -682,24 +685,18 @@ export default function Barcode() {
     if (printedProductIds.length > 0) {
       const nowIso = new Date().toISOString()
 
-      // Update local React state instantly
+      // Update local React state instantly by packaging tier
       setProducts((prev) =>
-        prev.map((p) => (printedProductIds.includes(p.id) ? { ...p, barcode_last_printed_at: nowIso } : p))
+        prev.map((p) => {
+          if (!printedProductIds.includes(p.id)) return p
+          if (printTarget === 'carton') return { ...p, carton_barcode_last_printed_at: nowIso }
+          if (printTarget === 'row') return { ...p, mid_barcode_last_printed_at: nowIso }
+          return { ...p, barcode_last_printed_at: nowIso }
+        })
       )
 
-      // Update localStorage cache
-      try {
-        const localCache = JSON.parse(localStorage.getItem('bems_barcode_last_printed') || '{}')
-        printedProductIds.forEach((id) => {
-          localCache[id] = { timestamp: nowIso }
-        })
-        localStorage.setItem('bems_barcode_last_printed', JSON.stringify(localCache))
-      } catch (e) {
-        console.warn('LocalStorage save error:', e)
-      }
-
-      // Persist to database
-      api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds }).catch((err) =>
+      // Persist to database with target packaging tier
+      api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds, target: printTarget }).catch((err) =>
         console.warn('Could not persist barcode_last_printed_at to server:', err)
       )
     }
@@ -1916,26 +1913,33 @@ export default function Barcode() {
                             )}
                           </td>
                           <td>
-                            {p.barcode_last_printed_at ? (
-                              <div>
-                                <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
-                                  <i className="ri-check-double-line"></i> Printed
-                                </span>
-                                <div
-                                  className="text-muted fs-xs mt-0.5 fw-medium"
-                                  style={{ fontSize: '11px' }}
-                                  title={new Date(p.barcode_last_printed_at).toLocaleString()}
-                                >
-                                  {formatLastPrinted(p.barcode_last_printed_at)}
+                            {(() => {
+                              const tierPrintedAt = isCartonRow
+                                ? p.carton_barcode_last_printed_at
+                                : isMidRow
+                                ? p.mid_barcode_last_printed_at
+                                : p.barcode_last_printed_at
+                              return tierPrintedAt ? (
+                                <div>
+                                  <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
+                                    <i className="ri-check-double-line"></i> Printed
+                                  </span>
+                                  <div
+                                    className="text-muted fs-xs mt-0.5 fw-medium"
+                                    style={{ fontSize: '11px' }}
+                                    title={new Date(tierPrintedAt).toLocaleString()}
+                                  >
+                                    {formatLastPrinted(tierPrintedAt)}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
-                                  <i className="ri-time-line"></i> Never
-                                </span>
-                              </div>
-                            )}
+                              ) : (
+                                <div>
+                                  <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
+                                    <i className="ri-time-line"></i> Never
+                                  </span>
+                                </div>
+                              )
+                            })()}
                           </td>
                           <td>
                             <div className="d-flex align-items-center gap-1">
