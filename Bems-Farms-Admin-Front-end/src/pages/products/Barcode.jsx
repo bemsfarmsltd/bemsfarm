@@ -330,14 +330,30 @@ export default function Barcode() {
   const syncAllToStock = () => {
     setPrintQueue((prev) => {
       const next = {}
-      Object.entries(prev).forEach(([id, item]) => {
-        const rowTgt = getRowTarget(item.product)
-        const stockQty = getProductStockCopies(item.product, rowTgt)
-        next[id] = { ...item, copies: stockQty }
+      const targetList = Object.keys(prev).length > 0 ? Object.values(prev).map(item => item.product) : filteredProducts
+      targetList.forEach((prod) => {
+        const rowTgt = getRowTarget(prod)
+        const stockQty = getProductStockCopies(prod, rowTgt)
+        next[prod.id] = { product: prod, copies: stockQty }
       })
       return next
     })
-    toast.success(`Synced all print copies to match ${printTarget === 'carton' ? 'carton counts' : 'piece inventory'}`)
+    toast.success(`Synced print copies to match ${printTarget === 'carton' ? 'carton counts' : printTarget === 'row' ? 'row counts' : 'piece inventory'}`)
+  }
+
+  // Set uniform batch copies across all items (e.g. 10, 20, 30, 40 of each item)
+  const setBatchCopiesForAll = (count) => {
+    const qty = Math.max(1, parseInt(count) || 1)
+    setPrintQueue((prev) => {
+      const next = {}
+      // If queue is empty or has items, apply to all currently active/queued products
+      const targetList = Object.keys(prev).length > 0 ? Object.values(prev).map(item => item.product) : filteredProducts
+      targetList.forEach((prod) => {
+        next[prod.id] = { product: prod, copies: qty }
+      })
+      return next
+    })
+    toast.success(`Set ${qty} cop${qty === 1 ? 'y' : 'ies'} each across all items`)
   }
 
   const handleSwitchPrintTarget = (newTarget) => {
@@ -1530,6 +1546,72 @@ export default function Barcode() {
                     <i className="ri-price-tag-3-line me-1"></i> Showing Retail Piece Barcodes (6150... or BF-...) &amp; Loose Pieces
                   </span>
                 )}
+              </div>
+            </div>
+
+            {/* Batch Copies Per Item Quick Bar (10, 20, 30, 40... of each item) */}
+            <div className="d-flex align-items-center justify-content-between p-2 rounded-3 bg-white border flex-wrap gap-2 mb-2 shadow-xs">
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <span className="fs-xs fw-bold text-dark text-uppercase d-flex align-items-center gap-1 me-1">
+                  <i className="ri-file-copy-2-line text-primary"></i> Copies Each:
+                </span>
+                <div className="btn-group btn-group-sm shadow-xs" role="group">
+                  {[1, 5, 10, 20, 30, 40, 50, 100].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      className="btn btn-outline-secondary fw-semibold py-1 px-2.5 bg-white"
+                      onClick={() => setBatchCopiesForAll(num)}
+                      title={`Set exactly ${num} copies for every item in the table`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom input */}
+                <div className="input-group input-group-sm" style={{ width: '135px' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    className="form-control text-center py-1 font-monospace fw-bold"
+                    placeholder="Custom"
+                    id="batchCustomCopiesInput"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt(e.target.value)
+                        if (val > 0) setBatchCopiesForAll(val)
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary px-2.5 fw-bold"
+                    onClick={() => {
+                      const el = document.getElementById('batchCustomCopiesInput')
+                      const val = parseInt(el?.value)
+                      if (val > 0) setBatchCopiesForAll(val)
+                    }}
+                    title="Apply custom copies to all items"
+                  >
+                    Set
+                  </button>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success py-1"
+                  onClick={syncAllToStock}
+                  title="Reset copies of each item to match its actual live inventory count"
+                >
+                  <i className="ri-database-2-line me-1"></i> Match Stock Qty
+                </button>
+                <span className="text-muted fs-xs">
+                  Batch Total: <strong className="text-primary font-monospace fs-sm">{totalLabelsInQueue}</strong> labels
+                </span>
               </div>
             </div>
 
