@@ -145,40 +145,50 @@ export default function Barcode() {
     fetchProducts()
   }, [targetProductId])
 
-  // Stats calculation
-  const totalProducts = products.length
-  const productsWithBarcode = useMemo(() => {
+  // Stats calculation - Scoped strictly to active packaging tier
+  const packagingScopedProducts = useMemo(() => {
     if (printTarget === 'carton') {
-      return products.filter((p) => Number(p.pcs_per_carton) > 1 && p.carton_barcode && p.carton_barcode.trim())
+      return products.filter((p) => Number(p.pcs_per_carton) > 1)
     }
     if (printTarget === 'row') {
-      return products.filter((p) => Number(p.pcs_per_mid_unit) > 1 && p.mid_barcode && p.mid_barcode.trim())
+      return products.filter((p) => Number(p.pcs_per_mid_unit) > 1)
     }
-    return products.filter((p) => p.barcode && p.barcode.trim())
+    return products
   }, [products, printTarget])
+
+  const totalProducts = packagingScopedProducts.length
+
+  const productsWithBarcode = useMemo(() => {
+    return packagingScopedProducts.filter((p) => {
+      const bc = printTarget === 'carton' ? p.carton_barcode : printTarget === 'row' ? p.mid_barcode : p.barcode
+      return Boolean(bc && bc.trim())
+    })
+  }, [packagingScopedProducts, printTarget])
 
   const productsMissingBarcode = useMemo(() => {
-    if (printTarget === 'carton') {
-      return products.filter((p) => Number(p.pcs_per_carton) > 1 && (!p.carton_barcode || !p.carton_barcode.trim()))
-    }
-    if (printTarget === 'row') {
-      return products.filter((p) => Number(p.pcs_per_mid_unit) > 1 && (!p.mid_barcode || !p.mid_barcode.trim()))
-    }
-    return products.filter((p) => !p.barcode || !p.barcode.trim())
-  }, [products, printTarget])
+    return packagingScopedProducts.filter((p) => {
+      const bc = printTarget === 'carton' ? p.carton_barcode : printTarget === 'row' ? p.mid_barcode : p.barcode
+      return !bc || !bc.trim()
+    })
+  }, [packagingScopedProducts, printTarget])
 
   const productsUnprinted = useMemo(() => {
-    return products.filter((p) => {
+    return packagingScopedProducts.filter((p) => {
       const bc = printTarget === 'carton' ? p.carton_barcode : printTarget === 'row' ? p.mid_barcode : p.barcode
       return bc && bc.trim() && !p.barcode_last_printed_at
     })
-  }, [products, printTarget])
+  }, [packagingScopedProducts, printTarget])
 
   const barcodeCoveragePct = totalProducts > 0 ? Math.round((productsWithBarcode.length / totalProducts) * 100) : 0
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    // If activeTab is 'queue', show all items in printQueue directly
+    const baseList = activeTab === 'queue'
+      ? products.filter((p) => Boolean(printQueue[p.id]))
+      : packagingScopedProducts
+
+    return baseList.filter((p) => {
       // Tab filter
       if (activeTab === 'with_barcode') {
         const hasBc = printTarget === 'carton'
@@ -189,13 +199,12 @@ export default function Barcode() {
         if (!hasBc) return false
       }
       if (activeTab === 'missing_barcode') {
-        if (printTarget === 'carton') {
-          if (Number(p.pcs_per_carton) <= 1 || (p.carton_barcode && p.carton_barcode.trim())) return false
-        } else if (printTarget === 'row') {
-          if (Number(p.pcs_per_mid_unit) <= 1 || (p.mid_barcode && p.mid_barcode.trim())) return false
-        } else {
-          if (p.barcode && p.barcode.trim()) return false
-        }
+        const hasBc = printTarget === 'carton'
+          ? Boolean(p.carton_barcode && p.carton_barcode.trim())
+          : printTarget === 'row'
+          ? Boolean(p.mid_barcode && p.mid_barcode.trim())
+          : Boolean(p.barcode && p.barcode.trim())
+        if (hasBc) return false
       }
       if (activeTab === 'unprinted') {
         const hasBc = printTarget === 'carton'
@@ -229,7 +238,7 @@ export default function Barcode() {
 
       return true
     })
-  }, [products, activeTab, categoryFilter, searchTerm, printQueue, printTarget])
+  }, [products, packagingScopedProducts, activeTab, categoryFilter, searchTerm, printQueue, printTarget])
 
   // Determine whether an individual product row is in Carton mode, Row mode, or Piece mode
   const getRowTarget = (product) => {
@@ -698,14 +707,14 @@ export default function Barcode() {
     let pageSize = '50mm 25mm'
     let w = '50mm'
     let h = '25mm'
-    let barcodeW = '44mm' // 44mm on 50mm paper spans 88% width with 3mm optical quiet margins
+    let barcodeW = '40mm' // safe 40mm on 50mm paper with 5mm left/right safe zone
     let barcodeH = showDates ? '9mm' : '11.5mm' // 11.5mm tall optical bars (nearly 50% of the entire sticker height)
-    let barModuleWidth = 2.0
+    let barModuleWidth = 1.85
     let barHeightPx = 65
     let fontSizeName = '7.5px'
     let fontSizePrice = '9.5px'
     let fontSizeSku = '7.5px'
-    let labelPadding = '0.6mm 1.5mm 0.6mm'
+    let labelPadding = '0.8mm 2.5mm 0.6mm 3.8mm' // 3.8mm left margin prevents mechanical printhead edge cut-off on XP-365B
 
     if (labelTemplate === 'thermal_50x30') {
       pageSize = '50mm 30mm'
@@ -1196,17 +1205,17 @@ export default function Barcode() {
             <div className="card-body p-3.5">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
-                  Total Catalog Products
+                  {printTarget === 'carton' ? 'Carton Packaging Catalog' : printTarget === 'row' ? 'Row/Pack Catalog' : 'Retail Piece Catalog'}
                 </span>
                 <span className="kpi-icon-pill" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-                  <i className="ri-box-3-line fs-18"></i>
+                  <i className={printTarget === 'carton' ? 'ri-archive-line fs-18' : printTarget === 'row' ? 'ri-stack-line fs-18' : 'ri-box-3-line fs-18'}></i>
                 </span>
               </div>
               <div className="fs-24 fw-bolder text-dark mb-1 font-display">
                 {totalProducts}
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
-                <span>Master Catalog</span>
+                <span>{printTarget === 'carton' ? 'Bulk Cartons' : printTarget === 'row' ? 'Mid-Tier Rows' : 'Master Catalog'}</span>
                 <strong className="text-dark font-monospace">{totalProducts} SKUs</strong>
               </div>
             </div>
@@ -1219,7 +1228,7 @@ export default function Barcode() {
             <div className="card-body p-3.5">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
-                  Universal Code Assigned
+                  {printTarget === 'carton' ? 'Carton Codes' : printTarget === 'row' ? 'Row Codes' : 'Universal Codes'} Assigned
                 </span>
                 <span className="kpi-icon-pill" style={{ background: '#ECFDF5', color: '#059669' }}>
                   <i className="ri-checkbox-circle-line fs-18"></i>
@@ -1229,7 +1238,7 @@ export default function Barcode() {
                 {productsWithBarcode.length}
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
-                <span>Catalog Coverage</span>
+                <span>Scope Coverage</span>
                 <span className="badge bg-success-subtle text-success font-monospace text-xs px-2">
                   {barcodeCoveragePct}%
                 </span>
@@ -1244,7 +1253,7 @@ export default function Barcode() {
             <div className="card-body p-3.5">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
-                  Missing Barcodes
+                  Missing {printTarget === 'carton' ? 'Carton' : printTarget === 'row' ? 'Row' : 'Piece'} Barcodes
                 </span>
                 <span className="kpi-icon-pill" style={{ background: productsMissingBarcode.length > 0 ? '#FEF3C7' : '#F0FDFA', color: productsMissingBarcode.length > 0 ? '#D97706' : '#0D9488' }}>
                   <i className={productsMissingBarcode.length > 0 ? 'ri-alert-line fs-18' : 'ri-shield-check-line fs-18'}></i>
@@ -1264,8 +1273,13 @@ export default function Barcode() {
         </div>
 
         {/* Print Queue */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card bg-card-glow-blue">
+        <div
+          className="col-12 col-sm-6 col-xl-3"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setActiveTab(activeTab === 'queue' ? 'all' : 'queue')}
+          title={activeTab === 'queue' ? 'Click to show all catalog products' : 'Click to filter table to selected items only'}
+        >
+          <div className={`card h-100 border-0 shadow-sm rounded-4 valuation-kpi-card ${activeTab === 'queue' ? 'border border-primary border-2 shadow' : 'bg-card-glow-blue'}`}>
             <div className="card-body p-3.5">
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <span className="text-uppercase fs-11 fw-bolder text-muted tracking-wider text-truncate me-2">
@@ -1280,7 +1294,9 @@ export default function Barcode() {
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted fs-12 mt-2 pt-2 border-top">
                 <span>Batch Queue</span>
-                <strong className="text-dark font-monospace">{Object.keys(printQueue).length} SKUs</strong>
+                <span className={`badge ${activeTab === 'queue' ? 'bg-primary text-white' : 'bg-primary-subtle text-primary'} font-monospace text-xs px-2`}>
+                  {Object.keys(printQueue).length} SKUs {activeTab === 'queue' ? '(Viewing Selected)' : '• Click to view'}
+                </span>
               </div>
             </div>
           </div>
@@ -1299,44 +1315,80 @@ export default function Barcode() {
                 <div className="nav nav-pills gap-1">
                   <button
                     type="button"
-                    className={`btn btn-sm ${activeTab === 'all' ? 'btn-dark' : 'btn-light'}`}
+                    className={`btn btn-sm ${activeTab === 'all' ? 'btn-dark fw-bold' : 'btn-light'}`}
                     onClick={() => setActiveTab('all')}
                   >
-                    All Goods ({totalProducts})
+                    All {printTarget === 'carton' ? 'Cartons' : printTarget === 'row' ? 'Rows' : 'Goods'} ({totalProducts})
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${activeTab === 'with_barcode' ? 'btn-success' : 'btn-light'}`}
+                    className={`btn btn-sm ${activeTab === 'with_barcode' ? 'btn-success text-white fw-bold' : 'btn-light'}`}
                     onClick={() => setActiveTab('with_barcode')}
                   >
                     <i className="ri-check-line me-1"></i> Assigned ({productsWithBarcode.length})
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${activeTab === 'unprinted' ? 'btn-info text-white' : 'btn-light'}`}
+                    className={`btn btn-sm ${activeTab === 'unprinted' ? 'btn-info text-white fw-bold' : 'btn-light'}`}
                     onClick={() => setActiveTab('unprinted')}
                     title="Products with a barcode that have not been printed yet"
                   >
-                    <i className="ri-time-line me-1"></i> Not Printed Yet ({productsUnprinted.length})
+                    <i className="ri-time-line me-1"></i> Not Printed ({productsUnprinted.length})
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${activeTab === 'missing_barcode' ? 'btn-warning text-dark' : 'btn-light'}`}
+                    className={`btn btn-sm ${activeTab === 'missing_barcode' ? 'btn-warning text-dark fw-bold' : 'btn-light'}`}
                     onClick={() => setActiveTab('missing_barcode')}
                   >
                     <i className="ri-error-warning-line me-1"></i> Needs Barcode ({productsMissingBarcode.length})
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm ${activeTab === 'queue' ? 'btn-primary' : 'btn-light'}`}
+                    className={`btn btn-sm ${activeTab === 'queue' ? 'btn-primary text-white fw-bold shadow-sm' : 'btn-light'}`}
                     onClick={() => setActiveTab('queue')}
+                    title="Show only the items currently queued for printing"
                   >
-                    <i className="ri-printer-line me-1"></i> In Queue ({Object.keys(printQueue).length})
+                    <i className="ri-checkbox-circle-fill me-1"></i> In Queue ({Object.keys(printQueue).length})
                   </button>
                 </div>
 
-                {/* Batch add to queue */}
+                {/* Batch add / selection toolbar */}
                 <div className="d-flex gap-2 align-items-center flex-wrap">
+                  {/* Dedicated "Show Selected Only" Quick Filter */}
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${activeTab === 'queue' ? 'btn-primary text-white fw-bold shadow-sm' : 'btn-outline-primary bg-white'}`}
+                    onClick={() => setActiveTab(activeTab === 'queue' ? 'all' : 'queue')}
+                    title="Toggle to only view products selected in print queue"
+                  >
+                    <i className={activeTab === 'queue' ? 'ri-checkbox-circle-fill me-1' : 'ri-list-check-2 me-1'}></i>
+                    {activeTab === 'queue' ? `Showing Selected (${Object.keys(printQueue).length})` : `Show Selected Only (${Object.keys(printQueue).length})`}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => {
+                      if (filteredProducts.length > 0 && filteredProducts.every((p) => Boolean(printQueue[p.id]))) {
+                        // Deselect visible
+                        setPrintQueue((prev) => {
+                          const next = { ...prev }
+                          filteredProducts.forEach((p) => delete next[p.id])
+                          return next
+                        })
+                        toast.info(`Deselected ${filteredProducts.length} items`)
+                      } else {
+                        addAllToQueue(filteredProducts)
+                      }
+                    }}
+                    title="Select or deselect all items matching current filter"
+                  >
+                    <i className={filteredProducts.length > 0 && filteredProducts.every((p) => Boolean(printQueue[p.id])) ? 'ri-checkbox-blank-line me-1' : 'ri-checkbox-line me-1'}></i>
+                    {filteredProducts.length > 0 && filteredProducts.every((p) => Boolean(printQueue[p.id]))
+                      ? `Deselect All (${filteredProducts.length})`
+                      : `Select All (${filteredProducts.length})`}
+                  </button>
+
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-primary"
@@ -1346,14 +1398,7 @@ export default function Barcode() {
                   >
                     <i className="ri-add-circle-line me-1"></i> Queue Unprinted ({productsUnprinted.length})
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={() => addAllToQueue(filteredProducts)}
-                    title="Add all currently filtered items to print queue with copies matching stock count"
-                  >
-                    <i className="ri-add-circle-line me-1"></i> Queue Filtered
-                  </button>
+
                   {Object.keys(printQueue).length > 0 && (
                     <>
                       <button
@@ -1362,7 +1407,7 @@ export default function Barcode() {
                         onClick={syncAllToStock}
                         title="Set copies of all queued items to match their live stock quantity"
                       >
-                        <i className="ri-refresh-line me-1"></i> Match Stock Qty
+                        <i className="ri-refresh-line me-1"></i> Match Stock
                       </button>
                       <button
                         type="button"
@@ -1370,7 +1415,7 @@ export default function Barcode() {
                         onClick={clearQueue}
                         title="Clear print queue"
                       >
-                        Clear Queue
+                        Clear
                       </button>
                     </>
                   )}
@@ -1491,6 +1536,36 @@ export default function Barcode() {
               </div>
             </div>
 
+            {/* Active Queue Status Banner */}
+            {activeTab === 'queue' && (
+              <div className="alert alert-primary d-flex align-items-center justify-content-between py-2 px-3 mb-2 rounded-3">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="ri-checkbox-circle-fill fs-5 text-primary"></i>
+                  <span className="fw-semibold">
+                    Viewing {filteredProducts.length} Selected Item{filteredProducts.length !== 1 ? 's' : ''} in Print Queue
+                  </span>
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-outline-primary bg-white fw-semibold"
+                    onClick={() => setActiveTab('all')}
+                  >
+                    <i className="ri-list-check me-1"></i> View All Catalog Products
+                  </button>
+                  {Object.keys(printQueue).length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-danger bg-white"
+                      onClick={clearQueue}
+                    >
+                      Clear Queue
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Table of Products — plain div for reliable x+y scroll */}
             <div
               style={{
@@ -1511,13 +1586,28 @@ export default function Barcode() {
                           filteredProducts.length > 0 &&
                           filteredProducts.every((p) => Boolean(printQueue[p.id]))
                         }
+                        ref={(el) => {
+                          if (el) {
+                            const someSelected = filteredProducts.some((p) => Boolean(printQueue[p.id]))
+                            const allSelected = filteredProducts.length > 0 && filteredProducts.every((p) => Boolean(printQueue[p.id]))
+                            el.indeterminate = someSelected && !allSelected
+                          }
+                        }}
                         onChange={(e) => {
                           if (e.target.checked) {
                             addAllToQueue(filteredProducts)
                           } else {
-                            setPrintQueue({})
+                            setPrintQueue((prev) => {
+                              const next = { ...prev }
+                              filteredProducts.forEach((p) => {
+                                delete next[p.id]
+                              })
+                              return next
+                            })
+                            toast.info(`Deselected ${filteredProducts.length} items`)
                           }
                         }}
+                        title="Select or deselect all visible items"
                       />
                     </th>
                     <th>Product</th>
@@ -1536,11 +1626,19 @@ export default function Barcode() {
                           </button>
                           <button
                             type="button"
+                            className={`btn btn-xs py-0 px-2 fw-bold ${printTarget === 'row' ? 'btn-info text-white' : 'btn-outline-secondary bg-white'}`}
+                            onClick={() => handleSwitchPrintTarget('row')}
+                            title="Switch whole table to Mid-Tier Row Barcodes"
+                          >
+                            📦 Row
+                          </button>
+                          <button
+                            type="button"
                             className={`btn btn-xs py-0 px-2 fw-bold ${printTarget === 'carton' ? 'btn-primary text-white' : 'btn-outline-secondary bg-white'}`}
                             onClick={() => handleSwitchPrintTarget('carton')}
                             title="Switch whole table to Bulk Carton Barcodes"
                           >
-                            📦 Carton
+                            🚚 Carton
                           </button>
                         </div>
                       </div>
@@ -2026,33 +2124,42 @@ export default function Barcode() {
             </div>
 
             <div className="card-body p-3">
-              {/* Packaging Unit Level: Retail Pieces vs Bulk Cartons */}
+              {/* Packaging Unit Level: Retail Pieces vs Rows vs Bulk Cartons */}
               <div className="mb-3 p-2 rounded-3 border bg-light">
                 <label className="form-label fw-bold fs-xs text-uppercase text-muted d-flex justify-content-between align-items-center mb-1">
                   <span>Packaging Label Mode</span>
-                  <span className={`badge ${printTarget === 'carton' ? 'bg-primary' : 'bg-success'}`}>
-                    {printTarget === 'carton' ? 'Bulk Cartons' : 'Retail Pieces'}
+                  <span className={`badge ${printTarget === 'carton' ? 'bg-primary' : printTarget === 'row' ? 'bg-info' : 'bg-success'}`}>
+                    {printTarget === 'carton' ? 'Bulk Cartons' : printTarget === 'row' ? 'Rows / Packs' : 'Retail Pieces'}
                   </span>
                 </label>
                 <div className="btn-group btn-group-sm w-100">
                   <button
                     type="button"
-                    className={`btn ${printTarget === 'piece' ? 'btn-success fw-bold' : 'btn-outline-secondary'}`}
+                    className={`btn ${printTarget === 'piece' ? 'btn-success fw-bold text-white' : 'btn-outline-secondary'}`}
                     onClick={() => handleSwitchPrintTarget('piece')}
                   >
-                    <i className="ri-price-tag-3-line me-1"></i> Retail Pieces
+                    🏷️ Pieces
                   </button>
                   <button
                     type="button"
-                    className={`btn ${printTarget === 'carton' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                    className={`btn ${printTarget === 'row' ? 'btn-info fw-bold text-white' : 'btn-outline-secondary'}`}
+                    onClick={() => handleSwitchPrintTarget('row')}
+                  >
+                    📦 Rows
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${printTarget === 'carton' ? 'btn-primary fw-bold text-white' : 'btn-outline-secondary'}`}
                     onClick={() => handleSwitchPrintTarget('carton')}
                   >
-                    <i className="ri-archive-line me-1"></i> Bulk Cartons
+                    🚚 Cartons
                   </button>
                 </div>
                 <div className="text-muted mt-1" style={{ fontSize: '10.5px', lineHeight: 1.3 }}>
                   {printTarget === 'carton'
                     ? 'Prints outer carton barcodes, whole carton prices, and copies matching carton stock.'
+                    : printTarget === 'row'
+                    ? 'Prints mid-tier pack barcodes, row prices, and copies matching row stock.'
                     : 'Prints individual piece barcodes, retail shelf prices, and copies matching loose piece stock.'}
                 </div>
               </div>
