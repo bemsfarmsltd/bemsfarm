@@ -335,6 +335,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
         p.status, p.is_featured, p.available_for_sale,
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
         p.barcode_last_printed_at, p.carton_barcode_last_printed_at, p.mid_barcode_last_printed_at,
+        p.carton_last_printed_copies, p.mid_last_printed_copies, p.piece_last_printed_copies,
         cat.name AS category,
         COALESCE(
           SUM(oi.subtotal) FILTER (WHERE o.status NOT IN ('cancelled','failed')),
@@ -385,25 +386,46 @@ router.post(
       }
 
       const now = new Date();
-      const colToUpdate = req.body.target === 'carton'
+      const target = req.body.target || 'piece';
+      const colToUpdate = target === 'carton'
         ? 'carton_barcode_last_printed_at'
-        : req.body.target === 'row'
+        : target === 'row'
         ? 'mid_barcode_last_printed_at'
         : 'barcode_last_printed_at';
 
-      const result = await pool.query(
-        `UPDATE products 
-         SET ${colToUpdate} = $1 
-         WHERE id = ANY($2::int[]) 
-         RETURNING id, barcode_last_printed_at, carton_barcode_last_printed_at, mid_barcode_last_printed_at`,
-        [now, validIds]
-      );
+      const copiesCol = target === 'carton'
+        ? 'carton_last_printed_copies'
+        : target === 'row'
+        ? 'mid_last_printed_copies'
+        : 'piece_last_printed_copies';
+
+      const copiesMap = req.body.copiesMap || {};
+
+      // If copiesMap is provided, update timestamp and specific copies per item
+      if (Object.keys(copiesMap).length > 0) {
+        const queries = validIds.map((id) => {
+          const qty = parseInt(copiesMap[id]) || 1;
+          return pool.query(
+            `UPDATE products 
+             SET ${colToUpdate} = $1, ${copiesCol} = $2 
+             WHERE id = $3`,
+            [now, qty, id]
+          );
+        });
+        await Promise.all(queries);
+      } else {
+        await pool.query(
+          `UPDATE products 
+           SET ${colToUpdate} = $1 
+           WHERE id = ANY($2::int[])`,
+          [now, validIds]
+        );
+      }
 
       res.json({
         success: true,
-        updatedCount: result.rowCount,
+        updatedCount: validIds.length,
         printed_at: now.toISOString(),
-        updatedProducts: result.rows,
       });
     } catch (err) {
       console.error("POST /admin/products/mark-barcodes-printed error:", err.message);

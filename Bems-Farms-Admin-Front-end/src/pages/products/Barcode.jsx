@@ -700,19 +700,24 @@ export default function Barcode() {
     const printedProductIds = [...new Set(targetItems.map((item) => item.id).filter(Boolean))]
     if (printedProductIds.length > 0) {
       const nowIso = new Date().toISOString()
+      const copiesMap = {}
+      printedProductIds.forEach((id) => {
+        copiesMap[id] = printQueue[id]?.copies || 1
+      })
 
       // Update local React state instantly by packaging tier
       setProducts((prev) =>
         prev.map((p) => {
           if (!printedProductIds.includes(p.id)) return p
-          if (printTarget === 'carton') return { ...p, carton_barcode_last_printed_at: nowIso }
-          if (printTarget === 'row') return { ...p, mid_barcode_last_printed_at: nowIso }
-          return { ...p, barcode_last_printed_at: nowIso }
+          const qty = copiesMap[p.id] || 1
+          if (printTarget === 'carton') return { ...p, carton_barcode_last_printed_at: nowIso, carton_last_printed_copies: qty }
+          if (printTarget === 'row') return { ...p, mid_barcode_last_printed_at: nowIso, mid_last_printed_copies: qty }
+          return { ...p, barcode_last_printed_at: nowIso, piece_last_printed_copies: qty }
         })
       )
 
-      // Persist to database with target packaging tier
-      api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds, target: printTarget }).catch((err) =>
+      // Persist to database with target packaging tier and copies map
+      api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds, target: printTarget, copiesMap }).catch((err) =>
         console.warn('Could not persist barcode_last_printed_at to server:', err)
       )
     }
@@ -2001,10 +2006,16 @@ export default function Barcode() {
                                 : isMidRow
                                 ? p.mid_barcode_last_printed_at
                                 : p.barcode_last_printed_at
+                              const tierCopies = isCartonRow
+                                ? p.carton_last_printed_copies
+                                : isMidRow
+                                ? p.mid_last_printed_copies
+                                : p.piece_last_printed_copies
+
                               return tierPrintedAt ? (
                                 <div>
                                   <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1 fs-xs py-0.5">
-                                    <i className="ri-check-double-line"></i> Printed
+                                    <i className="ri-check-double-line"></i> Printed {tierCopies ? `(${tierCopies} cop${tierCopies === 1 ? 'y' : 'ies'})` : ''}
                                   </span>
                                   <div
                                     className="text-muted fs-xs mt-0.5 fw-medium"
