@@ -17,7 +17,7 @@ export default function Barcode() {
   const [activeTab, setActiveTab] = useState(targetProductId ? 'queue' : 'all') // 'all' | 'with_barcode' | 'missing_barcode' | 'queue'
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [symbology, setSymbology] = useState('CODE128') // 'CODE128' | 'EAN13'
+  const [symbology, setSymbology] = useState('EAN13') // 'EAN13' (default for GS1 13-digit codes) | 'CODE128'
   
   // Print Queue: Map of productId -> { product, copies }
   const [printQueue, setPrintQueue] = useState({})
@@ -41,6 +41,7 @@ export default function Barcode() {
   const [savingBarcode, setSavingBarcode] = useState(false)
   const [autoGeneratingAll, setAutoGeneratingAll] = useState(false)
   const [showPrinterGuideModal, setShowPrinterGuideModal] = useState(false)
+  const [printOverrideItems, setPrintOverrideItems] = useState(null)
 
   // Scanner Verification Tool
   const [scannedInput, setScannedInput] = useState('')
@@ -649,7 +650,7 @@ export default function Barcode() {
     return '₦' + Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
-  // Print Action
+  // Print Action — Directly triggers native print with zero popups and 100% calibrated XP-365B thermal dimensions
   const handleTriggerPrint = (itemsOverride = null) => {
     const isSingleTest = Array.isArray(itemsOverride)
     const targetItems = isSingleTest ? itemsOverride : printableLabelArray
@@ -657,28 +658,17 @@ export default function Barcode() {
     if (!isSingleTest && targetItems.length === 0) {
       return toast.error('Please select at least one product to print')
     }
-    
-    if (labelTemplate === 'sheet_a4' && !isSingleTest) {
-      window.print()
-      return
-    }
 
-    const printWindow = window.open('', '_blank', 'width=650,height=650')
-    if (!printWindow) {
-      return toast.error('Pop-up window blocked. Please allow pop-ups to print barcode labels.')
-    }
+    setPrintOverrideItems(isSingleTest ? targetItems : null)
 
     // Record last printed timestamp for all target products
     const printedProductIds = [...new Set(targetItems.map((item) => item.id).filter(Boolean))]
     if (printedProductIds.length > 0) {
       const nowIso = new Date().toISOString()
-
-      // Update local React state instantly
       setProducts((prev) =>
         prev.map((p) => (printedProductIds.includes(p.id) ? { ...p, barcode_last_printed_at: nowIso } : p))
       )
 
-      // Update localStorage cache
       try {
         const localCache = JSON.parse(localStorage.getItem('bems_barcode_last_printed') || '{}')
         printedProductIds.forEach((id) => {
@@ -689,280 +679,14 @@ export default function Barcode() {
         console.warn('LocalStorage save error:', e)
       }
 
-      // Persist to database
       api.post('/admin/products/mark-barcodes-printed', { productIds: printedProductIds }).catch((err) =>
         console.warn('Could not persist barcode_last_printed_at to server:', err)
       )
     }
 
-    let pageSize = '50mm 25mm'
-    let w = '50mm'
-    let h = '25mm'
-    let barcodeW = '44mm' // 44mm on 50mm paper spans 88% width with 3mm optical quiet margins
-    let barcodeH = showDates ? '9mm' : '11.5mm' // 11.5mm tall optical bars (nearly 50% of the entire sticker height)
-    let barModuleWidth = 2.0
-    let barHeightPx = 65
-    let fontSizeName = '7.5px'
-    let fontSizePrice = '9.5px'
-    let fontSizeSku = '7.5px'
-    let labelPadding = '0.6mm 1.5mm 0.6mm'
-
-    if (labelTemplate === 'thermal_50x30') {
-      pageSize = '50mm 30mm'
-      w = '50mm'
-      h = '30mm'
-      barcodeW = '43mm'
-      barcodeH = showDates ? '11.5mm' : '14mm'
-      barModuleWidth = 2.2
-      barHeightPx = 80
-      fontSizeName = '8px'
-      fontSizePrice = '10.5px'
-      fontSizeSku = '8px'
-      labelPadding = '1mm 2.2mm 0.8mm'
-    } else if (labelTemplate === 'compact_40x20') {
-      pageSize = '40mm 20mm'
-      w = '40mm'
-      h = '20mm'
-      barcodeW = '34mm'
-      barcodeH = '8mm'
-      barModuleWidth = 1.6
-      barHeightPx = 45
-      fontSizeName = '6.8px'
-      fontSizePrice = '8.8px'
-      fontSizeSku = '6.8px'
-      labelPadding = '0.6mm 1.5mm 0.5mm'
-    } else if (labelTemplate === 'crate_100x75') {
-      pageSize = '100mm 75mm'
-      w = '100mm'
-      h = '75mm'
-      barcodeW = '88mm'
-      barcodeH = '35mm'
-      barModuleWidth = 3.5
-      barHeightPx = 150
-      fontSizeName = '16px'
-      fontSizePrice = '22px'
-      fontSizeSku = '12px'
-      labelPadding = '3mm 5mm 2.5mm'
-    }
-
-    // Generate crisp, scan-calibrated SVG vector barcode with 100% full-height bars
-    const generateBarcodeVector = (val) => {
-      if (!val) return ''
-      try {
-        const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        renderBarcodeToElement(svgEl, val, {
-          format: symbology === 'EAN13' && String(val).length === 13 ? 'EAN13' : 'CODE128',
-          width: barModuleWidth,
-          height: barHeightPx,
-          displayValue: false, // Pure bars in SVG so 100% of height is optical scan area
-          margin: 0,
-          lineColor: '#000000',
-        })
-        svgEl.setAttribute('preserveAspectRatio', 'none')
-        svgEl.removeAttribute('width')
-        svgEl.removeAttribute('height')
-        return svgEl.outerHTML
-      } catch (err) {
-        console.warn('Barcode print render error:', err)
-        return ''
-      }
-    }
-
-    const labelsHtml = targetItems.map(item => {
-      const priceStr = formatNaira(item.price || item.unit_price)
-      const svg = generateBarcodeVector(item.barcodeValue)
-      
-      return `
-        <div class="label-page">
-          <div class="label-top-section">
-            ${showBrandHeader ? `
-              <div class="header">
-                <span class="brand-pill">BEMS FARMS</span>
-                <span class="brand-tag">Fresh Produce</span>
-              </div>
-            ` : ''}
-            ${showProductName ? `<div class="name" title="${item.name}">${item.name}</div>` : ''}
-            ${showPrice ? `
-              <div class="price-row">
-                <span class="price">${priceStr}</span>
-                ${showCategory ? `<span class="unit">${item.unit || 'Per Unit'}</span>` : ''}
-              </div>
-            ` : ''}
-          </div>
-
-          <div class="barcode-wrap">
-            <div class="barcode">${svg}</div>
-            ${showHumanCode || showSku ? `<div class="sku">${item.barcodeValue}</div>` : ''}
-          </div>
-
-          ${showDates ? `
-            <div class="dates">
-              <span>PKD: ${new Date().toLocaleDateString('en-GB')}</span>
-              <span>Origin: Nigeria</span>
-            </div>
-          ` : ''}
-        </div>
-      `
-    }).join('')
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>${isSingleTest ? 'XP-365B Test Label (50x25)' : 'Bems Farms Barcode Labels'}</title>
-          <style>
-            @page { 
-              size: ${pageSize}; 
-              margin: 0mm; 
-            }
-            * {
-              box-sizing: border-box;
-            }
-            html, body { 
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-              margin: 0 !important; 
-              padding: 0 !important;
-              background: #fff;
-              color: #000;
-              width: 100%;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .label-page {
-              width: ${w};
-              height: ${h};
-              max-height: ${h};
-              padding: ${labelPadding};
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-start;
-              gap: 0.5mm;
-              overflow: hidden;
-              page-break-inside: avoid;
-              break-inside: avoid;
-              page-break-after: always;
-              break-after: page;
-              background: #fff;
-              box-sizing: border-box;
-            }
-            .label-page:last-child {
-              page-break-after: auto;
-              break-after: auto;
-            }
-            .label-top-section {
-              display: flex;
-              flex-direction: column;
-              gap: 0.4mm;
-            }
-            .header { 
-              display: flex; 
-              justify-content: space-between; 
-              align-items: center; 
-              font-size: ${labelTemplate==='crate_100x75' ? '12px' : '6.5px'}; 
-              font-weight: 800; 
-              border-bottom: 0.8px solid #000; 
-              padding-bottom: 0.4px; 
-              margin-bottom: 0;
-              line-height: 1; 
-            }
-            .brand-pill { 
-              background: #000; 
-              color: #fff; 
-              padding: 0.5px 3.5px; 
-              border-radius: 2px; 
-              letter-spacing: 0.5px;
-            }
-            .brand-tag {
-              color: #333;
-              font-size: 6px;
-              font-weight: 600;
-            }
-            .name { 
-              font-size: ${fontSizeName}; 
-              font-weight: 700; 
-              white-space: nowrap; 
-              overflow: hidden; 
-              text-overflow: ellipsis; 
-              line-height: 1.15;
-              margin: 0;
-            }
-            .price-row { 
-              display: flex; 
-              justify-content: space-between; 
-              align-items: baseline; 
-              line-height: 1.1;
-              margin: 0;
-            }
-            .price { 
-              font-size: ${fontSizePrice}; 
-              font-weight: 900; 
-              color: #000;
-            }
-            .unit { 
-              font-size: ${labelTemplate==='crate_100x75' ? '11px' : '7px'}; 
-              font-weight: 600;
-              color: #444; 
-            }
-            .barcode-wrap {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              margin: 0.3mm 0 0;
-              width: 100%;
-            }
-            .barcode { 
-              text-align: center; 
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              width: 100%;
-              line-height: 1;
-            }
-            .barcode svg { 
-              width: ${barcodeW} !important;
-              height: ${barcodeH} !important; 
-              display: block !important;
-              margin: 0 auto !important;
-              shape-rendering: crispEdges !important;
-            }
-            .sku { 
-              text-align: center; 
-              font-size: ${fontSizeSku}; 
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
-              font-weight: 700;
-              letter-spacing: 0.8px;
-              line-height: 1;
-              margin-top: 0.3mm;
-              color: #000;
-            }
-            .dates { 
-              display: flex; 
-              justify-content: space-between; 
-              font-size: ${labelTemplate==='crate_100x75' ? '9px' : '5.5px'}; 
-              color: #444; 
-              border-top: 0.5px solid #666; 
-              padding-top: 0.4px; 
-              margin-top: 0.3mm; 
-            }
-          </style>
-        </head>
-        <body>
-          ${labelsHtml}
-          <script>
-            window.onload = function() {
-              window.focus();
-              setTimeout(function() {
-                window.print();
-                window.close();
-              }, 250);
-            };
-          </script>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
+    setTimeout(() => {
+      window.print()
+    }, 150)
   }
 
   // Flattened array of all labels in queue based on copies (supports Retail Piece vs Mid Row vs Bulk Carton modes)
@@ -974,10 +698,10 @@ export default function Barcode() {
       const isRow = rowTarget === 'row' && Number(product.pcs_per_mid_unit) > 1
 
       const code = isCarton
-        ? (product.carton_barcode || `BF-CTN-${product.id}`)
+        ? (product.carton_barcode || generateUniversalGoodsCode(product, 'EAN13', 'carton'))
         : isRow
-        ? (product.mid_barcode || `BF-ROW-${product.id}`)
-        : (product.barcode || product.sku || `BF-${product.id}`)
+        ? (product.mid_barcode || generateUniversalGoodsCode(product, 'EAN13', 'row'))
+        : (product.barcode || product.sku || generateUniversalGoodsCode(product, 'EAN13', 'piece'))
 
       const priceVal = isCarton
         ? (product.carton_price && Number(product.carton_price) > 0
@@ -1019,16 +743,51 @@ export default function Barcode() {
     return list
   }, [printQueue, printTarget, rowTargetOverrides])
 
-  // Print a single test label (50x30mm) for XP-365B alignment verification
+  // Print a single test label for XP-365B alignment verification
   const handlePrintTestLabel = () => {
     let testItem = null
     if (printableLabelArray.length > 0) {
       testItem = { ...printableLabelArray[0], copyIndex: 1, totalCopies: 1 }
     } else if (products.length > 0) {
       const p = products[0]
+      const rowTarget = rowTargetOverrides[p.id] || printTarget
+      const isCarton = rowTarget === 'carton' && Number(p.pcs_per_carton) > 1
+      const isRow = rowTarget === 'row' && Number(p.pcs_per_mid_unit) > 1
+
+      const code = isCarton
+        ? (p.carton_barcode || generateUniversalGoodsCode(p, 'EAN13', 'carton'))
+        : isRow
+        ? (p.mid_barcode || generateUniversalGoodsCode(p, 'EAN13', 'row'))
+        : (p.barcode || p.sku || generateUniversalGoodsCode(p, 'EAN13', 'piece'))
+
+      const priceVal = isCarton
+        ? (p.carton_price && Number(p.carton_price) > 0
+            ? p.carton_price
+            : Number(p.unit_price || p.price || 0) * (p.pcs_per_carton || 1))
+        : isRow
+        ? (p.mid_price && Number(p.mid_price) > 0
+            ? p.mid_price
+            : Number(p.unit_price || p.price || 0) * (p.pcs_per_mid_unit || 1))
+        : (p.unit_price || p.price)
+
+      const unitLabel = isCarton
+        ? (p.carton_unit_name ? `${p.carton_unit_name} (${p.pcs_per_carton} ${p.piece_unit_name || 'pcs'})` : 'Carton')
+        : isRow
+        ? (p.mid_unit_name ? `${p.mid_unit_name} (${p.pcs_per_mid_unit} ${p.piece_unit_name || 'pcs'})` : 'Row')
+        : (p.piece_unit_name || p.unit || 'Piece')
+
+      const displayName = isCarton
+        ? `${p.name} [${p.carton_unit_name || 'Carton'}]`
+        : isRow
+        ? `${p.name} [${p.mid_unit_name || 'Row'}]`
+        : p.name
+
       testItem = {
         ...p,
-        barcodeValue: p.barcode || p.sku || `BF-${p.id}`,
+        name: displayName,
+        price: priceVal,
+        unit: unitLabel,
+        barcodeValue: code,
         copyIndex: 1,
         totalCopies: 1,
       }
@@ -1038,7 +797,7 @@ export default function Barcode() {
         name: 'Fresh Farm Produce Sample',
         price: 3500,
         unit: 'Per Unit',
-        barcodeValue: '61500001001',
+        barcodeValue: '6150372307246',
         copyIndex: 1,
         totalCopies: 1,
       }
@@ -1050,7 +809,28 @@ export default function Barcode() {
     <div className="container-fluid py-3 barcode-studio-page">
       {/* ── Print Isolation Stylesheet ────────────────────────────── */}
       <style>{`
+        @page {
+          size: ${
+            labelTemplate === 'thermal_50x30'
+              ? '50mm 30mm'
+              : labelTemplate === 'compact_40x20'
+              ? '40mm 20mm'
+              : labelTemplate === 'crate_100x75'
+              ? '100mm 75mm'
+              : labelTemplate === 'sheet_a4'
+              ? 'A4 portrait'
+              : '50mm 25mm'
+          };
+          margin: 0mm !important;
+        }
         @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -1058,6 +838,7 @@ export default function Barcode() {
             visibility: visible !important;
           }
           #printable-barcode-canvas {
+            display: block !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -1066,12 +847,49 @@ export default function Barcode() {
             padding: 0 !important;
             background: white !important;
           }
+          .thermal-sticker-page {
+            width: ${
+              labelTemplate === 'thermal_50x30'
+                ? '50mm'
+                : labelTemplate === 'compact_40x20'
+                ? '40mm'
+                : labelTemplate === 'crate_100x75'
+                ? '100mm'
+                : '50mm'
+            } !important;
+            height: ${
+              labelTemplate === 'thermal_50x30'
+                ? '30mm'
+                : labelTemplate === 'compact_40x20'
+                ? '20mm'
+                : labelTemplate === 'crate_100x75'
+                ? '75mm'
+                : '25mm'
+            } !important;
+            max-height: ${
+              labelTemplate === 'thermal_50x30'
+                ? '30mm'
+                : labelTemplate === 'compact_40x20'
+                ? '20mm'
+                : labelTemplate === 'crate_100x75'
+                ? '75mm'
+                : '25mm'
+            } !important;
+            margin: 0 !important;
+            padding: 0.8mm 2.2mm 0.6mm !important;
+            box-sizing: border-box !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            overflow: hidden !important;
+            border: none !important;
+            background: #fff !important;
+          }
+          .thermal-sticker-page:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
           .no-print {
             display: none !important;
-          }
-          .page-break {
-            page-break-after: always;
-            break-after: page;
           }
         }
 
@@ -2265,134 +2083,93 @@ export default function Barcode() {
         </div>
       </div>
 
-      {/* ── Hidden Print Area (Rendered only on window.print()) ─────── */}
+      {/* ── Hidden Print Area (Rendered on window.print()) ─────── */}
       <div id="printable-barcode-canvas" className="d-none d-print-block">
         <div
           style={{
-            display: 'flex',
+            display: labelTemplate === 'sheet_a4' ? 'flex' : 'block',
             flexWrap: 'wrap',
-            gap: labelTemplate === 'sheet_a4' ? '12px' : '8px',
-            padding: '10px',
+            gap: labelTemplate === 'sheet_a4' ? '12px' : '0',
+            padding: labelTemplate === 'sheet_a4' ? '10px' : '0',
+            margin: '0',
             justifyContent: 'flex-start',
           }}
         >
-          {printableLabelArray.map((item, idx) => (
+          {((printOverrideItems && printOverrideItems.length > 0) ? printOverrideItems : printableLabelArray).map((item, idx) => (
             <div
               key={`${item.id}-${idx}`}
-              style={{
-                width:
-                  labelTemplate === 'compact_40x20'
-                    ? '180px'
-                    : labelTemplate === 'crate_100x75'
-                    ? '340px'
-                    : labelTemplate === 'sheet_a4'
-                    ? '220px'
-                    : '220px',
-                border: '1px solid #000',
-                borderRadius: '4px',
-                padding: '6px 8px',
-                marginBottom: '8px',
-                pageBreakInside: 'avoid',
-                breakInside: 'avoid',
-                backgroundColor: '#ffffff',
-                textAlign: 'center',
-                boxSizing: 'border-box',
-              }}
+              className={labelTemplate === 'sheet_a4' ? 'a4-sheet-card' : 'thermal-sticker-page'}
+              style={
+                labelTemplate === 'sheet_a4'
+                  ? {
+                      width: '220px',
+                      border: '1px solid #000',
+                      borderRadius: '4px',
+                      padding: '6px 8px',
+                      marginBottom: '8px',
+                      pageBreakInside: 'avoid',
+                      breakInside: 'avoid',
+                      backgroundColor: '#ffffff',
+                      textAlign: 'center',
+                      boxSizing: 'border-box',
+                    }
+                  : {
+                      width: labelTemplate === 'compact_40x20' ? '40mm' : labelTemplate === 'thermal_50x30' ? '50mm' : '50mm',
+                      height: labelTemplate === 'compact_40x20' ? '20mm' : labelTemplate === 'thermal_50x30' ? '30mm' : '25mm',
+                      maxHeight: labelTemplate === 'compact_40x20' ? '20mm' : labelTemplate === 'thermal_50x30' ? '30mm' : '25mm',
+                      padding: '0.8mm 2.2mm 0.6mm',
+                      margin: 0,
+                      border: 'none',
+                      backgroundColor: '#ffffff',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
+                      pageBreakAfter: 'always',
+                      breakAfter: 'page',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }
+              }
             >
               {showBrandHeader && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderBottom: '1px solid #333',
-                    paddingBottom: '2px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  <span
-                    style={{
-                      background: '#064e3b',
-                      color: '#fff',
-                      fontSize: '9px',
-                      fontWeight: 'bold',
-                      padding: '1px 4px',
-                      borderRadius: '2px',
-                    }}
-                  >
-                    BEMS FARMS
-                  </span>
-                  <span style={{ fontSize: '8px', color: '#555' }}>Fresh Produce</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.8px solid #000', paddingBottom: '0.4px', marginBottom: '0.5px' }}>
+                  <span style={{ background: '#000', color: '#fff', fontSize: '6.5px', fontWeight: '800', padding: '0.5px 3.5px', borderRadius: '2px', letterSpacing: '0.5px' }}>BEMS FARMS</span>
+                  <span style={{ fontSize: '6px', color: '#333', fontWeight: '600' }}>Fresh Produce</span>
                 </div>
               )}
 
               {showProductName && (
-                <div
-                  style={{
-                    fontWeight: 'bold',
-                    fontSize: labelTemplate === 'compact_40x20' ? '10px' : '12px',
-                    textAlign: 'left',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
+                <div style={{ fontWeight: '700', fontSize: '7.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.15', margin: '0' }} title={item.name}>
                   {item.name}
                 </div>
               )}
 
               {showPrice && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    margin: '2px 0',
-                  }}
-                >
-                  <span style={{ fontWeight: '900', fontSize: '13px' }}>
-                    {formatNaira(item.price || item.unit_price)}
-                  </span>
-                  {showCategory && (
-                    <span style={{ fontSize: '9px', color: '#555' }}>
-                      {item.unit || item.category || 'Unit'}
-                    </span>
-                  )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', lineHeight: '1.1', margin: '0' }}>
+                  <span style={{ fontWeight: '900', fontSize: '9.5px', color: '#000' }}>{formatNaira(item.price || item.unit_price)}</span>
+                  {showCategory && <span style={{ fontSize: '7px', fontWeight: '600', color: '#444' }}>{item.unit || item.category || 'Unit'}</span>}
                 </div>
               )}
 
-              {/* Barcode Vector */}
-              <div id={`svg-queue-${item.id}-${item.copyIndex}`} style={{ margin: '3px 0' }}>
+              <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0.4mm 0 0' }}>
                 <BarcodeSvg
-                  value={item.barcodeValue}
-                  format={symbology}
-                  width={labelTemplate === 'compact_40x20' ? 1.4 : 1.8}
-                  height={labelTemplate === 'compact_40x20' ? 36 : labelTemplate === 'crate_100x75' ? 95 : 56}
-                  displayValue={showHumanCode}
-                  fontSize={9}
+                  value={item.barcodeValue || item.barcode}
+                  format={/^\d{13}$/.test(String(item.barcodeValue || item.barcode || '').trim()) ? 'EAN13' : symbology}
+                  width={1.5}
+                  height={labelTemplate === 'compact_40x20' ? 24 : 32}
+                  displayValue={false}
                 />
+                {showHumanCode && (
+                  <div style={{ fontSize: '7.5px', fontFamily: 'monospace', fontWeight: '700', letterSpacing: '0.8px', color: '#000', marginTop: '0.2mm', lineHeight: '1' }}>
+                    {item.barcodeValue || item.barcode}
+                  </div>
+                )}
               </div>
 
-              {showSku && (
-                <div style={{ fontSize: '8px', fontFamily: 'monospace', color: '#333' }}>
-                  SKU: {item.sku || '—'} &bull; UGC: {item.barcodeValue}
-                </div>
-              )}
-
               {showDates && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '8px',
-                    borderTop: '1px solid #ccc',
-                    marginTop: '3px',
-                    paddingTop: '2px',
-                    color: '#666',
-                  }}
-                >
-                  <span>Packed: {new Date().toLocaleDateString('en-GB')}</span>
-                  <span>Origin: Edo State, NG</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '5.5px', color: '#444', borderTop: '0.5px solid #666', paddingTop: '0.4px', marginTop: '0.3mm' }}>
+                  <span>PKD: {new Date().toLocaleDateString('en-GB')}</span>
+                  <span>Origin: Nigeria</span>
                 </div>
               )}
             </div>

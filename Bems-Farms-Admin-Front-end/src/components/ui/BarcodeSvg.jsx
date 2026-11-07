@@ -7,7 +7,7 @@ import { renderBarcodeToElement } from '../../lib/barcodeGenerator'
  */
 export default function BarcodeSvg({
   value,
-  format = 'CODE128',
+  format = 'auto',
   width = 1.8,
   height = 46,
   displayValue = true,
@@ -19,8 +19,12 @@ export default function BarcodeSvg({
 
   useEffect(() => {
     if (svgRef.current && value) {
-      renderBarcodeToElement(svgRef.current, value, {
-        format,
+      const cleanVal = String(value).trim()
+      const resolvedFormat = format === 'auto'
+        ? (/^\d{13}$/.test(cleanVal) ? 'EAN13' : 'CODE128')
+        : format
+      renderBarcodeToElement(svgRef.current, cleanVal, {
+        format: resolvedFormat,
         width,
         height,
         displayValue,
