@@ -53,6 +53,14 @@ const rootHtaccess = `<IfModule LiteSpeed>
   RewriteRule .* - [E=verifycaptcha:off]
 </IfModule>
 
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
 Options -Indexes +FollowSymLinks
 DirectoryIndex index.html
 
@@ -92,7 +100,15 @@ DirectoryIndex index.html
 </IfModule>
 `;
 
-const adminHtaccess = `Options -Indexes +FollowSymLinks
+const adminHtaccess = `<IfModule mod_headers.c>
+  <FilesMatch "\\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
+Options -Indexes +FollowSymLinks
 DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>

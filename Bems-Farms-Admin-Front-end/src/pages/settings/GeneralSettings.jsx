@@ -209,16 +209,21 @@ export default function GeneralSettings() {
                     onChange={e => fld('store_address', e.target.value)}
                   />
                 </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Store Branch (Receipts &amp; POS)</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. Umuahia Main Store"
-                    value={form.store_branch || ''}
-                    onChange={e => fld('store_branch', e.target.value)}
-                  />
-                  <small className="text-muted" style={{ fontSize: 11 }}>Appears as &quot;Store Branch&quot; on customer and POS sales receipts.</small>
+                <div className="col-12 col-md-6">
+                  <label className="form-label fw-semibold text-dark" style={{ fontSize: 13 }}>
+                    Store Branch Name (Receipts &amp; POS)
+                  </label>
+                  <div className="input-group">
+                    <span className="input-group-text bg-light text-muted"><i className="ri-store-2-line"></i></span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Umuahia Main Store"
+                      value={form.store_branch || ''}
+                      onChange={e => fld('store_branch', e.target.value)}
+                    />
+                  </div>
+                  <small className="text-muted" style={{ fontSize: 11 }}>Printed on sales receipts under Store Branch.</small>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>City / State</label>
