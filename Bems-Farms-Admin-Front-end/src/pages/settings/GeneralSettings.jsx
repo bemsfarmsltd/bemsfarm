@@ -26,6 +26,7 @@ const BLANK = {
   store_email: 'support@bemsfarms.com',
   store_currency: 'NGN',
   store_address: 'Abia State. Head Office',
+  store_branch: 'Umuahia Main Store',
   store_city: 'Umuahia / Aba',
   store_country: 'Nigeria',
   store_timezone: 'Africa/Lagos',
@@ -207,6 +208,17 @@ export default function GeneralSettings() {
                     value={form.store_address || ''}
                     onChange={e => fld('store_address', e.target.value)}
                   />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>Store Branch (Receipts &amp; POS)</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Umuahia Main Store"
+                    value={form.store_branch || ''}
+                    onChange={e => fld('store_branch', e.target.value)}
+                  />
+                  <small className="text-muted" style={{ fontSize: 11 }}>Appears as &quot;Store Branch&quot; on customer and POS sales receipts.</small>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-medium text-dark" style={{ fontSize: 13 }}>City / State</label>

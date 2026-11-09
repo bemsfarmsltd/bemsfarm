@@ -30,6 +30,8 @@ const DEFAULTS = {
   store_phone: '+234 800 236 7326',
   store_email: 'support@bemsfarms.com',
   store_address: 'Abia State, Nigeria',
+  store_branch: 'Umuahia Main Store',
+  pos_branch_name: 'Umuahia Main Store',
   store_logo_url: '/bemsfarms_icon_b.png',
   store_tax_id: '',
   store_registration_number: '',
@@ -419,7 +421,7 @@ export default function ThermalReceipt({
   date,
   customer = 'Walk-in Customer',
   customerPhone,
-  branch = 'Aba Central Store',
+  branch,
   channel = 'In-Store POS',
   cashier = 'Chinedu K.',
   status = 'Paid',
@@ -567,7 +569,7 @@ export default function ThermalReceipt({
         ) : (
           <>
             <ReceiptRow label="Customer:" value={customer || 'Walk-in Customer'} />
-            <ReceiptRow label="Store Branch:" value={branch || 'Aba Central Hub (Terminal #01)'} />
+            <ReceiptRow label="Store Branch:" value={branch || settings.store_branch || settings.pos_branch_name || 'Umuahia Main Store'} />
             <ReceiptRow label="Cashier / Staff:" value={cashier || 'Cashier'} />
             <ReceiptRow label="Fulfilment:" value={fulfillment || 'In-Store Counter Checkout'} />
           </>

@@ -452,6 +452,7 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
     storeName = 'BEMS FARMS GLOBAL LTD',
     storeTagline = 'Fresh Food. Trusted Quality.',
     storeAddress = 'Abia State. Head Office',
+    storeBranch = 'Umuahia Main Store',
     storePhone = '+234 800 236 7326',
     receiptNumber = 'BF-' + Date.now().toString().slice(-6),
     date = new Date().toLocaleString('en-NG', { dateStyle: 'short', timeStyle: 'short' }),
@@ -522,7 +523,7 @@ export async function printReceiptESC(receiptData, paperWidth = 80) {
   builder.align('left')
     .twoColumnRow('Customer Name:', customer)
     if (receiptData.customerPhone) builder.twoColumnRow('Phone Number:', receiptData.customerPhone)
-    if (receiptData.branch) builder.twoColumnRow('Branch / Store:', receiptData.branch)
+    builder.twoColumnRow('Store Branch:', receiptData.branch || receiptData.store_branch || storeBranch)
     if (cashier) builder.twoColumnRow('Cashier / Staff:', cashier)
     builder.dashedLine()
 

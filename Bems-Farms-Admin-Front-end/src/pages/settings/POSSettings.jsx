@@ -21,6 +21,7 @@ const BLANK = {
   store_phone: '+234 800 236 7326',
   store_email: 'info@bemsfarms.com',
   store_address: 'Abia State. Head Office',
+  store_branch: 'Umuahia Main Store',
   store_logo_url: '/bemsfarms_logo.png',
   store_tax_id: '',
   store_registration_number: '',
@@ -52,7 +53,7 @@ const BLANK = {
   receipt_invoice_footer: 'Thank you for your business',
 }
 
-const GENERAL_KEYS = ['store_name', 'store_phone', 'store_email', 'store_address', 'store_logo_url', 'store_tax_id', 'store_registration_number']
+const GENERAL_KEYS = ['store_name', 'store_phone', 'store_email', 'store_address', 'store_branch', 'store_logo_url', 'store_tax_id', 'store_registration_number']
 
 const SAMPLE_ITEMS = [
   { id: 1, name: 'Bems Premium Palm Oil 1L', sku: 'BEMS-OIL-1L', qty: 2, price: 3500, total: 7000 },
@@ -471,7 +472,7 @@ export default function POSSettings() {
                     </div>
                   </div>
 
-                  <div className="col-12">
+                  <div className="col-12 col-md-6">
                     <label className="form-label small fw-semibold text-dark mb-1">Store Physical Address</label>
                     <div className="input-group">
                       <span className="input-group-text bg-light text-muted border-end-0"><i className="ri-map-pin-line"></i></span>
@@ -483,6 +484,21 @@ export default function POSSettings() {
                         onChange={(e) => fld('store_address', e.target.value)}
                       />
                     </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label small fw-semibold text-dark mb-1">Store Branch Name (Printed on Receipt)</label>
+                    <div className="input-group">
+                      <span className="input-group-text bg-light text-muted border-end-0"><i className="ri-store-2-line"></i></span>
+                      <input
+                        type="text"
+                        className="form-control border-start-0 ps-0"
+                        placeholder="e.g. Umuahia Main Store"
+                        value={form.store_branch || ''}
+                        onChange={(e) => fld('store_branch', e.target.value)}
+                      />
+                    </div>
+                    <div className="text-muted fs-xs mt-1">Appears under &quot;Store Branch&quot; on all thermal sales receipts.</div>
                   </div>
 
                   <div className="col-12">

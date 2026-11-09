@@ -317,6 +317,8 @@ router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
         store_phone: general.store_phone || "+234 800 236 7326",
         store_email: general.store_email || "info@bemsfarms.com",
         store_address: general.store_address || "Abia State. Head Office",
+        store_branch: general.store_branch || pos.store_branch || pos.pos_branch_name || "Umuahia Main Store",
+        pos_branch_name: pos.pos_branch_name || general.store_branch || pos.store_branch || "Umuahia Main Store",
         store_logo_url: general.store_logo_url || "/bemsfarms_logo.png",
         store_tax_id: "",
         store_registration_number: "",
