@@ -1147,7 +1147,7 @@ async function sendDriverStatusChangedEmail({ email, name, status, reason }) {
 
 module.exports = {
   sendMail,
-  getEmailDiagnostic: async (testRecipient) => {
+  getEmailDiagnostic: async (testRecipient, checkEmailId) => {
     const result = {
       hasResend,
       from: FROM,
@@ -1163,7 +1163,8 @@ module.exports = {
         result.resendDomainDetailsError = e.message;
       }
       try {
-        const emailStatus = await resend.emails.get("01a1cfc0-05a6-7dd5-9dd2-6748de4525fa");
+        const targetId = checkEmailId || "01a1cfc8-cf26-7d8a-b4ea-8b8f1bef4d3d";
+        const emailStatus = await resend.emails.get(targetId);
         result.sampleEmailStatus = emailStatus;
       } catch (e) {
         result.sampleEmailStatusError = e.message;
