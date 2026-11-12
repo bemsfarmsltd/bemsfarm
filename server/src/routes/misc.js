@@ -569,7 +569,7 @@ router.post("/payments/initialize", async (req, res, next) => {
 
 router.get("/email-diagnostic", async (req, res) => {
   try {
-    const diag = await getEmailDiagnostic(req.query.to, req.query.emailId);
+    const diag = await getEmailDiagnostic(req.query.emailId);
     res.json(diag);
   } catch (err) {
     res.status(500).json({ error: err.message });
