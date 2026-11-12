@@ -1147,7 +1147,7 @@ async function sendDriverStatusChangedEmail({ email, name, status, reason }) {
 
 module.exports = {
   sendMail,
-  getEmailDiagnostic: async () => {
+  getEmailDiagnostic: async (testRecipient) => {
     const result = {
       hasResend,
       from: FROM,
@@ -1157,16 +1157,29 @@ module.exports = {
     };
     if (resend) {
       try {
-        const domains = await resend.domains.list();
-        result.resendDomains = domains;
+        const domainDetails = await resend.domains.get("a135ab4d-312d-4382-8610-2a6f73b98df3");
+        result.resendDomainDetails = domainDetails;
       } catch (e) {
-        result.resendDomainsError = e.message;
+        result.resendDomainDetailsError = e.message;
       }
       try {
         const emailStatus = await resend.emails.get("01a1cfc0-05a6-7dd5-9dd2-6748de4525fa");
         result.sampleEmailStatus = emailStatus;
       } catch (e) {
         result.sampleEmailStatusError = e.message;
+      }
+      if (testRecipient) {
+        try {
+          const testSend = await resend.emails.send({
+            from: `BemsFarms 🌿 <${FROM}>`,
+            to: testRecipient,
+            subject: "BemsFarms Test Email Diagnostic",
+            html: "<p>This is a live test email from BemsFarms production system.</p>",
+          });
+          result.testSendResult = testSend;
+        } catch (e) {
+          result.testSendError = e.message;
+        }
       }
     }
     if (nodemailerTransport) {
