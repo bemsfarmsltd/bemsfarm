@@ -551,6 +551,14 @@ export default function VerifiedLocationModal({
           </button>
         </div>
 
+        {/* Verification Callout */}
+        <div className="bg-amber-50/90 border-b border-amber-200/70 px-4 py-2 flex items-center gap-2 text-xs text-amber-900">
+          <span className="text-base">🌿</span>
+          <span>
+            <strong>Verify your delivery address:</strong> Search your street, estate, or pin your doorstep on the map for prompt dispatch and accurate delivery fees.
+          </span>
+        </div>
+
         {/* Search & GPS Action Bar */}
         <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-2.5 relative">
           <div className="flex flex-col sm:flex-row gap-2">

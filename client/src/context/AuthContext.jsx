@@ -346,8 +346,26 @@ export function AuthProvider({ children }) {
         throw new Error("Administrative accounts cannot sign in on the customer storefront. Please log in at /admin/login.");
       }
 
-      _storeSession(userData, authToken);
-      return userData;
+      const requiresAddress = Boolean(res.data.requiresAddress || !res.data.has_address || !userData.has_address);
+      if (requiresAddress) {
+        sessionStorage.setItem("bems_prompt_address_verification", "true");
+        localStorage.setItem("bems_prompt_address_verification", "true");
+      } else {
+        sessionStorage.removeItem("bems_prompt_address_verification");
+        localStorage.removeItem("bems_prompt_address_verification");
+      }
+
+      const mergedUser = {
+        ...userData,
+        has_address: !requiresAddress,
+        requires_address_verification: requiresAddress,
+      };
+
+      _storeSession(mergedUser, authToken);
+      return {
+        ...mergedUser,
+        requiresAddress,
+      };
     },
     [_storeSession],
   );

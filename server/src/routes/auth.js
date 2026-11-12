@@ -1113,7 +1113,7 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       "SELECT id, street_address, city, state, latitude, longitude FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC LIMIT 1",
       [user.id]
     );
-    const hasAddress = addrCheck.rows.length > 0 && Boolean(addrCheck.rows[0].street_address);
+    const hasAddress = (addrCheck.rows.length > 0 && Boolean(addrCheck.rows[0].street_address)) || Boolean(user.address && user.address.trim());
 
     const token = generateAccessToken(user);
     const nameParts = (user.name || "").trim().split(" ");
@@ -1162,7 +1162,8 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
         avatar_url: user.avatar_url || null,
         email_verified: true,
         has_address: hasAddress,
-        address: addrCheck.rows[0]?.street_address || "",
+        requires_address_verification: !hasAddress,
+        address: addrCheck.rows[0]?.street_address || user.address || "",
       },
     });
   } catch (err) {

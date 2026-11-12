@@ -55,6 +55,10 @@ router.post("/", async (req, res, next) => {
       [req.user.id, label || "Home", receiver_name || null, receiver_phone || null, street_address.trim(), city || null, state || null, cleanPostcode, latNum, lngNum, makeDefault],
     );
 
+    if (makeDefault) {
+      await client.query("UPDATE users SET address = $1 WHERE id = $2", [street_address.trim(), req.user.id]);
+    }
+
     await client.query("COMMIT");
     res.status(201).json({ address: result.rows[0] });
   } catch (err) {
@@ -112,6 +116,9 @@ router.patch("/:id", async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+    if (result.rows[0]?.is_default && result.rows[0]?.street_address) {
+      await pool.query("UPDATE users SET address = $1 WHERE id = $2", [result.rows[0].street_address.trim(), req.user.id]).catch(() => {});
+    }
     res.json({ address: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");

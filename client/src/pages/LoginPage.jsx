@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+import VerifiedLocationModal from "../components/ui/VerifiedLocationModal";
 
 import { isStaff, handoff, customerHome } from "../../../shared/authRouting";
 
@@ -44,7 +45,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle, user } = useAuth();
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const { login, loginWithGoogle, user, updateUser } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,12 +73,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!user) return;
+    if (showAddressModal) return;
+    if (sessionStorage.getItem("bems_prompt_address_verification") === "true") {
+      setShowAddressModal(true);
+      return;
+    }
     if (user.role === 'user' || user.role === 'customer') {
       navigate(from, { replace: true });
     } else {
       setError('Administrative accounts cannot sign in on the customer storefront. Please log in at /admin/login.');
     }
-  }, [user, from, navigate]);
+  }, [user, from, navigate, showAddressModal]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -109,7 +116,12 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await loginWithGoogle(credentialResponse.credential);
+      const authUser = await loginWithGoogle(credentialResponse.credential);
+      if (authUser?.requiresAddress || !authUser?.has_address) {
+        setShowAddressModal(true);
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Google sign-in failed.");
     } finally {
@@ -318,6 +330,30 @@ export default function LoginPage() {
         </div>
 
       </motion.div>
+
+      <VerifiedLocationModal
+        isOpen={showAddressModal}
+        onClose={() => {
+          setShowAddressModal(false);
+          sessionStorage.removeItem("bems_prompt_address_verification");
+          localStorage.removeItem("bems_prompt_address_verification");
+          navigate(from, { replace: true });
+        }}
+        onLocationConfirmed={(loc) => {
+          setShowAddressModal(false);
+          sessionStorage.removeItem("bems_prompt_address_verification");
+          localStorage.removeItem("bems_prompt_address_verification");
+          if (updateUser) {
+            updateUser({
+              has_address: true,
+              requires_address_verification: false,
+              address: loc?.address || loc?.street_address,
+            });
+          }
+          navigate(from, { replace: true });
+        }}
+        showSaveToAccount={true}
+      />
 
     </div>
   );

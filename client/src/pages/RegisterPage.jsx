@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
 import AddressAutocomplete from "../components/ui/AddressAutocomplete";
+import VerifiedLocationModal from "../components/ui/VerifiedLocationModal";
 
 
 const AUTH_CSS = `
@@ -60,7 +61,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { register, loginWithGoogle } = useAuth();
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const { register, loginWithGoogle, updateUser } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -137,8 +139,12 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      await loginWithGoogle(credentialResponse.credential);
-      navigate("/onboarding", { replace: true, state: { from: destination } });
+      const authUser = await loginWithGoogle(credentialResponse.credential);
+      if (authUser?.requiresAddress || !authUser?.has_address) {
+        setShowAddressModal(true);
+      } else {
+        navigate("/onboarding", { replace: true, state: { from: destination } });
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Google registration failed.");
     } finally {
@@ -554,6 +560,30 @@ export default function RegisterPage() {
         </div>
 
       </motion.div>
+
+      <VerifiedLocationModal
+        isOpen={showAddressModal}
+        onClose={() => {
+          setShowAddressModal(false);
+          sessionStorage.removeItem("bems_prompt_address_verification");
+          localStorage.removeItem("bems_prompt_address_verification");
+          navigate("/onboarding", { replace: true, state: { from: destination } });
+        }}
+        onLocationConfirmed={(loc) => {
+          setShowAddressModal(false);
+          sessionStorage.removeItem("bems_prompt_address_verification");
+          localStorage.removeItem("bems_prompt_address_verification");
+          if (updateUser) {
+            updateUser({
+              has_address: true,
+              requires_address_verification: false,
+              address: loc?.address || loc?.street_address,
+            });
+          }
+          navigate("/onboarding", { replace: true, state: { from: destination } });
+        }}
+        showSaveToAccount={true}
+      />
 
     </div>
   );
