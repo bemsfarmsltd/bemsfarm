@@ -259,6 +259,24 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
+    if (user.role === 'customer' || user.role === 'user') {
+      notifyAdmin({
+        type: 'customer_login',
+        title: `👤 Customer Signed In: ${user.name || user.email}`,
+        message: `${user.name || 'A customer'} (${user.email}) signed in via ${channel || 'web storefront'}.`,
+        link: `/customers/${user.id}`,
+        severity: 'info',
+        data: {
+          customer_id: user.id,
+          name: user.name,
+          email: user.email,
+          channel: channel || 'storefront',
+          login_time: new Date().toISOString(),
+        },
+        actor: { id: user.id, name: user.name, role: user.role, email: user.email },
+      }).catch(() => {});
+    }
+
     // ── Build user object matching Henry's AuthContext expectations ──
     // Henry uses: user.first_name, user.last_name, user.email, user.role
     // Your DB has: user.name (full name)

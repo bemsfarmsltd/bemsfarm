@@ -16,7 +16,7 @@ const EVENT_CATEGORIES = [
       {
         id: 'order_placed',
         name: 'New Online Order Placed',
-        desc: 'Instant chime and popup when a customer completes checkout on web or mobile.',
+        desc: 'Instant chime, popup, and email when a customer completes checkout on web or mobile.',
         icon: 'ri-shopping-cart-2-line',
       },
       {
@@ -24,6 +24,12 @@ const EVENT_CATEGORIES = [
         name: 'POS Register Sale Completed',
         desc: 'Notification when an in-store walk-in counter sale is tendered by a cashier.',
         icon: 'ri-computer-line',
+      },
+      {
+        id: 'order_completed',
+        name: 'Order Delivered & Completed',
+        desc: 'Alert when an order is successfully confirmed delivered to the customer.',
+        icon: 'ri-checkbox-circle-line',
       },
       {
         id: 'refund_request',
@@ -44,8 +50,14 @@ const EVENT_CATEGORIES = [
       {
         id: 'order_delivery',
         name: 'Driver & Delivery Transit',
-        desc: 'Alerts when orders are dispatched, accepted by riders, or delivered.',
+        desc: 'Alerts when orders are dispatched, accepted by riders, or in transit.',
         icon: 'ri-map-pin-user-line',
+      },
+      {
+        id: 'driver_assigned',
+        name: 'Auto Driver Mapping & Assigned',
+        desc: 'Alert when an order is automatically proximity-mapped and assigned to a driver.',
+        icon: 'ri-user-location-line',
       },
       {
         id: 'driver_support_message',
@@ -70,6 +82,36 @@ const EVENT_CATEGORIES = [
         icon: 'ri-alert-line',
       },
       {
+        id: 'out_of_stock',
+        name: 'Out of Stock Depletion Alert',
+        desc: 'Immediate high-priority alert when a product stock count reaches 0 units.',
+        icon: 'ri-error-warning-fill',
+      },
+      {
+        id: 'product_created',
+        name: 'New Stock / Product Upload',
+        desc: 'Alert when a new farm produce or grocery item is added to the catalog.',
+        icon: 'ri-add-box-line',
+      },
+      {
+        id: 'stock_adjustment',
+        name: 'Stock Adjustment (Count / Damage)',
+        desc: 'Notification on manual stock adjustments with reason and notes audit trail.',
+        icon: 'ri-equalizer-line',
+      },
+      {
+        id: 'stock_restock',
+        name: 'Inventory Restock & Intake',
+        desc: 'Alert when new physical produce shipments are received and stocked in.',
+        icon: 'ri-inbox-archive-line',
+      },
+      {
+        id: 'product_price_updated',
+        name: 'Product Price Edit (and by who)',
+        desc: 'Immediate audit alert displaying former vs new price and the user who modified it.',
+        icon: 'ri-price-tag-3-line',
+      },
+      {
         id: 'batch_expiry',
         name: 'Produce Batch Expiry (7-Day Notice)',
         desc: 'Warning sent 7 days before perishable farm produce lots reach expiry.',
@@ -90,6 +132,12 @@ const EVENT_CATEGORIES = [
         name: 'New Customer Registered',
         desc: 'Alert when a new shopper registers with verified delivery address.',
         icon: 'ri-user-add-line',
+      },
+      {
+        id: 'customer_login',
+        name: 'Customer Signed In',
+        desc: 'Notification when a shopper logs in to their BemsFarms account.',
+        icon: 'ri-login-box-line',
       },
       {
         id: 'support_message',
@@ -215,14 +263,23 @@ export default function NotificationSettings() {
       if (showNotificationPopup) {
         const testLabels = {
           order_placed: { title: '🛍️ New Online Order #ORD-8821', msg: 'Order placed by Chinedu Okafor totaling ₦28,500 with 4 items.' },
-          customer_register: { title: '🎉 New Customer Registered', msg: 'Amara Kalu registered from Umuahia with verified coordinates.' },
           pos_sale: { title: '💳 Walk-in POS Sale Completed', msg: 'Sale of ₦14,200 completed on POS Register 1.' },
+          order_completed: { title: '✅ Order #ORD-8821 Delivered & Completed', msg: 'Order #ORD-8821 confirmed delivered by driver Emeka.' },
           order_delivery: { title: '🛵 Courier Picked Up Order', msg: 'Driver Emeka has picked up the package and is in transit.' },
+          driver_assigned: { title: '🛵 Driver Auto-Mapped: Order #ORD-8821', msg: 'Delivery assigned to closest courier: Emeka Okoli (1.2 km away).' },
+          customer_register: { title: '🎉 New Customer Registered', msg: 'Amara Kalu registered from Umuahia with verified coordinates.' },
+          customer_login: { title: '👤 Customer Signed In: Amara Kalu', msg: 'Amara Kalu signed in via web storefront.' },
           support_message: { title: '💬 Live Customer Message', msg: 'Ngozi asks: "Is fresh catfish available for delivery today?"' },
           ai_chat: { title: '🤖 Chef Bems AI Interaction', msg: 'Customer requested recipe ideas for organic palm oil.' },
           low_stock: { title: '⚠️ Low Stock Alert: Fresh Farm Eggs', msg: 'Inventory has dropped to 4 crates (threshold: 10).' },
+          out_of_stock: { title: '🚨 OUT OF STOCK: Organic Catfish', msg: 'Stock level reached 0 units. Immediate reorder needed.' },
+          product_created: { title: '📦 New Stock Uploaded: Bell Peppers', msg: 'Manager Ngozi uploaded new product "Bell Peppers" (SKU: VEG-04-1290).' },
+          stock_adjustment: { title: '📊 Stock Count Adjusted: Fresh Tomatoes', msg: 'Count adjusted by -3 units. Reason: Damaged in transit.' },
+          stock_restock: { title: '🔄 Inventory Restocked: Cassava Flour', msg: 'Stock intake completed: +50 units received and verified.' },
+          product_price_updated: { title: '💰 Price Updated: Red Palm Oil (5L)', msg: 'Henry Adeleke updated price from ₦12,500 to ₦13,000.' },
           batch_expiry: { title: '⏰ Batch Expiry Notice', msg: 'Batch #LOT-2026-081 (Bell Peppers) will expire in 4 days.' },
           refund_request: { title: '↩️ Return Ticket Submitted', msg: 'Refund request of ₦6,500 submitted for Order #ORD-8750.' },
+          security_event: { title: '🔑 Security Event: Password Changed', msg: 'Staff account password was updated from a new IP.' },
           system_error: { title: '🔴 Critical System Alert', msg: 'Payment gateway connection retry handled [HTTP 504].' },
         }
         const item = testLabels[testType] || testLabels.order_placed
@@ -542,13 +599,22 @@ export default function NotificationSettings() {
                 >
                   <option value="order_placed">🛍️ Online Checkout (#ORD-8821)</option>
                   <option value="pos_sale">💳 In-Store POS Sale Complete</option>
+                  <option value="order_completed">✅ Order Delivered &amp; Completed</option>
                   <option value="order_delivery">🛵 Driver En Route to Customer</option>
-                  <option value="customer_register">👤 New Customer Registered</option>
+                  <option value="driver_assigned">🛵 Driver Auto-Mapped &amp; Assigned</option>
+                  <option value="customer_register">🎉 New Customer Registered</option>
+                  <option value="customer_login">👤 Customer Signed In</option>
+                  <option value="low_stock">⚠️ Inventory Threshold Reached</option>
+                  <option value="out_of_stock">🚨 Out of Stock Alert (0 units)</option>
+                  <option value="product_created">📦 New Stock / Product Upload</option>
+                  <option value="stock_adjustment">📊 Stock Adjustment</option>
+                  <option value="stock_restock">🔄 Inventory Restock / Intake</option>
+                  <option value="product_price_updated">💰 Product Price Edit (and by who)</option>
                   <option value="support_message">💬 Live Chat Inquiry</option>
                   <option value="ai_chat">🤖 Chef Bems AI Suggestion</option>
-                  <option value="low_stock">⚠️ Inventory Threshold Reached</option>
                   <option value="batch_expiry">⏰ Batch Expiry in 4 Days</option>
                   <option value="refund_request">↩️ Customer Return Ticket</option>
+                  <option value="security_event">🔑 Staff Security &amp; Password Change</option>
                   <option value="system_error">🔴 API Error / Warning (500)</option>
                 </select>
               </div>

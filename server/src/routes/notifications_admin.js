@@ -113,6 +113,63 @@ router.post('/test', requireRole('superadmin', 'manager'), async (req, res, next
         severity: 'critical',
         data: { error: 'Gateway timeout', service: 'Paystack Webhook' },
       },
+      order_completed: {
+        title: '✅ Order #ORD-8821 Delivered & Completed',
+        message: 'Order #ORD-8821 confirmed delivered by driver Emeka. Total: ₦28,500.',
+        link: '/orders',
+        data: { order_id: 8821, status: 'delivered', total: '₦28,500', courier: 'Emeka Driver' },
+      },
+      driver_assigned: {
+        title: '🛵 Driver Auto-Mapped: Order #ORD-8821',
+        message: 'Order #ORD-8821 automatically assigned to closest driver: Emeka Okoli (1.2 km away).',
+        link: '/dispatch',
+        data: { order_id: 8821, driver_name: 'Emeka Okoli', distance_km: 1.2 },
+      },
+      customer_login: {
+        title: '👤 Customer Signed In: Amara Kalu',
+        message: 'Amara Kalu (amara@example.com) signed in via web storefront.',
+        link: '/customers',
+        data: { customer_name: 'Amara Kalu', email: 'amara@example.com', channel: 'web storefront' },
+      },
+      out_of_stock: {
+        title: '🚨 OUT OF STOCK: Fresh Organic Catfish',
+        message: 'Fresh Organic Catfish is completely OUT OF STOCK (0 units remaining).',
+        link: '/inventory/products',
+        severity: 'critical',
+        data: { product_name: 'Fresh Organic Catfish', stock_remaining: 0 },
+      },
+      product_created: {
+        title: '📦 New Stock Uploaded: Bell Peppers',
+        message: 'Staff uploaded new product "Bell Peppers" (SKU: VEG-04-1290, Stock: 80, Price: ₦1,200).',
+        link: '/inventory/products',
+        data: { product_name: 'Bell Peppers', sku: 'VEG-04-1290', stock: 80, price: '₦1,200' },
+      },
+      stock_adjustment: {
+        title: '📊 Stock Adjustment: Fresh Tomatoes (-3 units)',
+        message: 'Stock adjusted for "Fresh Tomatoes". Reason: Damaged during sorting. Stock: 45 → 42.',
+        link: '/inventory/adjustment',
+        data: { product_name: 'Fresh Tomatoes', before_qty: 45, after_qty: 42, reason: 'Damaged' },
+      },
+      stock_restock: {
+        title: '🔄 Stock Received / Restocked: Cassava Flour (+50 units)',
+        message: 'Intake completed: +50 units of "Cassava Flour" stocked into main warehouse.',
+        link: '/inventory/stock-in',
+        data: { product_name: 'Cassava Flour', quantity_received: 50, warehouse: 'Main Hub' },
+      },
+      product_price_updated: {
+        title: '💰 Price Updated: Red Palm Oil (5L)',
+        message: 'Henry Adeleke (superadmin) updated price for "Red Palm Oil (5L)" from ₦12,500 to ₦13,000.',
+        link: '/inventory/products',
+        severity: 'warning',
+        data: { product_name: 'Red Palm Oil (5L)', old_price: 12500, new_price: 13000, changed_by: 'Henry Adeleke', role: 'superadmin' },
+      },
+      security_event: {
+        title: '🔑 Staff Security: Password Changed',
+        message: 'Staff account password was updated from IP 102.89.34.12.',
+        link: '/settings/staff',
+        severity: 'warning',
+        data: { user: 'Cashier Umuahia', ip: '102.89.34.12' },
+      },
     };
 
     const payload = testPayloads[type] || testPayloads.order_placed;

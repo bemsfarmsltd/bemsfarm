@@ -7,6 +7,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const deliveryAdminSchemas = require("../schemas/deliveryAdminSchemas");
 const { restoreOrderStock } = require("../utils/orderStock");
+const { notifyAdmin } = require("../services/notificationService");
 const {
   sendDriverInvitationEmail,
   sendDriverApprovedEmail,
@@ -734,6 +735,22 @@ router.patch(
         // order was already cancelled.
         if (orderStatus === "cancelled" && prevOrder.rows[0]?.status !== "cancelled") {
           await restoreOrderStock(client, del.rows[0].order_id);
+        }
+
+        if (orderStatus === "delivered" && prevOrder.rows[0]?.status !== "delivered") {
+          notifyAdmin({
+            type: 'order_completed',
+            title: `✅ Order #${del.rows[0].order_id} Delivered & Completed`,
+            message: `Delivery for Order #${del.rows[0].order_id} marked as delivered by ${req.user?.name || 'Staff'}.`,
+            link: `/orders/${del.rows[0].order_id}`,
+            severity: 'info',
+            data: {
+              order_id: del.rows[0].order_id,
+              status: 'delivered',
+              completed_by: req.user?.name || req.user?.email,
+            },
+            actor: req.user,
+          }).catch(() => {});
         }
       }
 
@@ -2628,6 +2645,20 @@ router.post("/:id/auto-assign", requireRole("superadmin", "admin", "manager", "d
     if (!result.success) {
       return res.status(400).json(result);
     }
+    notifyAdmin({
+      type: 'driver_assigned',
+      title: `🛵 Driver Auto-Mapped: Delivery #${id}`,
+      message: `Delivery #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away).`,
+      link: `/dispatch`,
+      severity: 'info',
+      data: {
+        delivery_id: id,
+        driver_id: result.driver.id,
+        driver_name: result.driver.name,
+        distance_km: result.driver.distanceKm,
+      },
+      actor: req.user,
+    }).catch(() => {});
     res.json({
       message: `Delivery #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away)`,
       assignment: result,

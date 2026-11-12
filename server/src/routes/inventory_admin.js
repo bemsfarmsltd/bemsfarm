@@ -799,6 +799,22 @@ router.post(
 
       await client.query("COMMIT");
 
+      notifyAdmin({
+        type: 'stock_restock',
+        title: `🔄 Stock Received / Restocked: ${prod.name}`,
+        message: `${req.user?.name || 'Staff'} stocked in +${qty} units of "${prod.name}". Stock level: ${stockChange.before_qty} → ${stockChange.after_qty} units.`,
+        link: `/inventory/stock-in`,
+        severity: 'info',
+        data: {
+          product_name: prod.name,
+          quantity_received: qty,
+          before_qty: stockChange.before_qty,
+          after_qty: stockChange.after_qty,
+          received_by: req.user?.name || req.user?.email,
+        },
+        actor: req.user,
+      }).catch(() => {});
+
       res.status(201).json({
         success: true,
         message: `Stock received: +${qty} units for "${prod.name}"`,
@@ -867,6 +883,37 @@ router.post(
       });
 
       await client.query("COMMIT");
+
+      if (stockChange.after_qty <= 0) {
+        notifyAdmin({
+          type: 'out_of_stock',
+          title: `🚨 OUT OF STOCK: ${prod.name}`,
+          message: `"${prod.name}" is completely OUT OF STOCK (0 units remaining). Dispatched by ${req.user?.name || 'Staff'}.`,
+          link: `/inventory/products`,
+          severity: 'critical',
+          data: {
+            product_name: prod.name,
+            stock_remaining: 0,
+            dispatched_qty: qty,
+            reason: reason || 'Dispatch',
+          },
+          actor: req.user,
+        }).catch(() => {});
+      } else if (stockChange.after_qty <= (prod.low_stock_threshold || 10)) {
+        notifyAdmin({
+          type: 'low_stock',
+          title: `⚠️ Low Stock Warning: ${prod.name}`,
+          message: `"${prod.name}" dropped below threshold (${stockChange.after_qty} left, threshold: ${prod.low_stock_threshold || 10}).`,
+          link: `/inventory/products`,
+          severity: 'warning',
+          data: {
+            product_name: prod.name,
+            stock_remaining: stockChange.after_qty,
+            threshold: prod.low_stock_threshold || 10,
+          },
+          actor: req.user,
+        }).catch(() => {});
+      }
 
       res.status(201).json({
         success: true,

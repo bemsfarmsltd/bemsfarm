@@ -10,6 +10,7 @@ const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
+const { notifyAdmin } = require("../services/notificationService");
 
 router.use(protect);
 
@@ -1236,6 +1237,24 @@ router.post(
 
       await client.query("COMMIT");
 
+      notifyAdmin({
+        type: 'product_created',
+        title: `📦 New Stock Uploaded: ${product.name}`,
+        message: `${req.user?.name || 'Staff'} uploaded new product "${product.name}" (SKU: ${product.sku}, Stock: ${product.stock}, Price: ₦${Number(product.unit_price).toLocaleString()}).`,
+        link: `/inventory/products`,
+        severity: 'info',
+        data: {
+          product_id: product.id,
+          product_name: product.name,
+          sku: product.sku,
+          stock: product.stock,
+          unit_price: `₦${Number(product.unit_price).toLocaleString()}`,
+          uploaded_by: req.user?.name || req.user?.email,
+          role: req.user?.role,
+        },
+        actor: req.user,
+      }).catch(() => {});
+
       trackActivity(req.user.id, "product_created", {
         entityType: "product",
         entityId: product.id,
@@ -2073,6 +2092,45 @@ router.patch(
       }
 
       await client.query("COMMIT");
+
+      // Notify if product unit price was edited ("stock price edit and by who")
+      if (parseFloat(p.unit_price) !== parseFloat(newUnitPrice)) {
+        notifyAdmin({
+          type: 'product_price_updated',
+          title: `💰 Product Price Updated: ${name || p.name}`,
+          message: `${req.user?.name || 'Staff'} (${req.user?.role || 'admin'}) updated price for "${name || p.name}" from ₦${Number(p.unit_price).toLocaleString()} to ₦${Number(newUnitPrice).toLocaleString()}.`,
+          link: `/inventory/products`,
+          severity: 'warning',
+          data: {
+            product_id: req.params.id,
+            product_name: name || p.name,
+            old_price: p.unit_price,
+            new_price: newUnitPrice,
+            changed_by: req.user?.name || req.user?.email,
+            role: req.user?.role,
+          },
+          actor: req.user,
+        }).catch(() => {});
+      }
+
+      // Notify if stock was changed directly on product edit
+      if (parseInt(p.stock) !== parseInt(newStock)) {
+        notifyAdmin({
+          type: parseInt(newStock) <= 0 ? 'out_of_stock' : 'stock_adjustment',
+          title: parseInt(newStock) <= 0 ? `🚨 Out of Stock: ${name || p.name}` : `📦 Stock Count Updated: ${name || p.name}`,
+          message: `${req.user?.name || 'Staff'} updated stock for "${name || p.name}" from ${p.stock} to ${newStock} units.`,
+          link: `/inventory/products`,
+          severity: parseInt(newStock) <= 0 ? 'critical' : 'info',
+          data: {
+            product_id: req.params.id,
+            product_name: name || p.name,
+            old_stock: p.stock,
+            new_stock: newStock,
+            changed_by: req.user?.name || req.user?.email,
+          },
+          actor: req.user,
+        }).catch(() => {});
+      }
 
       trackActivity(req.user.id, "product_updated", {
         entityType: "product",

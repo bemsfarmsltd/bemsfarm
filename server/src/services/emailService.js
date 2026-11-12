@@ -696,19 +696,26 @@ async function sendDriverSecurityVerificationEmail(driver, otpCode) {
 }
 
 async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }) {
-  const adminEmail = to || process.env.ADMIN_NOTIF_EMAIL || "info@bemsfarms.com";
   const domain = process.env.ADMIN_URL || "https://bemsfarms.com/admin";
   const fullLink = link ? (link.startsWith("http") ? link : `${domain}${link.startsWith("/") ? "" : "/"}${link}`) : domain;
 
   const typeLabels = {
     customer_register:      "👤 New Customer Registered",
+    customer_login:         "🔑 Customer Signed In",
     order_placed:           "🛍️ New Online Order",
     pos_sale:               "💳 Point-of-Sale Sale",
     order_delivery:         "🛵 Delivery & Dispatch Update",
+    order_completed:        "✅ Order Completed & Delivered",
+    driver_assigned:        "🛵 Driver Auto-Mapped & Assigned",
     driver_support_message: "🛵 Courier Dispatch & Rider Message",
     support_message:        "💬 Live Support Message",
     ai_chat:                "🤖 Chef Bems AI Conversation",
     low_stock:              "⚠️ Low Stock Alert",
+    out_of_stock:           "🚨 Out of Stock Alert",
+    product_created:        "📦 New Stock / Product Uploaded",
+    stock_adjustment:       "📊 Stock Adjustment",
+    stock_restock:          "🔄 Inventory Restock",
+    product_price_updated:  "💰 Product Price Updated",
     batch_expiry:           "⏰ Batch Expiry Warning",
     refund_request:         "↩️ Refund / Return Request",
     system_error:           "🔴 System Error / Exception",
@@ -719,10 +726,13 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
 
   const badgeTitle = typeLabels[type] || title || "BemsFarms Notification";
 
-  return sendMail({
-    to: adminEmail,
-    subject: `[BemsFarms Alert] ${title || badgeTitle}`,
-    html: `<div style="${emailStyles}">
+  const rawRecipients = Array.isArray(to) ? to : [to || process.env.ADMIN_NOTIF_EMAIL || "info@bemsfarms.com"];
+  const recipients = Array.from(new Set(rawRecipients.filter(r => r && typeof r === "string" && r.includes("@"))));
+  if (recipients.length === 0) {
+    recipients.push(process.env.ADMIN_NOTIF_EMAIL || "info@bemsfarms.com");
+  }
+
+  const emailHtml = `<div style="${emailStyles}">
       ${header(title || badgeTitle)}
       <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #1B4332; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <p style="font-size: 15px; color: #1E293B; margin: 0; line-height: 1.6; font-weight: 500;">
@@ -739,31 +749,57 @@ async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }
         ${data.delivery_address ? `<div style="color: #64748B; font-size: 11px; margin-top: 3px;">📍 Address: ${data.delivery_address}</div>` : ''}
       </div>` : ''}
 
+      ${data?.product_name ? `
+      <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 14px 18px; margin: 18px 0;">
+        <div style="font-weight: 800; color: #92400E; font-size: 14px;">
+          🏷️ Product: ${data.product_name}
+        </div>
+        ${data.old_price !== undefined && data.new_price !== undefined ? `
+          <div style="color: #B45309; font-size: 13px; margin-top: 4px;">
+            Price Change: <strike>₦${Number(data.old_price).toLocaleString()}</strike> → <strong>₦${Number(data.new_price).toLocaleString()}</strong>
+          </div>` : ''}
+        ${data.changed_by ? `<div style="color: #78350F; font-size: 12px; margin-top: 3px;">Modified By: <strong>${data.changed_by}</strong> (${data.role || 'Staff'})</div>` : ''}
+      </div>` : ''}
+
       ${Object.keys(data).length > 0 ? `
       <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 13px;">
         <strong style="color: #475569; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 11px;">Event Details:</strong>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
-          ${Object.entries(data).map(([k, v]) => `
-            <tr>
-              <td style="padding: 4px 0; font-weight: 600; color: #64748B; text-transform: capitalize;">${k.replace(/_/g, " ")}:</td>
-              <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0F172A;">${typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
-            </tr>
-          `).join("")}
+          ${Object.entries(data)
+            .filter(([k]) => !['order_ref', 'order_id', 'customer_name', 'customer_phone', 'delivery_address'].includes(k))
+            .map(([k, v]) => `
+              <tr style="border-bottom: 1px solid #F1F5F9;">
+                <td style="padding: 6px 0; font-weight: 600; color: #64748B; text-transform: capitalize; width: 35%;">${k.replace(/_/g, ' ')}</td>
+                <td style="padding: 6px 0; color: #0F172A;">${typeof v === 'object' ? JSON.stringify(v) : v}</td>
+              </tr>
+            `).join('')}
         </table>
-      </div>` : ""}
+      </div>` : ''}
 
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${fullLink}" style="background: #1B4332; color: #ffffff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
-          Open in Admin Dashboard →
+      ${link ? `
+      <div style="text-align: center; margin: 30px 0 10px;">
+        <a href="${fullLink}" style="background: #1B4332; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+          Open Admin Control Panel →
         </a>
-      </div>
-
-      <p style="color: #94A3B8; font-size: 12px; text-align: center;">
-        You received this email because notification preferences are enabled in BemsFarms System Settings.
-      </p>
+      </div>` : ''}
       ${footer}
-    </div>`,
-  });
+    </div>`;
+
+  const results = [];
+  for (const recipient of recipients) {
+    try {
+      const res = await sendMail({
+        to: recipient,
+        subject: `[BemsFarms Alert] ${title || badgeTitle}`,
+        html: emailHtml,
+      });
+      results.push({ recipient, ...res });
+    } catch (err) {
+      console.warn(`⚠️ Failed sending alert email to ${recipient}:`, err.message);
+      results.push({ recipient, status: "error", error: err.message });
+    }
+  }
+  return results;
 }
 
 async function sendDriverStatementEmail({

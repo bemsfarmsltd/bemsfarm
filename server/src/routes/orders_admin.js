@@ -2059,6 +2059,21 @@ router.patch(
           const delFee = parseFloat(ord.delivery_fee) || 0;
           const subtotalAmt = Math.max(0, totalAmt - delFee);
 
+          notifyAdmin({
+            type: 'order_completed',
+            title: `✅ Order #${ord.order_ref || resolvedId} Delivered & Completed`,
+            message: `Order #${ord.order_ref || resolvedId} has been successfully delivered and completed. Total: ₦${Number(totalAmt).toLocaleString()}.`,
+            link: `/orders/${resolvedId}`,
+            severity: 'info',
+            data: {
+              order_id: resolvedId,
+              order_ref: ord.order_ref,
+              total_amount: `₦${Number(totalAmt).toLocaleString()}`,
+              completed_by: req.user?.name || 'Staff',
+            },
+            actor: req.user,
+          }).catch(() => {});
+
           // 1. Post Revenue Double-Entry Journal
           await postGeneralJournal(client, {
             source_module: "orders",

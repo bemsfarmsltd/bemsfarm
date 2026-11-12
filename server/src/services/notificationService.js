@@ -91,6 +91,14 @@ async function ensureNotificationTable() {
       `).catch(() => {});
     }
 
+    // Ensure all email notification keys default to true so store alerts deliver reliably
+    await pool.query(`
+      UPDATE settings 
+      SET value = 'true' 
+      WHERE (key LIKE 'email_notif_%' OR key = 'notif_email_enabled' OR key = 'notif_push_enabled') 
+        AND value = 'false'
+    `).catch(() => {});
+
     tableReady = true;
   } catch (err) {
     console.error('Error ensuring system_notifications table:', err.message);
@@ -204,7 +212,8 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
         });
       } catch (_) {}
 
-      if (recipientSet.size === 0) recipientSet.add('info@bemsfarms.com');
+      // Fallback recipient if set is empty
+      if (recipientSet.size === 0) recipientSet.add('bemssoftbusiness@gmail.com');
 
       const recipients = Array.from(recipientSet);
 
@@ -223,13 +232,20 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
     // 3. Automatically record into God Eye Audit Trail
     const categoryMap = {
       customer_register:          'auth',
+      customer_login:             'auth',
       order_placed:               'financial',
       pos_sale:                   'financial',
-      order_delivery:             'admin',
+      order_delivery:             'logistics',
+      order_completed:            'financial',
+      driver_assigned:            'logistics',
       driver_support_message:     'admin',
       support_message:            'comms',
       ai_chat:                    'ai',
-      low_stock:                  'admin',
+      low_stock:                  'inventory',
+      out_of_stock:               'inventory',
+      product_created:            'inventory',
+      product_price_updated:      'inventory',
+      stock_restock:              'inventory',
       batch_expiry:               'admin',
       refund_request:             'financial',
       refund_processed:           'financial',

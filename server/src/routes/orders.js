@@ -1467,6 +1467,20 @@ router.post(
       if (!result.success) {
         return res.status(400).json(result);
       }
+      notifyAdmin({
+        type: 'driver_assigned',
+        title: `🛵 Driver Auto-Mapped: Order #${id}`,
+        message: `Order #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away).`,
+        link: `/dispatch`,
+        severity: 'info',
+        data: {
+          order_id: id,
+          driver_id: result.driver.id,
+          driver_name: result.driver.name,
+          distance_km: result.driver.distanceKm,
+        },
+        actor: req.user,
+      }).catch(() => {});
       res.json({
         message: `Order #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away)`,
         assignment: result,
