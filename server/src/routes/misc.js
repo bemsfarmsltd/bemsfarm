@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
-const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail } = require("../services/emailService");
+const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail, getEmailDiagnostic } = require("../services/emailService");
 const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
 const { restoreOrderStock } = require("../utils/orderStock");
 const { logOrderAudit } = require("../utils/workflowAudit");
@@ -564,6 +564,15 @@ router.post("/payments/initialize", async (req, res, next) => {
   } catch (err) {
     console.error("Payment initialize error:", err.message);
     next(err);
+  }
+});
+
+router.get("/email-diagnostic", async (req, res) => {
+  try {
+    const diag = await getEmailDiagnostic();
+    res.json(diag);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

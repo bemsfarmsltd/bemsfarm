@@ -1147,6 +1147,39 @@ async function sendDriverStatusChangedEmail({ email, name, status, reason }) {
 
 module.exports = {
   sendMail,
+  getEmailDiagnostic: async () => {
+    const result = {
+      hasResend,
+      from: FROM,
+      hasNodemailer: Boolean(nodemailerTransport),
+      smtpHost: process.env.SMTP_HOST || "smtp.hostinger.com",
+      smtpUser: process.env.SMTP_USER || process.env.EMAIL_USER || null,
+    };
+    if (resend) {
+      try {
+        const domains = await resend.domains.list();
+        result.resendDomains = domains;
+      } catch (e) {
+        result.resendDomainsError = e.message;
+      }
+      try {
+        const emailStatus = await resend.emails.get("01a1cfc0-05a6-7dd5-9dd2-6748de4525fa");
+        result.sampleEmailStatus = emailStatus;
+      } catch (e) {
+        result.sampleEmailStatusError = e.message;
+      }
+    }
+    if (nodemailerTransport) {
+      try {
+        await nodemailerTransport.verify();
+        result.smtpVerified = true;
+      } catch (e) {
+        result.smtpVerified = false;
+        result.smtpError = e.message;
+      }
+    }
+    return result;
+  },
   sendWelcomeEmail,
   sendOrderConfirmationEmail,
   sendOrderStatusEmail,
