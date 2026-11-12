@@ -1218,7 +1218,7 @@ module.exports = {
     try {
       const pool = require("../db/pool");
       const userRes = await pool.query(
-        "SELECT id, name, email, role, (password = 'GOOGLE_AUTH') AS is_google_auth, google_id IS NOT NULL as has_google_id, phone, address, city, state, postal_code, email_verified, created_at, last_login, last_channel FROM users WHERE email ILIKE '%alaotim06%'"
+        "SELECT id, name, email, role, (password = 'GOOGLE_AUTH') AS is_google_auth, google_id IS NOT NULL as has_google_id, phone, address, email_verified, created_at, last_login, last_channel FROM users WHERE email ILIKE '%alaotim06%'"
       );
       const addrRes = userRes.rows[0] ? await pool.query("SELECT * FROM user_addresses WHERE user_id = $1", [userRes.rows[0].id]) : { rows: [] };
       const orderRes = userRes.rows[0] ? await pool.query("SELECT id, order_ref, status, address, delivery_city, created_at FROM orders WHERE customer_id = $1 OR user_id = $1", [userRes.rows[0].id]) : { rows: [] };
