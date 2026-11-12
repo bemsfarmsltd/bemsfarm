@@ -262,6 +262,7 @@ router.post("/chef-chat", async (req, res, next) => {
 
     // 1. Try calling the n8n webhook first (prevents client-side CORS issues)
     const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://n8n.srv2065537.hstgr.cloud/webhook/chef-bems";
+    const N8N_TIMEOUT_MS = parseInt(process.env.N8N_TIMEOUT_MS) || 300000; // 5 minutes default
     try {
       console.log("➡️ Forwarding Chef Bems request to n8n webhook:", N8N_WEBHOOK);
 
@@ -302,7 +303,7 @@ router.post("/chef-chat", async (req, res, next) => {
           cartItems,
           userPreferences,
         }),
-        signal: AbortSignal.timeout(120000), // Timeout after 2 minutes
+        signal: AbortSignal.timeout(N8N_TIMEOUT_MS), // 5 minutes timeout
       });
 
       if (n8nRes.ok) {

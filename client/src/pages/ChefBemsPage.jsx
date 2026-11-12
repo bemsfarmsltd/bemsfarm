@@ -421,7 +421,7 @@ export default function ChefBemsPage() {
 
       setLoading(true);
       try {
-        const res = await api.post("/ai/visual-scan", { image: base64Data });
+        const res = await api.post("/ai/visual-scan", { image: base64Data }, { timeout: 300000 });
         const data = res.data;
 
         addMessage({
@@ -448,16 +448,22 @@ export default function ChefBemsPage() {
   };
 
   const callChefChat = async (payload) => {
-    const res = await api.post("/ai/chef-chat", {
-      message: payload.message,
-      history: payload.conversationHistory,
-      cartItems: payload.cartItems,
-      userPreferences: payload.userPreferences,
-      session_id: sessionId,
-      userId: user?.id || null,
-      email: user?.email || null,
-      name: user?.name || null,
-    });
+    const res = await api.post(
+      "/ai/chef-chat",
+      {
+        message: payload.message,
+        history: payload.conversationHistory,
+        cartItems: payload.cartItems,
+        userPreferences: payload.userPreferences,
+        session_id: sessionId,
+        userId: user?.id || null,
+        email: user?.email || null,
+        name: user?.name || null,
+      },
+      {
+        timeout: 300000, // 5 minutes timeout for complex AI recipe reasoning & workflow execution
+      }
+    );
     return res.data;
   };
 

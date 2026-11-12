@@ -430,6 +430,9 @@ const PORT = process.env.PORT || 5000;
 const { initCrmTables } = require("./db/migrate_crm_chat_broadcast");
 
 server.listen(PORT, () => console.log(`🚀 Server running with Realtime WebSockets on port ${PORT}`));
+server.setTimeout(300000); // 5 minutes request timeout for long-running AI streaming & pipelines
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 
 initCrmTables()
   .catch((err) => {
