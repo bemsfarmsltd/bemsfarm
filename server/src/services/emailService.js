@@ -1215,22 +1215,7 @@ module.exports = {
         result.smtpError = e.message;
       }
     }
-    try {
-      const pool = require("../db/pool");
-      const userRes = await pool.query(
-        "SELECT id, name, email, role, (password = 'GOOGLE_AUTH') AS is_google_auth, phone, address, email_verified, created_at, last_login, last_channel FROM users WHERE id = 136 OR email ILIKE '%alao%' OR name ILIKE '%Toanee%'"
-      );
-      const targetUser = userRes.rows[0];
-      const addrRes = targetUser ? await pool.query("SELECT * FROM user_addresses WHERE user_id = $1", [targetUser.id]) : { rows: [] };
-      const orderRes = targetUser ? await pool.query("SELECT id, order_ref, status, address, delivery_city, created_at FROM orders WHERE customer_id = $1 OR user_id = $1", [targetUser.id]) : { rows: [] };
-      result.customerAudit = {
-        users: userRes.rows,
-        userAddresses: addrRes.rows,
-        orders: orderRes.rows,
-      };
-    } catch (e) {
-      result.customerAuditError = e.message;
-    }
+
     return result;
   },
   sendWelcomeEmail,
