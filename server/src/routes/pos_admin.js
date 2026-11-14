@@ -896,6 +896,108 @@ router.get("/terminal-status", requireRole("superadmin","manager","admin","cashi
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// MONIEPOINT POS HELD ORDERS (OFFLINE PERSISTENCE & AUTO-COMPLETION)
+// ════════════════════════════════════════════════════════════════════════════
+
+// 1. Save or update a held order awaiting terminal payment
+router.post("/terminal-hold", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    const { order_ref, terminal_sn, amount, customer_name, order_payload } = req.body;
+    if (!order_ref || !amount) {
+      return res.status(400).json({ message: "order_ref and amount are required" });
+    }
+
+    const defaultSn = process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+    const termSn = terminal_sn || defaultSn;
+
+    const query = `
+      INSERT INTO pos_terminal_held_orders (order_ref, terminal_sn, amount, customer_name, order_payload, status, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'awaiting_payment', NOW())
+      ON CONFLICT (order_ref) DO UPDATE SET
+        terminal_sn = EXCLUDED.terminal_sn,
+        amount = EXCLUDED.amount,
+        customer_name = EXCLUDED.customer_name,
+        order_payload = EXCLUDED.order_payload,
+        status = 'awaiting_payment',
+        created_at = NOW()
+      RETURNING *;
+    `;
+
+    const result = await pool.query(query, [
+      order_ref,
+      termSn,
+      parseFloat(amount),
+      customer_name || "Walk-in Customer",
+      JSON.stringify(order_payload || {}),
+    ]);
+
+    res.status(201).json({ success: true, held_order: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 2. Fetch all held orders: both awaiting and those completed while PC was offline
+router.get("/terminal-held-orders", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    const terminalSn = req.query.terminal_sn || process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+
+    // Orders still awaiting payment
+    const awaitingRes = await pool.query(
+      `SELECT * FROM pos_terminal_held_orders
+       WHERE status = 'awaiting_payment'
+         AND (terminal_sn = $1 OR terminal_sn IS NULL OR $1 = '')
+         AND created_at >= NOW() - INTERVAL '24 hours'
+       ORDER BY created_at DESC`,
+      [terminalSn]
+    );
+
+    // Orders completed while offline (unacknowledged)
+    const completedRes = await pool.query(
+      `SELECT * FROM pos_terminal_held_orders
+       WHERE status = 'paid_completed'
+         AND acknowledged = FALSE
+         AND completed_at >= NOW() - INTERVAL '48 hours'
+       ORDER BY completed_at DESC`,
+      []
+    );
+
+    res.json({
+      awaiting: awaitingRes.rows,
+      completed_offline: completedRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Discard / Cancel a held order
+router.delete("/terminal-held/:orderRef", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    await pool.query(
+      "UPDATE pos_terminal_held_orders SET status = 'cancelled' WHERE order_ref = $1",
+      [req.params.orderRef]
+    );
+    res.json({ success: true, message: "Held order cancelled" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 4. Acknowledge a completed offline order so the popup dismisses
+router.post("/terminal-held/acknowledge/:orderRef", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    await pool.query(
+      "UPDATE pos_terminal_held_orders SET acknowledged = TRUE WHERE order_ref = $1",
+      [req.params.orderRef]
+    );
+    res.json({ success: true, message: "Order acknowledged" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // VERIFY PAYMENT  ──  POST /api/admin/pos/verify-payment
 // Match a payment by last 4 digits of transaction ID + optional amount.
 // Only searches transactions from the last 24 hours that haven't been used.

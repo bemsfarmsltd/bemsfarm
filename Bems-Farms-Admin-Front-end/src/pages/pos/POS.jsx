@@ -349,6 +349,7 @@ export default function POS() {
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(true)
   const [autoPrintPending, setAutoPrintPending] = useState(false)
   const [directPrinterConnected, setDirectPrinterConnected] = useState(isPrinterConnected())
+  const [offlineCompletedOrders, setOfflineCompletedOrders] = useState([])
 
   const handlePrintReceipt = useCallback(async (receiptDataOverride) => {
     const data = receiptDataOverride || successData
@@ -711,7 +712,7 @@ export default function POS() {
     setToastTimer(setTimeout(() => setToast(null), 2400))
   }
 
-  // Fetch Moniepoint Terminal Configuration from server
+  // Fetch Moniepoint Terminal Configuration and Sync Held/Completed Orders from Server
   useEffect(() => {
     api.get('/admin/pos/terminal-config')
       .then((res) => {
@@ -720,6 +721,43 @@ export default function POS() {
         }
       })
       .catch(() => {})
+
+    // Load server-persisted held orders (persists even if PC shut down or refreshed)
+    api.get('/admin/pos/terminal-held-orders')
+      .then((res) => {
+        const awaiting = res.data?.awaiting || []
+        const completedOffline = res.data?.completed_offline || []
+
+        if (awaiting.length > 0) {
+          setBackgroundPosOrders((prev) => {
+            const map = new Map(prev.map((o) => [o.orderId, o]))
+            awaiting.forEach((a) => {
+              const payload = a.order_payload || {}
+              map.set(a.order_ref, {
+                orderId: a.order_ref,
+                cart: payload.cart || [],
+                customer: payload.customer || null,
+                discountAmt: payload.discountAmt || 0,
+                discountPct: payload.discountPct || 0,
+                vat: payload.vat || 0,
+                subtotal: payload.subtotal || a.amount,
+                total: payload.total || a.amount,
+                orderNote: payload.orderNote || '',
+                terminalSn: a.terminal_sn,
+                heldAt: new Date(a.created_at).getTime(),
+                time: new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              })
+            })
+            return Array.from(map.values())
+          })
+        }
+
+        if (completedOffline.length > 0) {
+          setOfflineCompletedOrders(completedOffline)
+          playBeep('success')
+        }
+      })
+      .catch((err) => console.warn('Failed to sync terminal held orders from server:', err.message))
   }, [])
 
   // Save background POS orders to localStorage
@@ -728,6 +766,13 @@ export default function POS() {
       localStorage.setItem('pos_background_orders', JSON.stringify(backgroundPosOrders))
     } catch (_) {}
   }, [backgroundPosOrders])
+
+  const acknowledgeOfflineOrder = useCallback(async (orderRef) => {
+    try {
+      await api.post(`/admin/pos/terminal-held/acknowledge/${orderRef}`)
+    } catch (_) {}
+    setOfflineCompletedOrders((prev) => prev.filter((o) => (o.order_ref || o.orderId) !== orderRef))
+  }, [])
 
   const clearCart = useCallback(() => {
     setCart([])
@@ -759,6 +804,16 @@ export default function POS() {
     }
 
     setBackgroundPosOrders((prev) => [...prev.filter((o) => o.orderId !== currentOrderId), heldItem])
+
+    // Persist to server database so verification continues even if PC shuts down
+    api.post('/admin/pos/terminal-hold', {
+      order_ref: currentOrderId,
+      terminal_sn: terminalSn || 'C66P008D08368495',
+      amount: total,
+      customer_name: customer?.name || 'Walk-in Customer',
+      order_payload: heldItem,
+    }).catch((err) => console.warn('Failed to sync terminal hold to server:', err.message))
+
     closeModal()
     clearCart()
     setOrderId(genOrderId())
@@ -798,8 +853,9 @@ export default function POS() {
       setOrderId(held.orderId)
       setCashReceived(String(held.total || 0))
 
-      // Remove from background queue
+      // Remove from background queue and server
       setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== held.orderId))
+      api.delete(`/admin/pos/terminal-held/${orderIdToRestore}`).catch(() => {})
 
       // Switch payment method & reopen checkout modal
       setCheckoutPayMethod('Card / POS')
@@ -993,15 +1049,28 @@ export default function POS() {
           })
         }
 
+        const onOfflineOrderCompleted = (data) => {
+          const ordRef = data.order_ref || data.orderId
+          setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== ordRef))
+          setOfflineCompletedOrders((prev) => [...prev.filter((o) => (o.order_ref || o.orderId) !== ordRef), data])
+          playBeep('success')
+          showToast(`🎉 Order #${ordRef} verified & auto-completed on server!`, 'success', '🧾')
+          if (autoPrintReceipt && data.receipt_data) {
+            handlePrintReceipt(data.receipt_data)
+          }
+        }
+
         socket.on('pos:moniepoint_payment', onPayment)
+        socket.on('pos:order_completed_offline', onOfflineOrderCompleted)
         return () => {
           socket.off('pos:moniepoint_payment', onPayment)
+          socket.off('pos:order_completed_offline', onOfflineOrderCompleted)
         }
       }
     } catch (e) {
       console.warn('Socket listener init notice:', e.message)
     }
-  }, [activeModal, checkoutPayMethod, terminalSn, total, completeBackgroundPosOrder])
+  }, [activeModal, checkoutPayMethod, terminalSn, total, completeBackgroundPosOrder, autoPrintReceipt, handlePrintReceipt])
 
   // Polling fallback loop: checks active checkout modal AND all background queued orders every 3s
   useEffect(() => {
@@ -3179,6 +3248,7 @@ export default function POS() {
                           e.stopPropagation()
                           if (window.confirm(`Discard held order #${bo.orderId}?`)) {
                             setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== bo.orderId))
+                            api.delete(`/admin/pos/terminal-held/${bo.orderId}`).catch(() => {})
                             showToast(`Order #${bo.orderId} discarded`, 'info', '🗑️')
                           }
                         }}
@@ -4532,6 +4602,102 @@ export default function POS() {
                   >
                     Keep Under Administrative Attention
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Offline Terminal Completed Orders Modal ───────────────────── */}
+      {offlineCompletedOrders.length > 0 && (
+        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1" style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 540 }}>
+            <div className="modal-content border-0 shadow-lg rounded-3 overflow-hidden">
+              <div className="modal-header bg-emerald text-white py-3 px-4 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="fs-20">🎉</span>
+                  <div>
+                    <h5 className="modal-title fw-bold mb-0 text-white">Payment Confirmed While Away!</h5>
+                    <p className="fs-12 mb-0 text-white-50">Transaction auto-completed & stock deducted on server</p>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-body p-4 bg-light">
+                <div className="d-flex flex-column gap-3">
+                  {offlineCompletedOrders.map((ord) => {
+                    const r = ord.receipt_data || {}
+                    const payment = r.paymentDetails || {}
+                    const orderRef = ord.order_ref || ord.orderId
+                    return (
+                      <div key={orderRef} className="p-3 bg-white rounded-3 border border-success-subtle shadow-sm">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <span className="badge bg-success-subtle text-success border border-success-subtle font-monospace fs-12 mb-1">
+                              #{orderRef}
+                            </span>
+                            {r.orderId && r.orderId !== orderRef && (
+                              <span className="badge bg-secondary-subtle text-secondary ms-1 fs-12 font-monospace">
+                                {r.orderId}
+                              </span>
+                            )}
+                            <h4 className="fw-bold text-dark mb-0 mt-1">
+                              ₦{Number(ord.amount || r.total || 0).toLocaleString()}
+                            </h4>
+                          </div>
+                          <span className="badge bg-success text-white py-1 px-2 fs-11">
+                            <i className="ri-check-double-line me-1" />
+                            Verified & Saved
+                          </span>
+                        </div>
+
+                        <div className="fs-13 text-muted border-top pt-2 mt-2">
+                          {payment.customerName && payment.customerName !== 'POS Customer' && (
+                            <div className="mb-1 text-dark">
+                              <i className="ri-user-received-2-line text-success me-1" />
+                              Sender: <strong>{payment.customerName}</strong>
+                            </div>
+                          )}
+                          <div className="d-flex justify-content-between fs-12">
+                            <span>
+                              Method:{' '}
+                              <strong>
+                                {payment.paymentMethod === 'TRANSFER'
+                                  ? 'Bank Transfer'
+                                  : payment.cardType || 'Card / POS'}
+                              </strong>
+                              {payment.lastFour && payment.lastFour !== '0000' ? ` (****${payment.lastFour})` : ''}
+                            </span>
+                            <span>{ord.completed_at ? new Date(ord.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : r.time || 'Recently'}</span>
+                          </div>
+                          {payment.rrn && (
+                            <div className="fs-11 text-muted font-monospace mt-1">
+                              RRN: {payment.rrn} · Ref: {payment.transactionId}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="d-flex gap-2 mt-3 pt-2 border-top">
+                          <button
+                            type="button"
+                            className="btn btn-emerald btn-sm flex-fill fw-bold d-flex align-items-center justify-content-center gap-1 py-2"
+                            onClick={() => {
+                              handlePrintReceipt(r)
+                            }}
+                          >
+                            <i className="ri-printer-line" /> Print Receipt
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm fw-semibold px-3 py-2"
+                            onClick={() => acknowledgeOfflineOrder(orderRef)}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
