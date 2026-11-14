@@ -4733,8 +4733,21 @@ export default function POS() {
                               </div>
                               <h5 className="fw-bold text-emerald mb-1">Payment Received & Verified!</h5>
                               <p className="text-dark fs-14 mb-1">
-                                Received <strong>{fmt(terminalDetectedPayment.amount)}</strong> on Terminal ({terminalDetectedPayment.card_type || 'CARD'} ****{terminalDetectedPayment.last_four})
+                                Received <strong>{fmt(terminalDetectedPayment.amount)}</strong> via{' '}
+                                <span className="badge bg-success-subtle text-success border border-success-subtle">
+                                  {terminalDetectedPayment.payment_method === 'TRANSFER' ? 'BANK TRANSFER' : terminalDetectedPayment.card_type || 'CARD'}
+                                </span>
+                                {terminalDetectedPayment.last_four && terminalDetectedPayment.last_four !== '0000'
+                                  ? ` (****${terminalDetectedPayment.last_four})`
+                                  : ''}
                               </p>
+                              {terminalDetectedPayment.customer_name &&
+                                terminalDetectedPayment.customer_name !== 'POS Customer' && (
+                                  <div className="fw-bold text-dark fs-13 mb-1">
+                                    <i className="ri-user-shared-line text-success me-1" />
+                                    Sender: <span className="text-primary">{terminalDetectedPayment.customer_name}</span>
+                                  </div>
+                                )}
                               <span className="text-muted fs-12 font-monospace">Ref: {terminalDetectedPayment.transaction_id}</span>
                               <div className="mt-2 text-emerald fw-semibold fs-13">
                                 <span className="spinner-border spinner-border-sm me-1" role="status" /> Auto-completing sale & printing receipt...

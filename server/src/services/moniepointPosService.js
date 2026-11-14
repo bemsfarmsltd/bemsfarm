@@ -107,8 +107,50 @@ function normalizePayload(body) {
   ).slice(-4);
 
   const cardType = String(cardDetails.cardType || data.cardType || "CARD").toUpperCase();
-  const paymentMethod = String(data.paymentMethod || body.paymentMethod || "CARD").toUpperCase();
-  const customerName = String(customer.name || data.customerName || body.customerName || "POS Customer").trim();
+  const paymentMethod = String(
+    data.paymentMethod ||
+    body.paymentMethod ||
+    (data.sourceAccountName || data.senderName ? "TRANSFER" : "CARD")
+  ).toUpperCase();
+
+  // Extract transfer sender information if available
+  const senderBank = String(
+    data.sourceBankName ||
+    data.senderBank ||
+    data.originatorBank ||
+    data.bankName ||
+    body.sourceBankName ||
+    body.senderBank ||
+    ""
+  ).trim();
+
+  const senderAccount = String(
+    data.sourceAccountNumber ||
+    data.senderAccountNumber ||
+    data.originatorAccountNumber ||
+    body.sourceAccountNumber ||
+    ""
+  ).trim();
+
+  const rawSenderName = String(
+    data.sourceAccountName ||
+    data.senderName ||
+    data.originatorAccountName ||
+    data.payerName ||
+    customer.name ||
+    data.customerName ||
+    body.customerName ||
+    body.sourceAccountName ||
+    body.senderName ||
+    ""
+  ).trim();
+
+  const customerName = rawSenderName
+    ? senderBank
+      ? `${rawSenderName} (${senderBank})`
+      : rawSenderName
+    : "POS Customer";
+
   const status = String(data.status || body.status || body.eventType || "successful").toLowerCase();
 
   return {
@@ -120,6 +162,8 @@ function normalizePayload(body) {
     cardType,
     paymentMethod,
     customerName,
+    senderBank: senderBank || null,
+    senderAccount: senderAccount || null,
     status: status.includes("success") || status.includes("paid") ? "successful" : status,
     rawPayload: body,
   };
