@@ -350,6 +350,20 @@ export default function POS() {
   const [autoPrintPending, setAutoPrintPending] = useState(false)
   const [directPrinterConnected, setDirectPrinterConnected] = useState(isPrinterConnected())
 
+  const handlePrintReceipt = useCallback(async (receiptDataOverride) => {
+    const data = receiptDataOverride || successData
+    if (!data) return
+    if (isPrinterConnected()) {
+      try {
+        await printReceiptESC(data, {})
+        return
+      } catch (err) {
+        console.warn('Direct hardware print failed, falling back to browser spool:', err)
+      }
+    }
+    printThermalReceipt()
+  }, [successData])
+
   useEffect(() => {
     autoReconnectDirectPrinter()
       .then((connected) => setDirectPrinterConnected(Boolean(connected)))
@@ -714,6 +728,16 @@ export default function POS() {
       localStorage.setItem('pos_background_orders', JSON.stringify(backgroundPosOrders))
     } catch (_) {}
   }, [backgroundPosOrders])
+
+  const clearCart = useCallback(() => {
+    setCart([])
+    setDiscountPct(0)
+    setOrderNote('')
+    setCustomer(null)
+    setOrderId(genOrderId())
+    setActiveOnlineOrderRawId(null)
+    showToast('Register cart cleared', 'info', '🧹')
+  }, [])
 
   // Hold current order for POS payment in background so cashier can ring up the next customer
   const holdForBackgroundPosPayment = useCallback(() => {
@@ -1121,16 +1145,6 @@ export default function POS() {
       return i
     }))
     showToast(`Switched to ${unitName} (₦${price?.toLocaleString()})`, 'info', '📦')
-  }
-
-  function clearCart() {
-    setCart([])
-    setDiscountPct(0)
-    setOrderNote('')
-    setCustomer(null)
-    setOrderId(genOrderId())
-    setActiveOnlineOrderRawId(null)
-    showToast('Register cart cleared', 'info', '🧹')
   }
 
   // Dynamic Lookup Maps
@@ -2119,20 +2133,6 @@ export default function POS() {
       }
     }
   }
-
-  const handlePrintReceipt = useCallback(async (receiptDataOverride) => {
-    const data = receiptDataOverride || successData
-    if (!data) return
-    if (isPrinterConnected()) {
-      try {
-        await printReceiptESC(data, {})
-        return
-      } catch (err) {
-        console.warn('Direct hardware print failed, falling back to browser spool:', err)
-      }
-    }
-    printThermalReceipt()
-  }, [successData])
 
   // Payment Confirmation / Online Order Packing
   async function confirmPayment(method) {
