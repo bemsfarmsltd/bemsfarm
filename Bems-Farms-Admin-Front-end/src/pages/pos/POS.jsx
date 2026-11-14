@@ -15,6 +15,7 @@ import {
   autoReconnectDirectPrinter,
   printReceiptESC
 } from '../../lib/escpos'
+import { getSocket } from '../../lib/socket'
 
 // ── Categories & Definitions ────────────────────────────────────────────────
 const CATEGORY_DEFINITIONS = [
@@ -301,6 +302,7 @@ export default function POS() {
     if (isSubmittingSaleRef.current) return
     setActiveModal(null)
     setCheckoutStep('tender')
+    setTerminalDetectedPayment(null)
   }
 
   // Scanner basket modal
@@ -312,6 +314,10 @@ export default function POS() {
   const [cashReceived, setCashReceived]     = useState('')
   // Card modal
   const [cardTab, setCardTab]               = useState('visa')
+  // Moniepoint Smart POS Terminal state
+  const [terminalSn, setTerminalSn]                       = useState('C66P008D08368495')
+  const [terminalDetectedPayment, setTerminalDetectedPayment] = useState(null)
+  const [isCheckingTerminal, setIsCheckingTerminal]       = useState(false)
   // Checkout & Payment modal
   const [checkoutPayMethod, setCheckoutPayMethod] = useState('Cash')
   // Transfer modal
@@ -681,6 +687,102 @@ export default function POS() {
     setToast({ msg, type, icon })
     setToastTimer(setTimeout(() => setToast(null), 2400))
   }
+
+  // Fetch Moniepoint Terminal Configuration from server
+  useEffect(() => {
+    api.get('/admin/pos/terminal-config')
+      .then((res) => {
+        if (res.data?.terminal_sn) {
+          setTerminalSn(res.data.terminal_sn)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Manual Trigger to re-check if payment has landed on the Moniepoint Terminal
+  const checkTerminalManual = useCallback(async () => {
+    if (isCheckingTerminal) return
+    setIsCheckingTerminal(true)
+    try {
+      const res = await api.get('/admin/pos/terminal-status', {
+        params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total }
+      })
+      if (res.data?.paid && res.data?.transaction) {
+        playBeep('success')
+        setTerminalDetectedPayment(res.data.transaction)
+        showToast(`Moniepoint Payment Verified: ₦${Number(res.data.transaction.amount).toLocaleString()}!`, 'success', '💳')
+        setTimeout(() => {
+          confirmPayment('Card / POS')
+        }, 1000)
+      } else {
+        showToast(`Waiting for payment of ₦${Math.round(total || 0).toLocaleString()} on terminal ${terminalSn}`, 'info', '⏳')
+      }
+    } catch (err) {
+      showToast('Terminal check notice: ' + (err.response?.data?.message || err.message), 'error', '⚠️')
+    } finally {
+      setIsCheckingTerminal(false)
+    }
+  }, [terminalSn, total, isCheckingTerminal])
+
+  // Real-time Moniepoint Webhook broadcast listener via Socket.io
+  useEffect(() => {
+    let socket = null
+    try {
+      socket = getSocket()
+      if (socket) {
+        const onPayment = (data) => {
+          if (activeModal === 'checkout' && checkoutPayMethod === 'Card / POS') {
+            const targetSn = terminalSn || 'C66P008D08368495'
+            const isTargetTerminal = !data.terminal_id || data.terminal_id === targetSn
+            const isMatchingAmount = Math.abs(Number(data.amount) - total) < 1
+
+            if (isTargetTerminal && isMatchingAmount) {
+              playBeep('success')
+              setTerminalDetectedPayment(data)
+              showToast(`Moniepoint Payment Confirmed: ₦${Number(data.amount).toLocaleString()}!`, 'success', '💳')
+              setTimeout(() => {
+                confirmPayment('Card / POS')
+              }, 1000)
+            }
+          }
+        }
+
+        socket.on('pos:moniepoint_payment', onPayment)
+        return () => {
+          socket.off('pos:moniepoint_payment', onPayment)
+        }
+      }
+    } catch (e) {
+      console.warn('Socket listener init notice:', e.message)
+    }
+  }, [activeModal, checkoutPayMethod, terminalSn, total])
+
+  // Polling fallback every 3s while checkout modal is open with Card / POS
+  useEffect(() => {
+    if (activeModal !== 'checkout' || checkoutPayMethod !== 'Card / POS' || terminalDetectedPayment || isSubmittingSale) {
+      return
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get('/admin/pos/terminal-status', {
+          params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total }
+        })
+        if (res.data?.paid && res.data?.transaction) {
+          playBeep('success')
+          setTerminalDetectedPayment(res.data.transaction)
+          showToast(`Moniepoint Payment Confirmed: ₦${Number(res.data.transaction.amount).toLocaleString()}!`, 'success', '💳')
+          setTimeout(() => {
+            confirmPayment('Card / POS')
+          }, 1000)
+        }
+      } catch (err) {
+        // quiet polling error
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [activeModal, checkoutPayMethod, terminalSn, total, terminalDetectedPayment, isSubmittingSale])
 
   // Helper to determine if a product has sellable stock (> 0)
   const isProductSellable = useCallback((p) => {
@@ -2026,6 +2128,7 @@ export default function POS() {
         amount_tendered: Number(cashReceived) || total,
         discount_amount: discountAmt,
         notes: orderNote,
+        pos_transaction_id: terminalDetectedPayment?.transaction_id || undefined,
         items: cart.map(i => ({
           product_id: (typeof i.id === 'number' || (!isNaN(i.id) && Number(i.id) > 0)) ? Number(i.id) : null,
           name: i.name || 'Item',
@@ -4381,34 +4484,79 @@ export default function POS() {
                       </div>
                     )}
 
-                    {/* ── Card Panel ── */}
+                    {/* ── Moniepoint Smart POS Terminal Panel ── */}
                     {checkoutPayMethod === 'Card / POS' && (
-                      <div className="pos-tender-panel-card p-4 text-center">
-                        <div className="pos-card-terminal-hero mb-3">
-                          <div className="pos-terminal-icon-pulse">
-                            <i className="ri-bank-card-2-fill" />
-                          </div>
-                          <h5 className="fw-bold mt-2 mb-1 pos-entry-item-title">POS Physical Terminal</h5>
-                          <p className="text-muted fs-13 mb-0">
-                            Charge <strong className="text-emerald fs-16">{fmt(total)}</strong> on the POS device.
-                            <br />
-                            Once the customer approves the slip, proceed to confirmation.
-                          </p>
+                      <div className="pos-tender-panel-card p-3 text-center">
+                        <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fs-12 fw-semibold">
+                            <i className="ri-wireless-charging-line me-1" /> Moniepoint POS Auto-Sync
+                          </span>
+                          <span className="text-muted fs-12">
+                            Terminal SN: <strong className="text-dark font-monospace">{terminalSn || 'C66P008D08368495'}</strong>
+                          </span>
                         </div>
-                        <div className="mb-2">
-                          <label className="pos-input-legend mb-2 d-block text-start">CARD NETWORK (OPTIONAL)</label>
-                          <div className="d-flex gap-2 justify-content-center">
-                            {['Visa', 'Mastercard', 'Verve', 'Other'].map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => setCardTab(t.toLowerCase())}
-                                className={`pos-card-network-btn-pro ${cardTab === t.toLowerCase() ? 'active' : ''}`}
-                              >
-                                <i className="ri-shield-check-fill me-1" /> {t}
-                              </button>
-                            ))}
-                          </div>
+
+                        <div
+                          className="p-3 mb-3 rounded-3"
+                          style={{
+                            background: terminalDetectedPayment ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.05)',
+                            border: `1.5px dashed ${terminalDetectedPayment ? '#10b981' : '#3b82f6'}`,
+                            transition: 'all 0.3s ease'
+                          }}
+                        >
+                          {terminalDetectedPayment ? (
+                            <div className="py-2">
+                              <div className="text-emerald fs-36 mb-2">
+                                <i className="ri-checkbox-circle-fill" />
+                              </div>
+                              <h5 className="fw-bold text-emerald mb-1">Payment Received & Verified!</h5>
+                              <p className="text-dark fs-14 mb-1">
+                                Received <strong>{fmt(terminalDetectedPayment.amount)}</strong> on Terminal ({terminalDetectedPayment.card_type || 'CARD'} ****{terminalDetectedPayment.last_four})
+                              </p>
+                              <span className="text-muted fs-12 font-monospace">Ref: {terminalDetectedPayment.transaction_id}</span>
+                              <div className="mt-2 text-emerald fw-semibold fs-13">
+                                <span className="spinner-border spinner-border-sm me-1" role="status" /> Auto-completing sale & printing receipt...
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-2">
+                              <div className="spinner-grow text-primary mb-2" style={{ width: '2.5rem', height: '2.5rem' }} role="status">
+                                <span className="visually-hidden">Listening for payment...</span>
+                              </div>
+                              <h5 className="fw-bold text-dark mb-1">Awaiting Moniepoint POS Payment</h5>
+                              <p className="text-muted fs-13 mb-2">
+                                Charge <strong className="text-emerald fs-16">{fmt(total)}</strong> on Moniepoint Terminal <strong className="text-primary font-monospace">{terminalSn || 'C66P008D08368495'}</strong>.
+                                <br />
+                                Customer can tap card, insert card, or pay via transfer on the terminal.
+                              </p>
+                              <div className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill bg-light border text-muted fs-11">
+                                <span className="spinner-border spinner-border-sm text-primary" style={{ width: '0.75rem', height: '0.75rem' }} />
+                                Listening live via Webhook & WebSocket...
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="d-flex justify-content-between align-items-center gap-2 mt-2 pt-2 border-top">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={checkTerminalManual}
+                            disabled={isCheckingTerminal || Boolean(terminalDetectedPayment)}
+                          >
+                            <i className={`ri-refresh-line me-1 ${isCheckingTerminal ? 'ri-spin' : ''}`} /> Check Status Now
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => {
+                              // Cashier manual override: if terminal is in offline mode or cashier already has paper slip
+                              setCheckoutStep('confirm')
+                            }}
+                          >
+                            Skip Auto-Detect & Proceed Manual <i className="ri-arrow-right-line ms-1" />
+                          </button>
                         </div>
                       </div>
                     )}

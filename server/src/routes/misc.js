@@ -515,6 +515,50 @@ router.post(
 );
 
 // ─────────────────────────────────────────────
+// MONIEPOINT POS TERMINAL WEBHOOK
+// POST /api/webhooks/moniepoint-pos
+// POST /api/pos/moniepoint/webhook
+// ─────────────────────────────────────────────
+const { verifyWebhookSignature, recordMoniepointTransaction } = require("../services/moniepointPosService");
+
+router.post(["/webhooks/moniepoint-pos", "/pos/moniepoint/webhook"], async (req, res, next) => {
+  console.log("🔔 Moniepoint POS webhook event received");
+  const signature = req.headers["moniepoint-signature"] || req.headers["monnify-signature"] || req.headers["x-moniepoint-signature"];
+
+  let rawPayload = req.rawBody || Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body));
+  let event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  if (req.rawBody) {
+    try {
+      event = JSON.parse(req.rawBody.toString("utf8"));
+    } catch (e) {
+      // use parsed body
+    }
+  }
+
+  const isVerified = verifyWebhookSignature(rawPayload, signature);
+  if (!isVerified) {
+    console.warn("⚠️ Moniepoint POS webhook signature mismatch!");
+    return res.status(401).json({ status: "error", message: "Invalid signature" });
+  }
+
+  try {
+    const transaction = await recordMoniepointTransaction(event);
+    return res.status(200).json({
+      status: "success",
+      message: "Moniepoint POS transaction processed successfully",
+      transaction_id: transaction.transaction_id,
+    });
+  } catch (err) {
+    console.error("❌ Moniepoint POS webhook processing error:", err.message);
+    return res.status(200).json({
+      status: "warning",
+      message: "Webhook acknowledged with notice",
+      error: err.message,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────
 // INITIALIZE PAYMENT (CUSTOMER APP / WEB)
 // POST /api/payments/initialize
 // ─────────────────────────────────────────────

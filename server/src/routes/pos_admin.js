@@ -603,6 +603,24 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
       }
     }
 
+    // Auto-link Moniepoint POS transaction if provided or matched
+    if (req.body.pos_transaction_id) {
+      await client.query(
+        "UPDATE pos_transactions SET used_for_order_id = $1 WHERE transaction_id = $2 OR CAST(id AS TEXT) = $2",
+        [orderId, String(req.body.pos_transaction_id)]
+      ).catch((err) => console.warn("Notice: could not link pos_transaction:", err.message));
+    } else if (payment_method === "Card / POS" || payment_method === "Moniepoint POS") {
+      await client.query(
+        `UPDATE pos_transactions SET used_for_order_id = $1 
+         WHERE id = (
+           SELECT id FROM pos_transactions 
+           WHERE used_for_order_id IS NULL AND status = 'successful' AND ABS(amount - $2) < 0.5 
+           ORDER BY payment_time DESC LIMIT 1
+         )`,
+        [orderId, total]
+      ).catch((err) => console.warn("Notice: could not link recent pos_transaction:", err.message));
+    }
+
     // Insert order items, calculate COGS, and deduct stock
     let totalCogsAmount = 0;
     for (const item of lineItems) {
@@ -818,6 +836,60 @@ router.delete("/held/:id", requireRole("superadmin", "manager", "admin", "cashie
       [req.params.id, req.user.id]
     );
     res.json({ message: "Hold released" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// MONIEPOINT POS TERMINAL CONFIG  ──  GET /api/admin/pos/terminal-config
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/terminal-config", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    const defaultSn = process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+    res.json({
+      terminal_sn: defaultSn,
+      provider: "MONIEPOINT",
+      is_configured: Boolean(process.env.MONIEPOINT_POS_API_KEY),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// MONIEPOINT POS TERMINAL STATUS  ──  GET /api/admin/pos/terminal-status
+// Checks if Moniepoint webhook has recorded a payment for this terminal & amount
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/terminal-status", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  try {
+    const terminalId = req.query.terminal_id || process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+    const amount = parseFloat(req.query.amount);
+
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ message: "A valid positive amount is required" });
+    }
+
+    const { checkPendingTerminalPayment } = require("../services/moniepointPosService");
+    const matched = await checkPendingTerminalPayment(terminalId, amount);
+
+    if (matched) {
+      return res.json({
+        paid: true,
+        transaction: {
+          id: matched.id,
+          transaction_id: matched.transaction_id,
+          amount: parseFloat(matched.amount),
+          last_four: matched.last_four,
+          card_type: matched.card_type,
+          payment_method: matched.payment_method,
+          payment_time: matched.payment_time,
+          customer_name: matched.customer_name,
+        },
+      });
+    }
+
+    return res.json({ paid: false, message: "Awaiting terminal payment" });
   } catch (err) {
     next(err);
   }
