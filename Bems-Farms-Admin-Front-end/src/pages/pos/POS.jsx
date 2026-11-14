@@ -254,6 +254,15 @@ export default function POS() {
 
   // Held orders
   const [heldOrders, setHeldOrders]         = useState([])
+  // Background Moniepoint POS Orders (held while cashier attends to next customer)
+  const [backgroundPosOrders, setBackgroundPosOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pos_background_orders')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [orderId, setOrderId]               = useState(genOrderId)
 
   // Tracks the raw DB id of an online order currently loaded into the POS cart
@@ -699,13 +708,163 @@ export default function POS() {
       .catch(() => {})
   }, [])
 
+  // Save background POS orders to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('pos_background_orders', JSON.stringify(backgroundPosOrders))
+    } catch (_) {}
+  }, [backgroundPosOrders])
+
+  // Hold current order for POS payment in background so cashier can ring up the next customer
+  const holdForBackgroundPosPayment = useCallback(() => {
+    if (cart.length === 0) return
+    const currentOrderId = orderId || genOrderId()
+    const heldItem = {
+      orderId: currentOrderId,
+      cart: [...cart],
+      customer: customer ? { ...customer } : null,
+      discountAmt,
+      discountPct,
+      vat,
+      subtotal,
+      total,
+      orderNote,
+      terminalSn: terminalSn || 'C66P008D08368495',
+      heldAt: Date.now(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+
+    setBackgroundPosOrders((prev) => [...prev.filter((o) => o.orderId !== currentOrderId), heldItem])
+    closeModal()
+    clearCart()
+    setOrderId(genOrderId())
+    playBeep('scan')
+    showToast(`Order #${currentOrderId} held in background! Ready for next customer.`, 'info', '⏳')
+  }, [cart, orderId, customer, discountAmt, discountPct, vat, subtotal, total, orderNote, terminalSn, clearCart])
+
+  // Complete and print receipt for a background POS order once Moniepoint confirms payment
+  const completeBackgroundPosOrder = useCallback(
+    async (heldItem, txn) => {
+      try {
+        const validCustomerId =
+          typeof heldItem.customer?.id === 'number' || (!isNaN(heldItem.customer?.id) && Number(heldItem.customer?.id) > 0)
+            ? Number(heldItem.customer.id)
+            : null
+
+        const salePayload = {
+          order_ref: heldItem.orderId,
+          idempotency_key: heldItem.orderId,
+          customer_id: validCustomerId || undefined,
+          customer_name: heldItem.customer?.name || 'Walk-in Customer',
+          customer_phone: heldItem.customer?.phone || '',
+          payment_method: 'Card / POS',
+          amount_tendered: heldItem.total,
+          discount_amount: heldItem.discountAmt,
+          notes: heldItem.orderNote ? `${heldItem.orderNote} [Auto-confirmed Moniepoint POS]` : '[Auto-confirmed Moniepoint POS]',
+          pos_transaction_id: txn.transaction_id || undefined,
+          items: heldItem.cart.map((i) => ({
+            product_id: typeof i.id === 'number' || (!isNaN(i.id) && Number(i.id) > 0) ? Number(i.id) : null,
+            name: i.name || 'Item',
+            packaging_unit_id: i.packaging_unit_id || null,
+            packaging_name: i.packaging_name || i.unit || null,
+            multiplier: i.multiplier || 1,
+            quantity: i.qty,
+            unit_price: i.price,
+            total_price: i.price * i.qty,
+            notes: i.note || '',
+          })),
+        }
+
+        const res = await api.post('/admin/pos/sale', salePayload)
+        const savedOrder = res.data?.order || {}
+        const savedItems = res.data?.items || []
+
+        const receiptData = {
+          orderId: savedOrder.order_ref || savedOrder.id || heldItem.orderId,
+          customer: heldItem.customer,
+          cart: savedItems.length
+            ? savedItems.map((item, index) => ({
+                id: item.product_id || index,
+                name: item.name || item.product_name || 'Item',
+                sku: item.sku || '',
+                qty: Number(item.quantity || item.qty || 1),
+                price: Number(item.unit_price || item.price || 0),
+                total: Number(item.line_total || item.subtotal || 0),
+              }))
+            : heldItem.cart,
+          subtotal: Number(savedOrder.subtotal ?? heldItem.subtotal),
+          discountAmt: Number(savedOrder.discount_amount ?? heldItem.discountAmt),
+          vat: Number(savedOrder.tax_amount ?? heldItem.vat),
+          total: Number(savedOrder.total ?? heldItem.total),
+          method: 'Card / POS',
+          cashReceived: heldItem.total,
+          change: 0,
+          orderNote: heldItem.orderNote,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          date: new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }),
+        }
+
+        // Add to history
+        setHistoryList((prev) => [
+          {
+            inv: receiptData.orderId,
+            cust: heldItem.customer?.name || 'Walk-in Customer',
+            method: 'Card / POS',
+            time: receiptData.time,
+            amount: heldItem.total,
+          },
+          ...prev.slice(0, 49),
+        ])
+
+        // Remove from background queue
+        setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== heldItem.orderId))
+
+        // Deduct items from local stock
+        const soldItems = heldItem.cart || []
+        setProductsList((prev) =>
+          prev.map((p) => {
+            const totalDeduct = soldItems
+              .filter((ci) => ci.id === p.id || ci.productId === p.id || (ci.sku && ci.sku === p.sku))
+              .reduce((sum, ci) => sum + Number(ci.qty || 1) * Number(ci.multiplier || 1), 0)
+            if (totalDeduct > 0) {
+              return { ...p, stock: Math.max(0, (p.stock || 0) - totalDeduct) }
+            }
+            return p
+          })
+        )
+
+        playBeep('success')
+        showToast(
+          `🎉 Order #${receiptData.orderId} (₦${heldItem.total.toLocaleString()}) Confirmed! Printing receipt...`,
+          'success',
+          '🧾'
+        )
+
+        // Automatically print receipt immediately
+        if (autoPrintReceipt) {
+          setTimeout(() => {
+            handlePrintReceipt(receiptData)
+          }, 150)
+        }
+      } catch (err) {
+        console.error('Failed to auto-complete background POS order:', err)
+        showToast(
+          `Auto-completion notice for #${heldItem.orderId}: ${err.response?.data?.message || err.message}`,
+          'error',
+          '⚠️'
+        )
+      }
+    },
+    [autoPrintReceipt, handlePrintReceipt, setProductsList, setHistoryList]
+  )
+
   // Manual Trigger to re-check if payment has landed on the Moniepoint Terminal
   const checkTerminalManual = useCallback(async () => {
     if (isCheckingTerminal) return
     setIsCheckingTerminal(true)
     try {
       const res = await api.get('/admin/pos/terminal-status', {
-        params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total }
+        params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total },
       })
       if (res.data?.paid && res.data?.transaction) {
         playBeep('success')
@@ -731,6 +890,7 @@ export default function POS() {
       socket = getSocket()
       if (socket) {
         const onPayment = (data) => {
+          // 1. Check if matches active checkout modal
           if (activeModal === 'checkout' && checkoutPayMethod === 'Card / POS') {
             const targetSn = terminalSn || 'C66P008D08368495'
             const isTargetTerminal = !data.terminal_id || data.terminal_id === targetSn
@@ -743,8 +903,24 @@ export default function POS() {
               setTimeout(() => {
                 confirmPayment('Card / POS')
               }, 1000)
+              return
             }
           }
+
+          // 2. Check if matches any order queued in the background!
+          setBackgroundPosOrders((currentQueue) => {
+            const matchedIndex = currentQueue.findIndex((o) => {
+              const isTargetTerminal = !data.terminal_id || data.terminal_id === (o.terminalSn || 'C66P008D08368495')
+              const isMatchingAmount = Math.abs(Number(data.amount) - o.total) < 1
+              return isTargetTerminal && isMatchingAmount
+            })
+
+            if (matchedIndex !== -1) {
+              const heldItem = currentQueue[matchedIndex]
+              completeBackgroundPosOrder(heldItem, data)
+            }
+            return currentQueue
+          })
         }
 
         socket.on('pos:moniepoint_payment', onPayment)
@@ -755,34 +931,62 @@ export default function POS() {
     } catch (e) {
       console.warn('Socket listener init notice:', e.message)
     }
-  }, [activeModal, checkoutPayMethod, terminalSn, total])
+  }, [activeModal, checkoutPayMethod, terminalSn, total, completeBackgroundPosOrder])
 
-  // Polling fallback every 3s while checkout modal is open with Card / POS
+  // Polling fallback loop: checks active checkout modal AND all background queued orders every 3s
   useEffect(() => {
-    if (activeModal !== 'checkout' || checkoutPayMethod !== 'Card / POS' || terminalDetectedPayment || isSubmittingSale) {
-      return
-    }
+    const hasActiveModalCheck =
+      activeModal === 'checkout' && checkoutPayMethod === 'Card / POS' && !terminalDetectedPayment && !isSubmittingSale
+    const hasBackgroundOrders = backgroundPosOrders.length > 0
+
+    if (!hasActiveModalCheck && !hasBackgroundOrders) return
 
     const interval = setInterval(async () => {
-      try {
-        const res = await api.get('/admin/pos/terminal-status', {
-          params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total }
-        })
-        if (res.data?.paid && res.data?.transaction) {
-          playBeep('success')
-          setTerminalDetectedPayment(res.data.transaction)
-          showToast(`Moniepoint Payment Confirmed: ₦${Number(res.data.transaction.amount).toLocaleString()}!`, 'success', '💳')
-          setTimeout(() => {
-            confirmPayment('Card / POS')
-          }, 1000)
+      // Check active modal first
+      if (hasActiveModalCheck) {
+        try {
+          const res = await api.get('/admin/pos/terminal-status', {
+            params: { terminal_id: terminalSn || 'C66P008D08368495', amount: total },
+          })
+          if (res.data?.paid && res.data?.transaction) {
+            playBeep('success')
+            setTerminalDetectedPayment(res.data.transaction)
+            showToast(`Moniepoint Payment Confirmed: ₦${Number(res.data.transaction.amount).toLocaleString()}!`, 'success', '💳')
+            setTimeout(() => {
+              confirmPayment('Card / POS')
+            }, 1000)
+            return
+          }
+        } catch (_) {}
+      }
+
+      // Check background orders
+      if (hasBackgroundOrders) {
+        for (const order of backgroundPosOrders) {
+          try {
+            const res = await api.get('/admin/pos/terminal-status', {
+              params: { terminal_id: order.terminalSn || 'C66P008D08368495', amount: order.total },
+            })
+            if (res.data?.paid && res.data?.transaction) {
+              completeBackgroundPosOrder(order, res.data.transaction)
+              break // process one per tick to maintain order sequence
+            }
+          } catch (_) {}
         }
-      } catch (err) {
-        // quiet polling error
       }
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [activeModal, checkoutPayMethod, terminalSn, total, terminalDetectedPayment, isSubmittingSale])
+  }, [
+    activeModal,
+    checkoutPayMethod,
+    terminalSn,
+    total,
+    terminalDetectedPayment,
+    isSubmittingSale,
+    backgroundPosOrders,
+    completeBackgroundPosOrder,
+  ])
 
   // Helper to determine if a product has sellable stock (> 0)
   const isProductSellable = useCallback((p) => {
@@ -2905,6 +3109,24 @@ export default function POS() {
             </div>
           )}
 
+          {/* Background Moniepoint POS Auto-Confirm Banner */}
+          {backgroundPosOrders.length > 0 && (
+            <div className="p-2 mb-2 rounded-2 bg-warning-subtle border border-warning text-dark d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <span className="spinner-grow spinner-grow-sm text-warning" role="status" />
+                <span className="fw-bold fs-12 text-uppercase">Awaiting Terminal:</span>
+                <div className="d-flex gap-1 overflow-auto" style={{ maxWidth: '300px' }}>
+                  {backgroundPosOrders.map((bo) => (
+                    <span key={bo.orderId} className="badge bg-warning text-dark font-monospace">
+                      #{bo.orderId} (₦{fmt(bo.total)})
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <span className="badge bg-success text-white fs-11">Auto-prints receipt</span>
+            </div>
+          )}
+
           {/* Register Order Topbar */}
           <div className="pos-register-topbar">
             <div>
@@ -4537,7 +4759,7 @@ export default function POS() {
                           )}
                         </div>
 
-                        <div className="d-flex justify-content-between align-items-center gap-2 mt-2 pt-2 border-top">
+                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 pt-2 border-top">
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-secondary"
@@ -4556,6 +4778,16 @@ export default function POS() {
                             }}
                           >
                             Skip Auto-Detect & Proceed Manual <i className="ri-arrow-right-line ms-1" />
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-warning text-dark fw-bold w-100 py-2 d-flex align-items-center justify-content-center gap-1.5 shadow-sm mt-1"
+                            onClick={holdForBackgroundPosPayment}
+                            disabled={Boolean(terminalDetectedPayment)}
+                            style={{ background: '#f59e0b', borderColor: '#d97706' }}
+                          >
+                            <i className="ri-pause-circle-fill fs-16" /> Hold & Attend Next Customer (Auto-Confirm & Print)
                           </button>
                         </div>
                       </div>
