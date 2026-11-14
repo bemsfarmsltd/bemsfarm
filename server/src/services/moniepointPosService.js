@@ -9,9 +9,12 @@ const { getIO } = require("./socketService");
  * Verify incoming webhook signature from Moniepoint
  */
 function verifyWebhookSignature(rawPayload, signatureHeader) {
-  const secretKey = process.env.MONIEPOINT_POS_API_KEY?.trim();
+  const secretKey =
+    process.env.MONIEPOINT_WEBHOOK_SECRET?.trim() ||
+    process.env.MONIEPOINT_POS_API_KEY?.trim();
+
   if (!secretKey) {
-    console.warn("⚠️ MONIEPOINT_POS_API_KEY not configured. Webhook verification skipped in dev.");
+    console.warn("⚠️ MONIEPOINT_WEBHOOK_SECRET not configured. Webhook verification skipped in dev.");
     return true;
   }
 
@@ -20,22 +23,35 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
     return process.env.NODE_ENV !== "production";
   }
 
-  try {
-    const rawString = Buffer.isBuffer(rawPayload) ? rawPayload.toString("utf8") : String(rawPayload);
+  const candidateKeys = [
+    process.env.MONIEPOINT_WEBHOOK_SECRET?.trim(),
+    process.env.MONIEPOINT_POS_API_KEY?.trim(),
+  ].filter(Boolean);
 
-    // Try SHA512
-    const hmac512 = crypto.createHmac("sha512", secretKey).update(rawString).digest("hex");
-    if (crypto.timingSafeEqual(Buffer.from(hmac512), Buffer.from(signatureHeader))) {
-      return true;
-    }
+  const rawString = Buffer.isBuffer(rawPayload) ? rawPayload.toString("utf8") : String(rawPayload);
 
-    // Fallback: Try SHA256
-    const hmac256 = crypto.createHmac("sha256", secretKey).update(rawString).digest("hex");
-    if (crypto.timingSafeEqual(Buffer.from(hmac256), Buffer.from(signatureHeader))) {
-      return true;
+  for (const key of candidateKeys) {
+    try {
+      // 1. Try SHA512
+      const hmac512 = crypto.createHmac("sha512", key).update(rawString).digest("hex");
+      if (
+        Buffer.from(hmac512).length === Buffer.from(signatureHeader).length &&
+        crypto.timingSafeEqual(Buffer.from(hmac512), Buffer.from(signatureHeader))
+      ) {
+        return true;
+      }
+
+      // 2. Try SHA256
+      const hmac256 = crypto.createHmac("sha256", key).update(rawString).digest("hex");
+      if (
+        Buffer.from(hmac256).length === Buffer.from(signatureHeader).length &&
+        crypto.timingSafeEqual(Buffer.from(hmac256), Buffer.from(signatureHeader))
+      ) {
+        return true;
+      }
+    } catch (err) {
+      // Continue to next candidate key
     }
-  } catch (err) {
-    console.error("Signature verification error:", err.message);
   }
 
   return false;
@@ -206,3 +222,4 @@ module.exports = {
   recordMoniepointTransaction,
   checkPendingTerminalPayment,
 };
+
