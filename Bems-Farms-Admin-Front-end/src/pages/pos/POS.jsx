@@ -766,6 +766,52 @@ export default function POS() {
     showToast(`Order #${currentOrderId} held in background! Ready for next customer.`, 'info', '⏳')
   }, [cart, orderId, customer, discountAmt, discountPct, vat, subtotal, total, orderNote, terminalSn, clearCart])
 
+  // Restore a background POS order back to the register & open checkout modal
+  const restoreBackgroundPosOrder = useCallback(
+    (orderIdToRestore) => {
+      const held = backgroundPosOrders.find((o) => o.orderId === orderIdToRestore)
+      if (!held) return
+
+      // If cashier currently has items in the active basket, park it to regular held orders
+      if (cart.length > 0) {
+        setHeldOrders((prev) => [
+          {
+            orderId,
+            cart: [...cart],
+            customer,
+            discountPct,
+            discountAmt,
+            orderNote,
+            heldAt: Date.now(),
+          },
+          ...prev,
+        ])
+        showToast(`Current basket held while restoring #${held.orderId}`, 'info', '⏸️')
+      }
+
+      // Load held order into register
+      setCart(held.cart || [])
+      setCustomer(held.customer || null)
+      setDiscountPct(held.discountPct || 0)
+      setDiscountAmt(held.discountAmt || 0)
+      setOrderNote(held.orderNote || '')
+      setOrderId(held.orderId)
+      setCashReceived(String(held.total || 0))
+
+      // Remove from background queue
+      setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== held.orderId))
+
+      // Switch payment method & reopen checkout modal
+      setCheckoutPayMethod('Card / POS')
+      setCheckoutStep('tender')
+      setTerminalDetectedPayment(null)
+      setActiveModal('checkout')
+      playBeep('scan')
+      showToast(`Order #${held.orderId} restored to Checkout modal!`, 'success', '💳')
+    },
+    [backgroundPosOrders, cart, orderId, customer, discountPct, discountAmt, orderNote]
+  )
+
   // Complete and print receipt for a background POS order once Moniepoint confirms payment
   const completeBackgroundPosOrder = useCallback(
     async (heldItem, txn) => {
@@ -3111,19 +3157,44 @@ export default function POS() {
 
           {/* Background Moniepoint POS Auto-Confirm Banner */}
           {backgroundPosOrders.length > 0 && (
-            <div className="p-2 mb-2 rounded-2 bg-warning-subtle border border-warning text-dark d-flex align-items-center justify-content-between">
-              <div className="d-flex align-items-center gap-2">
+            <div className="p-2 mb-2 rounded-2 bg-warning-subtle border border-warning text-dark d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <span className="spinner-grow spinner-grow-sm text-warning" role="status" />
                 <span className="fw-bold fs-12 text-uppercase">Awaiting Terminal:</span>
-                <div className="d-flex gap-1 overflow-auto" style={{ maxWidth: '300px' }}>
+                <div className="d-flex gap-1 overflow-auto flex-wrap" style={{ maxWidth: '420px' }}>
                   {backgroundPosOrders.map((bo) => (
-                    <span key={bo.orderId} className="badge bg-warning text-dark font-monospace">
-                      #{bo.orderId} (₦{fmt(bo.total)})
-                    </span>
+                    <div key={bo.orderId} className="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        onClick={() => restoreBackgroundPosOrder(bo.orderId)}
+                        className="btn btn-warning py-0 px-2 fw-bold font-monospace shadow-sm d-flex align-items-center gap-1 border border-warning-subtle text-dark"
+                        title="Click to bring this order back as a Checkout modal"
+                      >
+                        <i className="ri-fullscreen-line fs-11" />
+                        #{bo.orderId} (₦{fmt(bo.total)})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (window.confirm(`Discard held order #${bo.orderId}?`)) {
+                            setBackgroundPosOrders((prev) => prev.filter((o) => o.orderId !== bo.orderId))
+                            showToast(`Order #${bo.orderId} discarded`, 'info', '🗑️')
+                          }
+                        }}
+                        className="btn btn-warning py-0 px-1 border border-warning-subtle text-muted"
+                        title="Discard held order"
+                      >
+                        <i className="ri-close-line" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
-              <span className="badge bg-success text-white fs-11">Auto-prints receipt</span>
+              <div className="d-flex align-items-center gap-2">
+                <span className="text-muted fs-11 d-none d-md-inline">(Click chip to view modal)</span>
+                <span className="badge bg-success text-white fs-11">Auto-prints receipt</span>
+              </div>
             </div>
           )}
 
