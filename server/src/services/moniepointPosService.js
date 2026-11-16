@@ -453,7 +453,7 @@ async function autoCompleteHeldOrderIfMatched(txnRow, norm) {
 }
 
 /**
- * Check if a payment for given terminal and amount arrived recently (last 3 minutes)
+ * Check if a payment for given terminal and amount arrived recently (within last 2 hours)
  */
 async function checkPendingTerminalPayment(terminalId, amount) {
   const query = `
@@ -462,7 +462,7 @@ async function checkPendingTerminalPayment(terminalId, amount) {
       AND used_for_order_id IS NULL
       AND status = 'successful'
       AND ABS(amount - $2) < 0.5
-      AND payment_time >= NOW() - INTERVAL '3 minutes'
+      AND payment_time >= NOW() - INTERVAL '2 hours'
     ORDER BY payment_time DESC
     LIMIT 1;
   `;
