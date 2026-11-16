@@ -79,6 +79,10 @@ DirectoryIndex index.html
   RewriteRule ^downloads/BemsCustomer\\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
   RewriteRule ^download/?$ /#apps [R=302,L]
 
+  # Moniepoint POS Webhook direct reverse-proxy to avoid 307 redirects for payment notifications
+  RewriteRule ^(api/)?webhooks?/moniepoint-pos/?$ https://api.bemsfarms.com/api/webhooks/moniepoint-pos [P,L]
+  RewriteRule ^(api/)?pos/moniepoint/webhook/?$ https://api.bemsfarms.com/api/webhooks/moniepoint-pos [P,L]
+
   # Direct API fallback routing to live Express API
   RewriteRule ^api/(.*)$ https://api.bemsfarms.com/api/$1 [R=307,L]
 
