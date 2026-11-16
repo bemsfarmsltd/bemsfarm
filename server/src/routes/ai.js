@@ -159,7 +159,7 @@ async function enrichWithDbProducts(items) {
     const names = items.map((i) => (i.name || "").trim()).filter(Boolean);
 
     const dbRes = await pool.query(
-      `SELECT id, name, price, unit, stock, image_url, image FROM products
+      `SELECT id, name, price, unit, stock, image_url FROM products
        WHERE (id = ANY($1::int[]) OR name = ANY($2::text[])) AND status != 'archived'`,
       [ids.length ? ids : [-1], names.length ? names : ["__none__"]],
     );
