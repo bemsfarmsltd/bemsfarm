@@ -403,6 +403,7 @@ app.use("/api/telemetry", telemetryRoutes);
 app.use("/api/support", customerChatRoutes);
 app.use("/api/broadcasts", broadcastsRoutes);
 app.use("/api", miscRoutes);
+app.use("/", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 
 app.get("/api", (req, res) => res.json({ status: "OK", name: "Bems Farms API", version: "1.0", time: new Date() }));

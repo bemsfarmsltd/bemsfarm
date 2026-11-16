@@ -1,9 +1,27 @@
+<IfModule LiteSpeed>
+  LsRecaptcha 0
+  RewriteRule .* - [E=verifycaptcha:off]
+</IfModule>
+
 Options -Indexes +FollowSymLinks
 DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # 0. Mobile App Version Static & Download Direct Routing -> Dynamic Express API
+  RewriteRule ^app-version$ /app-version.json [L]
+  RewriteRule ^api/app-version(\.json)?$ https://api.bemsfarms.com/api/app-version [R=302,L]
+  RewriteRule ^(api/)?webhooks?/moniepoint-pos/?$ https://api.bemsfarms.com/api/webhooks/moniepoint-pos [P,L]
+  RewriteRule ^(api/)?pos/moniepoint/webhook/?$ https://api.bemsfarms.com/api/webhooks/moniepoint-pos [P,L]
+  RewriteRule ^download/customer-app\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
+  RewriteRule ^download/driver-app\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
+  RewriteRule ^downloads/customer-app\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
+  RewriteRule ^downloads/driver-app\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
+  RewriteRule ^downloads/BemsDriver\.apk$ https://api.bemsfarms.com/api/app-releases/download/driver [R=302,L]
+  RewriteRule ^downloads/BemsCustomer\.apk$ https://api.bemsfarms.com/api/app-releases/download/customer [R=302,L]
+  RewriteRule ^download/?$ /#apps [R=302,L]
 
   # 1. Admin SPA Routing (/admin/*)
   RewriteRule ^admin/index\.html$ - [L]
@@ -12,8 +30,11 @@ DirectoryIndex index.html
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^admin/.*$ /admin/index.html [L]
 
-  # 2. Storefront SPA Routing (/*)
+  # 2. Main Storefront SPA Routing (/*)
   RewriteRule ^index\.html$ - [L]
+  # Force SPA route for products catalog even though physical /products folder exists
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^products(/.*)?$ /index.html [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]

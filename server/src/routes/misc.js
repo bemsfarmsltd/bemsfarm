@@ -516,14 +516,36 @@ router.post(
 
 // ─────────────────────────────────────────────
 // MONIEPOINT POS TERMINAL WEBHOOK
-// POST /api/webhooks/moniepoint-pos
-// POST /api/pos/moniepoint/webhook
+// POST /webhooks/moniepoint-pos & /api/webhooks/moniepoint-pos
 // ─────────────────────────────────────────────
 const { verifyWebhookSignature, recordMoniepointTransaction } = require("../services/moniepointPosService");
 
-router.post(["/webhooks/moniepoint-pos", "/pos/moniepoint/webhook"], async (req, res, next) => {
-  console.log("🔔 Moniepoint POS webhook event received");
-  const signature = req.headers["moniepoint-signature"] || req.headers["monnify-signature"] || req.headers["x-moniepoint-signature"];
+const MONIEPOINT_WEBHOOK_PATHS = [
+  "/webhooks/moniepoint-pos",
+  "/webhook/moniepoint-pos",
+  "/pos/moniepoint/webhook",
+  "/moniepoint-pos",
+];
+
+// GET probe for uptime / testing in browser
+router.get(MONIEPOINT_WEBHOOK_PATHS, (req, res) => {
+  res.json({
+    status: "active",
+    service: "Moniepoint POS Webhook Endpoint",
+    terminal_sn: process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495",
+    time: new Date().toISOString(),
+  });
+});
+
+router.post(MONIEPOINT_WEBHOOK_PATHS, async (req, res, next) => {
+  console.log("🔔 Moniepoint POS webhook event received at path:", req.path);
+  const signature =
+    req.headers["moniepoint-signature"] ||
+    req.headers["monnify-signature"] ||
+    req.headers["x-moniepoint-signature"] ||
+    req.headers["x-monnify-signature"] ||
+    req.headers["signature"] ||
+    req.headers["authorization"];
 
   let rawPayload = req.rawBody || Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body));
   let event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
@@ -536,6 +558,30 @@ router.post(["/webhooks/moniepoint-pos", "/pos/moniepoint/webhook"], async (req,
   }
 
   const isVerified = verifyWebhookSignature(rawPayload, signature);
+
+  // Always log webhook payload into gateway_webhook_logs for full auditability
+  try {
+    const data = event?.data || event?.eventData || event || {};
+    const ref = data.transactionReference || data.reference || data.transactionId || event?.transaction_id || null;
+    const amt = parseFloat(data.amount || event?.amount || 0) || null;
+    await pool.query(
+      `INSERT INTO gateway_webhook_logs (gateway, event_type, transaction_reference, amount, currency, status, signature_verified, payload, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [
+        "MONIEPOINT_POS",
+        event?.eventType || event?.type || "payment",
+        ref,
+        amt,
+        "NGN",
+        "received",
+        Boolean(isVerified),
+        JSON.stringify({ path: req.path, headers: req.headers, body: event }),
+      ]
+    );
+  } catch (logErr) {
+    console.warn("⚠️ Webhook audit log warning:", logErr.message);
+  }
+
   if (!isVerified) {
     console.warn("⚠️ Moniepoint POS webhook signature mismatch!");
     return res.status(401).json({ status: "error", message: "Invalid signature" });
