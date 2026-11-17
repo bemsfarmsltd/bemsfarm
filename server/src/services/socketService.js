@@ -1,6 +1,20 @@
 const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
+const pool = require("../db/pool");
+const { STAFF_ROLES } = require("../config/roles");
 
 let io = null;
+
+const ORDER_EVENT_ROLES = [
+  "superadmin", "admin", "manager", "accountant", "delivery_manager",
+  "cashier", "salesperson", "sales_person", "sales", "kitchen_staff", "storekeeper",
+];
+const DELIVERY_EVENT_ROLES = ["superadmin", "admin", "manager", "delivery_manager"];
+const STOCK_EVENT_ROLES = [
+  "superadmin", "admin", "manager", "kitchen_staff", "storekeeper",
+  "cashier", "salesperson", "sales_person", "sales",
+];
+const PRIVILEGED_ADMIN_ROLES = ["superadmin", "admin", "manager"];
 
 /**
  * Initialize Socket.io on the HTTP server instance
@@ -41,24 +55,46 @@ function initSocketService(httpServer, allowedOrigins = []) {
   });
 
   io.on("connection", (socket) => {
-    const role = socket.handshake.query?.role || "guest";
-    const userId = socket.handshake.query?.userId || null;
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
     const driverId = socket.handshake.query?.driverId || null;
 
-    // Join general admin channel if staff / admin
-    if (role === "admin" || role === "staff" || role === "manager" || role === "superadmin") {
-      socket.join("admin_room");
-    }
+    // Resolve and verify role strictly from signed JWT + active DB user record
+    const rolePromise = (async () => {
+      let verifiedRole = "guest";
+      if (token && process.env.JWT_SECRET) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          if (decoded?.id) {
+            const uRes = await pool.query("SELECT role, status FROM users WHERE id = $1", [decoded.id]);
+            if (uRes.rows.length && String(uRes.rows[0].status || "active").toLowerCase() === "active") {
+              verifiedRole = String(uRes.rows[0].role || "guest").toLowerCase().trim();
+            }
+          }
+        } catch (_) {}
+      }
+      socket.data.role = verifiedRole;
+      socket.join(`role_${verifiedRole}`);
+      if (PRIVILEGED_ADMIN_ROLES.includes(verifiedRole)) {
+        socket.join("admin_room");
+      }
+      return verifiedRole;
+    })();
 
     if (driverId) {
       socket.join(`driver_${driverId}`);
     }
 
-    // Allow dynamic room joins
-    socket.on("join_room", (room) => {
-      if (typeof room === "string") {
-        socket.join(room);
+    // Allow dynamic room joins while guarding privileged role/admin rooms
+    socket.on("join_room", async (room) => {
+      if (typeof room !== "string") return;
+      const currentRole = socket.data.role || (await rolePromise);
+      if (room === "admin_room" || room.startsWith("role_")) {
+        if (room === `role_${currentRole}` || PRIVILEGED_ADMIN_ROLES.includes(currentRole)) {
+          socket.join(room);
+        }
+        return;
       }
+      socket.join(room);
     });
 
     socket.on("leave_room", (room) => {
@@ -127,17 +163,32 @@ function emitEvent(event, data) {
   if (!io) return;
   try {
     io.emit(event, data);
-    // Also emit to explicit admin room
     io.to("admin_room").emit(event, data);
   } catch (err) {
     console.warn(`[socketService] Failed to emit event ${event}:`, err.message);
   }
 }
 
+/**
+ * Role-scoped broadcast helper so operational events never leak across unrelated role dashboards
+ */
+function emitToRoles(roles, event, data) {
+  if (!io || !Array.isArray(roles) || roles.length === 0) return;
+  try {
+    let chain = io;
+    for (const r of roles) {
+      chain = chain.to(`role_${String(r).toLowerCase().trim()}`);
+    }
+    chain.emit(event, data);
+  } catch (err) {
+    console.warn(`[socketService] Failed to emit event ${event} to roles:`, err.message);
+  }
+}
+
 // ── Specialized Event Broadcasters ─────────────────────────────
 
 function broadcastOrderCreated(order) {
-  emitEvent("order:created", {
+  emitToRoles(ORDER_EVENT_ROLES, "order:created", {
     order_id: order?.id || order?.order_id,
     order_ref: order?.order_ref || order?.ref,
     customer_name: order?.customer_name || order?.name || "Customer",
@@ -147,12 +198,11 @@ function broadcastOrderCreated(order) {
     created_at: order?.created_at || new Date().toISOString(),
     order,
   });
-  // Invalidate dashboard metrics
-  emitEvent("dashboard:update", { reason: "order_created", order_id: order?.id });
+  emitToRoles(ORDER_EVENT_ROLES, "dashboard:update", { reason: "order_created", order_id: order?.id });
 }
 
 function broadcastOrderUpdated(order) {
-  emitEvent("order:updated", {
+  emitToRoles(ORDER_EVENT_ROLES, "order:updated", {
     order_id: order?.id || order?.order_id,
     status: order?.status,
     payment_status: order?.payment_status,
@@ -160,11 +210,11 @@ function broadcastOrderUpdated(order) {
     updated_at: new Date().toISOString(),
     order,
   });
-  emitEvent("dashboard:update", { reason: "order_updated", order_id: order?.id });
+  emitToRoles(ORDER_EVENT_ROLES, "dashboard:update", { reason: "order_updated", order_id: order?.id });
 }
 
 function broadcastDeliveryUpdated(delivery) {
-  emitEvent("delivery:updated", {
+  emitToRoles(DELIVERY_EVENT_ROLES, "delivery:updated", {
     delivery_id: delivery?.id || delivery?.delivery_id,
     order_id: delivery?.order_id,
     driver_id: delivery?.driver_id,
@@ -173,11 +223,11 @@ function broadcastDeliveryUpdated(delivery) {
     updated_at: new Date().toISOString(),
     delivery,
   });
-  emitEvent("dashboard:update", { reason: "delivery_updated" });
+  emitToRoles(ORDER_EVENT_ROLES, "dashboard:update", { reason: "delivery_updated" });
 }
 
 function broadcastDriverTelemetry(telemetry) {
-  emitEvent("driver:telemetry", {
+  emitToRoles(DELIVERY_EVENT_ROLES, "driver:telemetry", {
     driver_id: telemetry?.driver_id,
     is_available: telemetry?.is_available,
     status: telemetry?.status,
@@ -203,17 +253,17 @@ function broadcastDriverLocation(location) {
     timestamp: location?.recorded_at || new Date().toISOString(),
   };
 
-  emitEvent("driver:location", locPayload);
+  emitToRoles(DELIVERY_EVENT_ROLES, "driver:location", locPayload);
 
-  // If tied to an active order, emit to specific order listeners
+  // If tied to an active order, emit to customer order tracker and authorized dispatch roles
   if (location?.order_id) {
-    emitEvent(`order:${location.order_id}:location`, locPayload);
-    emitEvent("order:location", locPayload);
+    if (io) io.emit(`order:${location.order_id}:location`, locPayload);
+    emitToRoles(DELIVERY_EVENT_ROLES, "order:location", locPayload);
   }
 }
 
 function broadcastStockUpdated(stock) {
-  emitEvent("stock:updated", {
+  emitToRoles(STOCK_EVENT_ROLES, "stock:updated", {
     product_id: stock?.product_id,
     variant_id: stock?.variant_id,
     warehouse_id: stock?.warehouse_id,
@@ -222,11 +272,12 @@ function broadcastStockUpdated(stock) {
     updated_at: new Date().toISOString(),
     stock,
   });
-  emitEvent("dashboard:update", { reason: "stock_updated" });
+  emitToRoles(ORDER_EVENT_ROLES, "dashboard:update", { reason: "stock_updated" });
 }
 
 function broadcastNotification(notification) {
-  emitEvent("notification:new", {
+  const { canRoleReceiveNotification } = require("./notificationService");
+  const payload = {
     id: notification?.id,
     title: notification?.title,
     message: notification?.message || notification?.body,
@@ -234,11 +285,13 @@ function broadcastNotification(notification) {
     link: notification?.link,
     created_at: notification?.created_at || new Date().toISOString(),
     notification,
-  });
+  };
+  const targetRoles = STAFF_ROLES.filter((r) => canRoleReceiveNotification(r, notification?.type));
+  emitToRoles(targetRoles.length ? targetRoles : ["superadmin", "admin"], "notification:new", payload);
 }
 
 function broadcastDispatchAlert(alert) {
-  emitEvent("dispatch:alert", {
+  emitToRoles(DELIVERY_EVENT_ROLES, "dispatch:alert", {
     id: alert?.id,
     order_id: alert?.order_id,
     alert_type: alert?.alert_type || alert?.type,
@@ -249,7 +302,7 @@ function broadcastDispatchAlert(alert) {
 }
 
 function broadcastEmergencyAlert(emergency) {
-  emitEvent("emergency:sos", {
+  emitToRoles(DELIVERY_EVENT_ROLES, "emergency:sos", {
     emergency_id: emergency?.id,
     driver_id: emergency?.driver_id,
     driver_name: emergency?.driver_name,
@@ -262,7 +315,7 @@ function broadcastEmergencyAlert(emergency) {
 }
 
 function broadcastSupportMessage(payload) {
-  emitEvent("support:message", {
+  emitToRoles(PRIVILEGED_ADMIN_ROLES, "support:message", {
     customer_id: payload?.customer_id,
     customer_name: payload?.customer_name,
     message: payload?.message,
@@ -271,7 +324,7 @@ function broadcastSupportMessage(payload) {
 }
 
 function broadcastDriverMessage(payload) {
-  emitEvent("driver:support_message", payload);
+  emitToRoles(DELIVERY_EVENT_ROLES, "driver:support_message", payload);
   if (payload?.driver_id) {
     const ioInstance = getIO();
     if (ioInstance) {
@@ -281,13 +334,14 @@ function broadcastDriverMessage(payload) {
 }
 
 function broadcastDashboardInvalidation(section = "all") {
-  emitEvent("dashboard:update", { section, timestamp: Date.now() });
+  emitToRoles(ORDER_EVENT_ROLES, "dashboard:update", { section, timestamp: Date.now() });
 }
 
 module.exports = {
   initSocketService,
   getIO,
   emitEvent,
+  emitToRoles,
   broadcastOrderCreated,
   broadcastOrderUpdated,
   broadcastDeliveryUpdated,

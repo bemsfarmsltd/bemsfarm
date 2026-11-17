@@ -291,14 +291,83 @@ async function notifyAdmin({ type, title, message, link = '', severity = 'info',
   }
 }
 
-async function getRecentNotifications(limit = 30) {
+const ROLE_ALLOWED_NOTIF_TYPES = {
+  superadmin: '*',
+  admin: '*',
+  manager: [
+    'order_placed', 'pos_sale', 'order_delivery', 'order_completed',
+    'driver_assigned', 'driver_support_message', 'dispatch_alert', 'emergency', 'emergency_sos',
+    'support_message', 'ai_chat', 'low_stock', 'out_of_stock',
+    'product_created', 'product_price_updated', 'stock_restock', 'stock_adjustment', 'batch_expiry',
+    'refund_request', 'refund_processed', 'customer_register',
+    'mobile_app_action', 'staff_action', 'payout_approved', 'payout_rejected', 'payout_disbursed',
+    'store_sales_reconciliation',
+  ],
+  app_developer: ['mobile_app_action'],
+  delivery_manager: [
+    'order_delivery', 'driver_assigned', 'driver_support_message',
+    'dispatch_alert', 'emergency', 'emergency_sos', 'order_placed', 'order_completed',
+  ],
+  accountant: [
+    'order_placed', 'pos_sale', 'order_completed',
+    'refund_request', 'refund_processed', 'driver_wallet_adjustment',
+    'payout_disbursed', 'payout_approved', 'payout_rejected',
+    'wallet_frozen', 'wallet_unfrozen', 'customer_wallet_adjustment',
+    'store_sales_reconciliation', 'product_price_updated',
+  ],
+  kitchen_staff: [
+    'low_stock', 'out_of_stock', 'product_created',
+    'stock_restock', 'stock_adjustment', 'batch_expiry', 'ai_chat', 'order_placed',
+  ],
+  storekeeper: [
+    'low_stock', 'out_of_stock', 'product_created',
+    'stock_restock', 'stock_adjustment', 'batch_expiry', 'order_placed',
+  ],
+  cashier: ['pos_sale', 'order_placed', 'customer_register'],
+  salesperson: ['pos_sale', 'order_placed', 'customer_register'],
+  sales_person: ['pos_sale', 'order_placed', 'customer_register'],
+  sales: ['pos_sale', 'order_placed', 'customer_register'],
+  pos: ['pos_sale', 'order_placed', 'customer_register'],
+};
+
+function getAllowedNotificationTypesForRole(role) {
+  if (!role) return [];
+  const key = String(role).toLowerCase().trim();
+  return ROLE_ALLOWED_NOTIF_TYPES[key] || [];
+}
+
+function canRoleReceiveNotification(role, type) {
+  const allowed = getAllowedNotificationTypesForRole(role);
+  if (allowed === '*') return true;
+  return Array.isArray(allowed) && allowed.includes(String(type || '').toLowerCase().trim());
+}
+
+async function getRecentNotifications(limit = 30, role = 'superadmin') {
   await ensureNotificationTable();
+  const allowed = getAllowedNotificationTypesForRole(role);
+  if (allowed === '*') {
+    const res = await pool.query(
+      `SELECT * FROM system_notifications ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    const unreadRes = await pool.query(
+      `SELECT COUNT(*) FROM system_notifications WHERE is_read = false`
+    );
+    return {
+      notifications: res.rows,
+      unread_count: parseInt(unreadRes.rows[0].count) || 0,
+    };
+  }
+  if (!Array.isArray(allowed) || allowed.length === 0) {
+    return { notifications: [], unread_count: 0 };
+  }
   const res = await pool.query(
-    `SELECT * FROM system_notifications ORDER BY created_at DESC LIMIT $1`,
-    [limit]
+    `SELECT * FROM system_notifications WHERE type = ANY($2::text[]) ORDER BY created_at DESC LIMIT $1`,
+    [limit, allowed]
   );
   const unreadRes = await pool.query(
-    `SELECT COUNT(*) FROM system_notifications WHERE is_read = false`
+    `SELECT COUNT(*) FROM system_notifications WHERE is_read = false AND type = ANY($1::text[])`,
+    [allowed]
   );
   return {
     notifications: res.rows,
@@ -306,18 +375,34 @@ async function getRecentNotifications(limit = 30) {
   };
 }
 
-async function markNotificationRead(id) {
+async function markNotificationRead(id, role = 'superadmin') {
   await ensureNotificationTable();
-  await pool.query(
-    `UPDATE system_notifications SET is_read = true WHERE id = $1`,
-    [id]
-  );
+  const allowed = getAllowedNotificationTypesForRole(role);
+  if (allowed === '*') {
+    await pool.query(
+      `UPDATE system_notifications SET is_read = true WHERE id = $1`,
+      [id]
+    );
+  } else if (Array.isArray(allowed) && allowed.length > 0) {
+    await pool.query(
+      `UPDATE system_notifications SET is_read = true WHERE id = $1 AND type = ANY($2::text[])`,
+      [id, allowed]
+    );
+  }
   return { success: true };
 }
 
-async function markAllNotificationsRead() {
+async function markAllNotificationsRead(role = 'superadmin') {
   await ensureNotificationTable();
-  await pool.query(`UPDATE system_notifications SET is_read = true WHERE is_read = false`);
+  const allowed = getAllowedNotificationTypesForRole(role);
+  if (allowed === '*') {
+    await pool.query(`UPDATE system_notifications SET is_read = true WHERE is_read = false`);
+  } else if (Array.isArray(allowed) && allowed.length > 0) {
+    await pool.query(
+      `UPDATE system_notifications SET is_read = true WHERE is_read = false AND type = ANY($1::text[])`,
+      [allowed]
+    );
+  }
   return { success: true };
 }
 
@@ -328,4 +413,7 @@ module.exports = {
   markNotificationRead,
   markAllNotificationsRead,
   getNotificationSettings,
+  ROLE_ALLOWED_NOTIF_TYPES,
+  getAllowedNotificationTypesForRole,
+  canRoleReceiveNotification,
 };

@@ -11,6 +11,7 @@
 const express = require('express');
 const router  = express.Router();
 const { protect, requireRole } = require('../middleware/authMiddleware');
+const { STAFF_ROLES } = require('../config/roles');
 const {
   getRecentNotifications,
   markNotificationRead,
@@ -18,12 +19,12 @@ const {
   notifyAdmin,
 } = require('../services/notificationService');
 
-router.use(protect);
+router.use(protect, requireRole(...STAFF_ROLES));
 
 router.get('/', async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 30, 100);
-    const data = await getRecentNotifications(limit);
+    const data = await getRecentNotifications(limit, req.user?.role);
     res.json(data);
   } catch (err) {
     next(err);
@@ -32,7 +33,7 @@ router.get('/', async (req, res, next) => {
 
 router.patch('/:id/read', async (req, res, next) => {
   try {
-    await markNotificationRead(req.params.id);
+    await markNotificationRead(req.params.id, req.user?.role);
     res.json({ success: true, message: 'Notification marked as read' });
   } catch (err) {
     next(err);
@@ -41,7 +42,7 @@ router.patch('/:id/read', async (req, res, next) => {
 
 router.post('/mark-all-read', async (req, res, next) => {
   try {
-    await markAllNotificationsRead();
+    await markAllNotificationsRead(req.user?.role);
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (err) {
     next(err);

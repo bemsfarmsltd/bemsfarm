@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { ROLE_META } from '../../lib/roles'
+import { ROLE_META, SETTINGS_ROLES, STAFF_ROLES, canRoleReceiveNotification } from '../../lib/roles'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useRealtime, useRealtimeEvent } from '../../context/RealtimeContext'
@@ -19,6 +19,7 @@ const NOTIF_ICONS = {
   low_stock:         { icon: 'ri-alert-line', cls: 'bg-danger-subtle text-danger' },
   batch_expiry:      { icon: 'ri-time-line', cls: 'bg-warning-subtle text-warning' },
   refund_request:    { icon: 'ri-refund-2-line', cls: 'bg-danger-subtle text-danger' },
+  mobile_app_action: { icon: 'ri-smartphone-line', cls: 'bg-info-subtle text-info' },
   system_error:      { icon: 'ri-error-warning-line', cls: 'bg-danger-subtle text-danger' },
   security_event:    { icon: 'ri-shield-keyhole-line', cls: 'bg-dark-subtle text-dark' },
 }
@@ -49,14 +50,20 @@ export default function Topbar({ onToggleSidebar }) {
 
   const { connected, soundEnabled, toggleSound } = useRealtime()
 
-  // Fetch live notifications
+  // Fetch live notifications (strictly filtered to current user's authorized role types)
   const fetchNotifs = useCallback(async () => {
     try {
       const res = await api.get('/admin/notifications', { params: { limit: 15 } })
-      setNotifications(res.data.notifications || [])
-      setUnreadCount(res.data.unread_count || 0)
+      const rawList = res.data.notifications || []
+      const filtered = rawList.filter((n) => canRoleReceiveNotification(user?.role, n.type))
+      setNotifications(filtered)
+      setUnreadCount(
+        rawList.length === filtered.length
+          ? (res.data.unread_count ?? filtered.filter((n) => !n.is_read).length)
+          : filtered.filter((n) => !n.is_read).length
+      )
     } catch (_) {}
-  }, [])
+  }, [user?.role])
 
   // Auto-refetch immediately on any incoming realtime notification or focus
   useRealtimeEvent('notification:new', fetchNotifs)
@@ -179,6 +186,10 @@ export default function Topbar({ onToggleSidebar }) {
 
   const roleMeta = user?.role ? ROLE_META[user.role] : null
   const roleLabel = roleMeta?.label || 'Administrator'
+  const canManageSettings = SETTINGS_ROLES.includes(user?.role)
+  const canManageStaff = STAFF_ROLES.includes(user?.role)
+  const canViewGodEye = ['superadmin', 'admin'].includes(user?.role)
+  const isAppDeveloper = user?.role === 'app_developer'
 
   return (
     <header className="main-topbar" id="main-topbar">
@@ -361,16 +372,18 @@ export default function Topbar({ onToggleSidebar }) {
           <span>{connected ? 'Live Sync' : 'Connecting'}</span>
         </div>
 
-        {/* Audio Alerts Toggle */}
-        <button
-          type="button"
-          className="btn topbar-icon-btn d-none d-sm-flex"
-          title={soundEnabled ? "Mute Real-time Order Audio Chimes" : "Unmute Real-time Order Audio Chimes"}
-          onClick={toggleSound}
-          style={{ color: soundEnabled ? '#15803D' : '#94A3B8' }}
-        >
-          <i className={soundEnabled ? "ri-volume-up-line fs-16" : "ri-volume-mute-line fs-16"}></i>
-        </button>
+        {/* Audio Alerts Toggle (Hidden for App Developers) */}
+        {!isAppDeveloper && (
+          <button
+            type="button"
+            className="btn topbar-icon-btn d-none d-sm-flex"
+            title={soundEnabled ? "Mute Real-time Order Audio Chimes" : "Unmute Real-time Order Audio Chimes"}
+            onClick={toggleSound}
+            style={{ color: soundEnabled ? '#15803D' : '#94A3B8' }}
+          >
+            <i className={soundEnabled ? "ri-volume-up-line fs-16" : "ri-volume-mute-line fs-16"}></i>
+          </button>
+        )}
 
         {/* Fullscreen Toggle */}
         <button
@@ -464,14 +477,20 @@ export default function Topbar({ onToggleSidebar }) {
               )}
             </div>
 
-            <div className="p-2 border-top d-flex align-items-center justify-content-between px-3">
-              <Link to="/settings/notifications" className="text-decoration-none fw-semibold text-muted fs-xxs">
-                <i className="ri-settings-3-line me-1"></i>Preferences
-              </Link>
-              <Link to="/god-eye" className="text-decoration-none fw-bold text-success fs-xs">
-                God Eye Logs →
-              </Link>
-            </div>
+            {(canManageSettings || canViewGodEye) && (
+              <div className="p-2 border-top d-flex align-items-center justify-content-between px-3">
+                {canManageSettings && (
+                  <Link to="/settings/notifications" className="text-decoration-none fw-semibold text-muted fs-xxs">
+                    <i className="ri-settings-3-line me-1"></i>Preferences
+                  </Link>
+                )}
+                {canViewGodEye && (
+                  <Link to="/god-eye" className="text-decoration-none fw-bold text-success fs-xs ms-auto">
+                    God Eye Logs →
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -516,12 +535,21 @@ export default function Topbar({ onToggleSidebar }) {
               <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/profile">
                 <i className="ri-user-line me-2 text-muted"></i>My Profile
               </Link>
-              <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/staff">
-                <i className="ri-shield-user-line me-2 text-muted"></i>Staff Accounts
-              </Link>
-              <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/general">
-                <i className="ri-settings-3-line me-2 text-muted"></i>Settings
-              </Link>
+              {isAppDeveloper && (
+                <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/mobile-apps">
+                  <i className="ri-smartphone-line me-2 text-muted"></i>Mobile Apps Console
+                </Link>
+              )}
+              {canManageStaff && (
+                <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/staff">
+                  <i className="ri-shield-user-line me-2 text-muted"></i>Staff Accounts
+                </Link>
+              )}
+              {canManageSettings && (
+                <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/general">
+                  <i className="ri-settings-3-line me-2 text-muted"></i>Settings
+                </Link>
+              )}
               <div className="dropdown-divider my-1"></div>
               <button
                 type="button"

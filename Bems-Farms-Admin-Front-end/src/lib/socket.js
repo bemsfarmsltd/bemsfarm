@@ -16,19 +16,29 @@ export function getSocketHost() {
   return 'https://api.bemsfarms.com'
 }
 
-export function getSocket() {
-  if (socket) return socket
-
-  const host = getSocketHost()
-  const token = localStorage.getItem('admin_token')
-  let role = 'admin'
+function getCurrentUserMeta() {
+  const token = localStorage.getItem('admin_token') || ''
+  let role = 'guest'
   try {
     const userStr = localStorage.getItem('admin_user')
     if (userStr) {
       const u = JSON.parse(userStr)
-      if (u.role) role = u.role
+      if (u.role) role = String(u.role).toLowerCase().trim()
     }
   } catch (_) {}
+  return { token, role }
+}
+
+export function getSocket() {
+  const { token, role } = getCurrentUserMeta()
+  if (socket) {
+    if ((socket.auth?.token || '') !== token) {
+      refreshSocketAuth()
+    }
+    return socket
+  }
+
+  const host = getSocketHost()
 
   socket = io(host, {
     transports: ['websocket', 'polling'],
@@ -40,22 +50,39 @@ export function getSocket() {
     timeout: 20000,
     query: {
       role,
-      token: token || '',
+      token,
     },
     auth: {
-      token: token || '',
+      token,
     },
   })
 
   socket.on('connect', () => {
-    // Join standard admin room
-    socket.emit('join_room', 'admin_room')
+    const { role: currentRole } = getCurrentUserMeta()
+    socket.emit('join_room', `role_${currentRole}`)
+    if (['superadmin', 'admin', 'manager'].includes(currentRole)) {
+      socket.emit('join_room', 'admin_room')
+    }
   })
 
   socket.on('connect_error', (err) => {
     console.warn('[Socket.io] Realtime connection fallback to polling:', err.message)
   })
 
+  return socket
+}
+
+export function refreshSocketAuth() {
+  if (!socket) return null
+  const { token, role } = getCurrentUserMeta()
+  socket.auth = { token }
+  if (socket.io?.opts) {
+    socket.io.opts.query = { role, token }
+  }
+  if (socket.connected) {
+    socket.disconnect()
+  }
+  socket.connect()
   return socket
 }
 

@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { getSocket } from '../lib/socket'
+import { useAuth } from './AuthContext'
+import { canRoleReceiveSocketEvent } from '../lib/roles'
 
 const RealtimeContext = createContext(null)
 
@@ -19,6 +21,7 @@ const NOTIF_META = {
   low_stock:         { label: 'Low Stock Alert',emoji: '📦', color: '#ea580c', bg: '#ffedd5' },
   batch_expiry:      { label: 'Expiry Risk',    emoji: '⏳', color: '#dc2626', bg: '#fee2e2' },
   refund_request:    { label: 'Refund Request', emoji: '🔄', color: '#dc2626', bg: '#fee2e2' },
+  mobile_app_action: { label: 'Mobile App Release', emoji: '📱', color: '#0284c7', bg: '#e0f2fe' },
   system_error:      { label: 'System Notice',  emoji: '❌', color: '#dc2626', bg: '#fee2e2' },
   security_event:    { label: 'Emergency SOS',  emoji: '🚨', color: '#dc2626', bg: '#fee2e2' },
   emergency:         { label: 'Emergency SOS',  emoji: '🚨', color: '#dc2626', bg: '#fee2e2' },
@@ -237,6 +240,7 @@ function showNotificationPopup(notif, { navigate, soundEnabled, playChime }) {
 
 export function RealtimeProvider({ children }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [connected, setConnected] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem('bems_admin_sound_enabled') !== 'false'
@@ -293,6 +297,7 @@ export function RealtimeProvider({ children }) {
 
   useEffect(() => {
     const socket = getSocket()
+    const currentRole = user?.role
 
     const onConnect = () => setConnected(true)
     const onDisconnect = () => setConnected(false)
@@ -305,12 +310,14 @@ export function RealtimeProvider({ children }) {
 
     // 1. All Server Notifications (Signups, POS, Stock Alerts, Chats, etc.)
     const handleNotificationNew = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'notification:new', data)) return
       notifySubscribers('notification:new', data)
       showNotificationPopup(data, { navigate, soundEnabled, playChime: playWebAudioChime })
     }
 
     // 2. New Order Placed
     const handleOrderCreated = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'order:created', data)) return
       notifySubscribers('order:created', data)
       const orderRef = data.order_ref || data.order_id || 'New'
       const totalStr = data.total ? `₦${Number(data.total).toLocaleString()}` : ''
@@ -330,6 +337,7 @@ export function RealtimeProvider({ children }) {
 
     // 3. Order Status / Delivery Changes
     const handleOrderUpdated = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'order:updated', data)) return
       notifySubscribers('order:updated', data)
       if (data.status) {
         showNotificationPopup(
@@ -347,6 +355,7 @@ export function RealtimeProvider({ children }) {
 
     // 4. Delivery Status Updated
     const handleDeliveryUpdated = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'delivery:updated', data)) return
       notifySubscribers('delivery:updated', data)
       if (data.status) {
         showNotificationPopup(
@@ -364,15 +373,18 @@ export function RealtimeProvider({ children }) {
 
     // 5. Driver Telemetry & GPS
     const handleDriverTelemetry = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'driver:telemetry', data)) return
       notifySubscribers('driver:telemetry', data)
     }
 
     const handleDriverLocation = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'driver:location', data)) return
       notifySubscribers('driver:location', data)
     }
 
     // 6. Stock Level Changes
     const handleStockUpdated = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'stock:updated', data)) return
       notifySubscribers('stock:updated', data)
       showNotificationPopup(
         {
@@ -390,6 +402,7 @@ export function RealtimeProvider({ children }) {
 
     // 7. Dispatch Alert (e.g. Courier Needed)
     const handleDispatchAlert = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'dispatch:alert', data)) return
       notifySubscribers('dispatch:alert', data)
       showNotificationPopup(
         {
@@ -406,6 +419,7 @@ export function RealtimeProvider({ children }) {
 
     // 8. Emergency SOS Alert
     const handleEmergencySos = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'emergency:sos', data)) return
       notifySubscribers('emergency:sos', data)
       showNotificationPopup(
         {
@@ -422,11 +436,13 @@ export function RealtimeProvider({ children }) {
 
     // 9. Dashboard Metric Updates
     const handleDashboardUpdate = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'dashboard:update', data)) return
       notifySubscribers('dashboard:update', data)
     }
 
     // 10. Customer Support Chat Message
     const handleSupportMessage = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'support:message', data)) return
       notifySubscribers('support:message', data)
       showNotificationPopup(
         {
@@ -442,6 +458,7 @@ export function RealtimeProvider({ children }) {
 
     // 11. Courier / Driver Dispatch Message
     const handleDriverSupportMessage = (data) => {
+      if (!canRoleReceiveSocketEvent(currentRole, 'driver:support_message', data)) return
       notifySubscribers('driver:support_message', data)
       const orderRef = data.order_ref || data.order_id || data.order_context?.order_ref || null
       showNotificationPopup(
@@ -499,7 +516,7 @@ export function RealtimeProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('focus', onVisibilityChange)
     }
-  }, [soundEnabled, navigate, notifySubscribers])
+  }, [soundEnabled, navigate, notifySubscribers, user?.role])
 
   const value = {
     connected,
