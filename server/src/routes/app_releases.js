@@ -128,6 +128,14 @@ const upload = multer({
   },
 });
 
+const CHUNK_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const UPLOAD_ID_PATTERN = /^Bems_(customer|driver)_\d+$/;
+
+const chunkUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB max per chunk
+});
+
 // Helper to copy file to persistent storage, public_html/downloads, and client/dist/downloads
 function syncApkCopies(sourcePath, standardName) {
   const rootDir = path.resolve(__dirname, "../../..");
@@ -622,6 +630,185 @@ router.delete(
   }
 );
 
+/**
+ * Persist APK release metadata, sync file copies, update version config, audit log & notify admins.
+ */
+async function finalizeApkRelease(
+  req,
+  res,
+  {
+    uploadedPath,
+    storedFilename,
+    fileSizeBytes,
+    originalname,
+    appType,
+    minAndroid = "Android 8.0+",
+    releaseNotes = "",
+    versionNameInput,
+    versionCodeInput,
+  }
+) {
+  await initSchema();
+
+  if (!appType || (appType !== "customer" && appType !== "driver")) {
+    return res.status(400).json({ error: "appType must be either 'customer' or 'driver'" });
+  }
+
+  let detectedVersion = null;
+  if (originalname) {
+    const fnMatch = String(originalname).match(/v?(\d+\.\d+(\.\d+)?)/i);
+    if (fnMatch) detectedVersion = fnMatch[1];
+  }
+
+  const versionName = (versionNameInput && String(versionNameInput).trim()) || detectedVersion || "1.0.1";
+  const versionCode = parseInt(versionCodeInput, 10) || Math.floor(Date.now() / 1000);
+
+  const isCustomer = appType === "customer";
+  const standardFileName = isCustomer ? "BemsCustomer.apk" : "BemsDriver.apk";
+  const appName = isCustomer ? "BemsFarms Customer App" : "BemsFarms Driver App";
+  const packageName = isCustomer ? "com.bemsfarms.customer" : "com.bemsfarms.driver";
+
+  const fileSize = formatBytes(fileSizeBytes);
+
+  // Copy uploaded file to the standard BemsCustomer.apk / BemsDriver.apk locations
+  syncApkCopies(uploadedPath, standardFileName);
+
+  const downloadUrl = `https://api.bemsfarms.com/api/app-releases/download/${appType}`;
+
+  // Mark previous releases of this app type as inactive
+  await pool.query(
+    "UPDATE app_releases SET is_active = false, updated_at = NOW() WHERE app_type = $1",
+    [appType]
+  );
+
+  // Insert new active release (15 columns : 15 values)
+  const insertResult = await pool.query(
+    `INSERT INTO app_releases
+      (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by, uploaded_by_email)
+     VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, $14)
+     RETURNING *`,
+    [
+      appType,
+      appName,
+      packageName,
+      versionName.trim(),
+      parseInt(versionCode, 10),
+      String(minAndroid || "Android 8.0+").trim(),
+      fileSize,
+      fileSizeBytes,
+      standardFileName,
+      storedFilename,
+      downloadUrl,
+      String(releaseNotes || "").trim(),
+      req.user?.id || null,
+      req.user?.email || "admin@bemsfarms.com",
+    ]
+  );
+
+  const savedRelease = insertResult.rows[0];
+
+  // Keep app_version.json in sync with latest deployed version
+  try {
+    const currentCfg = getAppVersionConfig();
+    const typeKey = appType === "driver" ? "driver" : "customer";
+    if (currentCfg && currentCfg[typeKey]) {
+      if (versionName && versionName !== "latest" && /^\d+(\.\d+)*$/.test(versionName.trim())) {
+        currentCfg[typeKey].latest_version = versionName.trim();
+      }
+      if (releaseNotes && String(releaseNotes).trim()) {
+        currentCfg[typeKey].release_notes = String(releaseNotes).trim();
+      }
+      updateAppVersionConfig(currentCfg);
+    }
+  } catch (syncErr) {
+    console.warn("[app_releases] Notice: could not sync app_version config:", syncErr.message);
+  }
+
+  // 1. Record in God Eye System Log (system_audit_events)
+  const clientIp = getClientIp(req);
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  const performerName = req.user?.name || req.user?.first_name || "Staff Member";
+  const performerEmail = req.user?.email || "Unknown Email";
+  const performerRole = req.user?.role || "staff";
+
+  recordAudit({
+    source: "admin",
+    action: "MOBILE_APP_UPLOAD",
+    category: "system",
+    severity: "info",
+    outcome: "success",
+    actor_id: req.user?.id || null,
+    actor_name: `${performerName} (${performerEmail})`,
+    actor_role: performerRole,
+    ip_address: clientIp,
+    user_agent: userAgent,
+    resource: "/settings/mobile-apps",
+    entity_type: "app_releases",
+    entity_id: String(savedRelease.id),
+    new_value: {
+      app_type: appType,
+      app_name: appName,
+      version_name: versionName,
+      version_code: versionCode,
+      file_size: fileSize,
+      file_name: standardFileName,
+      stored_filename: storedFilename,
+    },
+    details: {
+      event: "Mobile APK Build Published",
+      app_type: appType,
+      app_name: appName,
+      package_name: packageName,
+      version_name: versionName,
+      version_code: versionCode,
+      file_size: fileSize,
+      min_android: minAndroid,
+      release_notes: releaseNotes,
+      performed_by: `${performerName} (${performerEmail})`,
+      role: performerRole,
+      ip_address: clientIp,
+      user_agent: userAgent,
+      occurred_at: new Date().toISOString(),
+    },
+  }).catch((err) => console.warn("[app_releases] Audit log error:", err.message));
+
+  // 2. Dispatch real-time system notification and email alert to Administrators
+  notifyAdmin({
+    type: "mobile_app_action",
+    title: `📱 New Mobile APK Uploaded: ${appName} (v${versionName})`,
+    message: `${performerName} (${performerEmail}, role: ${performerRole}) successfully uploaded and published a new build for ${appName} (version ${versionName}, build code ${versionCode}, ${fileSize}).`,
+    link: "/settings/mobile-apps",
+    actor: {
+      id: req.user?.id,
+      name: performerName,
+      email: performerEmail,
+      role: performerRole,
+    },
+    data: {
+      action: "New Mobile APK Uploaded & Published",
+      app_name: appName,
+      app_type: appType,
+      version_name: versionName,
+      version_code: versionCode,
+      file_size: fileSize,
+      minimum_android: minAndroid,
+      release_notes: releaseNotes || "N/A",
+      performed_by: `${performerName} (${performerEmail})`,
+      user_role: performerRole,
+      date_and_time: `${new Date().toUTCString()} (Local: ${new Date().toLocaleString("en-US", { timeZone: "Africa/Lagos" })})`,
+      ip_address: clientIp,
+      user_agent: userAgent,
+    },
+  }).catch((err) => console.warn("[app_releases] Notification dispatch error:", err.message));
+
+  return res.status(201).json({
+    success: true,
+    message: `Successfully published ${appName} (${versionName})! Available immediately for download on the landing page.`,
+    release: savedRelease,
+  });
+}
+
 // POST /api/admin/app-releases/upload
 // Handles uploading a new build for Customer App or Driver App
 router.post(
@@ -639,7 +826,6 @@ router.post(
     });
   },
   async (req, res) => {
-    await initSchema();
     try {
       if (!req.file) {
         return res.status(400).json({ error: "Please select an APK file to upload" });
@@ -649,172 +835,173 @@ router.post(
         appType,
         minAndroid = "Android 8.0+",
         releaseNotes = "",
+        versionName,
+        versionCode,
       } = req.body;
 
-      let detectedVersion = null;
-      if (req.file.originalname) {
-        const fnMatch = req.file.originalname.match(/v?(\d+\.\d+(\.\d+)?)/i);
-        if (fnMatch) detectedVersion = fnMatch[1];
-      }
-
-      const versionName = (req.body.versionName && req.body.versionName.trim()) || detectedVersion || "1.0.1";
-      const versionCode = parseInt(req.body.versionCode, 10) || Math.floor(Date.now() / 1000);
-
-      if (!appType || (appType !== "customer" && appType !== "driver")) {
-        return res.status(400).json({ error: "appType must be either 'customer' or 'driver'" });
-      }
-
-      const isCustomer = appType === "customer";
-      const standardFileName = isCustomer ? "BemsCustomer.apk" : "BemsDriver.apk";
-      const appName = isCustomer ? "BemsFarms Customer App" : "BemsFarms Driver App";
-      const packageName = isCustomer ? "com.bemsfarms.customer" : "com.bemsfarms.driver";
-
-      const uploadedPath = req.file.path;
-      const storedFilename = req.file.filename;
-      const fileSizeBytes = req.file.size;
-      const fileSize = formatBytes(fileSizeBytes);
-
-      // Copy uploaded file to the standard BemsCustomer.apk / BemsDriver.apk locations
-      syncApkCopies(uploadedPath, standardFileName);
-
-      const downloadUrl = `https://api.bemsfarms.com/api/app-releases/download/${appType}`;
-
-      // Mark previous releases of this app type as inactive
-      await pool.query(
-        "UPDATE app_releases SET is_active = false, updated_at = NOW() WHERE app_type = $1",
-        [appType]
-      );
-
-      // Insert new active release (15 columns : 15 values)
-      const insertResult = await pool.query(
-        `INSERT INTO app_releases
-          (app_type, app_name, package_name, version_name, version_code, min_android, file_size, file_size_bytes, file_name, stored_filename, download_url, release_notes, is_active, uploaded_by, uploaded_by_email)
-         VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13, $14)
-         RETURNING *`,
-        [
-          appType,
-          appName,
-          packageName,
-          versionName.trim(),
-          parseInt(versionCode, 10),
-          minAndroid.trim(),
-          fileSize,
-          fileSizeBytes,
-          standardFileName,
-          storedFilename,
-          downloadUrl,
-          releaseNotes.trim(),
-          req.user?.id || null,
-          req.user?.email || "admin@bemsfarms.com",
-        ]
-      );
-
-      const savedRelease = insertResult.rows[0];
-
-      // Keep app_version.json in sync with latest deployed version
-      try {
-        const { getAppVersionConfig, updateAppVersionConfig } = require("../config/appVersion");
-        const currentCfg = getAppVersionConfig();
-        const typeKey = appType === "driver" ? "driver" : "customer";
-        if (currentCfg && currentCfg[typeKey]) {
-          if (versionName && versionName !== "latest" && /^\d+(\.\d+)*$/.test(versionName.trim())) {
-            currentCfg[typeKey].latest_version = versionName.trim();
-          }
-          if (releaseNotes && releaseNotes.trim()) {
-            currentCfg[typeKey].release_notes = releaseNotes.trim();
-          }
-          updateAppVersionConfig(currentCfg);
-        }
-      } catch (syncErr) {
-        console.warn("[app_releases] Notice: could not sync app_version config:", syncErr.message);
-      }
-
-      // 1. Record in God Eye System Log (system_audit_events)
-      const clientIp = getClientIp(req);
-      const userAgent = req.headers["user-agent"] || "Unknown";
-      const performerName = req.user?.name || req.user?.first_name || "Staff Member";
-      const performerEmail = req.user?.email || "Unknown Email";
-      const performerRole = req.user?.role || "staff";
-
-      recordAudit({
-        source: "admin",
-        action: "MOBILE_APP_UPLOAD",
-        category: "system",
-        severity: "info",
-        outcome: "success",
-        actor_id: req.user?.id || null,
-        actor_name: `${performerName} (${performerEmail})`,
-        actor_role: performerRole,
-        ip_address: clientIp,
-        user_agent: userAgent,
-        resource: "/settings/mobile-apps",
-        entity_type: "app_releases",
-        entity_id: String(savedRelease.id),
-        new_value: {
-          app_type: appType,
-          app_name: appName,
-          version_name: versionName,
-          version_code: versionCode,
-          file_size: fileSize,
-          file_name: standardFileName,
-          stored_filename: storedFilename,
-        },
-        details: {
-          event: "Mobile APK Build Published",
-          app_type: appType,
-          app_name: appName,
-          package_name: packageName,
-          version_name: versionName,
-          version_code: versionCode,
-          file_size: fileSize,
-          min_android: minAndroid,
-          release_notes: releaseNotes,
-          performed_by: `${performerName} (${performerEmail})`,
-          role: performerRole,
-          ip_address: clientIp,
-          user_agent: userAgent,
-          occurred_at: new Date().toISOString(),
-        },
-      }).catch((err) => console.warn("[app_releases] Audit log error:", err.message));
-
-      // 2. Dispatch real-time system notification and email alert to Administrators
-      notifyAdmin({
-        type: "mobile_app_action",
-        title: `📱 New Mobile APK Uploaded: ${appName} (v${versionName})`,
-        message: `${performerName} (${performerEmail}, role: ${performerRole}) successfully uploaded and published a new build for ${appName} (version ${versionName}, build code ${versionCode}, ${fileSize}).`,
-        link: "/settings/mobile-apps",
-        actor: {
-          id: req.user?.id,
-          name: performerName,
-          email: performerEmail,
-          role: performerRole,
-        },
-        data: {
-          action: "New Mobile APK Uploaded & Published",
-          app_name: appName,
-          app_type: appType,
-          version_name: versionName,
-          version_code: versionCode,
-          file_size: fileSize,
-          minimum_android: minAndroid,
-          release_notes: releaseNotes || "N/A",
-          performed_by: `${performerName} (${performerEmail})`,
-          user_role: performerRole,
-          date_and_time: `${new Date().toUTCString()} (Local: ${new Date().toLocaleString("en-US", { timeZone: "Africa/Lagos" })})`,
-          ip_address: clientIp,
-          user_agent: userAgent,
-        },
-      }).catch((err) => console.warn("[app_releases] Notification dispatch error:", err.message));
-
-      res.status(201).json({
-        success: true,
-        message: `Successfully published ${appName} (${versionName})! Available immediately for download on the landing page.`,
-        release: savedRelease,
+      await finalizeApkRelease(req, res, {
+        uploadedPath: req.file.path,
+        storedFilename: req.file.filename,
+        fileSizeBytes: req.file.size,
+        originalname: req.file.originalname,
+        appType,
+        minAndroid,
+        releaseNotes,
+        versionNameInput: versionName,
+        versionCodeInput: versionCode,
       });
     } catch (err) {
       console.error("Error processing app release upload:", err);
       res.status(500).json({ error: "Failed to publish app release: " + err.message });
+    }
+  }
+);
+
+// POST /api/admin/app-releases/upload/init
+// Initializes a resumable 5 MB chunked upload session for large APKs
+router.post(
+  "/upload/init",
+  protect,
+  requireRole("superadmin", "admin", "manager", "app_developer"),
+  async (req, res) => {
+    try {
+      const { appType, fileName } = req.body || {};
+      if (!appType || (appType !== "customer" && appType !== "driver")) {
+        return res.status(400).json({ error: "appType must be either 'customer' or 'driver'" });
+      }
+      if (!fileName || !String(fileName).toLowerCase().endsWith(".apk")) {
+        return res.status(400).json({ error: "Only Android application packages (.apk) are accepted" });
+      }
+
+      const uploadId = `Bems_${appType}_${Date.now()}`;
+      const partPath = path.join(getStorageDir(), `${uploadId}.part`);
+      fs.writeFileSync(partPath, Buffer.alloc(0));
+
+      res.json({
+        success: true,
+        uploadId,
+        chunkSize: CHUNK_SIZE_BYTES,
+      });
+    } catch (err) {
+      console.error("Error initializing chunked APK upload:", err);
+      res.status(500).json({ error: "Failed to initialize upload session: " + err.message });
+    }
+  }
+);
+
+// POST /api/admin/app-releases/upload/chunk
+// Receives a single chunk and writes idempotently at its byte offset
+router.post(
+  "/upload/chunk",
+  protect,
+  requireRole("superadmin", "admin", "manager", "app_developer"),
+  (req, res, next) => {
+    chunkUpload.single("chunk")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `Chunk upload error: ${err.message}` });
+      } else if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const { uploadId } = req.body || {};
+      if (!uploadId || !UPLOAD_ID_PATTERN.test(uploadId)) {
+        return res.status(400).json({ error: "Invalid uploadId" });
+      }
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ error: "Missing chunk binary data" });
+      }
+
+      const partPath = path.join(getStorageDir(), `${uploadId}.part`);
+      if (!fs.existsSync(partPath)) {
+        return res.status(404).json({ error: "Upload session not found or expired" });
+      }
+
+      const parsedOffset = parseInt(req.body.offset, 10);
+      const parsedIndex = parseInt(req.body.chunkIndex, 10);
+      const offset =
+        Number.isInteger(parsedOffset) && parsedOffset >= 0
+          ? parsedOffset
+          : Number.isInteger(parsedIndex) && parsedIndex >= 0
+            ? parsedIndex * CHUNK_SIZE_BYTES
+            : NaN;
+
+      if (!Number.isInteger(offset) || offset < 0) {
+        return res.status(400).json({ error: "Invalid chunk offset" });
+      }
+
+      const fd = fs.openSync(partPath, "r+");
+      try {
+        fs.writeSync(fd, req.file.buffer, 0, req.file.buffer.length, offset);
+      } finally {
+        fs.closeSync(fd);
+      }
+
+      res.json({
+        success: true,
+        receivedBytes: req.file.buffer.length,
+      });
+    } catch (err) {
+      console.error("Error writing APK chunk:", err);
+      res.status(500).json({ error: "Failed to save upload chunk: " + err.message });
+    }
+  }
+);
+
+// POST /api/admin/app-releases/upload/complete
+// Finalizes a chunked APK upload, renames .part to .apk, and publishes the release
+router.post(
+  "/upload/complete",
+  protect,
+  requireRole("superadmin", "admin", "manager", "app_developer"),
+  async (req, res) => {
+    try {
+      const {
+        uploadId,
+        appType,
+        fileName,
+        minAndroid = "Android 8.0+",
+        releaseNotes = "",
+        versionName,
+        versionCode,
+      } = req.body || {};
+
+      if (!uploadId || !UPLOAD_ID_PATTERN.test(uploadId)) {
+        return res.status(400).json({ error: "Invalid uploadId" });
+      }
+
+      const storageDir = getStorageDir();
+      const partPath = path.join(storageDir, `${uploadId}.part`);
+      if (!fs.existsSync(partPath)) {
+        return res.status(404).json({ error: "Upload session file not found" });
+      }
+
+      const stat = fs.statSync(partPath);
+      if (!stat.size || stat.size <= 0) {
+        return res.status(400).json({ error: "Uploaded APK file is empty" });
+      }
+
+      const storedFilename = `${uploadId}.apk`;
+      const finalPath = path.join(storageDir, storedFilename);
+      fs.renameSync(partPath, finalPath);
+
+      await finalizeApkRelease(req, res, {
+        uploadedPath: finalPath,
+        storedFilename,
+        fileSizeBytes: stat.size,
+        originalname: fileName || storedFilename,
+        appType,
+        minAndroid,
+        releaseNotes,
+        versionNameInput: versionName,
+        versionCodeInput: versionCode,
+      });
+    } catch (err) {
+      console.error("Error finalizing chunked APK upload:", err);
+      res.status(500).json({ error: "Failed to complete chunked upload: " + err.message });
     }
   }
 );

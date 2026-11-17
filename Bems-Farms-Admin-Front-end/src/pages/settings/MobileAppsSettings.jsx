@@ -134,25 +134,79 @@ export default function MobileAppsSettings() {
       return
     }
 
-    const formData = new FormData()
-    formData.append('appType', appType)
-    formData.append('apk', selectedFile)
+    const CHUNK_SIZE = 5 * 1024 * 1024
+    const totalSize = selectedFile.size
 
     setUploading(true)
     setProgress(0)
     const toastId = toast.loading(`Uploading & deploying ${selectedFile.name}...`)
 
     try {
-      const res = await api.post('/admin/app-releases/upload', formData, {
-        timeout: 600000,
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            setProgress(percent)
-          }
-        },
+      const initRes = await api.post('/admin/app-releases/upload/init', {
+        appType,
+        fileName: selectedFile.name,
+        fileSize: totalSize,
       })
 
+      const { uploadId, chunkSize: serverChunkSize } = initRes.data || {}
+      if (!uploadId) {
+        throw new Error('Failed to obtain upload session ID from server')
+      }
+
+      const chunkSize = Number(serverChunkSize) > 0 ? Number(serverChunkSize) : CHUNK_SIZE
+
+      for (let offset = 0, chunkIndex = 0; offset < totalSize; offset += chunkSize, chunkIndex++) {
+        const end = Math.min(offset + chunkSize, totalSize)
+        const blob = selectedFile.slice(offset, end)
+
+        let uploaded = false
+        let lastErr = null
+        for (let attempt = 0; attempt <= 3 && !uploaded; attempt++) {
+          try {
+            const chunkForm = new FormData()
+            chunkForm.append('uploadId', uploadId)
+            chunkForm.append('chunkIndex', String(chunkIndex))
+            chunkForm.append('offset', String(offset))
+            chunkForm.append('chunk', blob, selectedFile.name)
+
+            await api.post('/admin/app-releases/upload/chunk', chunkForm, {
+              timeout: 120000,
+              onUploadProgress: (pe) => {
+                const chunkTotal = pe.total || blob.size || 1
+                const loadedInChunk = Math.min(blob.size, Math.round((pe.loaded * blob.size) / chunkTotal))
+                const overallPercent = Math.min(99, Math.round(((offset + loadedInChunk) * 100) / totalSize))
+                setProgress(overallPercent)
+              },
+            })
+            uploaded = true
+          } catch (chunkErr) {
+            lastErr = chunkErr
+            const status = chunkErr.response?.status
+            if (status && status >= 400 && status < 500) {
+              throw chunkErr
+            }
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 1500))
+            }
+          }
+        }
+
+        if (!uploaded) {
+          throw lastErr || new Error(`Failed to upload chunk ${chunkIndex + 1}`)
+        }
+      }
+
+      const res = await api.post(
+        '/admin/app-releases/upload/complete',
+        {
+          uploadId,
+          appType,
+          fileName: selectedFile.name,
+        },
+        { timeout: 120000 }
+      )
+
+      setProgress(100)
       toast.success(res.data?.message || `${isCustomer ? 'Customer' : 'Driver'} APK deployed successfully!`, { id: toastId })
       setFile(null)
       setProgress(0)
