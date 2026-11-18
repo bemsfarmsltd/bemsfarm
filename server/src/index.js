@@ -81,6 +81,24 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 const path = require("path");
+const productStorageDir = fs.existsSync("/home/u649760923")
+  ? "/home/u649760923/storage/products"
+  : path.join(__dirname, "../uploads/products");
+if (!fs.existsSync(productStorageDir)) {
+  try {
+    fs.mkdirSync(productStorageDir, { recursive: true });
+  } catch (_) {}
+}
+const productImagesStatic = express.static(productStorageDir, {
+  maxAge: "365d",
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  },
+});
+app.use("/uploads/products", productImagesStatic);
+app.use("/api/uploads/products", productImagesStatic);
+
 const uploadsStatic = express.static(path.join(__dirname, "../uploads"), {
   setHeaders: (res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");

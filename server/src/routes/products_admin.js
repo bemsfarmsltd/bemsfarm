@@ -5,6 +5,10 @@
 // ─────────────────────────────────────────────────────────────────
 
 const express = require("express");
+const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
+const multer = require("multer");
 const router = express.Router();
 const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
@@ -13,6 +17,40 @@ const { trackActivity } = require("../utils/aiContext");
 const { notifyAdmin } = require("../services/notificationService");
 
 router.use(protect);
+
+// ── PRODUCT IMAGE UPLOAD STORAGE ────────────────────────────────
+function getProductImageDir() {
+  const dir = fs.existsSync("/home/u649760923")
+    ? "/home/u649760923/storage/products"
+    : path.resolve(__dirname, "../../uploads/products");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+const ALLOWED_IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"]);
+
+const productImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, getProductImageDir()),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      const safeExt = ALLOWED_IMAGE_EXTS.has(ext) ? ext : ".jpg";
+      const rand = crypto.randomBytes(4).toString("hex");
+      cb(null, `prod_${Date.now()}_${rand}${safeExt}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const isImageMime = String(file.mimetype || "").startsWith("image/");
+    if (isImageMime || ALLOWED_IMAGE_EXTS.has(ext)) {
+      return cb(null, true);
+    }
+    return cb(new Error("Only image files (.jpg, .jpeg, .png, .webp, .gif, .avif) are accepted"));
+  },
+});
 
 // ── SCHEMA MIGRATION ─────────────────────────────────────────────
 let packagingSchemaEnsured = false;
@@ -127,6 +165,39 @@ async function syncToCatalogue(client, product) {
     ],
   );
 }
+
+// POST /api/admin/products/upload-image
+router.post(
+  "/upload-image",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  (req, res, next) => {
+    productImageUpload.single("image")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: `Image upload error: ${err.message}` });
+      }
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  },
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "Please select or drop an image file to upload" });
+    }
+    const host = req.get("host") || "api.bemsfarms.com";
+    const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0].trim();
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const baseUrl = isLocal ? `${proto}://${host}` : `https://${host}`;
+    const url = `${baseUrl}/api/uploads/products/${req.file.filename}`;
+    res.status(201).json({
+      success: true,
+      url,
+      filename: req.file.filename,
+      size: req.file.size,
+    });
+  }
+);
 
 // ── SUBCATEGORIES CRUD ──────────────────────────────────────────
 router.get("/subcategories", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {

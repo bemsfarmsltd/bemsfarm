@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
@@ -206,6 +206,64 @@ export default function AddProduct() {
   const [importedCount, setImportedCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(false)
+  const [uploadingSlot, setUploadingSlot] = useState(null)
+  const [draggingSlot, setDraggingSlot] = useState(null)
+  const imageInputRefs = useRef({})
+
+  const handleProductImageUpload = async (file, fieldKey) => {
+    if (!file) return
+    const isImage =
+      String(file.type || '').startsWith('image/') ||
+      /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(file.name || '')
+    if (!isImage) {
+      toast.error('Please select a valid image file (JPG, PNG, WEBP, GIF, AVIF)')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be 10 MB or smaller')
+      return
+    }
+    setUploadingSlot(fieldKey)
+    const toastId = toast.loading(`Uploading ${file.name}...`)
+    try {
+      const payload = new FormData()
+      payload.append('image', file)
+      const res = await api.post('/admin/products/upload-image', payload, { timeout: 60000 })
+      if (res.data?.url) {
+        handleChange(fieldKey, res.data.url)
+        toast.success('Product image uploaded!', { id: toastId })
+      } else {
+        throw new Error('No image URL returned from server')
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed', { id: toastId })
+    } finally {
+      setUploadingSlot(null)
+      if (imageInputRefs.current[fieldKey]) {
+        imageInputRefs.current[fieldKey].value = ''
+      }
+    }
+  }
+
+  const makeDropHandlers = (fieldKey) => ({
+    onDragOver: (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (draggingSlot !== fieldKey) setDraggingSlot(fieldKey)
+    },
+    onDragLeave: (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (draggingSlot === fieldKey) setDraggingSlot(null)
+    },
+    onDrop: (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDraggingSlot(null)
+      const file = e.dataTransfer?.files?.[0]
+      if (file) handleProductImageUpload(file, fieldKey)
+    },
+  })
 
   // Dynamic lookup options from API
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
@@ -1214,61 +1272,163 @@ export default function AddProduct() {
                       <label className="form-label fw-semibold">
                         Main Product Image URL <span className="text-danger">*</span>
                       </label>
+                      <div className="input-group">
+                        <input
+                          type="url"
+                          className="form-control"
+                          placeholder="https://images.unsplash.com/... or upload below"
+                          value={formData.image_url}
+                          onChange={(e) => handleChange('image_url', e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary d-flex align-items-center gap-1"
+                          disabled={uploadingSlot === 'image_url'}
+                          onClick={() => imageInputRefs.current.image_url?.click()}>
+                          {uploadingSlot === 'image_url' ? (
+                            <span className="spinner-border spinner-border-sm" role="status" />
+                          ) : (
+                            <i className="ri-upload-2-line" />
+                          )}
+                          <span>Upload</span>
+                        </button>
+                      </div>
                       <input
-                        type="url"
-                        className="form-control"
-                        placeholder="https://images.unsplash.com/..."
-                        value={formData.image_url}
-                        onChange={(e) => handleChange('image_url', e.target.value)}
-                        required
+                        ref={(el) => { imageInputRefs.current.image_url = el }}
+                        type="file"
+                        accept="image/*"
+                        className="d-none"
+                        onChange={(e) => handleProductImageUpload(e.target.files?.[0], 'image_url')}
                       />
                     </div>
 
-                    {/* Image Live Preview */}
+                    {/* Image Live Preview & Drag-and-Drop Zone */}
                     <div className="col-12">
                       <div
-                        className="rounded border d-flex align-items-center justify-content-center overflow-hidden"
-                        style={{ height: 200, background: '#f8f9fa' }}>
-                        {formData.image_url ? (
-                          <img
-                            src={formData.image_url}
-                            alt="Main preview"
-                            className="w-100 h-100 object-fit-cover"
-                            onError={(e) => {
-                              e.target.onerror = null
-                              e.target.src = 'https://placehold.co/400x300?text=Invalid+Image+URL'
-                            }}
-                          />
+                        {...makeDropHandlers('image_url')}
+                        onClick={() => {
+                          if (!formData.image_url && uploadingSlot !== 'image_url') {
+                            imageInputRefs.current.image_url?.click()
+                          }
+                        }}
+                        className={`rounded d-flex align-items-center justify-content-center overflow-hidden position-relative ${
+                          draggingSlot === 'image_url'
+                            ? 'border border-2 border-success bg-success-subtle'
+                            : 'border'
+                        }`}
+                        style={{
+                          height: 200,
+                          background: draggingSlot === 'image_url' ? undefined : '#f8f9fa',
+                          borderStyle: !formData.image_url ? 'dashed' : 'solid',
+                          cursor: !formData.image_url ? 'pointer' : 'default',
+                          transition: 'all 0.15s ease',
+                        }}>
+                        {uploadingSlot === 'image_url' ? (
+                          <div className="text-center text-muted p-4">
+                            <div className="spinner-border text-success mb-2" role="status" />
+                            <div className="fs-13 fw-semibold">Uploading product image...</div>
+                          </div>
+                        ) : formData.image_url ? (
+                          <>
+                            <img
+                              src={formData.image_url}
+                              alt="Main preview"
+                              className="w-100 h-100 object-fit-cover"
+                              onError={(e) => {
+                                e.target.onerror = null
+                                e.target.src = 'https://placehold.co/400x300?text=Invalid+Image+URL'
+                              }}
+                            />
+                            <div
+                              className="position-absolute bottom-0 end-0 p-2 d-flex gap-1"
+                              style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.45))', width: '100%', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-light shadow-sm py-1 px-2 fs-11 fw-semibold"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  imageInputRefs.current.image_url?.click()
+                                }}>
+                                <i className="ri-upload-2-line me-1" />Replace
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger shadow-sm py-1 px-2 fs-11"
+                                title="Clear image"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleChange('image_url', '')
+                                }}>
+                                <i className="ri-delete-bin-line" />
+                              </button>
+                            </div>
+                          </>
                         ) : (
                           <div className="text-center text-muted p-4">
-                            <i className="ri-image-add-line fs-32 text-secondary mb-2 d-block"></i>
-                            <span className="fs-13">Paste an image URL above to see live preview</span>
+                            <i className="ri-upload-cloud-2-line fs-32 text-success mb-2 d-block"></i>
+                            <div className="fs-13 fw-semibold text-dark">
+                              Drag &amp; drop product image here, or click to browse
+                            </div>
+                            <span className="fs-12 text-muted">
+                              Supports JPG, PNG, WEBP up to 10 MB — or paste a URL above
+                            </span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Additional Image URL 2</label>
-                      <input
-                        type="url"
-                        className="form-control"
-                        placeholder="https://..."
-                        value={formData.image_2_url}
-                        onChange={(e) => handleChange('image_2_url', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="col-12">
-                      <label className="form-label fw-semibold">Additional Image URL 3</label>
-                      <input
-                        type="url"
-                        className="form-control"
-                        placeholder="https://..."
-                        value={formData.image_3_url}
-                        onChange={(e) => handleChange('image_3_url', e.target.value)}
-                      />
-                    </div>
+                    {[
+                      { key: 'image_2_url', label: 'Additional Image URL 2' },
+                      { key: 'image_3_url', label: 'Additional Image URL 3' },
+                    ].map(({ key, label }) => (
+                      <div
+                        key={key}
+                        className={`col-12 rounded-2 p-2 ${
+                          draggingSlot === key ? 'border border-success bg-success-subtle' : ''
+                        }`}
+                        {...makeDropHandlers(key)}>
+                        <label className="form-label fw-semibold">{label}</label>
+                        <div className="input-group">
+                          {formData[key] && (
+                            <span className="input-group-text p-1 bg-white">
+                              <img
+                                src={formData[key]}
+                                alt={label}
+                                style={{ width: 26, height: 26, objectFit: 'cover', borderRadius: 4 }}
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            </span>
+                          )}
+                          <input
+                            type="url"
+                            className="form-control"
+                            placeholder="https://... or drag & drop image"
+                            value={formData[key]}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary d-flex align-items-center gap-1"
+                            disabled={uploadingSlot === key}
+                            onClick={() => imageInputRefs.current[key]?.click()}>
+                            {uploadingSlot === key ? (
+                              <span className="spinner-border spinner-border-sm" role="status" />
+                            ) : (
+                              <i className="ri-upload-2-line" />
+                            )}
+                            <span className="d-none d-sm-inline">Upload</span>
+                          </button>
+                        </div>
+                        <input
+                          ref={(el) => { imageInputRefs.current[key] = el }}
+                          type="file"
+                          accept="image/*"
+                          className="d-none"
+                          onChange={(e) => handleProductImageUpload(e.target.files?.[0], key)}
+                        />
+                      </div>
+                    ))}
 
                     <div className="col-12">
                       <label htmlFor="productVideoUrl" className="form-label fw-semibold">Video URL (Optional)</label>
