@@ -154,6 +154,9 @@ router.put("/deliveries/:orderId/status", driverProtect, driverUploadController.
 router.patch("/deliveries/:orderId", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
 router.put("/deliveries/:orderId", driverProtect, driverUploadController.proofUploadMiddleware, driverDeliveryController.updateDeliveryStatus);
 router.post("/deliveries/:orderId/request-return", driverProtect, driverDeliveryController.requestReturnByDriver);
+router.post("/deliveries/:orderId/pos-initiate", driverProtect, driverDeliveryController.initiateDriverCodPosPayment);
+router.post("/deliveries/:orderId/pos-awaiting", driverProtect, driverDeliveryController.initiateDriverCodPosPayment);
+router.get("/deliveries/:orderId/pos-status", driverProtect, driverDeliveryController.getDriverCodPosStatus);
 router.post("/deliveries/:orderId/report-issue", driverProtect, driverIncidentController.reportIncident);
 
 // ── 3. Proof of Delivery (POD) Image Upload & Retrieval ─────────────────

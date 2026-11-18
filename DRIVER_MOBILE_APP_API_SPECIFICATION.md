@@ -739,3 +739,80 @@ For the mobile app engineer building with React Native, Flutter, or Swift/Kotlin
    - iOS: `maps://?daddr=${lat},${lng}`
 4. **Direct Call / WhatsApp Customer:** Direct dialer link `tel:${customer_phone}` or WhatsApp link `https://wa.me/234${phone}`.
 5. **Image Upload for Proof of Delivery:** Send photo URL or base64 photo via `proof_photo` in `PATCH /api/driver/deliveries/:orderId/status`.
+
+
+---
+
+## 9. COD Payment Collection via Moniepoint POS Terminal
+
+No order can be marked `delivered` without confirmed payment:
+- **Online / Wallet / Card / Transfer orders:** `orders.payment_status` must already be `'paid'`.
+- **Cash on Delivery (COD) orders:** Either confirmed via the driver's physical Moniepoint POS terminal (automatic webhook confirmation) OR explicit cash collection confirmation (`cash_collected: true` / `cod_collection_mode: "cash"`).
+
+### A. Initiate POS Payment Collection Screen
+`POST /api/driver/deliveries/:orderId/pos-initiate` (alias: `/pos-awaiting`)
+
+**Request Body:**
+```json
+{
+  "terminal_sn": "C66P008D08368495",
+  "save_terminal": true
+}
+```
+*(If `terminal_sn` is omitted, the server uses the driver's saved `pos_terminal_sn` or `MONIEPOINT_DEFAULT_TERMINAL_SN`.)*
+
+**Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "awaiting_payment": true,
+  "paid": false,
+  "order_id": "BF-MWKVHQUL",
+  "order_ref": "BF-MWKVHQUL",
+  "amount": 15500,
+  "terminal_sn": "C66P008D08368495",
+  "transaction_id": null
+}
+```
+
+### B. Poll POS Payment Status
+`GET /api/driver/deliveries/:orderId/pos-status?terminal_sn=C66P008D08368495`
+
+**Response (`200 OK`):**
+```json
+{
+  "paid": true,
+  "awaiting_payment": false,
+  "order_id": "BF-MWKVHQUL",
+  "order_ref": "BF-MWKVHQUL",
+  "amount": 15500,
+  "terminal_sn": "C66P008D08368495",
+  "transaction_id": "MP-POS-9918273",
+  "payment_method": "CARD",
+  "card_type": "VERVE",
+  "last_four": "4821"
+}
+```
+
+### C. Real-Time Socket.IO Event
+Listen on `driver:cod_payment_confirmed` (emitted to `driver_<driverId>`, `terminal_<terminalSn>`, and broadcast):
+```json
+{
+  "order_id": "BF-MWKVHQUL",
+  "order_ref": "BF-MWKVHQUL",
+  "driver_id": 6,
+  "terminal_id": "C66P008D08368495",
+  "transaction_id": "MP-POS-9918273",
+  "amount": 15500,
+  "payment_method": "CARD",
+  "card_type": "VERVE",
+  "last_four": "4821",
+  "status": "paid"
+}
+```
+
+### D. Completing Delivery (`PATCH /api/driver/deliveries/:orderId/status`)
+When `status: "delivered"`:
+- If paid via Moniepoint POS (`cod_collection_mode: "pos"` or already confirmed via webhook): succeeds once `payment_status === 'paid'`.
+- If collected in cash: send `"cash_collected": true` (or `"cod_collection_mode": "cash"`).
+- If unpaid: returns **`402 Payment Required`** with `{ "requires_payment": true }`.

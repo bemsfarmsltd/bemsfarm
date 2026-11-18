@@ -1343,6 +1343,61 @@ const updateDeliveryStatus = async (req, res, next) => {
         metadata: { delivery_id: delivery.id, arrived_at: arrivedAt }
       });
     } else if (deliveryStatus === "delivered") {
+      // Enforce real payment before any order can be marked delivered
+      const payOrdRes = await client.query(
+        "SELECT id, order_ref, total, payment_method, payment_status, cod_awaiting_terminal_sn FROM orders WHERE id = $1 FOR UPDATE",
+        [actualOrderId]
+      );
+      const payOrd = payOrdRes.rows[0];
+      if (!payOrd) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+      const isCodOrder = ["cod", "cash", "cash_on_delivery", "payondelivery"].includes(
+        String(payOrd.payment_method || "").toLowerCase()
+      );
+      if (payOrd.payment_status !== "paid") {
+        if (!isCodOrder) {
+          await client.query("ROLLBACK");
+          return res.status(402).json({
+            message: "Order cannot be completed without confirmed payment.",
+            requires_payment: true,
+            payment_status: payOrd.payment_status || "pending",
+          });
+        }
+        const collectionMode = String(req.body?.cod_collection_mode || "").toLowerCase();
+        const cashCollected =
+          req.body?.cash_collected === true ||
+          req.body?.cash_collected === "true" ||
+          collectionMode === "cash";
+
+        if (collectionMode === "pos" || (payOrd.cod_awaiting_terminal_sn && !cashCollected)) {
+          const { checkDriverCodPayment } = require("../services/moniepointPosService");
+          const posCheck = await checkDriverCodPayment(
+            actualOrderId,
+            req.body?.terminal_sn || payOrd.cod_awaiting_terminal_sn,
+            driverId
+          );
+          if (!posCheck.paid) {
+            await client.query("ROLLBACK");
+            return res.status(402).json({
+              message: "Awaiting Moniepoint POS payment confirmation before marking delivered.",
+              requires_payment: true,
+              awaiting_pos: true,
+              terminal_sn: posCheck.terminal_sn || payOrd.cod_awaiting_terminal_sn || null,
+            });
+          }
+        } else if (!cashCollected) {
+          await client.query("ROLLBACK");
+          return res.status(402).json({
+            message: "Payment required: confirm cash collected or complete payment on Moniepoint POS before marking delivered.",
+            requires_payment: true,
+            payment_method: payOrd.payment_method,
+            amount: parseFloat(payOrd.total),
+          });
+        }
+      }
+
       deliveredAt = new Date();
       orderStatus = "delivered";
       trackingStatus = "delivered";
@@ -2380,6 +2435,130 @@ const requestReturnByDriver = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/driver/deliveries/:orderId/pos-initiate
+ * Driver selects "Pay with Moniepoint POS" on a COD delivery.
+ */
+const initiateDriverCodPosPayment = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+    const { ensureDriverPosSchema, checkDriverCodPayment } = require("../services/moniepointPosService");
+    await ensureDriverPosSchema();
+
+    const delRes = await pool.query(
+      `SELECT d.id, d.order_id, d.driver_id, o.id AS actual_order_id, o.order_ref, o.total, o.payment_method, o.payment_status, dr.pos_terminal_sn
+       FROM deliveries d
+       JOIN orders o ON o.id = d.order_id
+       LEFT JOIN drivers dr ON dr.id = d.driver_id
+       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.order_ref = $2)
+       LIMIT 1`,
+      [driverId, String(orderId)]
+    );
+
+    const row = delRes.rows[0];
+    if (!row) {
+      return res.status(404).json({ message: "Assigned delivery not found" });
+    }
+
+    const isCod = ["cod", "cash", "cash_on_delivery", "payondelivery"].includes(
+      String(row.payment_method || "").toLowerCase()
+    );
+    if (!isCod) {
+      return res.status(400).json({ message: "POS collection is only applicable to Cash on Delivery (COD) orders." });
+    }
+
+    const terminalSn = String(
+      req.body?.terminal_sn ||
+      row.pos_terminal_sn ||
+      process.env.MONIEPOINT_DEFAULT_TERMINAL_SN ||
+      ""
+    ).trim();
+
+    if (!terminalSn) {
+      return res.status(400).json({ message: "No Moniepoint POS terminal serial number is assigned or provided." });
+    }
+
+    await pool.query(
+      `UPDATE orders SET cod_awaiting_terminal_sn = $1, updated_at = NOW() WHERE id = $2`,
+      [terminalSn, row.actual_order_id]
+    );
+    if (req.body?.save_terminal && req.body?.terminal_sn) {
+      await pool.query(`UPDATE drivers SET pos_terminal_sn = $1, updated_at = NOW() WHERE id = $2`, [terminalSn, driverId]);
+    }
+
+    // Check immediately in case customer already tapped card before driver hit Initiate
+    const status = await checkDriverCodPayment(row.actual_order_id, terminalSn, driverId);
+
+    res.json({
+      success: true,
+      awaiting_payment: !status.paid,
+      paid: Boolean(status.paid),
+      order_id: row.actual_order_id,
+      order_ref: row.order_ref || row.actual_order_id,
+      amount: parseFloat(row.total),
+      terminal_sn: terminalSn,
+      transaction_id: status.transaction_id || null,
+      payment_method: status.payment_method || null,
+      last_four: status.last_four || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/driver/deliveries/:orderId/pos-status
+ * Driver polls or checks whether Moniepoint POS webhook confirmed payment for this COD order.
+ */
+const getDriverCodPosStatus = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const { orderId } = req.params;
+    const { ensureDriverPosSchema, checkDriverCodPayment } = require("../services/moniepointPosService");
+    await ensureDriverPosSchema();
+
+    const delRes = await pool.query(
+      `SELECT d.order_id, o.id AS actual_order_id, o.cod_awaiting_terminal_sn, dr.pos_terminal_sn
+       FROM deliveries d
+       JOIN orders o ON o.id = d.order_id
+       LEFT JOIN drivers dr ON dr.id = d.driver_id
+       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.order_ref = $2)
+       LIMIT 1`,
+      [driverId, String(orderId)]
+    );
+
+    const row = delRes.rows[0];
+    if (!row) {
+      return res.status(404).json({ message: "Assigned delivery not found" });
+    }
+
+    const terminalSn = String(
+      req.query?.terminal_sn ||
+      row.cod_awaiting_terminal_sn ||
+      row.pos_terminal_sn ||
+      ""
+    ).trim();
+
+    const status = await checkDriverCodPayment(row.actual_order_id, terminalSn, driverId);
+    res.json({
+      paid: Boolean(status.paid),
+      awaiting_payment: !status.paid,
+      order_id: status.order_id,
+      order_ref: status.order_ref,
+      amount: status.amount,
+      terminal_sn: status.terminal_sn || terminalSn || null,
+      transaction_id: status.transaction_id || null,
+      payment_method: status.payment_method || null,
+      card_type: status.card_type || null,
+      last_four: status.last_four || null,
+      payment_time: status.payment_time || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getActiveDeliveries,
   getAvailableDeliveries,
@@ -2395,6 +2574,8 @@ module.exports = {
   confirmPickup,
   confirmDelivery,
   requestReturnByDriver,
+  initiateDriverCodPosPayment,
+  getDriverCodPosStatus,
   formatDelivery,
 };
 

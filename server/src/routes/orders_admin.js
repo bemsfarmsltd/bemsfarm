@@ -2026,6 +2026,45 @@ router.patch(
           [pickupTime, resolvedId]
         );
       } else {
+        if (nextStatus === "delivered") {
+          const payCheckRes = await client.query(
+            "SELECT payment_method, payment_status, cod_awaiting_terminal_sn FROM orders WHERE id = $1",
+            [resolvedId]
+          );
+          const payRow = payCheckRes.rows[0];
+          const isCodOrd = payRow && ["cod", "cash", "cash_on_delivery", "payondelivery"].includes(
+            String(payRow.payment_method || "").toLowerCase()
+          );
+          if (payRow && payRow.payment_status !== "paid") {
+            const cashConfirmed =
+              req.body?.cash_collected === true ||
+              req.body?.cash_collected === "true" ||
+              String(req.body?.cod_collection_mode || "").toLowerCase() === "cash";
+
+            if (!isCodOrd) {
+              await client.query("ROLLBACK");
+              return res.status(402).json({
+                message: "Order cannot be marked delivered without confirmed payment.",
+                requires_payment: true,
+              });
+            }
+            if (!cashConfirmed) {
+              const { checkDriverCodPayment } = require("../services/moniepointPosService");
+              const posRes = await checkDriverCodPayment(
+                resolvedId,
+                req.body?.terminal_sn || payRow.cod_awaiting_terminal_sn || "",
+                null
+              );
+              if (!posRes.paid) {
+                await client.query("ROLLBACK");
+                return res.status(402).json({
+                  message: "COD order cannot be completed without confirmed Moniepoint POS payment or explicit cash collection.",
+                  requires_payment: true,
+                });
+              }
+            }
+          }
+        }
         await client.query(
           `UPDATE orders 
            SET status = $1::varchar, 

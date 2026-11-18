@@ -245,9 +245,10 @@ async function recordMoniepointTransaction(payload) {
   try {
     if (norm.status === "successful") {
       await autoCompleteHeldOrderIfMatched(row, norm);
+      await matchDriverCodOrderIfMatched(row, norm);
     }
   } catch (autoErr) {
-    console.error("[Moniepoint POS] Auto-complete held order error:", autoErr.message);
+    console.error("[Moniepoint POS] Auto-complete held/driver order error:", autoErr.message);
   }
 
   return row;
@@ -471,10 +472,243 @@ async function checkPendingTerminalPayment(terminalId, amount) {
   return result.rows[0] || null;
 }
 
+let driverPosSchemaEnsured = false;
+async function ensureDriverPosSchema() {
+  if (driverPosSchemaEnsured) return;
+  try {
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS pos_terminal_sn VARCHAR(100)`);
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_awaiting_terminal_sn VARCHAR(100)`);
+    driverPosSchemaEnsured = true;
+  } catch (err) {
+    console.warn("[Moniepoint POS] ensureDriverPosSchema notice:", err.message);
+  }
+}
+
+function emitDriverCodConfirmed(driverId, orderId, orderRef, txnRow) {
+  try {
+    const io = getIO();
+    if (!io) return;
+    const payload = {
+      order_id: orderId,
+      order_ref: orderRef || orderId,
+      driver_id: driverId || null,
+      terminal_id: txnRow.terminal_id,
+      transaction_id: txnRow.transaction_id,
+      amount: parseFloat(txnRow.amount),
+      payment_method: txnRow.payment_method,
+      card_type: txnRow.card_type,
+      last_four: txnRow.last_four,
+      payment_time: txnRow.payment_time,
+      status: "paid",
+    };
+    io.emit("driver:cod_payment_confirmed", payload);
+    if (driverId) {
+      io.to(`driver_${driverId}`).emit("driver:cod_payment_confirmed", payload);
+    }
+    if (txnRow.terminal_id) {
+      io.to(`terminal_${txnRow.terminal_id}`).emit("driver:cod_payment_confirmed", payload);
+    }
+  } catch (err) {
+    console.warn("[Moniepoint POS] Driver COD socket emit notice:", err.message);
+  }
+}
+
+async function claimDriverCodPaymentWithClient(client, orderRow, txnRow, driverId = null) {
+  await client.query(
+    `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2 AND used_for_order_id IS NULL`,
+    [String(orderRow.id), txnRow.id]
+  );
+
+  await client.query(
+    `UPDATE orders
+     SET payment_status = 'paid',
+         payment_ref = COALESCE(payment_ref, $1),
+         cod_awaiting_terminal_sn = NULL,
+         updated_at = NOW()
+     WHERE id = $2`,
+    [txnRow.transaction_id, orderRow.id]
+  );
+
+  try {
+    const sysUser = await client.query(
+      "SELECT id FROM users ORDER BY (CASE WHEN role='superadmin' THEN 1 WHEN role='manager' THEN 2 WHEN role='admin' THEN 3 ELSE 4 END) LIMIT 1"
+    );
+    const adminId = sysUser.rows[0]?.id || 1;
+    await client.query(
+      `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+       VALUES ($1, 'sales', 'online_order', 'Cash on Delivery (POS)', $2, $3, 'pos', $4, 'completed', CURRENT_DATE, $5)
+       ON CONFLICT (reference) DO NOTHING`,
+      [
+        `INC-COD-${orderRow.id}`,
+        `Moniepoint POS COD payment collected by driver for Order #${orderRow.order_ref || orderRow.id} (Ref: ${txnRow.transaction_id})`,
+        parseFloat(orderRow.total || txnRow.amount),
+        String(orderRow.id),
+        adminId,
+      ]
+    );
+  } catch (incErr) {
+    console.warn("[Moniepoint POS] Driver COD income notice:", incErr.message);
+  }
+
+  emitDriverCodConfirmed(driverId, orderRow.id, orderRow.order_ref, txnRow);
+}
+
+/**
+ * Auto-match incoming Moniepoint POS webhook to an active COD delivery awaiting payment on that terminal.
+ */
+async function matchDriverCodOrderIfMatched(txnRow, norm) {
+  await ensureDriverPosSchema();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const txnCheck = await client.query(
+      "SELECT id, transaction_id, amount, terminal_id, payment_method, card_type, last_four, payment_time, used_for_order_id FROM pos_transactions WHERE id = $1 FOR UPDATE",
+      [txnRow.id]
+    );
+    const lockedTxn = txnCheck.rows[0];
+    if (!lockedTxn || lockedTxn.used_for_order_id) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const terminalId = String(norm.terminalId || lockedTxn.terminal_id || "").trim();
+    if (!terminalId) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const orderRes = await client.query(
+      `SELECT o.id, o.order_ref, o.total, o.payment_method, o.payment_status, d.driver_id
+       FROM orders o
+       LEFT JOIN deliveries d ON d.order_id = o.id
+       LEFT JOIN drivers dr ON dr.id = d.driver_id
+       WHERE LOWER(COALESCE(o.payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery')
+         AND COALESCE(o.payment_status, 'pending') <> 'paid'
+         AND o.status NOT IN ('cancelled', 'refunded', 'delivered')
+         AND ABS(o.total - $1) < 0.5
+         AND (o.cod_awaiting_terminal_sn = $2 OR dr.pos_terminal_sn = $2)
+       ORDER BY (CASE WHEN o.cod_awaiting_terminal_sn = $2 THEN 0 ELSE 1 END), o.updated_at DESC
+       LIMIT 1
+       FOR UPDATE OF o SKIP LOCKED`,
+      [parseFloat(norm.amount), terminalId]
+    );
+
+    if (orderRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const matchedOrder = orderRes.rows[0];
+    await claimDriverCodPaymentWithClient(client, matchedOrder, lockedTxn, matchedOrder.driver_id);
+    await client.query("COMMIT");
+
+    console.log(
+      `[Moniepoint POS] Driver COD payment confirmed for Order #${matchedOrder.order_ref || matchedOrder.id} (Terminal: ${terminalId}, Ref: ${lockedTxn.transaction_id})`
+    );
+    return matchedOrder;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("[Moniepoint POS] matchDriverCodOrderIfMatched error:", err.message);
+    return null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Polling helper for Driver App: checks if order is already paid or if a matching unlinked Moniepoint txn exists.
+ */
+async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
+  await ensureDriverPosSchema();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const ordRes = await client.query(
+      `SELECT id, order_ref, total, payment_method, payment_status, payment_ref, cod_awaiting_terminal_sn
+       FROM orders WHERE id = $1 FOR UPDATE`,
+      [orderId]
+    );
+    const ord = ordRes.rows[0];
+    if (!ord) {
+      await client.query("ROLLBACK");
+      return { found: false, paid: false };
+    }
+
+    if (ord.payment_status === "paid") {
+      await client.query("COMMIT");
+      return {
+        found: true,
+        paid: true,
+        order_id: ord.id,
+        order_ref: ord.order_ref || ord.id,
+        transaction_id: ord.payment_ref || null,
+        amount: parseFloat(ord.total),
+      };
+    }
+
+    const effectiveSn = String(terminalId || ord.cod_awaiting_terminal_sn || "").trim();
+    if (!effectiveSn) {
+      await client.query("ROLLBACK");
+      return { found: true, paid: false, order_id: ord.id, amount: parseFloat(ord.total) };
+    }
+
+    const txnRes = await client.query(
+      `SELECT * FROM pos_transactions
+       WHERE terminal_id = $1
+         AND used_for_order_id IS NULL
+         AND status = 'successful'
+         AND ABS(amount - $2) < 0.5
+         AND payment_time >= NOW() - INTERVAL '2 hours'
+       ORDER BY payment_time DESC
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED`,
+      [effectiveSn, parseFloat(ord.total)]
+    );
+
+    if (txnRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return {
+        found: true,
+        paid: false,
+        order_id: ord.id,
+        order_ref: ord.order_ref || ord.id,
+        amount: parseFloat(ord.total),
+        terminal_sn: effectiveSn,
+      };
+    }
+
+    const txn = txnRes.rows[0];
+    await claimDriverCodPaymentWithClient(client, ord, txn, driverId);
+    await client.query("COMMIT");
+
+    return {
+      found: true,
+      paid: true,
+      order_id: ord.id,
+      order_ref: ord.order_ref || ord.id,
+      transaction_id: txn.transaction_id,
+      terminal_sn: txn.terminal_id,
+      amount: parseFloat(txn.amount),
+      payment_method: txn.payment_method,
+      card_type: txn.card_type,
+      last_four: txn.last_four,
+      payment_time: txn.payment_time,
+    };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   verifyWebhookSignature,
   normalizePayload,
   recordMoniepointTransaction,
   checkPendingTerminalPayment,
+  ensureDriverPosSchema,
+  checkDriverCodPayment,
 };
 
