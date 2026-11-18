@@ -847,10 +847,21 @@ router.delete("/held/:id", requireRole("superadmin", "manager", "admin", "cashie
 router.get("/terminal-config", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   try {
     const defaultSn = process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+    const { rows } = await pool
+      .query("SELECT key, value FROM settings WHERE group_name = 'invoices'")
+      .catch(() => ({ rows: [] }));
+    const inv = {};
+    for (const r of rows) inv[r.key] = r.value;
+
     res.json({
       terminal_sn: defaultSn,
       provider: "MONIEPOINT",
       is_configured: Boolean(process.env.MONIEPOINT_POS_API_KEY),
+      bank_transfer: {
+        bank_name: inv.invoice_bank_name || inv.bank_name || "Globus Bank",
+        account_number: inv.invoice_account_number || inv.account_number || "1000574564",
+        account_name: inv.invoice_account_name || inv.account_name || "Bems Farms Global LTD",
+      },
     });
   } catch (err) {
     next(err);

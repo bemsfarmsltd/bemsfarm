@@ -325,6 +325,11 @@ export default function POS() {
   const [cardTab, setCardTab]               = useState('visa')
   // Moniepoint Smart POS Terminal state
   const [terminalSn, setTerminalSn]                       = useState('C66P008D08368495')
+  const [bankTransferInfo, setBankTransferInfo]           = useState({
+    bank_name: 'Globus Bank',
+    account_number: '1000574564',
+    account_name: 'Bems Farms Global LTD',
+  })
   const [terminalDetectedPayment, setTerminalDetectedPayment] = useState(null)
   const [isCheckingTerminal, setIsCheckingTerminal]       = useState(false)
   // Checkout & Payment modal
@@ -718,6 +723,13 @@ export default function POS() {
       .then((res) => {
         if (res.data?.terminal_sn) {
           setTerminalSn(res.data.terminal_sn)
+        }
+        if (res.data?.bank_transfer) {
+          setBankTransferInfo((prev) => ({
+            bank_name: res.data.bank_transfer.bank_name || prev.bank_name,
+            account_number: res.data.bank_transfer.account_number || prev.account_number,
+            account_name: res.data.bank_transfer.account_name || prev.account_name,
+          }))
         }
       })
       .catch(() => {})
@@ -5049,16 +5061,17 @@ export default function POS() {
                         <div className="pos-bank-pro-card mb-3">
                           <div className="d-flex justify-content-between align-items-start">
                             <div>
-                              <span className="pos-bank-badge">GUARANTY TRUST BANK (GTBANK)</span>
-                              <div className="pos-bank-acc-num">0123456789</div>
-                              <div className="pos-bank-acc-name">BEMS FARMS ENTERPRISES</div>
+                              <span className="pos-bank-badge">{String(bankTransferInfo.bank_name || 'BANK TRANSFER').toUpperCase()}</span>
+                              <div className="pos-bank-acc-num">{bankTransferInfo.account_number}</div>
+                              <div className="pos-bank-acc-name">{String(bankTransferInfo.account_name || '').toUpperCase()}</div>
                             </div>
                             <button
                               type="button"
                               className="pos-bank-copy-btn"
                               onClick={() => {
-                                navigator.clipboard.writeText('0123456789')
-                                showToast('Account number 0123456789 copied!', 'success', '📋')
+                                const acc = bankTransferInfo.account_number || ''
+                                navigator.clipboard.writeText(acc)
+                                showToast(`Account number ${acc} copied!`, 'success', '📋')
                               }}
                             >
                               <i className="ri-file-copy-line me-1" /> Copy
