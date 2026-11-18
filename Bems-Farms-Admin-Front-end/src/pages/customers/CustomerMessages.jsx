@@ -13,6 +13,39 @@ function timeSince(ts) {
   return new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
+function renderMessageWithOrderLinks(text, isAdmin) {
+  if (!text) return null
+  const regex = /((?:Order\s+)?[@#](?:BF-[A-Z0-9-]+|[0-9]{4,}))/gi
+  const parts = String(text).split(regex)
+  return parts.map((part, idx) => {
+    if (!part) return null
+    if (/^(?:Order\s+)?[@#](?:BF-[A-Z0-9-]+|[0-9]{4,})$/i.test(part)) {
+      const ref = part.replace(/^Order\s+/i, '').replace(/^[@#]/, '')
+      return (
+        <Link
+          key={idx}
+          to={`/orders?search=${encodeURIComponent(ref)}`}
+          title={`Open Order #${ref}`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            padding: '1px 6px',
+            borderRadius: 6,
+            fontWeight: 700,
+            textDecoration: 'underline',
+            background: isAdmin ? 'rgba(255,255,255,0.2)' : '#eff6ff',
+            color: isAdmin ? '#ffffff' : '#1d4ed8',
+          }}
+        >
+          {part}
+        </Link>
+      )
+    }
+    return <span key={idx}>{part}</span>
+  })
+}
+
 function Avatar({ name, size = 38, isDriver = false }) {
   const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const colors = isDriver 
@@ -579,9 +612,12 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
               <div style={{ maxWidth: '75%' }}>
                 {/* Inline Referenced Order Pill */}
                 {m.order_id && !latestReferencedOrder && (
-                  <div style={{ marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700 }}>
-                    <span>📦 Order #{m.order_id}</span>
-                  </div>
+                  <Link
+                    to={`/orders?search=${encodeURIComponent(m.metadata?.order_ref || m.order_id)}`}
+                    style={{ marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    <span>📦 Order #{m.metadata?.order_ref || m.order_id}</span>
+                  </Link>
                 )}
                 <div style={{
                   padding: '10px 14px',
@@ -592,7 +628,7 @@ export function CustomerChat({ customerId, customerStatus, customerName }) {
                   boxShadow: '0 1px 3px rgba(0,0,0,.08)',
                   fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap'
                 }}>
-                  {m.message}
+                  {renderMessageWithOrderLinks(m.message, isAdmin)}
                 </div>
                 <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3,
                   textAlign: isAdmin ? 'right' : 'left', paddingLeft: isAdmin ? 0 : 4, paddingRight: isAdmin ? 4 : 0 }}>

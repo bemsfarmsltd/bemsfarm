@@ -5,6 +5,49 @@ const pool = require("../db/pool");
 const { notifyAdmin } = require("./notificationService");
 const { broadcastSupportMessage, broadcastDriverMessage } = require("./socketService");
 
+const GEMINI_SUPPORT_MODEL = "gemini-2.5-flash";
+
+/**
+ * Call Google Gemini for concise, order-aware customer support replies.
+ */
+async function callSupportGemini(systemInstruction, userPrompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "MOCK") return null;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_SUPPORT_MODEL}:generateContent?key=${apiKey}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 280,
+        },
+      }),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts
+      ?.map((p) => p?.text || "")
+      .join("")
+      .trim();
+    return text || null;
+  } catch (err) {
+    console.warn("⚠️ Gemini support auto-reply failed, using fallback:", err.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Fetch full order context by order_id or order_ref
  */
@@ -129,11 +172,74 @@ async function fetchOrderReferenceContext(orderIdentifier, expectedCustomerId = 
 }
 
 /**
- * AI logic for customer support with order intelligence
+ * AI logic for customer support with Gemini + order intelligence (rule-based fallback)
  */
-async function generateCustomerSupportReply(user, messageText, orderContext) {
+async function generateCustomerSupportReply(user, messageText, orderContext, recentHistory = []) {
   const text = (messageText || "").toLowerCase().trim();
 
+  // Explicit human handoff always takes priority
+  if (
+    text.includes("human") ||
+    text.includes("agent") ||
+    text.includes("admin") ||
+    text.includes("speak to someone") ||
+    text.includes("representative")
+  ) {
+    return "👋 I've connected you to our live Customer Support team! An admin has been notified with your conversation thread and will reply right here shortly.";
+  }
+
+  // Try Gemini first when GEMINI_API_KEY is configured
+  const orderSummary = orderContext
+    ? [
+        `Referenced Order #${orderContext.order_ref || orderContext.order_id}:`,
+        `- Status: ${String(orderContext.status || "").replace(/_/g, " ").toUpperCase()}`,
+        `- Tracking Status: ${String(orderContext.tracking_status || orderContext.status || "").replace(/_/g, " ").toUpperCase()}`,
+        `- Total: ₦${Number(orderContext.total || 0).toLocaleString()} (${orderContext.payment_method || "N/A"}, payment ${orderContext.payment_status || "N/A"})`,
+        `- Delivery Address: ${orderContext.address || "N/A"}`,
+        orderContext.items?.length
+          ? `- Items: ${orderContext.items.map((it) => `${it.quantity}x ${it.product_name}`).join(", ")}`
+          : null,
+        orderContext.driver_name
+          ? `- Assigned Courier: ${orderContext.driver_name} (${orderContext.driver_phone || "No phone"}), ETA ~${orderContext.eta_minutes || 30} mins`
+          : `- Courier: Not assigned yet (order is being prepared/queued)`,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "No specific order was referenced in this message.";
+
+  const historyBlock = Array.isArray(recentHistory) && recentHistory.length
+    ? recentHistory
+        .slice(-6)
+        .map((m) => {
+          const roleLabel = m.sender_type === "customer" ? "Customer" : m.sender_type === "admin" ? "Staff" : "Assistant";
+          return `${roleLabel}: ${m.message}`;
+        })
+        .join("\n")
+    : "";
+
+  const systemInstruction = [
+    "You are the BemsFarms Support Assistant (BemsFarms is a fresh Nigerian farm produce & grocery delivery platform operating from Umuahia & Aba hubs, with nationwide delivery).",
+    "Be warm, helpful, concise (2-4 sentences max), and natural.",
+    "Never invent order statuses, prices, or driver details not provided in the context.",
+    "Payment methods supported: Instant Bank Transfer, Debit Cards, USSD via Monnify, and Cash on Delivery (COD) for eligible addresses.",
+    "Delivery fees: Umuahia Urban ₦1,000, Aba Metro ₦2,500, Regional Abia ₦3,500, South-South ₦5,000, Nationwide Express ₦8,000 (exact fee calculated at checkout).",
+    "If the customer needs refunds, order edits, or human help you cannot resolve, tell them they can type \"agent\" anytime to reach a live staff member.",
+    "Do not repeat a full formal greeting if the recent conversation history shows you already greeted the customer.",
+  ].join("\n");
+
+  const userPrompt = [
+    `Customer Name: ${user?.name || "Customer"}`,
+    orderSummary,
+    historyBlock ? `Recent Conversation:\n${historyBlock}` : null,
+    `Latest Customer Message: ${messageText}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const geminiReply = await callSupportGemini(systemInstruction, userPrompt);
+  if (geminiReply) return geminiReply;
+
+  // Rule-based fallback if Gemini is unavailable
   // 1. If an order is referenced
   if (orderContext) {
     const formattedTotal = `₦${orderContext.total.toLocaleString()}`;

@@ -30,7 +30,7 @@ router.get('/reference-options', async (req, res, next) => {
 // POST send customer message (supports order_id and delivery_id reference)
 router.post('/messages', async (req, res, next) => {
   try {
-    const { message, order_id, delivery_id, enable_ai = false } = req.body;
+    const { message, order_id, delivery_id, enable_ai = true } = req.body;
     const result = await sendMessage(req.user.id, message, null, { order_id, delivery_id, enable_ai });
     res.status(201).json(result);
   } catch (e) {

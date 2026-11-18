@@ -96,7 +96,7 @@ async function sendMessage(customerId, message, actor, options = {}) {
     throw Object.assign(new Error('Message must contain 1–4,000 characters'), { status: 400 });
   }
 
-  const { order_id, delivery_id, enable_ai = false } = options;
+  const { order_id, delivery_id, enable_ai = true } = options;
   let orderContext = null;
 
   // Detect explicit or text-embedded order references (e.g. @BF-XYZ or /order BF-XYZ)
@@ -191,39 +191,69 @@ async function sendMessage(customerId, message, actor, options = {}) {
         console.warn("Admin notification notice:", notifErr?.message);
       }
 
-      // Check if AI Bot reply should be appended (disabled unless explicitly enabled via env)
-      if (process.env.ENABLE_SUPPORT_AI_BOT === "true" && enable_ai) {
+      // Check if Gemini / AI Bot reply should be appended
+      if (enable_ai) {
         try {
-          const aiText = await generateCustomerSupportReply(userObj, message.trim(), orderContext);
-          if (aiText) {
-            const botRes = await db.query(
-              `
-              INSERT INTO customer_messages(
-                conversation_id, customer_id, sender_type, admin_id, message, order_id, delivery_id, metadata, is_read
-              )
-              VALUES($1, $2, 'bot', NULL, $3, $4, $5, $6, TRUE)
-              RETURNING *
-              `,
-              [
-                convId,
-                customerId,
-                aiText,
-                resolvedOrderId || null,
-                delivery_id || orderContext?.delivery_id || null,
-                orderContext ? JSON.stringify(orderContext) : null,
-              ]
-            );
+          const histRes = await db.query(
+            `SELECT sender_type, message, created_at
+             FROM customer_messages
+             WHERE conversation_id = $1 AND id <> $2
+             ORDER BY created_at DESC
+             LIMIT 6`,
+            [convId, createdMsg.id]
+          );
+          const recentHistory = histRes.rows.slice().reverse();
+          const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
+          const handoffActive = recentHistory.some((m) => {
+            const ts = new Date(m.created_at).getTime();
+            if (!Number.isFinite(ts) || ts < thirtyMinAgo) return false;
+            if (m.sender_type === "admin") return true;
+            if (
+              m.sender_type === "customer" &&
+              /\b(human|agent|admin|representative)\b/i.test(m.message || "")
+            ) {
+              return true;
+            }
+            return false;
+          });
 
-            // Update conversation last_message
-            await db.query(
-              `UPDATE customer_conversations SET last_message = $1, last_message_at = NOW() WHERE id = $2`,
-              [aiText.slice(0, 100), convId]
+          if (!handoffActive) {
+            const aiText = await generateCustomerSupportReply(
+              userObj,
+              message.trim(),
+              orderContext,
+              recentHistory
             );
+            if (aiText) {
+              const botRes = await db.query(
+                `
+                INSERT INTO customer_messages(
+                  conversation_id, customer_id, sender_type, admin_id, message, order_id, delivery_id, metadata, is_read
+                )
+                VALUES($1, $2, 'bot', NULL, $3, $4, $5, $6, TRUE)
+                RETURNING *
+                `,
+                [
+                  convId,
+                  customerId,
+                  aiText,
+                  resolvedOrderId || null,
+                  delivery_id || orderContext?.delivery_id || null,
+                  orderContext ? JSON.stringify(orderContext) : null,
+                ]
+              );
 
-            createdMsg.bot_reply = {
-              ...botRes.rows[0],
-              admin_name: "Bems AI Assistant",
-            };
+              // Update conversation last_message
+              await db.query(
+                `UPDATE customer_conversations SET last_message = $1, last_message_at = NOW() WHERE id = $2`,
+                [aiText.slice(0, 100), convId]
+              );
+
+              createdMsg.bot_reply = {
+                ...botRes.rows[0],
+                admin_name: "Bems AI Assistant",
+              };
+            }
           }
         } catch (botErr) {
           console.warn("AI Bot response generation notice:", botErr.message);
