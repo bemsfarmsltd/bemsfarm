@@ -2441,7 +2441,8 @@ router.get(
         ),
         pool.query(
           `SELECT id, transaction_id, terminal_id, amount, payment_method, card_type,
-                  last_four, customer_name, rrn, status, payment_time
+                  last_four, customer_name, rrn, status, payment_time,
+                  raw_payload
            FROM pos_transactions
            WHERE used_for_order_id IS NULL
              AND status = 'successful'
@@ -2453,6 +2454,7 @@ router.get(
                   pt.card_type, pt.last_four, pt.customer_name AS sender_name,
                   pt.used_for_order_id, pt.payment_time,
                   o.order_ref, o.total AS order_total, o.status AS order_status,
+                  o.payment_method AS order_payment_method,
                   o.payment_status, o.source,
                   COALESCE(o.customer_name, u.name, 'Customer') AS customer_name
            FROM pos_transactions pt
@@ -2502,11 +2504,48 @@ router.get(
       }));
 
       const awaiting = [...awaitingHeld, ...awaitingCod];
-      const unmapped = unmappedRes.rows;
+      const classifyChannel = (pm) => {
+        const s = String(pm || "").toLowerCase();
+        if (s.includes("transfer") || s.includes("bank")) return "transfer";
+        if (s.includes("card") || s.includes("pos") || s.includes("verve") || s.includes("master") || s.includes("visa")) return "card";
+        return "other";
+      };
+
+      const unmapped = unmappedRes.rows.map((t) => {
+        const raw = t.raw_payload?.data || t.raw_payload?.eventData || t.raw_payload || {};
+        const senderBank = raw.sourceBankName || raw.senderBank || raw.bankName || "";
+        return {
+          id: t.id,
+          transaction_id: t.transaction_id,
+          terminal_id: t.terminal_id,
+          amount: parseFloat(t.amount || 0),
+          payment_method: t.payment_method || "CARD",
+          payment_channel: classifyChannel(t.payment_method),
+          card_type: t.card_type,
+          last_four: t.last_four,
+          customer_name: t.customer_name,
+          sender_bank: senderBank,
+          rrn: t.rrn,
+          status: t.status,
+          payment_time: t.payment_time,
+        };
+      });
+
+      const mapped = mappedRes.rows.map((m) => {
+        const isCodOrder = ["cod", "cash", "cash_on_delivery", "payondelivery"].includes(
+          String(m.order_payment_method || "").toLowerCase()
+        );
+        return {
+          ...m,
+          amount: parseFloat(m.amount || 0),
+          payment_channel: classifyChannel(m.payment_method),
+          order_kind: isCodOrder ? "cod" : "pos",
+        };
+      });
 
       // Compute exact-amount auto-match candidates
       const autoMatchCandidates = unmapped.filter((t) =>
-        awaiting.some((a) => Math.abs(parseFloat(t.amount) - a.amount) < 0.5)
+        awaiting.some((a) => Math.abs(t.amount - a.amount) < 0.5)
       ).length;
 
       res.json({
@@ -2517,13 +2556,17 @@ router.get(
           awaiting_cod_count: awaitingCod.length,
           awaiting_total: awaiting.reduce((s, a) => s + a.amount, 0),
           unmapped_count: unmapped.length,
-          unmapped_total: unmapped.reduce((s, t) => s + parseFloat(t.amount || 0), 0),
-          mapped_count: mappedRes.rows.length,
+          unmapped_card_count: unmapped.filter((u) => u.payment_channel === "card").length,
+          unmapped_transfer_count: unmapped.filter((u) => u.payment_channel === "transfer").length,
+          unmapped_total: unmapped.reduce((s, t) => s + t.amount, 0),
+          mapped_count: mapped.length,
           auto_match_candidates: autoMatchCandidates,
         },
         awaiting_confirmation: awaiting,
+        awaiting_pos: awaitingHeld,
+        awaiting_cod: awaitingCod,
         unmapped_webhooks: unmapped,
-        mapped_transactions: mappedRes.rows,
+        mapped_transactions: mapped,
         webhook_logs: logsRes.rows,
       });
     } catch (err) {
