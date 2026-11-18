@@ -478,6 +478,11 @@ async function ensureDriverPosSchema() {
   try {
     await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS pos_terminal_sn VARCHAR(100)`);
     await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_awaiting_terminal_sn VARCHAR(100)`);
+    await pool
+      .query(
+        `ALTER TABLE pos_transactions ALTER COLUMN used_for_order_id TYPE VARCHAR(100) USING used_for_order_id::text`
+      )
+      .catch(() => {});
     driverPosSchemaEnsured = true;
   } catch (err) {
     console.warn("[Moniepoint POS] ensureDriverPosSchema notice:", err.message);
@@ -581,7 +586,7 @@ async function matchDriverCodOrderIfMatched(txnRow, norm) {
     const orderRes = await client.query(
       `SELECT o.id, o.order_ref, o.total, o.payment_method, o.payment_status, d.driver_id
        FROM orders o
-       LEFT JOIN deliveries d ON d.order_id = o.id
+       LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
        LEFT JOIN drivers dr ON dr.id = d.driver_id
        WHERE LOWER(COALESCE(o.payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery')
          AND COALESCE(o.payment_status, 'pending') <> 'paid'

@@ -2453,9 +2453,9 @@ const initiateDriverCodPosPayment = async (req, res, next) => {
     const delRes = await pool.query(
       `SELECT d.id, d.order_id, d.driver_id, o.id AS actual_order_id, o.order_ref, o.total, o.payment_method, o.payment_status, dr.pos_terminal_sn
        FROM deliveries d
-       JOIN orders o ON o.id = d.order_id
+       JOIN orders o ON (o.id::text = d.order_id OR o.order_ref = d.order_id)
        LEFT JOIN drivers dr ON dr.id = d.driver_id
-       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.order_ref = $2)
+       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.id::text = $2 OR o.order_ref = $2)
        LIMIT 1`,
       [driverId, String(orderId)]
     );
@@ -2525,9 +2525,9 @@ const getDriverCodPosStatus = async (req, res, next) => {
     const delRes = await pool.query(
       `SELECT d.order_id, o.id AS actual_order_id, o.cod_awaiting_terminal_sn, dr.pos_terminal_sn
        FROM deliveries d
-       JOIN orders o ON o.id = d.order_id
+       JOIN orders o ON (o.id::text = d.order_id OR o.order_ref = d.order_id)
        LEFT JOIN drivers dr ON dr.id = d.driver_id
-       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.order_ref = $2)
+       WHERE d.driver_id = $1 AND (CAST(d.id AS TEXT) = $2 OR d.order_id = $2 OR o.id::text = $2 OR o.order_ref = $2)
        LIMIT 1`,
       [driverId, String(orderId)]
     );
