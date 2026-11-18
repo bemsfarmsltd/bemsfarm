@@ -2027,6 +2027,8 @@ router.patch(
         );
       } else {
         if (nextStatus === "delivered") {
+          const { ensureDriverPosSchema, checkDriverCodPayment } = require("../services/moniepointPosService");
+          await ensureDriverPosSchema();
           const payCheckRes = await client.query(
             "SELECT payment_method, payment_status, cod_awaiting_terminal_sn FROM orders WHERE id = $1",
             [resolvedId]
@@ -2049,7 +2051,6 @@ router.patch(
               });
             }
             if (!cashConfirmed) {
-              const { checkDriverCodPayment } = require("../services/moniepointPosService");
               const posRes = await checkDriverCodPayment(
                 resolvedId,
                 req.body?.terminal_sn || payRow.cod_awaiting_terminal_sn || "",

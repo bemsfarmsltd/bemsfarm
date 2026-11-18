@@ -1343,6 +1343,10 @@ const updateDeliveryStatus = async (req, res, next) => {
         metadata: { delivery_id: delivery.id, arrived_at: arrivedAt }
       });
     } else if (deliveryStatus === "delivered") {
+      // Ensure driver POS schema columns exist before reading cod_awaiting_terminal_sn
+      const { ensureDriverPosSchema, checkDriverCodPayment } = require("../services/moniepointPosService");
+      await ensureDriverPosSchema();
+
       // Enforce real payment before any order can be marked delivered
       const payOrdRes = await client.query(
         "SELECT id, order_ref, total, payment_method, payment_status, cod_awaiting_terminal_sn FROM orders WHERE id = $1 FOR UPDATE",
@@ -1372,7 +1376,6 @@ const updateDeliveryStatus = async (req, res, next) => {
           collectionMode === "cash";
 
         if (collectionMode === "pos" || (payOrd.cod_awaiting_terminal_sn && !cashCollected)) {
-          const { checkDriverCodPayment } = require("../services/moniepointPosService");
           const posCheck = await checkDriverCodPayment(
             actualOrderId,
             req.body?.terminal_sn || payOrd.cod_awaiting_terminal_sn,
