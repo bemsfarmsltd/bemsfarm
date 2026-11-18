@@ -1080,6 +1080,40 @@ router.patch(
       const { id } = req.params;
       const { status } = req.body;
 
+      if (status === "delivered") {
+        const { assertOrderPaidForCompletion } = require("../utils/paymentGate");
+        const gateClient = await pool.connect();
+        try {
+          await gateClient.query("BEGIN");
+          const gate = await assertOrderPaidForCompletion(gateClient, id, req.body);
+          if (!gate.ok) {
+            await gateClient.query("ROLLBACK");
+            return res.status(gate.status).json(gate.body);
+          }
+          const result = await gateClient.query(
+            `UPDATE orders
+             SET status = 'delivered',
+                 tracking_status = 'delivered',
+                 payment_status = 'paid',
+                 delivered_at = COALESCE(delivered_at, NOW()),
+                 updated_at = NOW()
+             WHERE id = $1
+             RETURNING *`,
+            [gate.order.id]
+          );
+          await gateClient.query("COMMIT");
+          return res.json({
+            message: "Order status updated successfully",
+            order: result.rows[0],
+          });
+        } catch (gateErr) {
+          await gateClient.query("ROLLBACK").catch(() => {});
+          throw gateErr;
+        } finally {
+          gateClient.release();
+        }
+      }
+
       const result = await pool.query(
         `UPDATE orders
        SET status = $1::varchar, delivered_at = CASE WHEN $1::varchar = 'delivered' THEN NOW() ELSE delivered_at END, updated_at = NOW()
@@ -1336,8 +1370,8 @@ const handleCustomerConfirm = async (req, res, next) => {
       }
     });
 
-    // 3. Check if driver has already confirmed
-    const driverHasConfirmed = Boolean(order.driver_confirmed);
+    // 3. Check if driver has already confirmed AND order has confirmed payment
+    const driverHasConfirmed = Boolean(order.driver_confirmed) && order.payment_status === "paid";
     let finalStatus = order.status;
 
     if (driverHasConfirmed) {

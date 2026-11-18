@@ -5,6 +5,7 @@ const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail, getEma
 const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
 const { restoreOrderStock } = require("../utils/orderStock");
 const { logOrderAudit } = require("../utils/workflowAudit");
+const { protect, requireRole } = require("../middleware/authMiddleware");
 const crypto = require("crypto");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -657,7 +658,7 @@ router.post("/payments/initialize", async (req, res, next) => {
   }
 });
 
-router.get("/email-diagnostic", async (req, res) => {
+router.get("/email-diagnostic", protect, requireRole("superadmin", "admin"), async (req, res) => {
   try {
     const diag = await getEmailDiagnostic(req.query.emailId);
     res.json(diag);

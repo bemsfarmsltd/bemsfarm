@@ -695,6 +695,15 @@ router.patch(
         return res.status(400).json({ message: `Invalid state transition from ${currentStatus} to ${status}` });
       }
 
+      if (status === "delivered") {
+        const { assertOrderPaidForCompletion } = require("../utils/paymentGate");
+        const gate = await assertOrderPaidForCompletion(client, del.rows[0].order_id, req.body);
+        if (!gate.ok) {
+          await client.query("ROLLBACK");
+          return res.status(gate.status).json(gate.body);
+        }
+      }
+
       await client.query(
         `UPDATE deliveries SET status=$1, updated_at=NOW()
        ${status === "en_route" ? ", dispatched_at=NOW()" : ""}
@@ -721,7 +730,12 @@ router.patch(
           [del.rows[0].order_id],
         );
         await client.query(
-          "UPDATE orders SET status=$1::varchar, delivered_at = CASE WHEN $1::varchar = 'delivered' THEN NOW() ELSE delivered_at END, updated_at=NOW() WHERE id=$2",
+          `UPDATE orders
+           SET status = $1::varchar,
+               payment_status = CASE WHEN $1::varchar = 'delivered' THEN 'paid' ELSE payment_status END,
+               delivered_at = CASE WHEN $1::varchar = 'delivered' THEN NOW() ELSE delivered_at END,
+               updated_at = NOW()
+           WHERE id = $2`,
           [orderStatus, del.rows[0].order_id],
         );
         await client.query(
