@@ -98,6 +98,8 @@ router.get("/fleet-command", requireRole("superadmin", "manager", "admin", "deli
         o.order_ref,
         o.status,
         o.total,
+        o.payment_method,
+        o.payment_status,
         COALESCE(o.delivery_fee, dz.delivery_fee, d.delivery_fee, 0) AS delivery_fee,
         COALESCE(o.address, 'Farm Pick-up Point') AS delivery_address,
         o.created_at,

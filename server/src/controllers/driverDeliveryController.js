@@ -1376,7 +1376,8 @@ const updateDeliveryStatus = async (req, res, next) => {
           const posCheck = await checkDriverCodPayment(
             actualOrderId,
             req.body?.terminal_sn || payOrd.cod_awaiting_terminal_sn,
-            driverId
+            driverId,
+            client
           );
           if (!posCheck.paid) {
             await client.query("ROLLBACK");

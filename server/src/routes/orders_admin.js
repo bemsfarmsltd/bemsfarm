@@ -2053,7 +2053,8 @@ router.patch(
               const posRes = await checkDriverCodPayment(
                 resolvedId,
                 req.body?.terminal_sn || payRow.cod_awaiting_terminal_sn || "",
-                null
+                null,
+                client
               );
               if (!posRes.paid) {
                 await client.query("ROLLBACK");

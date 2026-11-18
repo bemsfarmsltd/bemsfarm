@@ -619,11 +619,12 @@ async function matchDriverCodOrderIfMatched(txnRow, norm) {
 /**
  * Polling helper for Driver App: checks if order is already paid or if a matching unlinked Moniepoint txn exists.
  */
-async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
+async function checkDriverCodPayment(orderId, terminalId, driverId = null, externalClient = null) {
   await ensureDriverPosSchema();
-  const client = await pool.connect();
+  const ownsTx = !externalClient;
+  const client = externalClient || (await pool.connect());
   try {
-    await client.query("BEGIN");
+    if (ownsTx) await client.query("BEGIN");
     const ordRes = await client.query(
       `SELECT id, order_ref, total, payment_method, payment_status, payment_ref, cod_awaiting_terminal_sn
        FROM orders WHERE id = $1 FOR UPDATE`,
@@ -631,12 +632,12 @@ async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
     );
     const ord = ordRes.rows[0];
     if (!ord) {
-      await client.query("ROLLBACK");
+      if (ownsTx) await client.query("ROLLBACK");
       return { found: false, paid: false };
     }
 
     if (ord.payment_status === "paid") {
-      await client.query("COMMIT");
+      if (ownsTx) await client.query("COMMIT");
       return {
         found: true,
         paid: true,
@@ -649,7 +650,7 @@ async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
 
     const effectiveSn = String(terminalId || ord.cod_awaiting_terminal_sn || "").trim();
     if (!effectiveSn) {
-      await client.query("ROLLBACK");
+      if (ownsTx) await client.query("ROLLBACK");
       return { found: true, paid: false, order_id: ord.id, amount: parseFloat(ord.total) };
     }
 
@@ -667,7 +668,7 @@ async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
     );
 
     if (txnRes.rows.length === 0) {
-      await client.query("ROLLBACK");
+      if (ownsTx) await client.query("ROLLBACK");
       return {
         found: true,
         paid: false,
@@ -680,7 +681,7 @@ async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
 
     const txn = txnRes.rows[0];
     await claimDriverCodPaymentWithClient(client, ord, txn, driverId);
-    await client.query("COMMIT");
+    if (ownsTx) await client.query("COMMIT");
 
     return {
       found: true,
@@ -696,10 +697,10 @@ async function checkDriverCodPayment(orderId, terminalId, driverId = null) {
       payment_time: txn.payment_time,
     };
   } catch (err) {
-    await client.query("ROLLBACK").catch(() => {});
+    if (ownsTx) await client.query("ROLLBACK").catch(() => {});
     throw err;
   } finally {
-    client.release();
+    if (ownsTx) client.release();
   }
 }
 
