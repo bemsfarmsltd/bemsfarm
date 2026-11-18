@@ -96,7 +96,7 @@ async function sendMessage(customerId, message, actor, options = {}) {
     throw Object.assign(new Error('Message must contain 1–4,000 characters'), { status: 400 });
   }
 
-  const { order_id, delivery_id, enable_ai = true } = options;
+  const { order_id, delivery_id, enable_ai = false } = options;
   let orderContext = null;
 
   // Detect explicit or text-embedded order references (e.g. @BF-XYZ or /order BF-XYZ)
@@ -191,8 +191,8 @@ async function sendMessage(customerId, message, actor, options = {}) {
         console.warn("Admin notification notice:", notifErr?.message);
       }
 
-      // Check if AI Bot reply should be appended
-      if (enable_ai) {
+      // Check if AI Bot reply should be appended (disabled unless explicitly enabled via env)
+      if (process.env.ENABLE_SUPPORT_AI_BOT === "true" && enable_ai) {
         try {
           const aiText = await generateCustomerSupportReply(userObj, message.trim(), orderContext);
           if (aiText) {
