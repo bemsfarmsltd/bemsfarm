@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { getPaymentStatusMeta } from '../../lib/paymentBadge'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import BemsOfficialDocument from '../../components/documents/BemsOfficialDocument'
@@ -1183,9 +1184,17 @@ export default function OrderDetail() {
               </div>
               <div className="d-flex justify-content-between">
                 <span className="text-muted">Status</span>
-                <span className="badge bg-success-subtle text-success">
-                  {order.payment_status || 'Paid'}
-                </span>
+                {(() => {
+                  const ps = getPaymentStatusMeta(order.payment_status)
+                  return (
+                    <span
+                      className="badge"
+                      style={{ background: ps.bg, color: ps.color, border: `1px solid ${ps.border}` }}
+                    >
+                      {ps.label}
+                    </span>
+                  )
+                })()}
               </div>
               <div className="d-flex justify-content-between">
                 <span className="text-muted">Total Paid</span>

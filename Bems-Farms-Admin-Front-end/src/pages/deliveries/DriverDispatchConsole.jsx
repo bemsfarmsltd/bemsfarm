@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { getPaymentStatusMeta } from '../../lib/paymentBadge'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 // Helper component that converts @BF-..., #BF-..., or Order #... into clickable links directly to /orders/:id
@@ -312,8 +313,27 @@ function OrderReferenceBanner({ order, delivery, isAssigned = true }) {
               </span>
             </div>
             {totalStr && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', marginTop: 2 }}>
-                {totalStr} <span style={{ fontSize: 11, fontWeight: 500, color: '#64748B' }}>({order.payment_method?.toUpperCase() || 'COD / Online'})</span>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span>{totalStr}</span>
+                <span style={{ fontSize: 11, fontWeight: 500, color: '#64748B' }}>({order.payment_method?.toUpperCase() || 'COD / Online'})</span>
+                {(() => {
+                  const ps = getPaymentStatusMeta(order.payment_status)
+                  return (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '1px 7px',
+                        borderRadius: 6,
+                        backgroundColor: ps.bg,
+                        color: ps.color,
+                        border: `1px solid ${ps.border}`,
+                      }}
+                    >
+                      {ps.label}
+                    </span>
+                  )
+                })()}
               </div>
             )}
           </div>

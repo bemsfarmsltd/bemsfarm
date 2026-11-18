@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 import api from '../../lib/api'
+import { getPaymentStatusMeta } from '../../lib/paymentBadge'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 import AdminOrderMap from '../../components/ui/AdminOrderMap'
@@ -265,6 +266,7 @@ export default function OrdersList() {
             deliveryFee,
             total: computedTotal,
             payment: o.payment_method || (isPhysical ? 'cash' : 'monnify'),
+            paymentStatus: o.payment_status || 'pending',
             paymentRef: o.payment_ref || null,
             notes: o.notes || '',
             disputeReason: o.dispute_reason || null,
@@ -966,7 +968,7 @@ export default function OrdersList() {
                       >
                         {order.id}
                       </div>
-                      <div className="mt-1">
+                      <div className="mt-1 d-flex flex-wrap align-items-center gap-1">
                         <span
                           className="badge d-inline-flex align-items-center gap-1 shadow-xs"
                           style={{
@@ -981,6 +983,24 @@ export default function OrdersList() {
                           <i className={payCfg.icon} style={{ fontSize: 11 }} />
                           <span>{payCfg.label}</span>
                         </span>
+                        {(() => {
+                          const ps = getPaymentStatusMeta(order.paymentStatus)
+                          return (
+                            <span
+                              className="badge"
+                              style={{
+                                fontSize: 10,
+                                background: ps.bg,
+                                color: ps.color,
+                                border: `1px solid ${ps.border}`,
+                                padding: '3px 7px',
+                                borderRadius: 6
+                              }}
+                            >
+                              {ps.label}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </td>
                     <td>

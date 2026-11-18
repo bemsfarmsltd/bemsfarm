@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { getPaymentStatusMeta } from '../../lib/paymentBadge'
 import toast from 'react-hot-toast'
 import { useRealtimeEvent } from '../../context/RealtimeContext'
 
@@ -108,6 +109,8 @@ export default function ActiveDeliveries() {
             },
             items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
             total: parseFloat(d.order_total) || 0,
+            paymentMethod: d.payment_method || 'cod',
+            paymentStatus: d.payment_status || 'pending',
             dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
             eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
             zone: d.zone || 'Umuahia Central',
@@ -681,8 +684,29 @@ export default function ActiveDeliveries() {
                             </button>
                           )}
 
-                          <div className="border-top mt-1.5 pt-1 fw-bold d-flex justify-content-between">
-                            <span>Order Total</span><span>{fmt(del.total)}</span>
+                          <div className="border-top mt-1.5 pt-1 fw-bold d-flex justify-content-between align-items-center">
+                            <span>Order Total</span>
+                            <span className="d-inline-flex align-items-center gap-1.5">
+                              <span>{fmt(del.total)}</span>
+                              {(() => {
+                                const ps = getPaymentStatusMeta(del.paymentStatus)
+                                return (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      fontSize: 10,
+                                      background: ps.bg,
+                                      color: ps.color,
+                                      border: `1px solid ${ps.border}`,
+                                      padding: '2px 6px',
+                                      borderRadius: 5,
+                                    }}
+                                  >
+                                    {String(del.paymentMethod || '').toUpperCase()} · {ps.label}
+                                  </span>
+                                )
+                              })()}
+                            </span>
                           </div>
                         </>
                       );
