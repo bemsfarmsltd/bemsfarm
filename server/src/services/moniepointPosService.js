@@ -716,5 +716,8 @@ module.exports = {
   checkPendingTerminalPayment,
   ensureDriverPosSchema,
   checkDriverCodPayment,
+  autoCompleteHeldOrderIfMatched,
+  matchDriverCodOrderIfMatched,
+  claimDriverCodPaymentWithClient,
 };
 

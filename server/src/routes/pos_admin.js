@@ -2397,4 +2397,344 @@ router.post("/pack-all", requireRole("superadmin", "manager", "admin", "cashier"
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// MONIEPOINT / MONNIFY WEBHOOK RECONCILIATION DASHBOARD
+// GET  /api/admin/pos/webhook-reconciliation
+// POST /api/admin/pos/webhook-reconciliation/automap
+// POST /api/admin/pos/webhook-reconciliation/manual-map
+// ════════════════════════════════════════════════════════════════════════════
+router.get(
+  "/webhook-reconciliation",
+  requireRole("superadmin", "manager", "admin", "accountant", "cashier"),
+  async (req, res, next) => {
+    try {
+      const { ensureDriverPosSchema } = require("../services/moniepointPosService");
+      await ensureDriverPosSchema();
+
+      const [heldRes, codRes, unmappedRes, mappedRes, logsRes] = await Promise.all([
+        pool
+          .query(
+            `SELECT id, order_ref, terminal_sn, amount, status, created_at,
+                    order_payload->'customer'->>'name' AS customer_name,
+                    order_payload->'customer'->>'phone' AS customer_phone
+             FROM pos_terminal_held_orders
+             WHERE status = 'awaiting_payment'
+             ORDER BY created_at DESC
+             LIMIT 100`
+          )
+          .catch(() => ({ rows: [] })),
+        pool.query(
+          `SELECT o.id, o.order_ref, o.total, o.status, o.payment_method, o.payment_status,
+                  o.cod_awaiting_terminal_sn, o.created_at, o.updated_at,
+                  COALESCE(o.customer_name, u.name, 'Customer') AS customer_name,
+                  COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+                  dr.id AS driver_id, dr.name AS driver_name, dr.pos_terminal_sn AS driver_terminal_sn
+           FROM orders o
+           LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+           LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+           LEFT JOIN drivers dr ON (d.driver_id = dr.id OR o.driver_id = dr.id)
+           WHERE LOWER(COALESCE(o.payment_method, '')) IN ('cod', 'cash', 'cash_on_delivery', 'payondelivery')
+             AND COALESCE(o.payment_status, 'pending') <> 'paid'
+             AND o.status NOT IN ('cancelled', 'refunded')
+           ORDER BY (o.cod_awaiting_terminal_sn IS NOT NULL) DESC, o.created_at DESC
+           LIMIT 100`
+        ),
+        pool.query(
+          `SELECT id, transaction_id, terminal_id, amount, payment_method, card_type,
+                  last_four, customer_name, rrn, status, payment_time
+           FROM pos_transactions
+           WHERE used_for_order_id IS NULL
+             AND status = 'successful'
+           ORDER BY payment_time DESC
+           LIMIT 100`
+        ),
+        pool.query(
+          `SELECT pt.id, pt.transaction_id, pt.terminal_id, pt.amount, pt.payment_method,
+                  pt.card_type, pt.last_four, pt.customer_name AS sender_name,
+                  pt.used_for_order_id, pt.payment_time,
+                  o.order_ref, o.total AS order_total, o.status AS order_status,
+                  o.payment_status, o.source,
+                  COALESCE(o.customer_name, u.name, 'Customer') AS customer_name
+           FROM pos_transactions pt
+           LEFT JOIN orders o ON (pt.used_for_order_id::text = o.id::text OR pt.used_for_order_id::text = o.order_ref)
+           LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+           WHERE pt.used_for_order_id IS NOT NULL
+           ORDER BY pt.payment_time DESC
+           LIMIT 100`
+        ),
+        pool
+          .query(
+            `SELECT id, gateway, event_type, transaction_reference, amount, currency,
+                    status, signature_verified, created_at
+             FROM gateway_webhook_logs
+             ORDER BY created_at DESC
+             LIMIT 50`
+          )
+          .catch(() => ({ rows: [] })),
+      ]);
+
+      const awaitingHeld = heldRes.rows.map((h) => ({
+        target_type: "held_order",
+        target_id: h.order_ref,
+        order_ref: h.order_ref,
+        channel: "POS Sale",
+        amount: parseFloat(h.amount || 0),
+        terminal_sn: h.terminal_sn || "",
+        customer_name: h.customer_name || "Walk-in Customer",
+        customer_phone: h.customer_phone || "",
+        status: h.status,
+        created_at: h.created_at,
+      }));
+
+      const awaitingCod = codRes.rows.map((o) => ({
+        target_type: "order",
+        target_id: o.id,
+        order_ref: o.order_ref || o.id,
+        channel: o.cod_awaiting_terminal_sn ? "COD (Driver POS)" : "COD",
+        amount: parseFloat(o.total || 0),
+        terminal_sn: o.cod_awaiting_terminal_sn || o.driver_terminal_sn || "",
+        driver_name: o.driver_name || null,
+        customer_name: o.customer_name,
+        customer_phone: o.customer_phone,
+        status: o.status,
+        payment_status: o.payment_status || "pending",
+        created_at: o.created_at,
+      }));
+
+      const awaiting = [...awaitingHeld, ...awaitingCod];
+      const unmapped = unmappedRes.rows;
+
+      // Compute exact-amount auto-match candidates
+      const autoMatchCandidates = unmapped.filter((t) =>
+        awaiting.some((a) => Math.abs(parseFloat(t.amount) - a.amount) < 0.5)
+      ).length;
+
+      res.json({
+        success: true,
+        summary: {
+          awaiting_count: awaiting.length,
+          awaiting_pos_count: awaitingHeld.length,
+          awaiting_cod_count: awaitingCod.length,
+          awaiting_total: awaiting.reduce((s, a) => s + a.amount, 0),
+          unmapped_count: unmapped.length,
+          unmapped_total: unmapped.reduce((s, t) => s + parseFloat(t.amount || 0), 0),
+          mapped_count: mappedRes.rows.length,
+          auto_match_candidates: autoMatchCandidates,
+        },
+        awaiting_confirmation: awaiting,
+        unmapped_webhooks: unmapped,
+        mapped_transactions: mappedRes.rows,
+        webhook_logs: logsRes.rows,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/webhook-reconciliation/automap",
+  requireRole("superadmin", "manager", "admin", "accountant", "cashier"),
+  async (req, res, next) => {
+    try {
+      const {
+        ensureDriverPosSchema,
+        autoCompleteHeldOrderIfMatched,
+        matchDriverCodOrderIfMatched,
+      } = require("../services/moniepointPosService");
+      await ensureDriverPosSchema();
+
+      const unmappedRes = await pool.query(
+        `SELECT * FROM pos_transactions
+         WHERE used_for_order_id IS NULL AND status = 'successful'
+         ORDER BY payment_time ASC
+         LIMIT 100`
+      );
+
+      const results = [];
+      for (const txn of unmappedRes.rows) {
+        const norm = {
+          terminalId: txn.terminal_id || "",
+          amount: parseFloat(txn.amount),
+          transactionId: txn.transaction_id,
+          rrn: txn.rrn || "",
+          customerName: txn.customer_name || "",
+          senderBank: "",
+          paymentMethod: txn.payment_method || "CARD",
+          cardType: txn.card_type || "CARD",
+          lastFour: txn.last_four || "",
+        };
+
+        const heldMatched = await autoCompleteHeldOrderIfMatched(txn, norm).catch(() => null);
+        if (heldMatched) {
+          results.push({
+            transaction_id: txn.transaction_id,
+            amount: norm.amount,
+            matched_type: "held_order",
+            order_id: heldMatched.order_id,
+          });
+          continue;
+        }
+
+        const codMatched = await matchDriverCodOrderIfMatched(txn, norm).catch(() => null);
+        if (codMatched) {
+          results.push({
+            transaction_id: txn.transaction_id,
+            amount: norm.amount,
+            matched_type: "cod_order",
+            order_id: codMatched.order_ref || codMatched.id,
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        mapped_count: results.length,
+        results,
+        message:
+          results.length > 0
+            ? `Auto-mapped ${results.length} payment webhook(s) to matching POS / COD orders.`
+            : "No exact terminal + amount matches found for automatic mapping. Use Manual Map for cross-terminal or custom matches.",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/webhook-reconciliation/manual-map",
+  requireRole("superadmin", "manager", "admin", "accountant", "cashier"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const { pos_transaction_id, target_type, target_id, force_amount_mismatch } = req.body;
+      if (!pos_transaction_id || !target_type || !target_id) {
+        return res.status(400).json({ message: "pos_transaction_id, target_type, and target_id are required." });
+      }
+
+      const {
+        ensureDriverPosSchema,
+        claimDriverCodPaymentWithClient,
+        autoCompleteHeldOrderIfMatched,
+      } = require("../services/moniepointPosService");
+      await ensureDriverPosSchema();
+
+      await client.query("BEGIN");
+      const txnRes = await client.query(
+        `SELECT * FROM pos_transactions WHERE (id::text = $1 OR transaction_id = $1) FOR UPDATE`,
+        [String(pos_transaction_id)]
+      );
+      const txn = txnRes.rows[0];
+      if (!txn) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Webhook transaction not found." });
+      }
+      if (txn.used_for_order_id) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ message: `Transaction already mapped to ${txn.used_for_order_id}.` });
+      }
+
+      if (target_type === "order") {
+        const ordRes = await client.query(
+          `SELECT o.id, o.order_ref, o.total, o.payment_status, d.driver_id
+           FROM orders o
+           LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
+           WHERE (o.id::text = $1 OR o.order_ref = $1)
+           LIMIT 1
+           FOR UPDATE OF o`,
+          [String(target_id)]
+        );
+        const ord = ordRes.rows[0];
+        if (!ord) {
+          await client.query("ROLLBACK");
+          return res.status(404).json({ message: "Target order not found." });
+        }
+        if (ord.payment_status === "paid") {
+          await client.query("ROLLBACK");
+          return res.status(409).json({ message: `Order #${ord.order_ref || ord.id} is already marked paid.` });
+        }
+
+        const diff = Math.abs(parseFloat(txn.amount) - parseFloat(ord.total));
+        if (diff > 1 && !force_amount_mismatch) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            message: `Amount mismatch: webhook is ₦${parseFloat(txn.amount).toLocaleString()} while order total is ₦${parseFloat(ord.total).toLocaleString()}.`,
+            amount_mismatch: true,
+          });
+        }
+
+        await claimDriverCodPaymentWithClient(client, ord, txn, ord.driver_id);
+        await client.query("COMMIT");
+
+        return res.json({
+          success: true,
+          message: `Mapped ${txn.transaction_id} (₦${parseFloat(txn.amount).toLocaleString()}) to Order #${ord.order_ref || ord.id}.`,
+          order_id: ord.id,
+        });
+      }
+
+      if (target_type === "held_order") {
+        const heldRes = await client.query(
+          `SELECT * FROM pos_terminal_held_orders WHERE order_ref = $1 AND status = 'awaiting_payment' FOR UPDATE`,
+          [String(target_id)]
+        );
+        const held = heldRes.rows[0];
+        if (!held) {
+          await client.query("ROLLBACK");
+          return res.status(404).json({ message: "Awaiting POS held order not found or already completed." });
+        }
+
+        const diff = Math.abs(parseFloat(txn.amount) - parseFloat(held.amount));
+        if (diff > 1 && !force_amount_mismatch) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            message: `Amount mismatch: webhook is ₦${parseFloat(txn.amount).toLocaleString()} while held POS order is ₦${parseFloat(held.amount).toLocaleString()}.`,
+            amount_mismatch: true,
+          });
+        }
+
+        // Align terminal_sn on the held order so autoCompleteHeldOrderIfMatched claims it cleanly
+        if (txn.terminal_id && held.terminal_sn !== txn.terminal_id) {
+          await client.query(
+            `UPDATE pos_terminal_held_orders SET terminal_sn = $1 WHERE id = $2`,
+            [txn.terminal_id, held.id]
+          );
+        }
+        await client.query("COMMIT");
+
+        const completed = await autoCompleteHeldOrderIfMatched(txn, {
+          terminalId: txn.terminal_id || held.terminal_sn || "",
+          amount: parseFloat(held.amount),
+          transactionId: txn.transaction_id,
+          rrn: txn.rrn || "",
+          customerName: txn.customer_name || "",
+          senderBank: "",
+          paymentMethod: txn.payment_method || "CARD",
+          cardType: txn.card_type || "CARD",
+          lastFour: txn.last_four || "",
+        });
+
+        if (!completed) {
+          return res.status(500).json({ message: "Could not complete held POS order from webhook." });
+        }
+
+        return res.json({
+          success: true,
+          message: `Mapped ${txn.transaction_id} and completed POS sale ${completed.order_id}.`,
+          order_id: completed.order_id,
+        });
+      }
+
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Invalid target_type. Must be 'order' or 'held_order'." });
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
 module.exports = router;

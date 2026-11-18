@@ -869,6 +869,9 @@ export default function Sidebar() {
                 <NavLink to="/accounts/wallets" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Wallet &amp; Gateway Hub</span>
                 </NavLink>
+                <NavLink to="/accounts/webhook-reconciliation" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Webhook Reconciliation</span>
+                </NavLink>
                 {is('superadmin', 'admin') && (
                   <NavLink to="/god-eye?category=finance" className={() => `dual-sub-link ${location.pathname.startsWith('/god-eye') && location.search.includes('category=finance') ? 'active' : ''}`}>
                     <span>Financial Audit Log</span>
