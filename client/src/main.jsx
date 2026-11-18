@@ -10,6 +10,16 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./styles/responsive.css";
 import "./styles/theme.css";
 
+if (
+  import.meta.env.PROD &&
+  "serviceWorker" in navigator &&
+  !window.location.pathname.startsWith("/admin")
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThemeProvider>

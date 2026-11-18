@@ -61,6 +61,7 @@ const ROUTE_META = {
 };
 
 import LocationPromptBanner from "./components/ui/LocationPromptBanner";
+import InstallAppPrompt from "./components/ui/InstallAppPrompt";
 
 function RouteMetadata() {
   const { pathname } = useLocation();
@@ -84,6 +85,7 @@ function App() {
     <BrowserRouter>
       <RouteMetadata />
       <LocationPromptBanner />
+      <InstallAppPrompt />
       <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#faf8f2] px-6 text-center font-bold text-[#17352a]" role="status">Loading BemsFarms…</div>}>
         <Routes>
         {/* Public */}
