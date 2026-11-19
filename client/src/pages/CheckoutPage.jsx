@@ -281,6 +281,8 @@ export default function CheckoutPage() {
   const [showWalletPin, setShowWalletPin] = useState(false);
   const [walletPinModalOpen, setWalletPinModalOpen] = useState(false);
   const [walletPinModalError, setWalletPinModalError] = useState(null);
+  const [insufficientWalletModalOpen, setInsufficientWalletModalOpen] = useState(false);
+  const [copiedNubanInModal, setCopiedNubanInModal] = useState(false);
   const [monnifyConfig, setMonnifyConfig] = useState({
     apiKey: MONNIFY_API_KEY,
     contractCode: MONNIFY_CONTRACT_CODE,
@@ -1014,10 +1016,9 @@ export default function CheckoutPage() {
 
     const availBal = Number(customerWallet?.balance || 0);
     if (customerWallet && availBal + 0.001 < total) {
-      setError(
-        `Insufficient wallet balance (Available: ₦${availBal.toLocaleString()}, Required: ₦${total.toLocaleString()}). Please transfer to your dedicated Monnify account or use online payment.`
-      );
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setError(null);
+      setCopiedNubanInModal(false);
+      setInsufficientWalletModalOpen(true);
       return;
     }
 
@@ -1071,6 +1072,13 @@ export default function CheckoutPage() {
       });
     } catch (walErr) {
       const detail = walErr?.response?.data?.message || walErr.message;
+      if (walErr?.response?.status === 402) {
+        setWalletPin("");
+        setWalletPinModalOpen(false);
+        setInsufficientWalletModalOpen(true);
+        setLoading(false);
+        return;
+      }
       if (walErr?.response?.data?.code === "INVALID_PAYMENT_PIN") {
         setWalletPin("");
       }
@@ -2476,6 +2484,232 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Insufficient Wallet Balance Popup Modal */}
+      <AnimatePresence>
+        {insufficientWalletModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setInsufficientWalletModalOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 60,
+              backgroundColor: "rgba(15, 45, 32, 0.55)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: "430px",
+                backgroundColor: "#FFFFFF",
+                borderRadius: "24px",
+                boxShadow: "0 24px 60px rgba(0, 0, 0, 0.25)",
+                border: "1px solid #E5E7EB",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #143c2d 0%, #1B4332 100%)",
+                  padding: "20px 24px",
+                  color: "#FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#FDE68A" }}>
+                    Bems Wallet
+                  </div>
+                  <h3 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: 900 }}>
+                    Insufficient Wallet Balance
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInsufficientWalletModalOpen(false)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    color: "#FFFFFF",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ padding: "22px 24px" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "10px",
+                    padding: "14px",
+                    borderRadius: "14px",
+                    backgroundColor: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "10px", fontWeight: 700, color: "#6B7280", textTransform: "uppercase" }}>Required</div>
+                    <div style={{ fontSize: "14px", fontWeight: 900, color: "#111827", marginTop: "2px" }}>
+                      ₦{total.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", fontWeight: 700, color: "#6B7280", textTransform: "uppercase" }}>Available</div>
+                    <div style={{ fontSize: "14px", fontWeight: 900, color: "#1B4332", marginTop: "2px" }}>
+                      ₦{Number(customerWallet?.balance || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", fontWeight: 700, color: "#991B1B", textTransform: "uppercase" }}>Shortfall</div>
+                    <div style={{ fontSize: "14px", fontWeight: 900, color: "#DC2626", marginTop: "2px" }}>
+                      ₦{Math.max(0, total - Number(customerWallet?.balance || 0)).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {customerWallet?.account_number ? (
+                  <div
+                    style={{
+                      padding: "14px",
+                      borderRadius: "14px",
+                      backgroundColor: "#F4F9F5",
+                      border: "1px solid #BBF7D0",
+                      marginBottom: "18px",
+                    }}
+                  >
+                    <div style={{ fontSize: "11px", fontWeight: 800, color: "#143c2d", marginBottom: "6px" }}>
+                      Transfer to Top Up Instantly ({customerWallet.bank_name || "Dedicated Bank"})
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                      <div>
+                        <div style={{ fontSize: "18px", fontWeight: 900, fontFamily: "monospace", letterSpacing: "0.08em", color: "#111827" }}>
+                          {customerWallet.account_number}
+                        </div>
+                        {customerWallet.account_name && (
+                          <div style={{ fontSize: "11px", color: "#4B5563", marginTop: "2px" }}>
+                            {customerWallet.account_name}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(customerWallet.account_number);
+                          setCopiedNubanInModal(true);
+                          setTimeout(() => setCopiedNubanInModal(false), 2000);
+                        }}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "10px",
+                          border: "none",
+                          backgroundColor: "#1B4332",
+                          color: "#FFFFFF",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {copiedNubanInModal ? "Copied!" : "Copy NUBAN"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: "0 0 18px", fontSize: "12px", color: "#4B5563", lineHeight: 1.5 }}>
+                    Top up your Bems Wallet from your profile or switch to Card / Bank Transfer to complete this order now.
+                  </p>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsufficientWalletModalOpen(false);
+                      setPayMethod("monnify");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "none",
+                      background: "linear-gradient(135deg, #143c2d 0%, #1e5a44 100%)",
+                      color: "#FFFFFF",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Pay with Card / Bank Transfer Instead
+                  </button>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInsufficientWalletModalOpen(false);
+                        navigate("/profile?tab=wallet");
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "11px",
+                        borderRadius: "12px",
+                        border: "1px solid #BBF7D0",
+                        backgroundColor: "#F4F9F5",
+                        color: "#143c2d",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go to My Wallet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInsufficientWalletModalOpen(false)}
+                      style={{
+                        flex: 1,
+                        padding: "11px",
+                        borderRadius: "12px",
+                        border: "1px solid #D1D5DB",
+                        backgroundColor: "#FFFFFF",
+                        color: "#374151",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Wallet Payment PIN Authorization Popup Modal */}
       <AnimatePresence>
