@@ -409,12 +409,30 @@ export default function CheckoutPage() {
       })
       .catch((err) => {
         setLoading(false);
-        const detail = err?.response?.data?.message || err.message;
-        setError(
-          `Payment reference ${returnedRef} returned, but finalizing order failed: ${detail}. ` +
-            `If you were debited, please contact support with this reference.`
-        );
-        setPaymentRecoveryAvailable(true);
+        const detail = String(err?.response?.data?.message || err.message || "");
+        const lower = detail.toLowerCase();
+        const isCancelledOrUnpaid =
+          lower.includes("not successful") ||
+          lower.includes("not paid") ||
+          lower.includes("pending") ||
+          lower.includes("cancel") ||
+          lower.includes("abandon") ||
+          lower.includes("failed");
+
+        // Clean ?paymentReference= from the URL so refreshing doesn't re-trigger
+        try {
+          window.history.replaceState({}, "", "/checkout");
+        } catch {}
+
+        if (isCancelledOrUnpaid) {
+          setError("Your payment was not completed. Please select a payment method below to try again.");
+          setPaymentRecoveryAvailable(false);
+        } else {
+          setError(
+            "We couldn't confirm your payment right away. If you were debited, please click 'Recover & Verify Payment' below."
+          );
+          setPaymentRecoveryAvailable(true);
+        }
       });
   }, [user]);
 
