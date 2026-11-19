@@ -87,6 +87,7 @@ import Income            from './pages/accounts/Income'
 import MoneyTransfer     from './pages/accounts/MoneyTransfer'
 import Transactions      from './pages/accounts/Transactions'
 import WebhookReconciliation from './pages/accounts/WebhookReconciliation'
+import DriverWalletDashboard from './pages/accounts/DriverWalletDashboard'
 import DriverCommissions from './pages/accounts/DriverCommissions'
 import WalletManagement  from './pages/finance/WalletManagement'
 
@@ -294,6 +295,7 @@ function App() {
                 <Route path="/accounts/transfer"     element={<MoneyTransfer />} />
                 <Route path="/accounts/transactions" element={<Transactions />} />
                 <Route path="/accounts/webhook-reconciliation" element={<WebhookReconciliation />} />
+                <Route path="/accounts/driver-wallets" element={<DriverWalletDashboard />} />
                 <Route path="/accounts/commissions"  element={<DriverCommissions />} />
                 <Route path="/accounts/wallets"      element={<WalletManagement />} />
                 <Route path="/deliveries/wallets"    element={<WalletManagement />} />

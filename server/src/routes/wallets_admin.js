@@ -1976,4 +1976,248 @@ router.patch("/zone-earnings/:zoneId", requireRole("superadmin", "manager", "adm
   }
 });
 
+// ── GET /api/admin/wallets/driver-statement ──────────────────────
+// Executive Driver Wallet & Settlement Statement (supports period filter)
+router.get("/driver-statement", async (req, res, next) => {
+  try {
+    const period = String(req.query.period || "this_month").toLowerCase();
+    const now = new Date();
+    let dateFrom = null;
+    if (period === "today") {
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === "this_week") {
+      const day = now.getDay();
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+    } else if (period === "last_30_days") {
+      dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (period === "this_month") {
+      dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    const fromIso = dateFrom ? dateFrom.toISOString() : null;
+
+    const [driversRes, payoutsRes, ledgerRes] = await Promise.all([
+      pool.query(
+        `SELECT
+           dr.id,
+           dr.name,
+           dr.phone,
+           dr.vehicle_type,
+           dr.vehicle_plate,
+           dr.status,
+           dr.wallet_account_number,
+           dr.bank_name,
+           dr.account_number,
+           COALESCE(dr.wallet_balance, 0) AS wallet_balance,
+           COALESCE(dr.wallet_is_frozen, false) AS wallet_is_frozen,
+           COALESCE(dr.payout_locked, false) AS payout_locked,
+           COALESCE(dz.zone_name, 'Unassigned Zone') AS zone_name,
+           (
+             SELECT COUNT(*)
+             FROM deliveries del
+             WHERE del.driver_id = dr.id
+               AND del.status = 'delivered'
+               AND ($1::timestamptz IS NULL OR COALESCE(del.delivered_at, del.updated_at) >= $1::timestamptz)
+           ) AS deliveries_count,
+           (
+             SELECT COALESCE(SUM(COALESCE(del.driver_commission_amount, dr.commission_per_delivery, 700)), 0)
+             FROM deliveries del
+             WHERE del.driver_id = dr.id
+               AND del.status = 'delivered'
+               AND ($1::timestamptz IS NULL OR COALESCE(del.delivered_at, del.updated_at) >= $1::timestamptz)
+           ) AS delivery_gross,
+           (
+             SELECT COALESCE(SUM(l.amount), 0)
+             FROM driver_wallet_ledger l
+             WHERE l.driver_id = dr.id
+               AND l.type = 'credit'
+               AND l.category IN ('bonus', 'adjustment', 'manual_credit')
+               AND ($1::timestamptz IS NULL OR l.created_at >= $1::timestamptz)
+           ) AS bonuses,
+           (
+             SELECT COALESCE(SUM(l.amount), 0)
+             FROM driver_wallet_ledger l
+             WHERE l.driver_id = dr.id
+               AND l.type = 'debit'
+               AND l.category IN ('penalty', 'deduction', 'charge', 'transfer_fee')
+               AND ($1::timestamptz IS NULL OR l.created_at >= $1::timestamptz)
+           ) AS charges,
+           (
+             SELECT COUNT(*)
+             FROM driver_payouts p
+             WHERE p.driver_id = dr.id
+               AND p.status IN ('paid', 'approved')
+               AND ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ) AS paid_txs,
+           (
+             SELECT COUNT(*)
+             FROM driver_payouts p
+             WHERE p.driver_id = dr.id
+               AND ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ) AS total_txs,
+           (
+             SELECT COALESCE(SUM(p.amount), 0)
+             FROM driver_payouts p
+             WHERE p.driver_id = dr.id
+               AND p.status IN ('paid', 'approved')
+               AND ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ) AS settled_to_bank,
+           (
+             SELECT COALESCE(SUM(p.amount), 0)
+             FROM driver_payouts p
+             WHERE p.driver_id = dr.id
+               AND p.status = 'pending'
+               AND ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ) AS pending_requests_amount,
+           (
+             SELECT COALESCE(SUM(p.amount), 0)
+             FROM driver_payouts p
+             WHERE p.driver_id = dr.id
+               AND ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ) AS total_requested
+         FROM drivers dr
+         LEFT JOIN delivery_zones dz ON dz.zone_id = dr.primary_zone_id
+         ORDER BY COALESCE(dr.wallet_balance, 0) DESC, dr.name ASC`,
+        [fromIso]
+      ),
+      pool
+        .query(
+          `SELECT p.*, dr.name AS driver_name, dr.phone AS driver_phone,
+                  dr.bank_name AS driver_bank_name, dr.account_number AS driver_account_number,
+                  COALESCE(dz.zone_name, 'Unassigned') AS zone_name
+           FROM driver_payouts p
+           JOIN drivers dr ON dr.id = p.driver_id
+           LEFT JOIN delivery_zones dz ON dz.zone_id = dr.primary_zone_id
+           WHERE ($1::timestamptz IS NULL OR p.created_at >= $1::timestamptz)
+           ORDER BY p.created_at DESC
+           LIMIT 150`,
+          [fromIso]
+        )
+        .catch(() => ({ rows: [] })),
+      pool
+        .query(
+          `SELECT l.*, dr.name AS driver_name, dr.phone AS driver_phone
+           FROM driver_wallet_ledger l
+           JOIN drivers dr ON dr.id = l.driver_id
+           WHERE ($1::timestamptz IS NULL OR l.created_at >= $1::timestamptz)
+           ORDER BY l.created_at DESC
+           LIMIT 200`,
+          [fromIso]
+        )
+        .catch(() => ({ rows: [] })),
+    ]);
+
+    const drivers = driversRes.rows.map((d) => {
+      const grossEarned = parseFloat(d.delivery_gross || 0) + parseFloat(d.bonuses || 0);
+      const charges = parseFloat(d.charges || 0);
+      const walletBalance = parseFloat(d.wallet_balance || 0);
+      const settledToBank = parseFloat(d.settled_to_bank || 0);
+      const pendingRequestsAmt = parseFloat(d.pending_requests_amount || 0);
+      const pendingUnpaid = walletBalance + pendingRequestsAmt;
+      const netDisbursable = Math.max(0, grossEarned - charges);
+      const totalRequested = parseFloat(d.total_requested || 0);
+      const paidTxs = parseInt(d.paid_txs || 0, 10);
+      const totalTxs = parseInt(d.total_txs || 0, 10);
+      const denom = settledToBank + pendingUnpaid;
+      const settlementPct = denom > 0 ? Math.round((settledToBank / denom) * 100) : 0;
+
+      return {
+        id: d.id,
+        driver_code: `DRV-${String(d.id).padStart(4, "0")}`,
+        name: d.name,
+        phone: d.phone,
+        vehicle_type: d.vehicle_type,
+        vehicle_plate: d.vehicle_plate,
+        status: d.status,
+        zone_name: d.zone_name,
+        wallet_account_number: d.wallet_account_number,
+        bank_name: d.bank_name,
+        account_number: d.account_number,
+        wallet_is_frozen: d.wallet_is_frozen,
+        payout_locked: d.payout_locked,
+        deliveries_count: parseInt(d.deliveries_count || 0, 10),
+        paid_txs: paidTxs,
+        total_txs: totalTxs,
+        gross_earned: grossEarned,
+        charges,
+        net_disbursable: netDisbursable,
+        wallet_balance: walletBalance,
+        settled_to_bank: settledToBank,
+        pending_requests_amount: pendingRequestsAmt,
+        pending_unpaid: pendingUnpaid,
+        total_requested: totalRequested,
+        settlement_pct: settlementPct,
+      };
+    });
+
+    const zoneMap = new Map();
+    for (const d of drivers) {
+      const z = d.zone_name || "Unassigned Zone";
+      if (!zoneMap.has(z)) {
+        zoneMap.set(z, {
+          zone_name: z,
+          drivers_count: 0,
+          deliveries_count: 0,
+          paid_txs: 0,
+          total_txs: 0,
+          gross_earned: 0,
+          charges: 0,
+          net_disbursable: 0,
+          settled_to_bank: 0,
+          pending_unpaid: 0,
+          total_requested: 0,
+        });
+      }
+      const entry = zoneMap.get(z);
+      entry.drivers_count += 1;
+      entry.deliveries_count += d.deliveries_count;
+      entry.paid_txs += d.paid_txs;
+      entry.total_txs += d.total_txs;
+      entry.gross_earned += d.gross_earned;
+      entry.charges += d.charges;
+      entry.net_disbursable += d.net_disbursable;
+      entry.settled_to_bank += d.settled_to_bank;
+      entry.pending_unpaid += d.pending_unpaid;
+      entry.total_requested += d.total_requested;
+    }
+    const zones = Array.from(zoneMap.values()).map((z) => {
+      const denom = z.settled_to_bank + z.pending_unpaid;
+      return { ...z, settlement_pct: denom > 0 ? Math.round((z.settled_to_bank / denom) * 100) : 0 };
+    });
+
+    const grossTotal = drivers.reduce((s, d) => s + d.gross_earned, 0);
+    const settledTotal = drivers.reduce((s, d) => s + d.settled_to_bank, 0);
+    const pendingTotal = drivers.reduce((s, d) => s + d.pending_unpaid, 0);
+    const chargesTotal = drivers.reduce((s, d) => s + d.charges, 0);
+    const paidTxCount = drivers.reduce((s, d) => s + d.paid_txs, 0);
+    const totalTxCount = drivers.reduce((s, d) => s + d.total_txs, 0);
+    const overallDenom = settledTotal + pendingTotal;
+
+    res.json({
+      success: true,
+      period,
+      date_from: dateFrom ? dateFrom.toISOString().slice(0, 10) : "All Time",
+      date_to: now.toISOString().slice(0, 10),
+      reference: `BEMS-DRV-${period.toUpperCase()}-ALL-DRIVERS`,
+      kpis: {
+        gross_earned: grossTotal,
+        net_settled: settledTotal,
+        pending_exposure: pendingTotal,
+        total_charges: chargesTotal,
+        settlement_pct: overallDenom > 0 ? Math.round((settledTotal / overallDenom) * 100) : 0,
+        paid_tx_count: paidTxCount,
+        total_tx_count: totalTxCount,
+        total_drivers: drivers.length,
+        active_wallet_balance: drivers.reduce((s, d) => s + d.wallet_balance, 0),
+      },
+      drivers,
+      zones,
+      payouts: payoutsRes.rows,
+      ledger: ledgerRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
