@@ -275,6 +275,11 @@ export default function CheckoutPage() {
 
   const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod"
   const [codEnabled, setCodEnabled] = useState(true);
+  const [monnifyConfig, setMonnifyConfig] = useState({
+    apiKey: MONNIFY_API_KEY,
+    contractCode: MONNIFY_CONTRACT_CODE,
+    isTest: MONNIFY_API_KEY.startsWith("MK_TEST_"),
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [monnifyLoaded, setMonnifyLoaded] = useState(false);
@@ -349,6 +354,16 @@ export default function CheckoutPage() {
           if (!res.data.cod_enabled) {
             setPayMethod("monnify");
           }
+        }
+        if (res.data?.monnify_api_key || res.data?.monnify_contract_code) {
+          setMonnifyConfig((prev) => ({
+            apiKey: res.data.monnify_api_key || prev.apiKey,
+            contractCode: res.data.monnify_contract_code || prev.contractCode,
+            isTest:
+              typeof res.data.monnify_is_test === "boolean"
+                ? res.data.monnify_is_test
+                : prev.isTest,
+          }));
         }
       })
       .catch((err) => {
@@ -818,6 +833,14 @@ export default function CheckoutPage() {
       }
     };
 
+    const activeApiKey = monnifyConfig.apiKey || MONNIFY_API_KEY;
+    const activeContractCode = monnifyConfig.contractCode || MONNIFY_CONTRACT_CODE;
+    if (!activeApiKey || !activeContractCode) {
+      setLoading(false);
+      setError("Online payment gateway is not configured yet (missing Monnify key or contract code). Please choose Cash on Delivery or contact support.");
+      return;
+    }
+
     try {
       window.MonnifySDK.initialize({
         amount: checkout.total,
@@ -827,8 +850,9 @@ export default function CheckoutPage() {
         customerFullName: form.fullName?.trim() || user?.name || "Valued Customer",
         customerEmail: form.email?.trim() || user?.email,
         customerMobileNumber: form.phone?.replace(/\s+/g, "") || user?.phone || "",
-        apiKey: MONNIFY_API_KEY,
-        contractCode: MONNIFY_CONTRACT_CODE,
+        apiKey: activeApiKey,
+        contractCode: activeContractCode,
+        isTestMode: Boolean(monnifyConfig.isTest),
         paymentDescription: "BemsFarms Direct Farm Checkout",
         paymentMethods: ["CARD", "ACCOUNT_TRANSFER", "USSD"],
         onLoadStart: () => console.log("Monnify modal opened"),

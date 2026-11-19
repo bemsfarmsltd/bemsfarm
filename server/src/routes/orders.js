@@ -159,14 +159,20 @@ async function resolveZoneAndFee(client, { zone_id, latitude, longitude, address
 router.get("/payment-settings", async (req, res, next) => {
   try {
     const result = await pool.query(
-      "SELECT slug, name, is_enabled, is_live FROM payment_gateways"
+      "SELECT slug, name, is_enabled, is_live, public_key FROM payment_gateways"
     );
     const gateways = result.rows;
     const codRow = gateways.find((g) => g.slug === "cod");
+    const monnifyRow = gateways.find((g) => g.slug === "monnify");
     const codEnabled = codRow ? Boolean(codRow.is_enabled) : true;
+    const monnifyApiKey = String(monnifyRow?.public_key || process.env.MONNIFY_API_KEY || "").trim();
+    const monnifyContractCode = String(process.env.MONNIFY_CONTRACT_CODE || "").trim();
     res.json({
       success: true,
       cod_enabled: codEnabled,
+      monnify_api_key: monnifyApiKey,
+      monnify_contract_code: monnifyContractCode,
+      monnify_is_test: monnifyRow ? !monnifyRow.is_live : monnifyApiKey.startsWith("MK_TEST_"),
       gateways: gateways.map((g) => ({
         slug: g.slug,
         name: g.name,
