@@ -171,10 +171,11 @@ async function autoAssignClosestDriver(
       }
     }
 
+    const MAX_AUTO_DISPATCH_DISTANCE_KM = 30.0;
     let bestDriver = null;
     let isBundledRoute = false;
 
-    // ── PRIORITY 1: AUTO-BUNDLE WITH ACTIVE DRIVERS ON SAME CORRIDOR / ZONE ──
+    // ── PRIORITY 1: AUTO-BUNDLE WITH PRE-PICKUP DRIVERS ON SAME CORRIDOR / ZONE ──
     try {
       const bundleCandidatesRes = await client.query(
         `
@@ -191,18 +192,20 @@ async function autoAssignClosestDriver(
           )) AS active_deliveries
         FROM drivers d
         JOIN deliveries del ON del.driver_id = d.id 
-          AND del.order_id != $1
+          AND del.order_id::text != $1::text
           AND del.status IN ('assigned', 'accepted', 'awaiting_pickup')
-        LEFT JOIN orders o2 ON (o2.id::text = del.order_id OR o2.order_ref = del.order_id)
+        LEFT JOIN orders o2 ON (o2.id::text = del.order_id::text OR o2.order_ref = del.order_id::text)
         LEFT JOIN driver_availability da ON d.id = da.driver_id
         LEFT JOIN LATERAL (
           SELECT latitude, longitude FROM driver_locations WHERE driver_id = d.id AND recorded_at >= NOW() - INTERVAL '2 minutes' ORDER BY recorded_at DESC LIMIT 1
         ) dl ON true
-        WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty')
+        WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty', 'on_delivery', 'in_transit', 'busy')
           AND COALESCE(da.is_available, d.is_available, true) = true
+          AND COALESCE(da.is_on_delivery, false) = false
           AND NOT EXISTS (
             SELECT 1 FROM deliveries d_transit
             WHERE d_transit.driver_id = d.id
+              AND d_transit.order_id::text != $1::text
               AND d_transit.status IN ('picked_up', 'in_transit', 'en_route', 'arrived')
           )
           ${excludedCondition}
@@ -215,6 +218,17 @@ async function autoAssignClosestDriver(
       if (bundleCandidatesRes.rows.length > 0) {
         const eligibleBundles = [];
         for (const cand of bundleCandidatesRes.rows) {
+          // Enforce store pickup radius guardrail if driver GPS is available
+          if (cand.latitude && cand.longitude) {
+            const drvStoreDist = calculateDistanceKm(
+              storeCoords.lat,
+              storeCoords.lng,
+              parseFloat(cand.latitude),
+              parseFloat(cand.longitude)
+            );
+            if (drvStoreDist > MAX_AUTO_DISPATCH_DISTANCE_KM) continue;
+          }
+
           let matchesRoute = false;
           let minDetour = 999;
           let bestIncrementalKm = 999;
@@ -224,18 +238,16 @@ async function autoAssignClosestDriver(
             if (order.zone_id && ad.zone_id && order.zone_id === ad.zone_id) {
               matchesRoute = true;
             }
-            // Match B: Route-to-route stop proximity & incremental route detour (Store -> Stop 1 -> Stop 2)
+            // Match B: Route-to-route stop proximity & incremental route detour (Store -> Stop 1 -> Stop 2 vs Store -> Stop 2 -> Stop 1)
             if (ad.lat && ad.lng && originLat && originLng) {
               const stop1Lat = parseFloat(ad.lat);
               const stop1Lng = parseFloat(ad.lng);
               const dKm = calculateDistanceKm(originLat, originLng, stop1Lat, stop1Lng);
               const storeToStop1 = calculateDistanceKm(storeCoords.lat, storeCoords.lng, stop1Lat, stop1Lng);
               const storeToStop2 = calculateDistanceKm(storeCoords.lat, storeCoords.lng, originLat, originLng);
-              // Incremental detour when chaining Stop 1 -> Stop 2 vs separate trips
-              const incrementalDetour = Math.min(
-                storeToStop1 + dKm - storeToStop1,
-                storeToStop2 + dKm - storeToStop2
-              );
+              const detourAfterStop1 = dKm;
+              const detourBeforeStop1 = Math.max(0, storeToStop2 + dKm - storeToStop1);
+              const incrementalDetour = Math.min(detourAfterStop1, detourBeforeStop1);
               if (dKm <= batchRadiusKm) {
                 matchesRoute = true;
                 if (dKm < minDetour) minDetour = dKm;
@@ -331,11 +343,11 @@ async function autoAssignClosestDriver(
         };
       }
 
-      // Rank drivers by distance to origin/store
+      // Rank drivers by distance to store/pickup point
       const driversWithDistance = driversRes.rows.map((drv) => {
         const driverLat = drv.latitude ? parseFloat(drv.latitude) : storeCoords.lat;
         const driverLng = drv.longitude ? parseFloat(drv.longitude) : storeCoords.lng;
-        const distanceKm = calculateDistanceKm(originLat, originLng, driverLat, driverLng);
+        const distanceKm = calculateDistanceKm(storeCoords.lat, storeCoords.lng, driverLat, driverLng);
         return {
           ...drv,
           distanceKm,
@@ -343,7 +355,6 @@ async function autoAssignClosestDriver(
       });
 
       // Operational Safety Guardrail: Max allowable distance for motorcycle courier auto-dispatch (30 km)
-      const MAX_AUTO_DISPATCH_DISTANCE_KM = 30.0;
       const eligibleNearbyDrivers = driversWithDistance.filter(drv => drv.distanceKm <= MAX_AUTO_DISPATCH_DISTANCE_KM);
 
       if (eligibleNearbyDrivers.length === 0) {
@@ -376,6 +387,27 @@ async function autoAssignClosestDriver(
 
       eligibleNearbyDrivers.sort((a, b) => a.distanceKm - b.distanceKm);
       bestDriver = eligibleNearbyDrivers[0];
+    }
+
+    // Lock the selected driver row inside the transaction to prevent concurrent over-batching
+    // or assigning a driver who just transitioned to in-transit.
+    await client.query("SELECT id FROM drivers WHERE id = $1 FOR UPDATE", [bestDriver.id]);
+    const guardRes = await client.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE status IN ('assigned', 'accepted', 'awaiting_pickup') AND order_id::text != $2::text)::int AS pre_pickup_count,
+         COUNT(*) FILTER (WHERE status IN ('picked_up', 'in_transit', 'en_route', 'arrived') AND order_id::text != $2::text)::int AS in_transit_count
+       FROM deliveries
+       WHERE driver_id = $1`,
+      [bestDriver.id, String(order.id)]
+    );
+    const guard = guardRes.rows[0] || { pre_pickup_count: 0, in_transit_count: 0 };
+    if (guard.in_transit_count > 0 || guard.pre_pickup_count >= maxBatchOrders) {
+      await client.query("ROLLBACK");
+      return {
+        success: false,
+        status: "awaiting_driver_confirmation",
+        message: "Selected driver became busy or reached max batch capacity. Retrying dispatch.",
+      };
     }
 
     // Ensure delivery record exists
