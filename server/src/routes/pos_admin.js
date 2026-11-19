@@ -2411,7 +2411,7 @@ router.get(
       const { ensureDriverPosSchema } = require("../services/moniepointPosService");
       await ensureDriverPosSchema();
 
-      const [heldRes, codRes, unmappedRes, mappedRes, logsRes] = await Promise.all([
+      const [heldRes, codRes, splitRes, unmappedRes, mappedRes, logsRes] = await Promise.all([
         pool
           .query(
             `SELECT id, order_ref, terminal_sn, amount, status, created_at,
@@ -2439,6 +2439,31 @@ router.get(
            ORDER BY (o.cod_awaiting_terminal_sn IS NOT NULL) DESC, o.created_at DESC
            LIMIT 100`
         ),
+        pool
+          .query(
+            `SELECT o.id, o.order_ref, o.total, o.status, o.payment_method, o.payment_status,
+                    o.created_at, o.updated_at,
+                    COALESCE(o.customer_name, u.name, 'Walk-in Customer') AS customer_name,
+                    COALESCE(o.customer_phone, u.phone, '') AS customer_phone,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(p.payment_method, '')) = 'cash' THEN p.amount ELSE 0 END), 0) AS cash_amount,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(p.payment_method, '')) <> 'cash' THEN p.amount ELSE 0 END), 0) AS gateway_amount
+             FROM orders o
+             JOIN payments p ON p.order_id = o.id
+             LEFT JOIN users u ON (o.user_id = u.id OR o.customer_id = u.id)
+             WHERE LOWER(COALESCE(o.payment_method, '')) IN ('split payment', 'split_payment', 'split')
+               AND o.status NOT IN ('cancelled', 'refunded')
+               AND NOT EXISTS (
+                 SELECT 1 FROM pos_transactions pt
+                 WHERE pt.used_for_order_id::text = o.id::text
+                    OR pt.used_for_order_id::text = o.order_ref
+               )
+             GROUP BY o.id, o.order_ref, o.total, o.status, o.payment_method, o.payment_status,
+                      o.created_at, o.updated_at, o.customer_name, u.name, o.customer_phone, u.phone
+             HAVING COALESCE(SUM(CASE WHEN LOWER(COALESCE(p.payment_method, '')) <> 'cash' THEN p.amount ELSE 0 END), 0) > 0
+             ORDER BY o.created_at DESC
+             LIMIT 100`
+          )
+          .catch(() => ({ rows: [] })),
         pool.query(
           `SELECT id, transaction_id, terminal_id, amount, payment_method, card_type,
                   last_four, customer_name, rrn, status, payment_time,
@@ -2503,7 +2528,25 @@ router.get(
         created_at: o.created_at,
       }));
 
-      const awaiting = [...awaitingHeld, ...awaitingCod];
+      const awaitingSplit = splitRes.rows.map((s) => ({
+        target_type: "order",
+        target_id: s.id,
+        order_ref: s.order_ref || s.id,
+        channel: "POS Split (Cash + Transfer/POS)",
+        amount: parseFloat(s.gateway_amount || 0),
+        gateway_amount: parseFloat(s.gateway_amount || 0),
+        cash_amount: parseFloat(s.cash_amount || 0),
+        order_total: parseFloat(s.total || 0),
+        is_split: true,
+        terminal_sn: "",
+        customer_name: s.customer_name || "Walk-in Customer",
+        customer_phone: s.customer_phone || "",
+        status: s.status,
+        payment_status: s.payment_status || "paid",
+        created_at: s.created_at,
+      }));
+
+      const awaiting = [...awaitingHeld, ...awaitingSplit, ...awaitingCod];
       const classifyChannel = (pm) => {
         const s = String(pm || "").toLowerCase();
         if (s.includes("transfer") || s.includes("bank")) return "transfer";
@@ -2552,7 +2595,7 @@ router.get(
         success: true,
         summary: {
           awaiting_count: awaiting.length,
-          awaiting_pos_count: awaitingHeld.length,
+          awaiting_pos_count: awaitingHeld.length + awaitingSplit.length,
           awaiting_cod_count: awaitingCod.length,
           awaiting_total: awaiting.reduce((s, a) => s + a.amount, 0),
           unmapped_count: unmapped.length,
@@ -2563,7 +2606,7 @@ router.get(
           auto_match_candidates: autoMatchCandidates,
         },
         awaiting_confirmation: awaiting,
-        awaiting_pos: awaitingHeld,
+        awaiting_pos: [...awaitingHeld, ...awaitingSplit],
         awaiting_cod: awaitingCod,
         unmapped_webhooks: unmapped,
         mapped_transactions: mapped,
@@ -2627,6 +2670,55 @@ router.post(
             matched_type: "cod_order",
             order_id: codMatched.order_ref || codMatched.id,
           });
+          continue;
+        }
+
+        // Also match Split Payment POS orders by their exact non-cash (Transfer/POS) gateway amount
+        const splitMatchRes = await pool
+          .query(
+            `SELECT o.id, o.order_ref,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(p.payment_method, '')) <> 'cash' THEN p.amount ELSE 0 END), 0) AS gateway_amount
+             FROM orders o
+             JOIN payments p ON p.order_id = o.id
+             WHERE LOWER(COALESCE(o.payment_method, '')) IN ('split payment', 'split_payment', 'split')
+               AND o.status NOT IN ('cancelled', 'refunded')
+               AND NOT EXISTS (
+                 SELECT 1 FROM pos_transactions pt
+                 WHERE pt.used_for_order_id::text = o.id::text
+                    OR pt.used_for_order_id::text = o.order_ref
+               )
+             GROUP BY o.id, o.order_ref
+             HAVING ABS(COALESCE(SUM(CASE WHEN LOWER(COALESCE(p.payment_method, '')) <> 'cash' THEN p.amount ELSE 0 END), 0) - $1) < 0.5
+             ORDER BY o.created_at DESC
+             LIMIT 1`,
+            [norm.amount]
+          )
+          .catch(() => ({ rows: [] }));
+
+        if (splitMatchRes.rows[0]) {
+          const splitOrd = splitMatchRes.rows[0];
+          await pool.query(
+            `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2 AND used_for_order_id IS NULL`,
+            [String(splitOrd.id), txn.id]
+          );
+          await pool.query(
+            `UPDATE payments
+             SET gateway_ref = COALESCE(gateway_ref, $1),
+                 metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb,
+                 updated_at = NOW()
+             WHERE order_id = $3 AND LOWER(COALESCE(payment_method, '')) <> 'cash'`,
+            [
+              txn.transaction_id,
+              JSON.stringify({ webhook_txn_id: txn.transaction_id, webhook_amount: norm.amount }),
+              splitOrd.id,
+            ]
+          ).catch(() => {});
+          results.push({
+            transaction_id: txn.transaction_id,
+            amount: norm.amount,
+            matched_type: "split_pos_order",
+            order_id: splitOrd.order_ref || splitOrd.id,
+          });
         }
       }
 
@@ -2680,7 +2772,7 @@ router.post(
 
       if (target_type === "order") {
         const ordRes = await client.query(
-          `SELECT o.id, o.order_ref, o.total, o.payment_status, d.driver_id
+          `SELECT o.id, o.order_ref, o.total, o.payment_method, o.payment_status, d.driver_id
            FROM orders o
            LEFT JOIN deliveries d ON (d.order_id = o.id::text OR d.order_id = o.order_ref)
            WHERE (o.id::text = $1 OR o.order_ref = $1)
@@ -2693,6 +2785,57 @@ router.post(
           await client.query("ROLLBACK");
           return res.status(404).json({ message: "Target order not found." });
         }
+
+        const isSplitOrder = ["split payment", "split_payment", "split"].includes(
+          String(ord.payment_method || "").toLowerCase().trim()
+        );
+
+        if (isSplitOrder) {
+          const splitSumRes = await client.query(
+            `SELECT
+               COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) = 'cash' THEN amount ELSE 0 END), 0) AS cash_amount,
+               COALESCE(SUM(CASE WHEN LOWER(COALESCE(payment_method, '')) <> 'cash' THEN amount ELSE 0 END), 0) AS gateway_amount
+             FROM payments
+             WHERE order_id = $1`,
+            [ord.id]
+          );
+          const cashAmount = parseFloat(splitSumRes.rows[0]?.cash_amount || 0);
+          const gatewayAmount = parseFloat(splitSumRes.rows[0]?.gateway_amount || 0);
+          const expectedAmount = gatewayAmount > 0 ? gatewayAmount : parseFloat(ord.total);
+          const diff = Math.abs(parseFloat(txn.amount) - expectedAmount);
+          if (diff > 1 && !force_amount_mismatch) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+              message: `Amount mismatch: webhook is ₦${parseFloat(txn.amount).toLocaleString()} while split Transfer/POS portion is ₦${expectedAmount.toLocaleString()} (Cash: ₦${cashAmount.toLocaleString()}).`,
+              amount_mismatch: true,
+            });
+          }
+
+          await client.query(
+            `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2`,
+            [String(ord.id), txn.id]
+          );
+          await client.query(
+            `UPDATE payments
+             SET gateway_ref = COALESCE(gateway_ref, $1),
+                 metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb,
+                 updated_at = NOW()
+             WHERE order_id = $3 AND LOWER(COALESCE(payment_method, '')) <> 'cash'`,
+            [
+              txn.transaction_id,
+              JSON.stringify({ webhook_txn_id: txn.transaction_id, webhook_amount: parseFloat(txn.amount) }),
+              ord.id,
+            ]
+          ).catch(() => {});
+
+          await client.query("COMMIT");
+          return res.json({
+            success: true,
+            message: `Mapped ${txn.transaction_id} (₦${parseFloat(txn.amount).toLocaleString()}) to Split Order #${ord.order_ref || ord.id} (Transfer/POS: ₦${expectedAmount.toLocaleString()}, Cash: ₦${cashAmount.toLocaleString()}).`,
+            order_id: ord.id,
+          });
+        }
+
         if (ord.payment_status === "paid") {
           await client.query("ROLLBACK");
           return res.status(409).json({ message: `Order #${ord.order_ref || ord.id} is already marked paid.` });
