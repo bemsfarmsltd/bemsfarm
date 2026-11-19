@@ -277,7 +277,10 @@ export default function CheckoutPage() {
   const [codEnabled, setCodEnabled] = useState(true);
   const [customerWallet, setCustomerWallet] = useState(null);
   const [walletPin, setWalletPin] = useState("");
+  const [walletConfirmPin, setWalletConfirmPin] = useState("");
   const [showWalletPin, setShowWalletPin] = useState(false);
+  const [walletPinModalOpen, setWalletPinModalOpen] = useState(false);
+  const [walletPinModalError, setWalletPinModalError] = useState(null);
   const [monnifyConfig, setMonnifyConfig] = useState({
     apiKey: MONNIFY_API_KEY,
     contractCode: MONNIFY_CONTRACT_CODE,
@@ -999,8 +1002,8 @@ export default function CheckoutPage() {
     }
   };
 
-  // Customer Dedicated Wallet Checkout Execution
-  const handleWalletPay = async (e) => {
+  // Customer Dedicated Wallet Checkout Execution — opens Payment PIN popup
+  const handleWalletPay = (e) => {
     e.preventDefault();
     const validationErr = validateForm();
     if (validationErr) {
@@ -1009,25 +1012,59 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (customerWallet && !customerWallet.has_payment_pin) {
-      setError("Please set a 4-digit Payment PIN in Profile → My Wallet before paying with your Bems Wallet.");
+    const availBal = Number(customerWallet?.balance || 0);
+    if (customerWallet && availBal + 0.001 < total) {
+      setError(
+        `Insufficient wallet balance (Available: ₦${availBal.toLocaleString()}, Required: ₦${total.toLocaleString()}). Please transfer to your dedicated Monnify account or use online payment.`
+      );
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
+    setError(null);
+    setStaleItems([]);
+    setWalletPin("");
+    setWalletConfirmPin("");
+    setWalletPinModalError(null);
+    setShowWalletPin(false);
+    setWalletPinModalOpen(true);
+  };
+
+  const handleConfirmWalletPinModal = async (e) => {
+    e.preventDefault();
+    setWalletPinModalError(null);
+
     if (!/^\d{4}$/.test(walletPin)) {
-      setError("Please enter your 4-digit Wallet Payment PIN to authorize this payment.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      setWalletPinModalError("Please enter a valid 4-digit Payment PIN.");
+      return;
+    }
+
+    const needsSetup = Boolean(customerWallet && !customerWallet.has_payment_pin);
+    if (needsSetup && walletPin !== walletConfirmPin) {
+      setWalletPinModalError("Payment PIN and confirmation do not match.");
       return;
     }
 
     setLoading(true);
-    setError(null);
-    setStaleItems([]);
     try {
+      if (needsSetup) {
+        const pinRes = await api.post("/wallet/pin", { pin: walletPin });
+        setCustomerWallet((prev) =>
+          prev
+            ? {
+                ...prev,
+                has_payment_pin: true,
+                payment_pin_set_at: pinRes.data?.payment_pin_set_at || new Date().toISOString(),
+              }
+            : prev
+        );
+      }
+
       const checkout = await prepareCheckout();
       const orderId = await createOrder(undefined, checkout);
       setWalletPin("");
+      setWalletConfirmPin("");
+      setWalletPinModalOpen(false);
       clearCart();
       navigate("/order-confirmed", {
         state: { orderId, paymentMethod: "WALLET" },
@@ -1037,7 +1074,7 @@ export default function CheckoutPage() {
       if (walErr?.response?.data?.code === "INVALID_PAYMENT_PIN") {
         setWalletPin("");
       }
-      setError(detail || "Wallet payment failed. Please top up or choose another method.");
+      setWalletPinModalError(detail || "Wallet payment failed. Please try again.");
       setLoading(false);
     }
   };
@@ -2030,116 +2067,6 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Wallet Payment PIN Entry (shown when Bems Wallet is selected) */}
-                  {user && payMethod === "wallet" && (
-                    <div
-                      style={{
-                        padding: "16px 20px",
-                        borderRadius: "16px",
-                        border: "1px solid #BBF7D0",
-                        backgroundColor: "#F4F9F5",
-                      }}
-                    >
-                      {customerWallet && !customerWallet.has_payment_pin ? (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-                          <div>
-                            <p style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: "#92400E" }}>
-                              Payment PIN Required
-                            </p>
-                            <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#78350F" }}>
-                              Set a 4-digit Payment PIN in your wallet before paying with Bems Wallet.
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => navigate("/profile?tab=wallet")}
-                            style={{
-                              padding: "8px 14px",
-                              borderRadius: "10px",
-                              border: "none",
-                              backgroundColor: "#143c2d",
-                              color: "#FFFFFF",
-                              fontSize: "12px",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Set Payment PIN →
-                          </button>
-                        </div>
-                      ) : (
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
-                            <label
-                              htmlFor="checkout-wallet-pin"
-                              style={{ fontSize: "12px", fontWeight: 800, color: "#143c2d", letterSpacing: "0.02em" }}
-                            >
-                              Enter 4-Digit Wallet Payment PIN *
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => navigate("/profile?tab=wallet")}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                padding: 0,
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                color: "#1B4332",
-                                textDecoration: "underline",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Forgot / Change PIN?
-                            </button>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <input
-                              id="checkout-wallet-pin"
-                              type={showWalletPin ? "text" : "password"}
-                              inputMode="numeric"
-                              maxLength={4}
-                              autoComplete="one-time-code"
-                              value={walletPin}
-                              onChange={(e) => setWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                              placeholder="••••"
-                              style={{
-                                flex: 1,
-                                padding: "10px 14px",
-                                borderRadius: "12px",
-                                border: "1px solid #A7F3D0",
-                                backgroundColor: "#FFFFFF",
-                                fontSize: "16px",
-                                fontWeight: 800,
-                                letterSpacing: "0.35em",
-                                fontFamily: "monospace",
-                                color: "#111827",
-                                outline: "none",
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowWalletPin((s) => !s)}
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "12px",
-                                border: "1px solid #D1D5DB",
-                                backgroundColor: "#FFFFFF",
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                color: "#374151",
-                                cursor: "pointer",
-                              }}
-                            >
-                              {showWalletPin ? "Hide" : "Show"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Submit Action Button */}
@@ -2549,6 +2476,296 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Wallet Payment PIN Authorization Popup Modal */}
+      <AnimatePresence>
+        {walletPinModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !loading && setWalletPinModalOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 60,
+              backgroundColor: "rgba(15, 45, 32, 0.55)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: "420px",
+                backgroundColor: "#FFFFFF",
+                borderRadius: "24px",
+                boxShadow: "0 24px 60px rgba(0, 0, 0, 0.25)",
+                border: "1px solid #E5E7EB",
+                overflow: "hidden",
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #143c2d 0%, #1B4332 100%)",
+                  padding: "20px 24px",
+                  color: "#FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#A7F3D0" }}>
+                    Bems Wallet Checkout
+                  </div>
+                  <h3 style={{ margin: "2px 0 0", fontSize: "18px", fontWeight: 900 }}>
+                    {customerWallet && !customerWallet.has_payment_pin
+                      ? "Set 4-Digit Payment PIN"
+                      : "Authorize Payment"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setWalletPinModalOpen(false)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    color: "#FFFFFF",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    cursor: loading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handleConfirmWalletPinModal} style={{ padding: "22px 24px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    borderRadius: "14px",
+                    backgroundColor: "#F4F9F5",
+                    border: "1px solid #D1FAE5",
+                    marginBottom: "18px",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "#6B7280" }}>Order Total</div>
+                    <div style={{ fontSize: "18px", fontWeight: 900, color: "#143c2d" }}>
+                      ₦{total.toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "#6B7280" }}>Wallet Balance</div>
+                    <div style={{ fontSize: "14px", fontWeight: 800, color: "#1B4332" }}>
+                      ₦{Number(customerWallet?.balance || 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {customerWallet && !customerWallet.has_payment_pin ? (
+                  <p style={{ margin: "0 0 14px", fontSize: "12px", color: "#4B5563", lineHeight: 1.5 }}>
+                    Create a 4-digit Payment PIN to protect your wallet balance and complete this order.
+                  </p>
+                ) : (
+                  <p style={{ margin: "0 0 14px", fontSize: "12px", color: "#4B5563", lineHeight: 1.5 }}>
+                    Enter your 4-digit Wallet Payment PIN to confirm this order.
+                  </p>
+                )}
+
+                {walletPinModalError && (
+                  <div
+                    style={{
+                      marginBottom: "14px",
+                      padding: "10px 12px",
+                      borderRadius: "12px",
+                      backgroundColor: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                      color: "#B91C1C",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {walletPinModalError}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: customerWallet && !customerWallet.has_payment_pin ? "12px" : "8px" }}>
+                  <label
+                    htmlFor="modal-wallet-pin"
+                    style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#143c2d", marginBottom: "6px" }}
+                  >
+                    {customerWallet && !customerWallet.has_payment_pin ? "New 4-Digit Payment PIN" : "4-Digit Payment PIN"}
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      id="modal-wallet-pin"
+                      type={showWalletPin ? "text" : "password"}
+                      inputMode="numeric"
+                      maxLength={4}
+                      autoFocus
+                      autoComplete="one-time-code"
+                      value={walletPin}
+                      onChange={(e) => setWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      style={{
+                        flex: 1,
+                        padding: "12px 14px",
+                        borderRadius: "12px",
+                        border: "1.5px solid #A7F3D0",
+                        backgroundColor: "#FFFFFF",
+                        fontSize: "20px",
+                        fontWeight: 800,
+                        letterSpacing: "0.4em",
+                        fontFamily: "monospace",
+                        textAlign: "center",
+                        color: "#111827",
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWalletPin((s) => !s)}
+                      style={{
+                        padding: "0 14px",
+                        borderRadius: "12px",
+                        border: "1px solid #D1D5DB",
+                        backgroundColor: "#F9FAFB",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        color: "#374151",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {showWalletPin ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                {customerWallet && !customerWallet.has_payment_pin ? (
+                  <div style={{ marginBottom: "14px" }}>
+                    <label
+                      htmlFor="modal-wallet-confirm-pin"
+                      style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#143c2d", marginBottom: "6px" }}
+                    >
+                      Confirm 4-Digit Payment PIN
+                    </label>
+                    <input
+                      id="modal-wallet-confirm-pin"
+                      type={showWalletPin ? "text" : "password"}
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={walletConfirmPin}
+                      onChange={(e) => setWalletConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px",
+                        borderRadius: "12px",
+                        border: "1.5px solid #A7F3D0",
+                        backgroundColor: "#FFFFFF",
+                        fontSize: "20px",
+                        fontWeight: 800,
+                        letterSpacing: "0.4em",
+                        fontFamily: "monospace",
+                        textAlign: "center",
+                        color: "#111827",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWalletPinModalOpen(false);
+                        navigate("/profile?tab=wallet");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: "#1B4332",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Forgot / Reset PIN?
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setWalletPinModalOpen(false)}
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "1px solid #D1D5DB",
+                      backgroundColor: "#FFFFFF",
+                      color: "#374151",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: loading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      flex: 2,
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "none",
+                      background: loading
+                        ? "#9CA3AF"
+                        : "linear-gradient(135deg, #143c2d 0%, #1e5a44 100%)",
+                      color: "#FFFFFF",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                      cursor: loading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {loading
+                      ? "Processing…"
+                      : customerWallet && !customerWallet.has_payment_pin
+                      ? `Save PIN & Pay ₦${total.toLocaleString()}`
+                      : `Confirm & Pay ₦${total.toLocaleString()}`}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageWrapper>
   );
 }
