@@ -371,6 +371,40 @@ export default function CheckoutPage() {
       });
   }, []);
 
+  // Auto-finalize order when returning from Monnify hosted checkout (?paymentReference=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const returnedRef = params.get("paymentReference") || params.get("payment_ref");
+    if (!returnedRef || !user || finalizingReference.current === returnedRef) return;
+
+    let pending = null;
+    try {
+      pending = JSON.parse(localStorage.getItem("bems_pending_checkout") || "null");
+    } catch {
+      pending = null;
+    }
+    if (!pending?.intentId) return;
+
+    finalizingReference.current = returnedRef;
+    setLoading(true);
+    createOrder(returnedRef, { intentId: pending.intentId }, pending.paymentRef || returnedRef)
+      .then((orderId) => {
+        clearCart();
+        localStorage.removeItem("bems_pending_payment_ref");
+        localStorage.removeItem("bems_pending_checkout");
+        navigate("/order-confirmed", { state: { orderId, reference: returnedRef } });
+      })
+      .catch((err) => {
+        setLoading(false);
+        const detail = err?.response?.data?.message || err.message;
+        setError(
+          `Payment reference ${returnedRef} returned, but finalizing order failed: ${detail}. ` +
+            `If you were debited, please contact support with this reference.`
+        );
+        setPaymentRecoveryAvailable(true);
+      });
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
       setSavedAddresses([]);
@@ -842,6 +876,26 @@ export default function CheckoutPage() {
     }
 
     try {
+      // Prefer server-side Monnify hosted initialization (most reliable across all domains/browsers)
+      try {
+        const initRes = await api.post("/payments/initialize", {
+          amount: checkout.total,
+          customerEmail: form.email?.trim() || user?.email,
+          customerName: form.fullName?.trim() || user?.name || "Valued Customer",
+          customerPhone: form.phone?.replace(/\s+/g, "") || user?.phone || "",
+          paymentReference,
+          paymentDescription: "BemsFarms Direct Farm Checkout",
+          redirectUrl: `${window.location.origin}/checkout?paymentReference=${encodeURIComponent(paymentReference)}`,
+        });
+        const hostedUrl = initRes.data?.checkoutUrl || initRes.data?.responseBody?.checkoutUrl;
+        if (hostedUrl) {
+          window.location.href = hostedUrl;
+          return;
+        }
+      } catch (serverInitErr) {
+        console.warn("Server Monnify init fallback to inline SDK:", serverInitErr?.message);
+      }
+
       window.MonnifySDK.initialize({
         amount: checkout.total,
         currency: "NGN",
