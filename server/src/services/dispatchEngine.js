@@ -192,7 +192,7 @@ async function autoAssignClosestDriver(
         FROM drivers d
         JOIN deliveries del ON del.driver_id = d.id 
           AND del.order_id != $1
-          AND del.status IN ('assigned', 'accepted', 'awaiting_pickup', 'picked_up')
+          AND del.status IN ('assigned', 'accepted', 'awaiting_pickup')
         LEFT JOIN orders o2 ON (o2.id::text = del.order_id OR o2.order_ref = del.order_id)
         LEFT JOIN driver_availability da ON d.id = da.driver_id
         LEFT JOIN LATERAL (
@@ -200,6 +200,11 @@ async function autoAssignClosestDriver(
         ) dl ON true
         WHERE d.status NOT IN ('suspended', 'inactive', 'off_duty')
           AND COALESCE(da.is_available, d.is_available, true) = true
+          AND NOT EXISTS (
+            SELECT 1 FROM deliveries d_transit
+            WHERE d_transit.driver_id = d.id
+              AND d_transit.status IN ('picked_up', 'in_transit', 'en_route', 'arrived')
+          )
           ${excludedCondition}
         GROUP BY d.id, d.name, d.phone, d.vehicle_type, d.vehicle_plate, d.rating, dl.latitude, dl.longitude
         HAVING COUNT(del.id) < ${maxBatchOrders}
@@ -212,18 +217,29 @@ async function autoAssignClosestDriver(
         for (const cand of bundleCandidatesRes.rows) {
           let matchesRoute = false;
           let minDetour = 999;
+          let bestIncrementalKm = 999;
 
           for (const ad of (cand.active_deliveries || [])) {
             // Match A: Exact same delivery zone
             if (order.zone_id && ad.zone_id && order.zone_id === ad.zone_id) {
               matchesRoute = true;
             }
-            // Match B: Customer coordinate proximity within batchRadiusKm
+            // Match B: Route-to-route stop proximity & incremental route detour (Store -> Stop 1 -> Stop 2)
             if (ad.lat && ad.lng && originLat && originLng) {
-              const dKm = calculateDistanceKm(originLat, originLng, parseFloat(ad.lat), parseFloat(ad.lng));
+              const stop1Lat = parseFloat(ad.lat);
+              const stop1Lng = parseFloat(ad.lng);
+              const dKm = calculateDistanceKm(originLat, originLng, stop1Lat, stop1Lng);
+              const storeToStop1 = calculateDistanceKm(storeCoords.lat, storeCoords.lng, stop1Lat, stop1Lng);
+              const storeToStop2 = calculateDistanceKm(storeCoords.lat, storeCoords.lng, originLat, originLng);
+              // Incremental detour when chaining Stop 1 -> Stop 2 vs separate trips
+              const incrementalDetour = Math.min(
+                storeToStop1 + dKm - storeToStop1,
+                storeToStop2 + dKm - storeToStop2
+              );
               if (dKm <= batchRadiusKm) {
                 matchesRoute = true;
                 if (dKm < minDetour) minDetour = dKm;
+                if (incrementalDetour < bestIncrementalKm) bestIncrementalKm = incrementalDetour;
               }
             }
           }
@@ -231,7 +247,7 @@ async function autoAssignClosestDriver(
           if (matchesRoute) {
             eligibleBundles.push({
               ...cand,
-              distanceKm: minDetour < 999 ? minDetour : 1.0,
+              distanceKm: bestIncrementalKm < 999 ? bestIncrementalKm : minDetour < 999 ? minDetour : 1.0,
             });
           }
         }
