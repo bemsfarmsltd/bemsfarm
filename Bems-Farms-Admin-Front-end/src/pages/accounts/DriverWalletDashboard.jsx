@@ -190,7 +190,7 @@ export default function DriverWalletDashboard() {
         <div>
           <div
             className="fw-bold text-uppercase d-flex align-items-center gap-2"
-            style={{ fontSize: 11, letterSpacing: 1.1, color: '#ea580c' }}
+            style={{ fontSize: 11, letterSpacing: 1.1, color: '#15803d' }}
           >
             <span>DRIVER LOGISTICS · WALLET &amp; SETTLEMENT STUDIO</span>
             <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1">
@@ -235,7 +235,7 @@ export default function DriverWalletDashboard() {
           <button
             type="button"
             className="btn btn-sm text-white fw-semibold"
-            style={{ background: '#ea580c', borderColor: '#ea580c' }}
+            style={{ background: '#1B4332', borderColor: '#1B4332' }}
             onClick={() => window.print()}
           >
             <i className="ri-printer-line me-1" /> Print / PDF
@@ -260,9 +260,9 @@ export default function DriverWalletDashboard() {
               className="btn btn-sm fw-semibold px-3 py-1.5"
               style={{
                 borderRadius: 10,
-                background: active ? '#ea580c' : '#ffffff',
+                background: active ? '#1B4332' : '#ffffff',
                 color: active ? '#ffffff' : '#334155',
-                border: active ? '1px solid #ea580c' : '1px solid #e2e8f0',
+                border: active ? '1px solid #1B4332' : '1px solid #e2e8f0',
               }}
             >
               {t.label}
@@ -278,7 +278,7 @@ export default function DriverWalletDashboard() {
             className="card border-0 shadow-sm h-100 text-white"
             style={{
               borderRadius: 16,
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+              background: 'linear-gradient(135deg, #1B4332 0%, #14532d 100%)',
             }}
           >
             <div className="card-body p-3">
@@ -377,7 +377,7 @@ export default function DriverWalletDashboard() {
 
           {loading ? (
             <div className="text-center py-5 text-muted small">
-              <div className="spinner-border spinner-border-sm text-warning me-2" />
+              <div className="spinner-border spinner-border-sm text-success me-2" />
               Loading live driver wallet statement…
             </div>
           ) : tab === 'by_driver' ? (
