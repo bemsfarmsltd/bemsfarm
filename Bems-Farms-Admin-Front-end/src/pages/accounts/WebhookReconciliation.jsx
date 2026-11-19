@@ -303,7 +303,8 @@ export default function WebhookReconciliation() {
   const renderOrderCard = (a) => {
     const isSel = selectedOrder?.target_type === a.target_type && selectedOrder?.target_id === a.target_id
     const matchesSelWebhook = selectedWebhook && Math.abs(a.amount - Number(selectedWebhook.amount || 0)) < 0.5
-    const isCod = a.target_type === 'order'
+    const isSplit = Boolean(a.is_split)
+    const isCod = a.target_type === 'order' && !isSplit
 
     return (
       <div
@@ -337,12 +338,12 @@ export default function WebhookReconciliation() {
                 className="badge"
                 style={{
                   fontSize: 10,
-                  background: isCod ? '#fef3c7' : '#dbeafe',
-                  color: isCod ? '#92400e' : '#1e40af',
-                  border: `1px solid ${isCod ? '#fde68a' : '#bfdbfe'}`,
+                  background: isSplit ? '#f3e8ff' : isCod ? '#fef3c7' : '#dbeafe',
+                  color: isSplit ? '#6b21a8' : isCod ? '#92400e' : '#1e40af',
+                  border: `1px solid ${isSplit ? '#d8b4fe' : isCod ? '#fde68a' : '#bfdbfe'}`,
                 }}
               >
-                {isCod ? '🚚 COD' : '🏪 POS SALE'}
+                {isSplit ? '🔀 POS SPLIT (TRANSFER/POS)' : isCod ? '🚚 COD' : '🏪 POS SALE'}
               </span>
               {matchesSelWebhook && (
                 <span className="badge bg-success text-white" style={{ fontSize: 10 }}>
@@ -351,6 +352,11 @@ export default function WebhookReconciliation() {
               )}
             </div>
             <div className="small text-dark fw-semibold mt-1">{a.customer_name}</div>
+            {isSplit && (
+              <div className="small fw-semibold mt-0.5" style={{ fontSize: 11, color: '#6b21a8' }}>
+                Cash Recorded: {fmt(a.cash_amount)} · Order Total: {fmt(a.order_total)}
+              </div>
+            )}
             <div className="d-flex align-items-center gap-2 flex-wrap mt-1 text-muted" style={{ fontSize: 11 }}>
               {a.driver_name && <span>Driver: <strong>{a.driver_name}</strong></span>}
               <span className="font-monospace">

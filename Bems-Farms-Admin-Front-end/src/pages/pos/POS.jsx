@@ -5084,6 +5084,45 @@ export default function POS() {
                             <span className="badge bg-amber text-dark fw-bold">Amount: {fmt(total)}</span>
                           </div>
                         </div>
+                        {/* Live Transfer Webhook Detection Status */}
+                        <div className="rounded border p-2.5 mb-3 bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                          {terminalDetectedPayment ? (
+                            <div className="d-flex align-items-center gap-2 text-success fw-bold fs-12">
+                              <i className="ri-checkbox-circle-fill fs-16" />
+                              <span>
+                                Transfer Detected: {fmt(terminalDetectedPayment.amount)}
+                                {terminalDetectedPayment.customer_name && terminalDetectedPayment.customer_name !== 'POS Customer'
+                                  ? ` from ${terminalDetectedPayment.customer_name}`
+                                  : ''}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="d-flex align-items-center gap-2 text-muted fs-12">
+                              <span className="spinner-border spinner-border-sm text-primary" style={{ width: '0.85rem', height: '0.85rem' }} />
+                              <span>Listening live for incoming Monnify / Moniepoint transfer of <strong>{fmt(total)}</strong>…</span>
+                            </div>
+                          )}
+                          <div className="d-flex align-items-center gap-1.5">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary py-1 px-2 fs-11"
+                              onClick={checkTerminalManual}
+                              disabled={isCheckingTerminal || Boolean(terminalDetectedPayment)}
+                            >
+                              <i className={`ri-refresh-line me-1 ${isCheckingTerminal ? 'ri-spin' : ''}`} /> Check Transfer
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-warning text-dark fw-bold py-1 px-2 fs-11"
+                              onClick={holdForBackgroundPosPayment}
+                              disabled={Boolean(terminalDetectedPayment)}
+                              style={{ background: '#f59e0b', borderColor: '#d97706' }}
+                            >
+                              <i className="ri-pause-circle-fill me-1" /> Hold &amp; Next
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="row g-2">
                           <div className="col-6">
                             <label className="pos-input-legend">CUSTOMER BANK NAME</label>
@@ -5172,10 +5211,28 @@ export default function POS() {
                             </div>
                           ))}
                         </div>
-                        <div className="d-flex justify-content-between align-items-center fs-12 mt-2">
-                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
-                            <i className="ri-add-line me-1" /> Add Method
-                          </button>
+                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 fs-12 mt-2">
+                          <div className="d-flex align-items-center gap-1.5">
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
+                              <i className="ri-add-line me-1" /> Add Method
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => {
+                                const cashIdx = splitRows.findIndex((r) => String(r.method).toLowerCase() === 'cash')
+                                if (cashIdx === -1) return
+                                const nonCashSum = splitRows.reduce(
+                                  (s, r, idx) => (idx === cashIdx ? s : s + (Number(r.amount) || 0)),
+                                  0
+                                )
+                                const rem = Math.max(0, Math.round((total - nonCashSum) * 100) / 100)
+                                updateSplit(cashIdx, 'amount', String(rem))
+                              }}
+                            >
+                              Auto-Fill Cash
+                            </button>
+                          </div>
                           <span className="pos-entry-item-title">
                             Allocated:{' '}
                             <strong className="text-emerald">
@@ -5184,6 +5241,24 @@ export default function POS() {
                             / {fmt(total)}
                           </span>
                         </div>
+                        {(() => {
+                          const cashPart = splitRows
+                            .filter((r) => String(r.method || '').toLowerCase() === 'cash')
+                            .reduce((s, r) => s + (Number(r.amount) || 0), 0)
+                          const gwPart = splitRows
+                            .filter((r) => String(r.method || '').toLowerCase() !== 'cash')
+                            .reduce((s, r) => s + (Number(r.amount) || 0), 0)
+                          return (
+                            <div className="mt-2 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2 fs-11">
+                              <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle px-2 py-1">
+                                Cash Recorded: {fmt(cashPart)}
+                              </span>
+                              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                Webhook Match (Transfer / POS): {fmt(gwPart)}
+                              </span>
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
 
