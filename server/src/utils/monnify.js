@@ -36,32 +36,87 @@ let tokenExpiresAt = 0;
  * 1. Monnify Authentication API
  * POST /api/v1/auth/login
  */
-async function getMonnifyToken() {
-  if (cachedToken && Date.now() < tokenExpiresAt - 60000) {
+async function getMonnifyCredentials() {
+  const envApiKey = String(process.env.MONNIFY_API_KEY || "").trim();
+  const envSecretKey = String(process.env.MONNIFY_SECRET_KEY || "").trim();
+  let dbApiKey = "";
+  let dbSecretKey = "";
+  let dbIsLive = null;
+
+  try {
+    const pool = require("../db/pool");
+    const gwRes = await pool.query(
+      "SELECT public_key, secret_key, is_live FROM payment_gateways WHERE slug = 'monnify' LIMIT 1"
+    );
+    if (gwRes.rows[0]) {
+      dbApiKey = String(gwRes.rows[0].public_key || "").trim();
+      dbSecretKey = String(gwRes.rows[0].secret_key || "").trim();
+      dbIsLive = gwRes.rows[0].is_live;
+    }
+  } catch {
+    // Ignore DB lookup errors and rely on env
+  }
+
+  const pairs = [];
+  if (envApiKey && envSecretKey) {
+    pairs.push({ apiKey: envApiKey, secretKey: envSecretKey, source: "env" });
+  }
+  if (dbApiKey && dbSecretKey && (dbApiKey !== envApiKey || dbSecretKey !== envSecretKey)) {
+    pairs.push({ apiKey: dbApiKey, secretKey: dbSecretKey, source: "payment_gateways", isLive: dbIsLive });
+  }
+  return pairs;
+}
+
+async function getMonnifyToken(forceRefresh = false) {
+  if (!forceRefresh && cachedToken && Date.now() < tokenExpiresAt - 60000) {
     return cachedToken;
   }
 
-  const apiKey = process.env.MONNIFY_API_KEY;
-  const secretKey = process.env.MONNIFY_SECRET_KEY;
-  if (!apiKey || !secretKey) {
+  const pairs = await getMonnifyCredentials();
+  if (pairs.length === 0) {
     throw new Error("Monnify credentials are not configured (MONNIFY_API_KEY / MONNIFY_SECRET_KEY)");
   }
 
-  const baseUrl = getMonnifyBaseUrl();
-  const basic = Buffer.from(`${apiKey}:${secretKey}`).toString("base64");
-  const { data } = await axios.post(
-    `${baseUrl}/api/v1/auth/login`,
-    {},
-    { headers: { ...DEFAULT_HEADERS, Authorization: `Basic ${basic}` } }
-  );
+  let lastErr = null;
+  for (const cred of pairs) {
+    const isTest = cred.apiKey.startsWith("MK_TEST_") || cred.isLive === false;
+    const baseUrl = process.env.MONNIFY_BASE_URL
+      ? process.env.MONNIFY_BASE_URL.replace(/\/+$/, "")
+      : isTest
+      ? "https://sandbox.monnify.com"
+      : getMonnifyBaseUrl();
 
-  if (!data?.requestSuccessful || !data?.responseBody?.accessToken) {
-    throw new Error("Monnify authentication failed: " + (data?.responseMessage || "unknown error"));
+    const basic = Buffer.from(`${cred.apiKey}:${cred.secretKey}`).toString("base64");
+    try {
+      const { data } = await axios.post(
+        `${baseUrl}/api/v1/auth/login`,
+        {},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Basic ${basic}`,
+          },
+        }
+      );
+
+      if (!data?.requestSuccessful || !data?.responseBody?.accessToken) {
+        throw new Error("Monnify authentication failed: " + (data?.responseMessage || "unknown error"));
+      }
+
+      cachedToken = data.responseBody.accessToken;
+      tokenExpiresAt = Date.now() + (data.responseBody.expiresIn || 3300) * 1000;
+      return cachedToken;
+    } catch (err) {
+      const respMsg = err?.response?.data?.responseMessage || err?.response?.data?.message || err.message;
+      console.error(`[Monnify Auth] ${cred.source} (${cred.apiKey.slice(0, 10)}...) failed at ${baseUrl}:`, err?.response?.status, respMsg);
+      lastErr = new Error(`Monnify auth (${cred.source}) failed: ${respMsg}`);
+    }
   }
 
-  cachedToken = data.responseBody.accessToken;
-  tokenExpiresAt = Date.now() + (data.responseBody.expiresIn || 3300) * 1000;
-  return cachedToken;
+  cachedToken = null;
+  tokenExpiresAt = 0;
+  throw lastErr || new Error("Monnify authentication failed");
 }
 
 /**
