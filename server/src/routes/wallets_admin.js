@@ -2267,7 +2267,7 @@ router.get("/customer-statement", async (req, res) => {
           COUNT(*) FILTER (WHERE LOWER(cwt.type) = 'debit')::int AS debit_tx_count,
           COUNT(*)::int AS period_tx_count,
           MAX(cwt.created_at) AS last_tx_at
-        FROM public.customer_wallet_transactions cwt
+        FROM customer_wallet_transactions cwt
         ${txDateClause}
         GROUP BY cwt.customer_id
       )
@@ -2294,8 +2294,8 @@ router.get("/customer-statement", async (req, res) => {
         COALESCE(ta.debit_tx_count, 0) AS debit_tx_count,
         COALESCE(ta.period_tx_count, 0) AS period_tx_count,
         ta.last_tx_at
-      FROM public.users u
-      LEFT JOIN public.customer_wallets cw ON cw.customer_id = u.id
+      FROM users u
+      LEFT JOIN customer_wallets cw ON cw.customer_id = u.id
       LEFT JOIN tx_agg ta ON ta.customer_id = u.id
       WHERE LOWER(COALESCE(u.role, '')) IN ('customer', 'user') OR cw.id IS NOT NULL
       ORDER BY COALESCE(cw.balance, 0) DESC, COALESCE(ta.period_topups, 0) DESC, u.id DESC
@@ -2318,9 +2318,9 @@ router.get("/customer-statement", async (req, res) => {
         u.phone AS customer_phone,
         cw.account_number,
         cw.bank_name
-      FROM public.customer_wallet_transactions cwt
-      LEFT JOIN public.users u ON u.id = cwt.customer_id
-      LEFT JOIN public.customer_wallets cw ON cw.customer_id = cwt.customer_id
+      FROM customer_wallet_transactions cwt
+      LEFT JOIN users u ON u.id = cwt.customer_id
+      LEFT JOIN customer_wallets cw ON cw.customer_id = cwt.customer_id
       ${txDateClause}
       ORDER BY cwt.created_at DESC, cwt.id DESC
       LIMIT 250
@@ -2413,7 +2413,10 @@ router.get("/customer-statement", async (req, res) => {
     });
   } catch (err) {
     console.error("[customer-statement] error:", err);
-    return res.status(500).json({ error: "Failed to load customer wallet statement" });
+    return res.status(500).json({
+      error: err?.message ? `Customer wallet statement error: ${err.message}` : "Failed to load customer wallet statement",
+      message: err?.message || "Failed to load customer wallet statement",
+    });
   }
 });
 

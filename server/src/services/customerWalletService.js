@@ -19,6 +19,7 @@ async function ensureCustomerWalletSchema() {
   `);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS total_topped_up NUMERIC(12,2) NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS account_reference VARCHAR(120)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS account_number VARCHAR(30)`);
