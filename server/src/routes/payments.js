@@ -135,18 +135,38 @@ router.post("/initialize", optionalAuth, async (req, res, next) => {
       targetRef = `BF_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     }
 
-    // Call Monnify Server-to-Server Init-Transaction API
-    const monnifyRes = await initiateMonnifyTransaction({
-      amount: targetAmount,
-      customerEmail: targetEmail,
-      customerName: targetName,
-      customerPhoneNumber: targetPhone,
-      paymentReference: targetRef,
-      paymentDescription: paymentDescription || "Bems Farms Order Payment",
-      redirectUrl: redirect_url || redirectUrl,
-      paymentMethods: paymentMethods || ["CARD", "ACCOUNT_TRANSFER", "USSD"],
-      metadata: targetMeta,
-    });
+    // Call Monnify Server-to-Server Init-Transaction API (retry once with fresh ref on duplicate reference)
+    let monnifyRes;
+    try {
+      monnifyRes = await initiateMonnifyTransaction({
+        amount: targetAmount,
+        customerEmail: targetEmail,
+        customerName: targetName,
+        customerPhoneNumber: targetPhone,
+        paymentReference: targetRef,
+        paymentDescription: paymentDescription || "Bems Farms Order Payment",
+        redirectUrl: redirect_url || redirectUrl,
+        paymentMethods: paymentMethods || ["CARD", "ACCOUNT_TRANSFER", "USSD"],
+        metadata: targetMeta,
+      });
+    } catch (initErr) {
+      if (String(initErr?.message || "").toLowerCase().includes("duplicate")) {
+        targetRef = `${targetRef}-${crypto.randomBytes(2).toString("hex")}`;
+        monnifyRes = await initiateMonnifyTransaction({
+          amount: targetAmount,
+          customerEmail: targetEmail,
+          customerName: targetName,
+          customerPhoneNumber: targetPhone,
+          paymentReference: targetRef,
+          paymentDescription: paymentDescription || "Bems Farms Order Payment",
+          redirectUrl: redirect_url || redirectUrl,
+          paymentMethods: paymentMethods || ["CARD", "ACCOUNT_TRANSFER", "USSD"],
+          metadata: targetMeta,
+        });
+      } else {
+        throw initErr;
+      }
+    }
 
     // If intent exists and reference was updated, sync it
     if (checkout_intent_id) {
