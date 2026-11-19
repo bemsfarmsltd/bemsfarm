@@ -88,34 +88,43 @@ async function getMonnifyToken(forceRefresh = false) {
 
     const basic = Buffer.from(`${cred.apiKey}:${cred.secretKey}`).toString("base64");
     try {
-      const { data } = await axios.post(
-        `${baseUrl}/api/v1/auth/login`,
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Basic ${basic}`,
-          },
-        }
-      );
+      const authRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basic}`,
+          Accept: "application/json",
+        },
+      });
+      const rawText = await authRes.text();
+      let data = {};
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { rawText: rawText.slice(0, 200) };
+      }
 
-      if (!data?.requestSuccessful || !data?.responseBody?.accessToken) {
-        throw new Error("Monnify authentication failed: " + (data?.responseMessage || "unknown error"));
+      if (!authRes.ok || !data?.requestSuccessful || !data?.responseBody?.accessToken) {
+        const wwwAuth = authRes.headers.get("www-authenticate") || "";
+        const respMsg =
+          data?.responseMessage ||
+          data?.error_description ||
+          data?.error ||
+          data?.message ||
+          `HTTP ${authRes.status}`;
+        console.error(
+          `[Monnify Auth] ${cred.source} (${cred.apiKey.slice(0, 10)}...) failed at ${baseUrl}: HTTP ${authRes.status}`,
+          JSON.stringify({ data, wwwAuth })
+        );
+        lastErr = new Error(`Monnify auth (${cred.source}) failed: ${respMsg}`);
+        continue;
       }
 
       cachedToken = data.responseBody.accessToken;
       tokenExpiresAt = Date.now() + (data.responseBody.expiresIn || 3300) * 1000;
       return cachedToken;
     } catch (err) {
-      const rawData = err?.response?.data;
-      const respMsg =
-        rawData?.responseMessage ||
-        rawData?.error_description ||
-        rawData?.message ||
-        (typeof rawData === "string" ? rawData.slice(0, 200) : JSON.stringify(rawData || {})) ||
-        err.message;
-      console.error(`[Monnify Auth] ${cred.source} (${cred.apiKey.slice(0, 10)}...) failed at ${baseUrl}:`, err?.response?.status, respMsg);
+      const respMsg = err?.message || "Network error";
+      console.error(`[Monnify Auth] ${cred.source} (${cred.apiKey.slice(0, 10)}...) error at ${baseUrl}:`, respMsg);
       lastErr = new Error(`Monnify auth (${cred.source}) failed: ${respMsg}`);
     }
   }
