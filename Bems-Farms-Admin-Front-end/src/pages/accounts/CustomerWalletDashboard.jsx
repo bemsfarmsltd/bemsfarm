@@ -93,51 +93,37 @@ export default function CustomerWalletDashboard() {
 
   useEffect(() => {
     fetchStatement(false)
-  }, [fetchStatement])
-
-  // Real-time Socket.IO updates
-  useRealtimeEvent('customer:wallet_credited', () => fetchStatement(true))
-  useRealtimeEvent('order:updated', () => fetchStatement(true))
-
-  // Silent background polling every 20s
-  useEffect(() => {
     const timer = setInterval(() => {
       fetchStatement(true)
     }, 20000)
     return () => clearInterval(timer)
   }, [fetchStatement])
 
-  const filteredCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return data.customers || []
-    return (data.customers || []).filter(
-      (c) =>
-        String(c.name || '').toLowerCase().includes(q) ||
-        String(c.email || '').toLowerCase().includes(q) ||
-        String(c.phone || '').toLowerCase().includes(q) ||
-        String(c.accountNumber || '').toLowerCase().includes(q) ||
-        String(c.bankName || '').toLowerCase().includes(q) ||
-        String(c.accountReference || '').toLowerCase().includes(q)
-    )
-  }, [data.customers, search])
+  useRealtimeEvent('customer:wallet_credited', () => fetchStatement(true))
+  useRealtimeEvent('order:updated', () => fetchStatement(true))
 
-  const dedicatedAccounts = useMemo(() => {
-    return filteredCustomers.filter((c) => c.hasDedicatedAccount)
-  }, [filteredCustomers])
+  const q = search.trim().toLowerCase()
+
+  const filteredCustomers = useMemo(() => {
+    if (!q) return data.customers || []
+    return (data.customers || []).filter((c) =>
+      [c.name, c.email, c.phone, c.accountNumber, c.bankName, c.accountReference]
+        .some((v) => String(v || '').toLowerCase().includes(q))
+    )
+  }, [data.customers, q])
+
+  const dedicatedAccounts = useMemo(
+    () => filteredCustomers.filter((c) => c.hasDedicatedAccount),
+    [filteredCustomers]
+  )
 
   const filteredLedger = useMemo(() => {
-    const q = search.trim().toLowerCase()
     if (!q) return data.ledger || []
-    return (data.ledger || []).filter(
-      (tx) =>
-        String(tx.customerName || '').toLowerCase().includes(q) ||
-        String(tx.customerEmail || '').toLowerCase().includes(q) ||
-        String(tx.reference || '').toLowerCase().includes(q) ||
-        String(tx.description || '').toLowerCase().includes(q) ||
-        String(tx.category || '').toLowerCase().includes(q) ||
-        String(tx.accountNumber || '').toLowerCase().includes(q)
+    return (data.ledger || []).filter((tx) =>
+      [tx.customerName, tx.customerEmail, tx.reference, tx.description, tx.category, tx.accountNumber]
+        .some((v) => String(v || '').toLowerCase().includes(q))
     )
-  }, [data.ledger, search])
+  }, [data.ledger, q])
 
   const activeRecordsCount =
     activeTab === 'customers'
@@ -159,17 +145,7 @@ export default function CustomerWalletDashboard() {
 
     if (activeTab === 'ledger') {
       filename = `bemsfarms-customer-wallet-ledger-${period}.csv`
-      headers = [
-        'Date',
-        'Customer',
-        'Email',
-        'Type',
-        'Category',
-        'Amount',
-        'Balance After',
-        'Reference',
-        'Description',
-      ]
+      headers = ['Date', 'Customer', 'Email', 'Type', 'Category', 'Amount', 'Balance After', 'Reference', 'Description']
       rows = filteredLedger.map((tx) => [
         tx.createdAt || '',
         tx.customerName,
@@ -183,16 +159,7 @@ export default function CustomerWalletDashboard() {
       ])
     } else if (activeTab === 'accounts') {
       filename = `bemsfarms-customer-monnify-accounts-${period}.csv`
-      headers = [
-        'Customer',
-        'Email',
-        'Phone',
-        'Account Number',
-        'Bank Name',
-        'Account Name',
-        'Account Reference',
-        'Live Balance',
-      ]
+      headers = ['Customer', 'Email', 'Phone', 'Account Number', 'Bank Name', 'Account Name', 'Account Reference', 'Live Balance']
       rows = dedicatedAccounts.map((c) => [
         c.name,
         c.email,
@@ -204,18 +171,7 @@ export default function CustomerWalletDashboard() {
         c.balance,
       ])
     } else {
-      headers = [
-        'Customer',
-        'Email',
-        'Phone',
-        'Monnify Account',
-        'Bank',
-        'Period Top-ups',
-        'Period Spent',
-        'Live Balance',
-        'Lifetime Top-ups',
-        'Lifetime Spent',
-      ]
+      headers = ['Customer', 'Email', 'Phone', 'Monnify Account', 'Bank', 'Period Top-ups', 'Period Spent', 'Live Balance', 'Lifetime Top-ups', 'Lifetime Spent']
       rows = filteredCustomers.map((c) => [
         c.name,
         c.email,
@@ -231,11 +187,7 @@ export default function CustomerWalletDashboard() {
     }
 
     const csvContent = [headers, ...rows]
-      .map((r) =>
-        r
-          .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
-          .join(',')
-      )
+      .map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -261,13 +213,9 @@ export default function CustomerWalletDashboard() {
       await api.post(`/admin/customers/${adjustModal.id}/wallet`, {
         type: adjustType,
         amount: amt,
-        description:
-          adjustReason.trim() ||
-          `Admin manual ${adjustType} via Customer Wallet Studio`,
+        description: adjustReason.trim() || `Admin manual ${adjustType} via Customer Wallet Studio`,
       })
-      toast.success(
-        `Wallet ${adjustType === 'credit' ? 'credited' : 'debited'} by ${fmt(amt)}`
-      )
+      toast.success(`Wallet ${adjustType === 'credit' ? 'credited' : 'debited'} by ${fmt(amt)}`)
       setAdjustModal(null)
       setAdjustAmount('')
       setAdjustReason('')
@@ -282,33 +230,45 @@ export default function CustomerWalletDashboard() {
   const { summary } = data
 
   return (
-    <div className="space-y-5 p-4 md:p-6 bg-[#f8faf9] min-h-screen">
+    <div className="container-fluid py-3">
       {/* Executive Studio Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
         <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-[#15803d]">
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="fw-bold text-uppercase"
+              style={{ fontSize: 11, letterSpacing: '0.1em', color: '#15803d' }}
+            >
               CUSTOMER MONNIFY · WALLET &amp; TREASURY STUDIO
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#14532d] border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span
+              className="badge d-inline-flex align-items-center gap-1"
+              style={{ background: '#dcfce7', color: '#14532d', fontSize: 10 }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#16a34a',
+                  display: 'inline-block',
+                }}
+              />
               LIVE
             </span>
           </div>
-          <h1 className="text-2xl md:text-[26px] font-extrabold tracking-tight text-slate-900">
-            Customer Wallet &amp; Monnify Statement
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+          <h3 className="fw-bold mb-1 text-dark mt-1">Customer Wallet &amp; Monnify Statement</h3>
+          <div className="text-muted small">
             Live per-customer Monnify reserved accounts, wallet funding, checkout debits, and treasury liability ledger.
-          </p>
+          </div>
         </div>
 
-        {/* Action Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <select
+            className="form-select form-select-sm bg-white fw-medium"
+            style={{ width: 145 }}
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
           >
             {PERIOD_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -316,555 +276,488 @@ export default function CustomerWalletDashboard() {
               </option>
             ))}
           </select>
-
           <button
             type="button"
+            className="btn btn-sm btn-white bg-white border fw-medium"
             onClick={() => fetchStatement(true)}
-            disabled={refreshing}
-            className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 shadow-sm transition"
+            disabled={loading || refreshing}
           >
-            <svg
-              className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[#15803d]' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Refresh
+            <i className={`ri-refresh-line me-1 ${refreshing ? 'ri-spin' : ''}`} /> Refresh
           </button>
-
           <button
             type="button"
+            className="btn btn-sm bg-white border fw-medium"
             onClick={handleExportCsv}
-            className="h-9 px-3.5 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-xs font-semibold text-[#14532d] inline-flex items-center gap-1.5 shadow-sm transition"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
+            <i className="ri-download-2-line me-1" /> Export CSV
           </button>
-
           <button
             type="button"
+            className="btn btn-sm text-white fw-semibold"
+            style={{ background: '#1B4332', borderColor: '#1B4332' }}
             onClick={() => window.print()}
-            className="h-9 px-4 rounded-lg bg-[#1B4332] hover:bg-[#14532d] text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print / PDF
+            <i className="ri-printer-line me-1" /> Print / PDF
           </button>
         </div>
       </div>
 
-      {/* Pill Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('customers')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'customers'
-                ? 'bg-[#1B4332] text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            By Customer ({data.customers?.length || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('accounts')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'accounts'
-                ? 'bg-[#1B4332] text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            Dedicated Accounts ({summary.provisionedAccounts || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('ledger')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'ledger'
-                ? 'bg-[#1B4332] text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            Wallet Ledger ({data.ledger?.length || 0})
-          </button>
+      {/* Studio Tab Pills */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {[
+            { id: 'customers', label: `By Customer (${data.customers?.length || 0})` },
+            { id: 'accounts', label: `Dedicated Accounts (${summary.provisionedAccounts || 0})` },
+            { id: 'ledger', label: `Wallet Ledger (${data.ledger?.length || 0})` },
+          ].map((t) => {
+            const active = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className="btn btn-sm fw-semibold px-3 py-1.5"
+                style={{
+                  borderRadius: 10,
+                  background: active ? '#1B4332' : '#ffffff',
+                  color: active ? '#ffffff' : '#334155',
+                  border: active ? '1px solid #1B4332' : '1px solid #e2e8f0',
+                }}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
         <Link
           to="/customers/wallet"
-          className="text-xs font-semibold text-[#15803d] hover:text-[#14532d] inline-flex items-center gap-1"
+          className="small fw-semibold text-decoration-none"
+          style={{ color: '#15803d' }}
         >
-          Manage Individual Customer Wallets →
+          Manage Individual Customer Wallets <i className="ri-arrow-right-line ms-1" />
         </Link>
       </div>
 
-      {/* 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Card 1: Forest Green Hero */}
-        <div className="rounded-2xl p-5 bg-gradient-to-br from-[#1B4332] to-[#14532d] text-white shadow-md flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-100/90">
-              CUSTOMER TOP-UPS (GROSS)
-            </span>
-            <svg className="w-4 h-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
-          <div className="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight">
-            {fmt(summary.totalTopups)}
-          </div>
-          <div className="mt-1.5 text-[11px] text-emerald-100/80 font-medium">
-            {summary.creditTxCount} credit transactions · Lifetime {fmt(summary.totalLifetimeTopups)}
-          </div>
-        </div>
-
-        {/* Card 2: Wallet Spent */}
-        <div className="rounded-2xl p-5 bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-              WALLET SPENT (CHECKOUT)
-            </span>
-            <svg className="w-4 h-4 text-[#15803d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight text-[#15803d]">
-            {fmt(summary.totalSpent)}
-          </div>
-          <div className="mt-1.5 text-[11px] text-slate-500 font-medium">
-            {summary.debitTxCount} order checkout debits · Lifetime {fmt(summary.totalLifetimeSpent)}
+      {/* 4 Executive KPI Cards */}
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div
+            className="card border-0 shadow-sm h-100 text-white"
+            style={{
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #1B4332 0%, #14532d 100%)',
+            }}
+          >
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between align-items-center opacity-90 small fw-bold text-uppercase">
+                <span>CUSTOMER TOP-UPS (GROSS)</span>
+                <i className="ri-wallet-3-line fs-5" />
+              </div>
+              <div className="fs-3 fw-bold mt-2">{fmt(summary.totalTopups)}</div>
+              <div className="small opacity-90 mt-1">
+                {summary.creditTxCount} credits · Lifetime {fmt(summary.totalLifetimeTopups)}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Card 3: Active Wallet Balance (Treasury Liability) */}
-        <div className="rounded-2xl p-5 bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-              ACTIVE WALLET LIABILITY
-            </span>
-            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight text-amber-600">
-            {fmt(summary.totalWalletBalance)}
-          </div>
-          <div className="mt-1.5 text-[11px] text-slate-500 font-medium">
-            {summary.fundedCustomers} funded wallets across {summary.totalCustomers} customers
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100 bg-white" style={{ borderRadius: 16 }}>
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between align-items-center text-muted small fw-bold text-uppercase">
+                <span>WALLET SPENT (CHECKOUT)</span>
+                <i className="ri-checkbox-circle-line text-success fs-5" />
+              </div>
+              <div className="fs-3 fw-bold mt-2" style={{ color: '#15803d' }}>
+                {fmt(summary.totalSpent)}
+              </div>
+              <div className="small text-muted mt-1">
+                {summary.debitTxCount} order debits · Lifetime {fmt(summary.totalLifetimeSpent)}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Card 4: Monnify Account Coverage */}
-        <div className="rounded-2xl p-5 bg-white border border-slate-200/80 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500">
-              MONNIFY ACCOUNT COVERAGE
-            </span>
-            <svg className="w-4 h-4 text-[#1B4332]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100 bg-white" style={{ borderRadius: 16 }}>
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between align-items-center text-muted small fw-bold text-uppercase">
+                <span>ACTIVE WALLET LIABILITY</span>
+                <i className="ri-bank-line text-warning fs-5" />
+              </div>
+              <div className="fs-3 fw-bold mt-2" style={{ color: '#d97706' }}>
+                {fmt(summary.totalWalletBalance)}
+              </div>
+              <div className="small text-muted mt-1">
+                {summary.fundedCustomers} funded across {summary.totalCustomers} customers
+              </div>
+            </div>
           </div>
-          <div className="mt-3 text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
-            {summary.coverageRate}%
-          </div>
-          <div className="mt-1.5 text-[11px] text-slate-500 font-medium">
-            {summary.provisionedAccounts} / {summary.totalCustomers} customers with dedicated NUBAN
+        </div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100 bg-white" style={{ borderRadius: 16 }}>
+            <div className="card-body p-3">
+              <div className="d-flex justify-content-between align-items-center text-muted small fw-bold text-uppercase">
+                <span>MONNIFY ACCOUNT COVERAGE</span>
+                <i className="ri-shield-check-line fs-5" style={{ color: '#1B4332' }} />
+              </div>
+              <div className="fs-3 fw-bold mt-2 text-dark">{summary.coverageRate}%</div>
+              <div className="small text-muted mt-1">
+                {summary.provisionedAccounts} / {summary.totalCustomers} dedicated NUBANs
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Statement Table Card */}
-      <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
-        {/* Card Subheader */}
-        <div className="p-4 md:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              {activeTab === 'customers'
-                ? 'Customer Wallet, Top-Up & Balance Statement'
-                : activeTab === 'accounts'
-                  ? 'Monnify Dedicated Virtual Accounts Registry'
-                  : 'Customer Wallet Transaction Ledger'}
-            </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
-              Reference: {data.referenceCode} · Period: {data.dateFrom} to {data.dateTo}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 print:hidden">
-            <div className="relative">
-              <svg
-                className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter customer, account, or ref..."
-                className="h-9 pl-8 pr-3 w-56 md:w-64 rounded-lg border border-slate-200 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
-              />
+      {/* Main Statement Card */}
+      <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
+        <div className="card-body p-3 p-md-4">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+            <div>
+              <h5 className="fw-bold mb-1 text-dark">
+                {activeTab === 'customers'
+                  ? 'Customer Wallet, Top-Up & Balance Statement'
+                  : activeTab === 'accounts'
+                    ? 'Monnify Dedicated Virtual Accounts Registry'
+                    : 'Customer Wallet Transaction Ledger'}
+              </h5>
+              <div className="text-muted small font-monospace">
+                Reference: {data.referenceCode} · Period: {data.dateFrom || 'ALL'} to {data.dateTo || 'NOW'}
+              </div>
             </div>
-            <span className="h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 inline-flex items-center">
-              {activeRecordsCount} {activeRecordsCount === 1 ? 'Record' : 'Records'}
-            </span>
-          </div>
-        </div>
 
-        {/* Table Content */}
-        {loading ? (
-          <div className="p-12 text-center text-sm text-slate-500">
-            Loading customer wallet statement...
+            <div className="d-flex align-items-center gap-2">
+              <div className="input-group input-group-sm" style={{ width: 250 }}>
+                <span className="input-group-text bg-white border-end-0 text-muted">
+                  <i className="ri-search-line" />
+                </span>
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Filter customer, account, or ref..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <span className="badge bg-light text-dark border px-3 py-2 fw-semibold">
+                {activeRecordsCount} {activeRecordsCount === 1 ? 'Record' : 'Records'}
+              </span>
+            </div>
           </div>
-        ) : activeTab === 'customers' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Monnify NUBAN</th>
-                  <th className="py-3 px-4 text-center">Cr / Dr Txs</th>
-                  <th className="py-3 px-4 text-right">Period Top-ups</th>
-                  <th className="py-3 px-4 text-right">Period Spent</th>
-                  <th className="py-3 px-4 text-right">Live Balance</th>
-                  <th className="py-3 px-4 text-right">Lifetime Top-ups</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right print:hidden">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredCustomers.length === 0 ? (
+
+          {loading ? (
+            <div className="text-center py-5 text-muted">
+              <div className="spinner-border spinner-border-sm text-success me-2" />
+              Loading customer wallet statement...
+            </div>
+          ) : activeTab === 'customers' ? (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                <thead className="table-light text-uppercase text-muted" style={{ fontSize: 11 }}>
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-slate-400">
-                      No customer wallets match your filter.
-                    </td>
+                    <th>Customer</th>
+                    <th>Monnify NUBAN</th>
+                    <th className="text-center">Cr / Dr Txs</th>
+                    <th className="text-end">Period Top-ups</th>
+                    <th className="text-end">Period Spent</th>
+                    <th className="text-end">Live Balance</th>
+                    <th className="text-end">Lifetime Top-ups</th>
+                    <th className="text-center">Status</th>
+                    <th className="text-end">Action</th>
                   </tr>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <tr key={c.id} className="hover:bg-emerald-50/30 transition">
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-900">{c.name}</div>
-                        <div className="text-[11px] text-slate-500">
-                          {c.phone || c.email || `Customer #${c.id}`}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {c.hasDedicatedAccount ? (
-                          <div>
-                            <div className="font-mono font-bold text-slate-800 inline-flex items-center gap-1.5">
-                              {c.accountNumber}
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(c.accountNumber, 'Account copied')}
-                                className="text-slate-400 hover:text-[#1B4332] print:hidden"
-                                title="Copy NUBAN"
-                              >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                              </button>
-                            </div>
-                            <div className="text-[11px] text-slate-500">{c.bankName}</div>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Not provisioned</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-700">
-                        <span className="text-[#15803d] font-bold">{c.creditTxCount}</span>
-                        {' / '}
-                        <span className="text-slate-600">{c.debitTxCount}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-[#15803d]">
-                        {fmt(c.periodTopups)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-700">
-                        {fmt(c.periodSpent)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-extrabold text-slate-900">
-                        {fmt(c.balance)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-slate-500">
-                        {fmt(c.totalToppedUp)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        {c.balance > 0 ? (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#14532d]">
-                            Funded
-                          </span>
-                        ) : c.hasDedicatedAccount ? (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                            Ready
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-                            Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right print:hidden">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAdjustModal(c)
-                            setAdjustType('credit')
-                            setAdjustAmount('')
-                            setAdjustReason('')
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 hover:border-[#1B4332] hover:text-[#1B4332] text-[11px] font-semibold text-slate-700 transition"
-                        >
-                          Adjust
-                        </button>
+                </thead>
+                <tbody>
+                  {filteredCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="text-center py-4 text-muted">
+                        No customer wallets match your filter.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : activeTab === 'accounts' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Account Number</th>
-                  <th className="py-3 px-4">Bank Name</th>
-                  <th className="py-3 px-4">Account Name</th>
-                  <th className="py-3 px-4">Monnify Reference</th>
-                  <th className="py-3 px-4">Provisioned</th>
-                  <th className="py-3 px-4 text-right">Live Balance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {dedicatedAccounts.length === 0 ? (
+                  ) : (
+                    filteredCustomers.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          <div className="fw-semibold text-dark">{c.name}</div>
+                          <div className="text-muted small">{c.phone || c.email || `Customer #${c.id}`}</div>
+                        </td>
+                        <td>
+                          {c.hasDedicatedAccount ? (
+                            <div>
+                              <span className="font-monospace fw-bold text-dark">{c.accountNumber}</span>
+                              <button
+                                type="button"
+                                className="btn btn-link btn-sm p-0 ms-1 text-muted"
+                                onClick={() => handleCopy(c.accountNumber, 'Account copied')}
+                                title="Copy NUBAN"
+                              >
+                                <i className="ri-file-copy-line" />
+                              </button>
+                              <div className="text-muted small">{c.bankName}</div>
+                            </div>
+                          ) : (
+                            <span className="text-muted fst-italic small">Not provisioned</span>
+                          )}
+                        </td>
+                        <td className="text-center font-monospace">
+                          <span className="text-success fw-bold">{c.creditTxCount}</span> /{' '}
+                          <span className="text-secondary">{c.debitTxCount}</span>
+                        </td>
+                        <td className="text-end fw-semibold" style={{ color: '#15803d' }}>
+                          {fmt(c.periodTopups)}
+                        </td>
+                        <td className="text-end fw-semibold text-secondary">{fmt(c.periodSpent)}</td>
+                        <td className="text-end fw-bold text-dark">{fmt(c.balance)}</td>
+                        <td className="text-end text-muted">{fmt(c.totalToppedUp)}</td>
+                        <td className="text-center">
+                          {c.balance > 0 ? (
+                            <span className="badge rounded-pill" style={{ background: '#dcfce7', color: '#14532d' }}>
+                              Funded
+                            </span>
+                          ) : c.hasDedicatedAccount ? (
+                            <span className="badge rounded-pill bg-light text-secondary border">Ready</span>
+                          ) : (
+                            <span className="badge rounded-pill bg-warning-subtle text-warning-emphasis">Pending</span>
+                          )}
+                        </td>
+                        <td className="text-end">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => {
+                              setAdjustModal(c)
+                              setAdjustType('credit')
+                              setAdjustAmount('')
+                              setAdjustReason('')
+                            }}
+                          >
+                            <i className="ri-equalizer-line me-1" /> Adjust
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : activeTab === 'accounts' ? (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                <thead className="table-light text-uppercase text-muted" style={{ fontSize: 11 }}>
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400">
-                      No Monnify dedicated virtual accounts provisioned yet.
-                    </td>
+                    <th>Customer</th>
+                    <th>Account Number</th>
+                    <th>Bank Name</th>
+                    <th>Account Name</th>
+                    <th>Monnify Reference</th>
+                    <th>Provisioned</th>
+                    <th className="text-end">Live Balance</th>
                   </tr>
-                ) : (
-                  dedicatedAccounts.map((c) => (
-                    <tr key={c.id} className="hover:bg-emerald-50/30 transition">
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-900">{c.name}</div>
-                        <div className="text-[11px] text-slate-500">{c.email || c.phone}</div>
+                </thead>
+                <tbody>
+                  {dedicatedAccounts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-4 text-muted">
+                        No Monnify dedicated virtual accounts provisioned yet.
                       </td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                        <span className="inline-flex items-center gap-1.5">
+                    </tr>
+                  ) : (
+                    dedicatedAccounts.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          <div className="fw-semibold text-dark">{c.name}</div>
+                          <div className="text-muted small">{c.email || c.phone}</div>
+                        </td>
+                        <td className="font-monospace fw-bold text-dark">
                           {c.accountNumber}
                           <button
                             type="button"
+                            className="btn btn-link btn-sm p-0 ms-1 text-muted"
                             onClick={() => handleCopy(c.accountNumber, 'Account copied')}
-                            className="text-slate-400 hover:text-[#1B4332]"
                             title="Copy NUBAN"
                           >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
+                            <i className="ri-file-copy-line" />
                           </button>
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-slate-700">{c.bankName}</td>
-                      <td className="py-3 px-4 text-slate-600">{c.accountName || c.name}</td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
-                        {c.accountReference}
-                      </td>
-                      <td className="py-3 px-4 text-[11px] text-slate-500">
-                        {fmtDate(c.walletCreatedAt)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-extrabold text-[#14532d]">
-                        {fmt(c.balance)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Type</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Reference</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4 text-right">Balance After</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredLedger.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400">
-                      No wallet transactions found for this period.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredLedger.map((tx) => {
-                    const isCredit = String(tx.type || '').toLowerCase() === 'credit'
-                    return (
-                      <tr key={tx.id} className="hover:bg-emerald-50/30 transition">
-                        <td className="py-3 px-4 text-[11px] text-slate-500 whitespace-nowrap">
-                          {fmtDate(tx.createdAt)}
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{tx.customerName}</div>
-                          <div className="text-[11px] text-slate-500">
-                            {tx.accountNumber ? `${tx.accountNumber} · ${tx.bankName}` : tx.customerEmail}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              isCredit
-                                ? 'bg-emerald-100 text-[#14532d]'
-                                : 'bg-rose-50 text-rose-700'
-                            }`}
-                          >
-                            {isCredit ? '↓' : '↑'} {tx.type}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                          {tx.category}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
-                          {tx.reference || '—'}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
-                          {tx.description || '—'}
-                        </td>
-                        <td
-                          className={`py-3 px-4 text-right font-bold ${
-                            isCredit ? 'text-[#15803d]' : 'text-rose-700'
-                          }`}
-                        >
-                          {isCredit ? '+' : '-'}
-                          {fmt(tx.amount)}
-                        </td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800">
-                          {fmt(tx.balanceAfter)}
+                        <td className="fw-semibold text-secondary">{c.bankName}</td>
+                        <td className="text-muted">{c.accountName || c.name}</td>
+                        <td className="font-monospace small text-muted">{c.accountReference}</td>
+                        <td className="small text-muted">{fmtDate(c.walletCreatedAt)}</td>
+                        <td className="text-end fw-bold" style={{ color: '#14532d' }}>
+                          {fmt(c.balance)}
                         </td>
                       </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                <thead className="table-light text-uppercase text-muted" style={{ fontSize: 11 }}>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Reference</th>
+                    <th>Description</th>
+                    <th className="text-end">Amount</th>
+                    <th className="text-end">Balance After</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLedger.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-4 text-muted">
+                        No wallet transactions found for this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLedger.map((tx) => {
+                      const isCredit = String(tx.type || '').toLowerCase() === 'credit'
+                      return (
+                        <tr key={tx.id}>
+                          <td className="small text-muted text-nowrap">{fmtDate(tx.createdAt)}</td>
+                          <td>
+                            <div className="fw-semibold text-dark">{tx.customerName}</div>
+                            <div className="text-muted small">
+                              {tx.accountNumber ? `${tx.accountNumber} · ${tx.bankName}` : tx.customerEmail}
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge rounded-pill text-uppercase ${
+                                isCredit ? '' : 'bg-danger-subtle text-danger'
+                              }`}
+                              style={isCredit ? { background: '#dcfce7', color: '#14532d' } : undefined}
+                            >
+                              {isCredit ? '↓ Credit' : '↑ Debit'}
+                            </span>
+                          </td>
+                          <td className="font-monospace small text-muted">{tx.category}</td>
+                          <td className="font-monospace small text-muted">{tx.reference || '—'}</td>
+                          <td className="text-secondary text-truncate" style={{ maxWidth: 260 }}>
+                            {tx.description || '—'}
+                          </td>
+                          <td
+                            className={`text-end fw-bold ${isCredit ? '' : 'text-danger'}`}
+                            style={isCredit ? { color: '#15803d' } : undefined}
+                          >
+                            {isCredit ? '+' : '-'}
+                            {fmt(tx.amount)}
+                          </td>
+                          <td className="text-end fw-semibold text-dark">{fmt(tx.balanceAfter)}</td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick Adjust Modal */}
       {adjustModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 print:hidden">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 bg-[#1B4332] text-white flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold">Adjust Customer Wallet</h3>
-                <p className="text-[11px] text-emerald-100">
-                  {adjustModal.name} · Current Balance: {fmt(adjustModal.balance)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAdjustModal(null)}
-                className="p-1 rounded-lg hover:bg-white/10 text-sm font-bold"
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ background: 'rgba(15, 23, 42, 0.5)' }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div
+                className="modal-header text-white border-0"
+                style={{ background: '#1B4332' }}
               >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleAdjustWallet} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <h6 className="modal-title fw-bold mb-0">Adjust Customer Wallet</h6>
+                  <small className="opacity-75">
+                    {adjustModal.name} · Current Balance: {fmt(adjustModal.balance)}
+                  </small>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setAdjustType('credit')}
-                  className={`py-2 rounded-lg text-xs font-bold border transition ${
-                    adjustType === 'credit'
-                      ? 'bg-emerald-50 border-[#15803d] text-[#14532d]'
-                      : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >
-                  + Credit Wallet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdjustType('debit')}
-                  className={`py-2 rounded-lg text-xs font-bold border transition ${
-                    adjustType === 'debit'
-                      ? 'bg-rose-50 border-rose-500 text-rose-700'
-                      : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >
-                  - Debit Wallet
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Amount (₦)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  required
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                  placeholder="e.g. 5000"
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Reason / Reference Note
-                </label>
-                <input
-                  type="text"
-                  value={adjustReason}
-                  onChange={(e) => setAdjustReason(e.target.value)}
-                  placeholder="e.g. Refund or manual Monnify reconciliation"
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4332]/20"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
+                  className="btn-close btn-close-white"
                   onClick={() => setAdjustModal(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={adjusting}
-                  className="px-4 py-2 rounded-lg bg-[#1B4332] hover:bg-[#14532d] text-white text-xs font-bold disabled:opacity-60"
-                >
-                  {adjusting ? 'Processing...' : 'Confirm Adjustment'}
-                </button>
+                />
               </div>
-            </form>
+              <form onSubmit={handleAdjustWallet}>
+                <div className="modal-body p-4">
+                  <div className="row g-2 mb-3">
+                    <div className="col-6">
+                      <button
+                        type="button"
+                        onClick={() => setAdjustType('credit')}
+                        className={`btn btn-sm w-100 fw-bold ${
+                          adjustType === 'credit' ? 'btn-success' : 'btn-outline-secondary'
+                        }`}
+                      >
+                        + Credit Wallet
+                      </button>
+                    </div>
+                    <div className="col-6">
+                      <button
+                        type="button"
+                        onClick={() => setAdjustType('debit')}
+                        className={`btn btn-sm w-100 fw-bold ${
+                          adjustType === 'debit' ? 'btn-danger' : 'btn-outline-secondary'
+                        }`}
+                      >
+                        - Debit Wallet
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Amount (₦)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      required
+                      className="form-control"
+                      value={adjustAmount}
+                      onChange={(e) => setAdjustAmount(e.target.value)}
+                      placeholder="e.g. 5000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label small fw-semibold">Reason / Reference Note</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={adjustReason}
+                      onChange={(e) => setAdjustReason(e.target.value)}
+                      placeholder="e.g. Refund or manual Monnify reconciliation"
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer border-0 pt-0 px-4 pb-4">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-light border"
+                    onClick={() => setAdjustModal(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={adjusting}
+                    className="btn btn-sm text-white fw-semibold"
+                    style={{ background: '#1B4332' }}
+                  >
+                    {adjusting ? 'Processing...' : 'Confirm Adjustment'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

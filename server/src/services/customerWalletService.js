@@ -17,6 +17,9 @@ async function ensureCustomerWalletSchema() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS total_topped_up NUMERIC(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS account_reference VARCHAR(120)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS account_number VARCHAR(30)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120)`);
@@ -28,15 +31,21 @@ async function ensureCustomerWalletSchema() {
       id SERIAL PRIMARY KEY,
       customer_id INTEGER NOT NULL,
       type VARCHAR(20) NOT NULL,
-      category VARCHAR(50) NOT NULL,
+      category VARCHAR(50) NOT NULL DEFAULT 'wallet',
       amount NUMERIC(12,2) NOT NULL,
-      balance_after NUMERIC(12,2) NOT NULL,
-      reference VARCHAR(120) UNIQUE NOT NULL,
+      balance_after NUMERIC(12,2) NOT NULL DEFAULT 0,
+      reference VARCHAR(120),
       description TEXT,
       metadata JSONB DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS category VARCHAR(50) NOT NULL DEFAULT 'wallet'`);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS balance_after NUMERIC(12,2) NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS reference VARCHAR(120)`);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS description TEXT`);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE customer_wallet_transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_cust_wallet_tx_customer_time
     ON customer_wallet_transactions(customer_id, created_at DESC);

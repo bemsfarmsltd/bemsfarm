@@ -2297,7 +2297,7 @@ router.get("/customer-statement", async (req, res) => {
       FROM public.users u
       LEFT JOIN public.customer_wallets cw ON cw.customer_id = u.id
       LEFT JOIN tx_agg ta ON ta.customer_id = u.id
-      WHERE LOWER(COALESCE(u.role, '')) = 'customer' OR cw.id IS NOT NULL
+      WHERE LOWER(COALESCE(u.role, '')) IN ('customer', 'user') OR cw.id IS NOT NULL
       ORDER BY COALESCE(cw.balance, 0) DESC, COALESCE(ta.period_topups, 0) DESC, u.id DESC
     `;
 
@@ -2306,12 +2306,12 @@ router.get("/customer-statement", async (req, res) => {
         cwt.id,
         cwt.customer_id,
         cwt.type,
-        cwt.category,
+        COALESCE(cwt.category, 'wallet') AS category,
         cwt.amount::numeric(14,2) AS amount,
-        cwt.balance_after::numeric(14,2) AS balance_after,
-        cwt.reference,
-        cwt.description,
-        cwt.metadata,
+        COALESCE(cwt.balance_after, 0)::numeric(14,2) AS balance_after,
+        COALESCE(cwt.reference, '') AS reference,
+        COALESCE(cwt.description, '') AS description,
+        COALESCE(cwt.metadata, '{}'::jsonb) AS metadata,
         cwt.created_at,
         u.name AS customer_name,
         u.email AS customer_email,
