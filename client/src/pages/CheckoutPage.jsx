@@ -384,7 +384,10 @@ export default function CheckoutPage() {
   // Auto-finalize order when returning from Monnify hosted checkout (?paymentReference=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const returnedRef = params.get("paymentReference") || params.get("payment_ref");
+    const rawRef = params.get("paymentReference") || params.get("payment_ref");
+    const returnedRef = rawRef
+      ? String(rawRef).split("paymentReference=").pop().split("?")[0].trim()
+      : "";
     if (!returnedRef || !user || finalizingReference.current === returnedRef) return;
 
     let pending = null;
@@ -895,7 +898,7 @@ export default function CheckoutPage() {
           customerPhone: form.phone?.replace(/\s+/g, "") || user?.phone || "",
           paymentReference,
           paymentDescription: "BemsFarms Direct Farm Checkout",
-          redirectUrl: `${window.location.origin}/checkout?paymentReference=${encodeURIComponent(paymentReference)}`,
+          redirectUrl: `${window.location.origin}/checkout`,
         });
         const hostedUrl = initRes.data?.checkoutUrl || initRes.data?.responseBody?.checkoutUrl;
         if (hostedUrl) {
