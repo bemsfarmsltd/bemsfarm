@@ -214,31 +214,45 @@ async function createMonnifyReservedAccount({
   }
   const token = await getMonnifyToken();
 
-  const payload = {
+  const baseUrl = getMonnifyBaseUrl();
+  const basePayload = {
     accountReference: accountReference || `DRV_${Date.now()}`,
     accountName: accountName || `BEMS - ${customerName.toUpperCase()}`,
     currencyCode: "NGN",
     contractCode: contractCode,
     customerEmail: customerEmail || `driver_${Date.now()}@bemsfarms.com`,
     customerName: customerName || "Bems Driver",
-    getAllAvailableBanks: true,
   };
 
-  if (bvn) payload.bvn = bvn;
-  if (nin) payload.nin = nin;
+  if (bvn) basePayload.bvn = bvn;
+  if (nin) basePayload.nin = nin;
 
-  const baseUrl = getMonnifyBaseUrl();
-  const { data } = await axios.post(
-    `${baseUrl}/api/v2/bank-transfer/reserved-accounts`,
-    payload,
-    { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
-  );
+  // Monnify's getAllAvailableBanks: true returns 503 if any partner bank is degraded;
+  // prefer Moniepoint MFB (50515) & Wema Bank (035) with clean single-bank fallbacks.
+  const attempts = [
+    { getAllAvailableBanks: false, preferredBanks: ["50515", "035"] },
+    { getAllAvailableBanks: false, preferredBanks: ["50515"] },
+    { getAllAvailableBanks: false, preferredBanks: ["035"] },
+  ];
 
-  if (!data?.requestSuccessful || !data?.responseBody) {
-    throw new Error(data?.responseMessage || "Failed to create Monnify Reserved Account");
+  let lastErr;
+  for (const opts of attempts) {
+    try {
+      const { data } = await axios.post(
+        `${baseUrl}/api/v2/bank-transfer/reserved-accounts`,
+        { ...basePayload, ...opts },
+        { headers: { ...DEFAULT_HEADERS, Authorization: `Bearer ${token}` } }
+      );
+      if (data?.requestSuccessful && data?.responseBody) {
+        return data.responseBody;
+      }
+      lastErr = new Error(data?.responseMessage || "Failed to create Monnify Reserved Account");
+    } catch (err) {
+      lastErr = err;
+    }
   }
 
-  return data.responseBody;
+  throw lastErr || new Error("Failed to create Monnify Reserved Account");
 }
 
 /**
