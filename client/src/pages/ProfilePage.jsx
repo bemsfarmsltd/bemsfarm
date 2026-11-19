@@ -69,17 +69,44 @@ export default function ProfilePage() {
   // Customer Monnify Dedicated Wallet
   const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
   const [loadingWallet, setLoadingWallet] = useState(false);
+  const [walletError, setWalletError] = useState(null);
+  const [kycNumber, setKycNumber] = useState("");
+  const [kycType, setKycType] = useState("bvn");
   const [copiedAcct, setCopiedAcct] = useState(false);
 
   const loadWallet = () => {
     setLoadingWallet(true);
+    setWalletError(null);
     api.get("/wallet")
       .then((r) => {
         if (r.data?.wallet) {
           setWalletData({ wallet: r.data.wallet, transactions: r.data.transactions || [] });
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        setWalletError(err?.response?.data?.message || "Unable to load wallet right now.");
+      })
+      .finally(() => setLoadingWallet(false));
+  };
+
+  const handleProvisionWallet = (e) => {
+    if (e) e.preventDefault();
+    const cleaned = kycNumber.replace(/\D/g, "");
+    if (cleaned.length !== 11) {
+      setWalletError(`Please enter a valid 11-digit ${kycType.toUpperCase()}.`);
+      return;
+    }
+    setLoadingWallet(true);
+    setWalletError(null);
+    api.post("/wallet/provision", { [kycType]: cleaned })
+      .then((r) => {
+        if (r.data?.wallet) {
+          setWalletData({ wallet: r.data.wallet, transactions: r.data.transactions || [] });
+        }
+      })
+      .catch((err) => {
+        setWalletError(err?.response?.data?.message || "Failed to generate Monnify account.");
+      })
       .finally(() => setLoadingWallet(false));
   };
 
@@ -1318,12 +1345,44 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-white/10 rounded-xl p-3.5 border border-white/15 text-xs max-w-xs">
-                          {loadingWallet
-                            ? "Generating your dedicated Monnify account…"
-                            : walletData.wallet?.provision_error
-                            ? `Account setup notice: ${walletData.wallet.provision_error}`
-                            : "Click Refresh Balance to generate your dedicated Monnify account."}
+                        <div className="bg-white/10 rounded-xl p-3.5 border border-white/15 text-xs max-w-sm">
+                          <div className="font-semibold text-emerald-100">
+                            {loadingWallet
+                              ? "Generating your dedicated Monnify account…"
+                              : walletError
+                              ? walletError
+                              : walletData.wallet?.provision_error
+                              ? `Account setup notice: ${walletData.wallet.provision_error}`
+                              : "Complete quick BVN/NIN verification (CBN requirement) or click Refresh Balance to generate your dedicated Monnify account."}
+                          </div>
+                          {!loadingWallet && (
+                            <form onSubmit={handleProvisionWallet} className="mt-2.5 flex flex-col gap-2">
+                              <div className="flex gap-1.5">
+                                <select
+                                  value={kycType}
+                                  onChange={(e) => setKycType(e.target.value)}
+                                  className="px-2 py-1.5 rounded-lg bg-white/15 border border-white/20 text-white text-xs font-bold focus:outline-none"
+                                >
+                                  <option value="bvn" className="text-gray-900">BVN</option>
+                                  <option value="nin" className="text-gray-900">NIN</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  maxLength={11}
+                                  value={kycNumber}
+                                  onChange={(e) => setKycNumber(e.target.value)}
+                                  placeholder={`Enter 11-digit ${kycType.toUpperCase()}`}
+                                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-mono focus:outline-none"
+                                />
+                                <button
+                                  type="submit"
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-[#143c2d] font-bold text-xs whitespace-nowrap"
+                                >
+                                  Generate
+                                </button>
+                              </div>
+                            </form>
+                          )}
                         </div>
                       )}
                     </div>
