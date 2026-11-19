@@ -5,6 +5,9 @@ const axios = require("axios");
 const crypto = require("crypto");
 
 function getMonnifyBaseUrl() {
+  if (process.env.MONNIFY_RELAY_URL) {
+    return process.env.MONNIFY_RELAY_URL.replace(/\/+$/, "");
+  }
   if (process.env.MONNIFY_BASE_URL) {
     return process.env.MONNIFY_BASE_URL.replace(/\/+$/, "");
   }
@@ -25,12 +28,62 @@ function getMonnifyBaseUrl() {
 const MONNIFY_BASE_URL = getMonnifyBaseUrl();
 
 const DEFAULT_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "User-Agent": "BemsFarms-Server/1.0",
   "Accept": "application/json",
 };
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
+
+async function readDbCachedToken(baseUrl) {
+  try {
+    const pool = require("../db/pool");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS monnify_token_cache (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        access_token TEXT NOT NULL,
+        expires_at BIGINT NOT NULL,
+        base_url TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const res = await pool.query(
+      "SELECT access_token, expires_at, base_url FROM monnify_token_cache WHERE id = 1 LIMIT 1"
+    );
+    const row = res.rows[0];
+    if (
+      row &&
+      row.access_token &&
+      row.base_url === baseUrl &&
+      Number(row.expires_at) > Date.now() + 60000
+    ) {
+      cachedToken = row.access_token;
+      tokenExpiresAt = Number(row.expires_at);
+      return cachedToken;
+    }
+  } catch {
+    // Non-fatal: fall back to fresh auth
+  }
+  return null;
+}
+
+async function writeDbCachedToken(token, expiresAt, baseUrl) {
+  try {
+    const pool = require("../db/pool");
+    await pool.query(
+      `INSERT INTO monnify_token_cache (id, access_token, expires_at, base_url, updated_at)
+       VALUES (1, $1, $2, $3, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         access_token = EXCLUDED.access_token,
+         expires_at = EXCLUDED.expires_at,
+         base_url = EXCLUDED.base_url,
+         updated_at = NOW()`,
+      [token, expiresAt, baseUrl]
+    );
+  } catch {
+    // Non-fatal
+  }
+}
 
 /**
  * 1. Monnify Authentication API
@@ -68,8 +121,13 @@ async function getMonnifyCredentials() {
 }
 
 async function getMonnifyToken(forceRefresh = false) {
+  const defaultBaseUrl = getMonnifyBaseUrl();
   if (!forceRefresh && cachedToken && Date.now() < tokenExpiresAt - 60000) {
     return cachedToken;
+  }
+  if (!forceRefresh) {
+    const dbTok = await readDbCachedToken(defaultBaseUrl);
+    if (dbTok) return dbTok;
   }
 
   const pairs = await getMonnifyCredentials();
@@ -80,11 +138,13 @@ async function getMonnifyToken(forceRefresh = false) {
   let lastErr = null;
   for (const cred of pairs) {
     const isTest = cred.apiKey.startsWith("MK_TEST_") || cred.isLive === false;
-    const baseUrl = process.env.MONNIFY_BASE_URL
+    const baseUrl = process.env.MONNIFY_RELAY_URL
+      ? process.env.MONNIFY_RELAY_URL.replace(/\/+$/, "")
+      : process.env.MONNIFY_BASE_URL
       ? process.env.MONNIFY_BASE_URL.replace(/\/+$/, "")
       : isTest
       ? "https://sandbox.monnify.com"
-      : getMonnifyBaseUrl();
+      : defaultBaseUrl;
 
     const basic = Buffer.from(`${cred.apiKey}:${cred.secretKey}`).toString("base64");
     try {
@@ -121,6 +181,7 @@ async function getMonnifyToken(forceRefresh = false) {
 
       cachedToken = data.responseBody.accessToken;
       tokenExpiresAt = Date.now() + (data.responseBody.expiresIn || 3300) * 1000;
+      await writeDbCachedToken(cachedToken, tokenExpiresAt, baseUrl);
       return cachedToken;
     } catch (err) {
       const respMsg = err?.message || "Network error";
