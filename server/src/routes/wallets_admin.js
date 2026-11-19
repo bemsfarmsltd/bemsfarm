@@ -2220,4 +2220,201 @@ router.get("/driver-statement", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Customer Wallet Management System Dashboard Statement
+// GET /api/admin/wallets/customer-statement?period=this_month|this_week|today|last_30_days|all
+// ---------------------------------------------------------------------------
+router.get("/customer-statement", async (req, res) => {
+  try {
+    const { ensureCustomerWalletSchema } = require("../services/customerWalletService");
+    await ensureCustomerWalletSchema();
+
+    const period = String(req.query.period || "this_month").toLowerCase();
+    const now = new Date();
+    let dateFrom = null;
+    const dateTo = now.toISOString().slice(0, 10);
+
+    if (period === "today") {
+      dateFrom = now.toISOString().slice(0, 10);
+    } else if (period === "this_week") {
+      const d = new Date(now);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      dateFrom = d.toISOString().slice(0, 10);
+    } else if (period === "last_30_days") {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 30);
+      dateFrom = d.toISOString().slice(0, 10);
+    } else if (period === "this_month") {
+      dateFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    }
+
+    const txParams = [];
+    let txDateClause = "";
+    if (dateFrom) {
+      txParams.push(`${dateFrom} 00:00:00`);
+      txDateClause = `WHERE cwt.created_at >= $1::timestamp`;
+    }
+
+    const customersQuery = `
+      WITH tx_agg AS (
+        SELECT
+          cwt.customer_id,
+          COALESCE(SUM(CASE WHEN LOWER(cwt.type) = 'credit' THEN cwt.amount ELSE 0 END), 0) AS period_topups,
+          COALESCE(SUM(CASE WHEN LOWER(cwt.type) = 'debit' THEN cwt.amount ELSE 0 END), 0) AS period_spent,
+          COUNT(*) FILTER (WHERE LOWER(cwt.type) = 'credit')::int AS credit_tx_count,
+          COUNT(*) FILTER (WHERE LOWER(cwt.type) = 'debit')::int AS debit_tx_count,
+          COUNT(*)::int AS period_tx_count,
+          MAX(cwt.created_at) AS last_tx_at
+        FROM public.customer_wallet_transactions cwt
+        ${txDateClause}
+        GROUP BY cwt.customer_id
+      )
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        cw.id AS wallet_id,
+        COALESCE(cw.balance, 0)::numeric(14,2) AS balance,
+        COALESCE(cw.total_topped_up, 0)::numeric(14,2) AS total_topped_up,
+        COALESCE(cw.total_spent, 0)::numeric(14,2) AS total_spent,
+        cw.account_reference,
+        cw.account_number,
+        cw.bank_name,
+        cw.bank_code,
+        cw.account_name,
+        cw.monnify_accounts,
+        cw.created_at AS wallet_created_at,
+        cw.updated_at AS wallet_updated_at,
+        COALESCE(ta.period_topups, 0)::numeric(14,2) AS period_topups,
+        COALESCE(ta.period_spent, 0)::numeric(14,2) AS period_spent,
+        COALESCE(ta.credit_tx_count, 0) AS credit_tx_count,
+        COALESCE(ta.debit_tx_count, 0) AS debit_tx_count,
+        COALESCE(ta.period_tx_count, 0) AS period_tx_count,
+        ta.last_tx_at
+      FROM public.users u
+      LEFT JOIN public.customer_wallets cw ON cw.customer_id = u.id
+      LEFT JOIN tx_agg ta ON ta.customer_id = u.id
+      WHERE LOWER(COALESCE(u.role, '')) = 'customer' OR cw.id IS NOT NULL
+      ORDER BY COALESCE(cw.balance, 0) DESC, COALESCE(ta.period_topups, 0) DESC, u.id DESC
+    `;
+
+    const ledgerQuery = `
+      SELECT
+        cwt.id,
+        cwt.customer_id,
+        cwt.type,
+        cwt.category,
+        cwt.amount::numeric(14,2) AS amount,
+        cwt.balance_after::numeric(14,2) AS balance_after,
+        cwt.reference,
+        cwt.description,
+        cwt.metadata,
+        cwt.created_at,
+        u.name AS customer_name,
+        u.email AS customer_email,
+        u.phone AS customer_phone,
+        cw.account_number,
+        cw.bank_name
+      FROM public.customer_wallet_transactions cwt
+      LEFT JOIN public.users u ON u.id = cwt.customer_id
+      LEFT JOIN public.customer_wallets cw ON cw.customer_id = cwt.customer_id
+      ${txDateClause}
+      ORDER BY cwt.created_at DESC, cwt.id DESC
+      LIMIT 250
+    `;
+
+    const [customersRes, ledgerRes] = await Promise.all([
+      pool.query(customersQuery, txParams),
+      pool.query(ledgerQuery, txParams),
+    ]);
+
+    const customers = customersRes.rows.map((row) => ({
+      id: Number(row.id),
+      name: row.name || row.email || `Customer #${row.id}`,
+      email: row.email || "",
+      phone: row.phone || "",
+      walletId: row.wallet_id ? Number(row.wallet_id) : null,
+      balance: Number(row.balance || 0),
+      totalToppedUp: Number(row.total_topped_up || 0),
+      totalSpent: Number(row.total_spent || 0),
+      periodTopups: Number(row.period_topups || 0),
+      periodSpent: Number(row.period_spent || 0),
+      creditTxCount: Number(row.credit_tx_count || 0),
+      debitTxCount: Number(row.debit_tx_count || 0),
+      periodTxCount: Number(row.period_tx_count || 0),
+      accountReference: row.account_reference || "",
+      accountNumber: row.account_number || "",
+      bankName: row.bank_name || "",
+      bankCode: row.bank_code || "",
+      accountName: row.account_name || "",
+      hasDedicatedAccount: Boolean(row.account_number),
+      monnifyAccounts: Array.isArray(row.monnify_accounts) ? row.monnify_accounts : [],
+      lastTxAt: row.last_tx_at || null,
+      walletCreatedAt: row.wallet_created_at || null,
+      walletUpdatedAt: row.wallet_updated_at || null,
+    }));
+
+    const ledger = ledgerRes.rows.map((row) => ({
+      id: Number(row.id),
+      customerId: Number(row.customer_id),
+      customerName: row.customer_name || row.customer_email || `Customer #${row.customer_id}`,
+      customerEmail: row.customer_email || "",
+      customerPhone: row.customer_phone || "",
+      accountNumber: row.account_number || "",
+      bankName: row.bank_name || "",
+      type: row.type,
+      category: row.category,
+      amount: Number(row.amount || 0),
+      balanceAfter: Number(row.balance_after || 0),
+      reference: row.reference || "",
+      description: row.description || "",
+      metadata: row.metadata || {},
+      createdAt: row.created_at,
+    }));
+
+    const totalTopups = customers.reduce((sum, c) => sum + c.periodTopups, 0);
+    const totalSpent = customers.reduce((sum, c) => sum + c.periodSpent, 0);
+    const totalWalletBalance = customers.reduce((sum, c) => sum + c.balance, 0);
+    const totalLifetimeTopups = customers.reduce((sum, c) => sum + c.totalToppedUp, 0);
+    const totalLifetimeSpent = customers.reduce((sum, c) => sum + c.totalSpent, 0);
+    const creditTxCount = customers.reduce((sum, c) => sum + c.creditTxCount, 0);
+    const debitTxCount = customers.reduce((sum, c) => sum + c.debitTxCount, 0);
+    const totalTxCount = customers.reduce((sum, c) => sum + c.periodTxCount, 0);
+    const provisionedAccounts = customers.filter((c) => c.hasDedicatedAccount).length;
+    const fundedCustomers = customers.filter((c) => c.balance > 0).length;
+    const coverageRate = customers.length > 0
+      ? Math.round((provisionedAccounts / customers.length) * 100)
+      : 0;
+
+    return res.json({
+      period,
+      dateFrom: dateFrom || "ALL-TIME",
+      dateTo,
+      referenceCode: `BEMS-CWAL-${period.toUpperCase()}-ALL-CUSTOMERS`,
+      summary: {
+        totalTopups,
+        totalSpent,
+        totalWalletBalance,
+        totalLifetimeTopups,
+        totalLifetimeSpent,
+        creditTxCount,
+        debitTxCount,
+        totalTxCount,
+        totalCustomers: customers.length,
+        provisionedAccounts,
+        fundedCustomers,
+        coverageRate,
+      },
+      customers,
+      ledger,
+    });
+  } catch (err) {
+    console.error("[customer-statement] error:", err);
+    return res.status(500).json({ error: "Failed to load customer wallet statement" });
+  }
+});
+
 module.exports = router;
