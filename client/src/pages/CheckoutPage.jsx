@@ -317,20 +317,6 @@ export default function CheckoutPage() {
   });
 
   const resolveDeliveryZone = async (lat, lng, addressText, city, state) => {
-    const isTest = (state && String(state).toLowerCase().includes("test")) ||
-      (city && String(city).toLowerCase().includes("test")) ||
-      (addressText && String(addressText).toLowerCase().includes("test"));
-
-    if (isTest) {
-      setSelectedZone({
-        zone_id: "ZONE_TEST",
-        zone_name: "Test Zone (Free Delivery - ₦0)",
-        delivery_fee: 0,
-        estimated_eta: "Instant (Test Mode)",
-      });
-      return;
-    }
-
     try {
       const res = await api.post("/locations/verify", {
         latitude: lat,
