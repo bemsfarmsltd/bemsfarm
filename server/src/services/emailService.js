@@ -1181,8 +1181,41 @@ async function sendDriverStatusChangedEmail({ email, name, status, reason }) {
   });
 }
 
+async function sendCustomerWalletFundedEmail({ email, name, amount, balance, reference, senderName }) {
+  if (!email) return { status: "skipped", reason: "no_email" };
+  const formattedAmt = Number(amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 });
+  const formattedBal = Number(balance || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 });
+  return sendMail({
+    to: email,
+    subject: `Bems Wallet Credited: +₦${formattedAmt}`,
+    html: `<div style="${emailStyles}">
+      ${header("Wallet Funded Successfully")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name || "Valued Customer"}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Your <strong>BemsFarms Wallet</strong> has been credited with <strong>₦${formattedAmt}</strong>.
+      </p>
+      <div style="background: #F4F9F5; border: 1px solid #BBF7D0; border-radius: 10px; padding: 16px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #143c2d; text-transform: uppercase; letter-spacing: 0.04em;">Transaction Summary</div>
+        <table style="width: 100%; margin-top: 10px; font-size: 13px; color: #1F2937; border-collapse: collapse;">
+          <tr><td style="padding: 4px 0; color: #6B7280;">Amount Credited</td><td style="padding: 4px 0; text-align: right; font-weight: 800; color: #1B4332;">+₦${formattedAmt}</td></tr>
+          <tr><td style="padding: 4px 0; color: #6B7280;">New Wallet Balance</td><td style="padding: 4px 0; text-align: right; font-weight: 800;">₦${formattedBal}</td></tr>
+          ${senderName ? `<tr><td style="padding: 4px 0; color: #6B7280;">Source</td><td style="padding: 4px 0; text-align: right; font-weight: 600;">${senderName}</td></tr>` : ""}
+          ${reference ? `<tr><td style="padding: 4px 0; color: #6B7280;">Reference</td><td style="padding: 4px 0; text-align: right; font-family: monospace; font-size: 12px;">${reference}</td></tr>` : ""}
+        </table>
+      </div>
+      <p style="color: #4B5563; font-size: 13px; line-height: 1.6;">
+        You can now use your Bems Wallet balance for fast, PIN-protected checkout anytime on <strong>bemsfarms.com</strong>.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendMail,
+  sendCustomerWalletFundedEmail,
   getEmailDiagnostic: async (checkEmailId) => {
     const result = {
       hasResend,

@@ -281,6 +281,26 @@ async function creditCustomerWalletFromMonnifyWebhook(eventData) {
       }
     } catch (_) {}
 
+    // Notify customer via email (non-blocking)
+    pool
+      .query("SELECT name, email FROM users WHERE id = $1 LIMIT 1", [wallet.customer_id])
+      .then((uRes) => {
+        const cust = uRes.rows[0];
+        if (!cust?.email) return;
+        const { sendCustomerWalletFundedEmail } = require("./emailService");
+        return sendCustomerWalletFundedEmail({
+          email: cust.email,
+          name: cust.name,
+          amount,
+          balance: newBalance,
+          reference: txRef,
+          senderName,
+        });
+      })
+      .catch((mailErr) => {
+        console.warn("[CustomerWallet] Wallet funded email notice:", mailErr.message);
+      });
+
     return { credited: true, customer_id: wallet.customer_id, amount, balance: newBalance, reference: txRef };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
