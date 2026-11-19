@@ -345,7 +345,7 @@ router.get("/checkout-intent/:id", protect, async (req, res, next) => {
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
-  let { items, payment_method, payment_ref, payment_reference, transaction_reference, address, delivery_address, latitude, longitude, zone_id, delivery_fee, city, state, source, coupon_code, checkout_intent_id } = req.body;
+  let { items, payment_method, payment_ref, payment_reference, transaction_reference, address, delivery_address, latitude, longitude, zone_id, delivery_fee, city, state, source, coupon_code, checkout_intent_id, payment_pin } = req.body;
 
   // Normalize payment method aliases (e.g., "card", "cashOnDelivery", "monnify", "cod")
   const rawMethod = String(payment_method || "monnify").toLowerCase().trim().replace(/[\s-_]+/g, "");
@@ -581,10 +581,10 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     let isWalletPaid = false;
     if (method === "wallet") {
       const { debitCustomerWalletForOrder } = require("../services/customerWalletService");
-      const deb = await debitCustomerWalletForOrder(client, req.user.id, total, orderId);
+      const deb = await debitCustomerWalletForOrder(client, req.user.id, total, orderId, payment_pin);
       if (!deb.ok) {
         await client.query("ROLLBACK");
-        return res.status(deb.status || 402).json({ message: deb.message });
+        return res.status(deb.status || 402).json({ message: deb.message, code: deb.code });
       }
       isWalletPaid = true;
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -15,8 +15,9 @@ export default function ProfilePage() {
   const { user, isLoggedIn, updateUser, logout } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "profile");
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -74,6 +75,15 @@ export default function ProfilePage() {
   const [kycType, setKycType] = useState("bvn");
   const [copiedAcct, setCopiedAcct] = useState(false);
   const [walletFilter, setWalletFilter] = useState("all");
+  const [pinFormOpen, setPinFormOpen] = useState(false);
+  const [pinResetMode, setPinResetMode] = useState("current_pin"); // "current_pin" | "password"
+  const [currentWalletPin, setCurrentWalletPin] = useState("");
+  const [walletPinPassword, setWalletPinPassword] = useState("");
+  const [newWalletPin, setNewWalletPin] = useState("");
+  const [confirmWalletPin, setConfirmWalletPin] = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinError, setPinError] = useState(null);
+  const [pinSuccess, setPinSuccess] = useState(null);
 
   const loadWallet = () => {
     setLoadingWallet(true);
@@ -109,6 +119,62 @@ export default function ProfilePage() {
         setWalletError(err?.response?.data?.message || "Failed to generate Monnify account.");
       })
       .finally(() => setLoadingWallet(false));
+  };
+
+  const handleSaveWalletPin = async (e) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinSuccess(null);
+    const hasPin = Boolean(walletData.wallet?.has_payment_pin);
+
+    if (!/^\d{4}$/.test(newWalletPin)) {
+      setPinError("New Payment PIN must be exactly 4 digits.");
+      return;
+    }
+    if (newWalletPin !== confirmWalletPin) {
+      setPinError("New Payment PIN and confirmation do not match.");
+      return;
+    }
+    if (hasPin) {
+      if (pinResetMode === "current_pin" && !/^\d{4}$/.test(currentWalletPin)) {
+        setPinError("Please enter your current 4-digit Payment PIN.");
+        return;
+      }
+      if (pinResetMode === "password" && !walletPinPassword) {
+        setPinError("Please enter your account password to reset your PIN.");
+        return;
+      }
+    }
+
+    setPinSaving(true);
+    try {
+      const payload = { pin: newWalletPin };
+      if (hasPin) {
+        if (pinResetMode === "current_pin") payload.current_pin = currentWalletPin;
+        else payload.account_password = walletPinPassword;
+      }
+      const res = await api.post("/wallet/pin", payload);
+      setWalletData((prev) => ({
+        ...prev,
+        wallet: prev.wallet
+          ? {
+              ...prev.wallet,
+              has_payment_pin: true,
+              payment_pin_set_at: res.data?.payment_pin_set_at || new Date().toISOString(),
+            }
+          : prev.wallet,
+      }));
+      setCurrentWalletPin("");
+      setWalletPinPassword("");
+      setNewWalletPin("");
+      setConfirmWalletPin("");
+      setPinFormOpen(false);
+      setPinSuccess(res.data?.message || "Payment PIN saved successfully.");
+    } catch (err) {
+      setPinError(err?.response?.data?.message || "Failed to save Payment PIN.");
+    } finally {
+      setPinSaving(false);
+    }
   };
 
   // Load addresses
@@ -1471,11 +1537,11 @@ export default function ProfilePage() {
                   </div>
 
                   {/* 3-Step Quick Guide */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
                     {[
                       { step: "1", title: "Copy Your NUBAN", desc: "Your personal BemsFarms account number" },
                       { step: "2", title: "Transfer Any Amount", desc: "Instant credit from any Nigerian bank app" },
-                      { step: "3", title: "1-Tap Checkout", desc: "Pay for orders faster with zero card fees" },
+                      { step: "3", title: "PIN-Protected Checkout", desc: "Pay faster with your 4-digit wallet PIN" },
                     ].map((item) => (
                       <div key={item.step} className="rounded-xl border border-gray-100 bg-gray-50/70 px-3.5 py-3 flex items-start gap-2.5">
                         <span className="w-5 h-5 rounded-full bg-[#1B4332] text-white text-[10px] font-black grid place-items-center shrink-0 mt-0.5">
@@ -1487,6 +1553,174 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Wallet Payment PIN Card */}
+                  <div className="rounded-2xl border border-emerald-100 bg-[#F4F9F5] p-4 sm:p-5 mb-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#1B4332] text-white grid place-items-center shrink-0 mt-0.5">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm font-black text-[#143c2d]">Checkout Payment PIN</h3>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                walletData.wallet?.has_payment_pin
+                                  ? "bg-emerald-100 text-[#1B4332]"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {walletData.wallet?.has_payment_pin ? "PIN Active" : "PIN Not Set"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {walletData.wallet?.has_payment_pin
+                              ? "Your 4-digit Payment PIN is required whenever you pay with Bems Wallet at checkout."
+                              : "Set a 4-digit Payment PIN to authorize Bems Wallet payments at checkout."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {walletData.wallet?.has_payment_pin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPinFormOpen((o) => !o);
+                            setPinError(null);
+                            setPinSuccess(null);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-white border border-emerald-200 hover:border-[#1B4332] text-xs font-bold text-[#143c2d] transition"
+                        >
+                          {pinFormOpen ? "Cancel" : "Change / Reset PIN"}
+                        </button>
+                      )}
+                    </div>
+
+                    {pinSuccess && (
+                      <div className="mt-3 px-3 py-2 rounded-xl bg-emerald-100/80 border border-emerald-200 text-xs font-semibold text-[#1B4332]">
+                        {pinSuccess}
+                      </div>
+                    )}
+                    {pinError && (
+                      <div className="mt-3 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
+                        {pinError}
+                      </div>
+                    )}
+
+                    {(!walletData.wallet?.has_payment_pin || pinFormOpen) && (
+                      <form onSubmit={handleSaveWalletPin} className="mt-4 pt-4 border-t border-emerald-200/70 space-y-3">
+                        {walletData.wallet?.has_payment_pin && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPinResetMode("current_pin");
+                                setPinError(null);
+                              }}
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition ${
+                                pinResetMode === "current_pin"
+                                  ? "bg-[#1B4332] text-white"
+                                  : "bg-white text-gray-600 border border-gray-200"
+                              }`}
+                            >
+                              Use Current PIN
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPinResetMode("password");
+                                setPinError(null);
+                              }}
+                              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition ${
+                                pinResetMode === "password"
+                                  ? "bg-[#1B4332] text-white"
+                                  : "bg-white text-gray-600 border border-gray-200"
+                              }`}
+                            >
+                              Forgot PIN? Use Account Password
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                          {walletData.wallet?.has_payment_pin && (
+                            <div>
+                              <label className="block text-[11px] font-bold text-[#143c2d] mb-1">
+                                {pinResetMode === "current_pin" ? "Current 4-Digit PIN" : "Account Password"}
+                              </label>
+                              {pinResetMode === "current_pin" ? (
+                                <input
+                                  type="password"
+                                  inputMode="numeric"
+                                  maxLength={4}
+                                  value={currentWalletPin}
+                                  onChange={(e) => setCurrentWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                  placeholder="••••"
+                                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-gray-900 text-sm font-mono tracking-[0.3em] focus:outline-none focus:border-[#1B4332]"
+                                />
+                              ) : (
+                                <input
+                                  type="password"
+                                  value={walletPinPassword}
+                                  onChange={(e) => setWalletPinPassword(e.target.value)}
+                                  placeholder="Enter password"
+                                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-gray-900 text-xs focus:outline-none focus:border-[#1B4332]"
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#143c2d] mb-1">
+                              {walletData.wallet?.has_payment_pin ? "New 4-Digit PIN" : "Set 4-Digit PIN"}
+                            </label>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={4}
+                              value={newWalletPin}
+                              onChange={(e) => setNewWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                              placeholder="••••"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-gray-900 text-sm font-mono tracking-[0.3em] focus:outline-none focus:border-[#1B4332]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#143c2d] mb-1">
+                              Confirm 4-Digit PIN
+                            </label>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={4}
+                              value={confirmWalletPin}
+                              onChange={(e) => setConfirmWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                              placeholder="••••"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-gray-900 text-sm font-mono tracking-[0.3em] focus:outline-none focus:border-[#1B4332]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button
+                            type="submit"
+                            disabled={pinSaving}
+                            className="px-5 py-2.5 rounded-xl bg-[#1B4332] hover:bg-[#143c2d] text-white font-bold text-xs disabled:opacity-60 transition"
+                          >
+                            {pinSaving
+                              ? "Saving…"
+                              : walletData.wallet?.has_payment_pin
+                              ? "Update Payment PIN"
+                              : "Set Payment PIN"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
 
                   {/* Wallet Transactions */}

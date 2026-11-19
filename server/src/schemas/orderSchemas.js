@@ -27,6 +27,7 @@ const createOrder = z.object({
   source: z.string().optional(),
   coupon_code: z.string().optional(),
   checkout_intent_id: z.string().max(100).optional(),
+  payment_pin: z.string().max(12).optional(),
 }).passthrough();
 
 const createCheckoutIntent = z.object({

@@ -1,4 +1,5 @@
 const pool = require("../db/pool");
+const bcrypt = require("bcryptjs");
 const { createMonnifyReservedAccount } = require("../utils/monnify");
 const { getIO } = require("./socketService");
 
@@ -27,6 +28,10 @@ async function ensureCustomerWalletSchema() {
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS bank_code VARCHAR(30)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS account_name VARCHAR(160)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS monnify_accounts JSONB DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS payment_pin_hash VARCHAR(255)`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS payment_pin_set_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS pin_failed_attempts INTEGER NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS pin_locked_until TIMESTAMPTZ`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS customer_wallet_transactions (
       id SERIAL PRIMARY KEY,
@@ -149,6 +154,9 @@ async function getOrCreateCustomerWallet(customerId, options = {}) {
       account_name: wallet.account_name || null,
       accounts: Array.isArray(wallet.monnify_accounts) ? wallet.monnify_accounts : [],
       provision_error: provisionError,
+      has_payment_pin: Boolean(wallet.payment_pin_hash),
+      payment_pin_set_at: wallet.payment_pin_set_at || null,
+      pin_locked_until: wallet.pin_locked_until || null,
     },
     transactions: txRes.rows.map((t) => ({
       ...t,
@@ -283,9 +291,76 @@ async function creditCustomerWalletFromMonnifyWebhook(eventData) {
 }
 
 /**
+ * Set or update a customer's 4-digit wallet payment PIN.
+ */
+async function setCustomerWalletPin(customerId, { pin, current_pin, account_password } = {}) {
+  await ensureCustomerWalletSchema();
+  const cleanPin = String(pin || "").trim();
+  if (!/^\d{4}$/.test(cleanPin)) {
+    throw Object.assign(new Error("Payment PIN must be exactly 4 digits."), { status: 400 });
+  }
+
+  await pool.query(
+    `INSERT INTO customer_wallets (customer_id, balance, total_topped_up, total_spent, created_at, updated_at)
+     VALUES ($1, 0, 0, 0, NOW(), NOW())
+     ON CONFLICT (customer_id) DO NOTHING`,
+    [customerId]
+  );
+
+  const walletRes = await pool.query(
+    "SELECT payment_pin_hash FROM customer_wallets WHERE customer_id = $1 LIMIT 1",
+    [customerId]
+  );
+  const existingHash = walletRes.rows[0]?.payment_pin_hash;
+
+  if (existingHash) {
+    let verified = false;
+    if (current_pin !== undefined && current_pin !== null && String(current_pin).trim() !== "") {
+      verified = await bcrypt.compare(String(current_pin).trim(), existingHash);
+      if (!verified) {
+        throw Object.assign(new Error("Current Payment PIN is incorrect."), { status: 401 });
+      }
+    } else if (account_password !== undefined && account_password !== null && String(account_password) !== "") {
+      const userRes = await pool.query("SELECT password FROM users WHERE id = $1 LIMIT 1", [customerId]);
+      const pwHash = userRes.rows[0]?.password;
+      if (!pwHash) {
+        throw Object.assign(new Error("Unable to verify account password."), { status: 400 });
+      }
+      verified = await bcrypt.compare(String(account_password), pwHash);
+      if (!verified) {
+        throw Object.assign(new Error("Account password is incorrect."), { status: 401 });
+      }
+    } else {
+      throw Object.assign(
+        new Error("Please provide your current Payment PIN or account password to update your PIN."),
+        { status: 400 }
+      );
+    }
+  }
+
+  const newHash = await bcrypt.hash(cleanPin, 10);
+  const updRes = await pool.query(
+    `UPDATE customer_wallets
+     SET payment_pin_hash = $1,
+         payment_pin_set_at = NOW(),
+         pin_failed_attempts = 0,
+         pin_locked_until = NULL,
+         updated_at = NOW()
+     WHERE customer_id = $2
+     RETURNING payment_pin_set_at`,
+    [newHash, customerId]
+  );
+
+  return {
+    has_payment_pin: true,
+    payment_pin_set_at: updRes.rows[0]?.payment_pin_set_at || new Date().toISOString(),
+  };
+}
+
+/**
  * Debit a customer's wallet inside an order creation transaction.
  */
-async function debitCustomerWalletForOrder(client, customerId, amount, orderId) {
+async function debitCustomerWalletForOrder(client, customerId, amount, orderId, paymentPin) {
   await ensureCustomerWalletSchema();
   const amt = parseFloat(amount || 0);
   if (!Number.isFinite(amt) || amt <= 0) {
@@ -300,10 +375,74 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId) 
   );
 
   const res = await client.query(
-    "SELECT id, balance FROM customer_wallets WHERE customer_id = $1 FOR UPDATE",
+    "SELECT id, balance, payment_pin_hash, pin_failed_attempts, pin_locked_until FROM customer_wallets WHERE customer_id = $1 FOR UPDATE",
     [customerId]
   );
   const wallet = res.rows[0];
+
+  if (!wallet?.payment_pin_hash) {
+    return {
+      ok: false,
+      status: 400,
+      code: "PAYMENT_PIN_NOT_SET",
+      message: "Please set a 4-digit Payment PIN in your Profile → My Wallet before paying with your Bems Wallet.",
+    };
+  }
+
+  if (wallet.pin_locked_until && new Date(wallet.pin_locked_until) > new Date()) {
+    return {
+      ok: false,
+      status: 429,
+      code: "PAYMENT_PIN_LOCKED",
+      message: "Too many incorrect Payment PIN attempts. Please wait 15 minutes or reset your PIN in Profile → My Wallet.",
+    };
+  }
+
+  const cleanPin = String(paymentPin || "").trim();
+  if (!/^\d{4}$/.test(cleanPin)) {
+    return {
+      ok: false,
+      status: 400,
+      code: "PAYMENT_PIN_REQUIRED",
+      message: "Please enter your 4-digit Wallet Payment PIN to complete checkout.",
+    };
+  }
+
+  const pinValid = await bcrypt.compare(cleanPin, wallet.payment_pin_hash);
+  if (!pinValid) {
+    const nextAttempts = Number(wallet.pin_failed_attempts || 0) + 1;
+    if (nextAttempts >= 5) {
+      await pool.query(
+        `UPDATE customer_wallets
+         SET pin_failed_attempts = 0,
+             pin_locked_until = NOW() + INTERVAL '15 minutes',
+             updated_at = NOW()
+         WHERE customer_id = $1`,
+        [customerId]
+      );
+      return {
+        ok: false,
+        status: 429,
+        code: "PAYMENT_PIN_LOCKED",
+        message: "Too many incorrect Payment PIN attempts. Wallet PIN is locked for 15 minutes (you can reset it in Profile → My Wallet).",
+      };
+    }
+    await pool.query(
+      `UPDATE customer_wallets
+       SET pin_failed_attempts = $1,
+           updated_at = NOW()
+       WHERE customer_id = $2`,
+      [nextAttempts, customerId]
+    );
+    const remaining = 5 - nextAttempts;
+    return {
+      ok: false,
+      status: 401,
+      code: "INVALID_PAYMENT_PIN",
+      message: `Incorrect Wallet Payment PIN (${remaining} attempt${remaining === 1 ? "" : "s"} remaining).`,
+    };
+  }
+
   const currentBalance = parseFloat(wallet?.balance || 0);
   if (currentBalance + 0.001 < amt) {
     return {
@@ -318,6 +457,8 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId) 
     `UPDATE customer_wallets
      SET balance = $1,
          total_spent = COALESCE(total_spent, 0) + $2,
+         pin_failed_attempts = 0,
+         pin_locked_until = NULL,
          updated_at = NOW()
      WHERE customer_id = $3`,
     [newBalance, amt, customerId]
@@ -343,6 +484,7 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId) 
 module.exports = {
   ensureCustomerWalletSchema,
   getOrCreateCustomerWallet,
+  setCustomerWalletPin,
   creditCustomerWalletFromMonnifyWebhook,
   debitCustomerWalletForOrder,
 };

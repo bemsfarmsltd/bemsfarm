@@ -276,6 +276,8 @@ export default function CheckoutPage() {
   const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod" | "wallet"
   const [codEnabled, setCodEnabled] = useState(true);
   const [customerWallet, setCustomerWallet] = useState(null);
+  const [walletPin, setWalletPin] = useState("");
+  const [showWalletPin, setShowWalletPin] = useState(false);
   const [monnifyConfig, setMonnifyConfig] = useState({
     apiKey: MONNIFY_API_KEY,
     contractCode: MONNIFY_CONTRACT_CODE,
@@ -771,6 +773,7 @@ export default function CheckoutPage() {
       zone_id: checkout.zone_id || selectedZone?.zone_id || "ZONE001",
       delivery_fee: finalFee,
       payment_method: payMethod,
+      payment_pin: payMethod === "wallet" ? walletPin : undefined,
       payment_ref: ref || merchantPaymentRef || undefined,
       payment_reference: merchantPaymentRef || ref || undefined,
       transaction_reference: ref || undefined,
@@ -1006,18 +1009,34 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (customerWallet && !customerWallet.has_payment_pin) {
+      setError("Please set a 4-digit Payment PIN in Profile → My Wallet before paying with your Bems Wallet.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (!/^\d{4}$/.test(walletPin)) {
+      setError("Please enter your 4-digit Wallet Payment PIN to authorize this payment.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setStaleItems([]);
     try {
       const checkout = await prepareCheckout();
       const orderId = await createOrder(undefined, checkout);
+      setWalletPin("");
       clearCart();
       navigate("/order-confirmed", {
         state: { orderId, paymentMethod: "WALLET" },
       });
     } catch (walErr) {
       const detail = walErr?.response?.data?.message || walErr.message;
+      if (walErr?.response?.data?.code === "INVALID_PAYMENT_PIN") {
+        setWalletPin("");
+      }
       setError(detail || "Wallet payment failed. Please top up or choose another method.");
       setLoading(false);
     }
@@ -2009,6 +2028,116 @@ export default function CheckoutPage() {
                           </p>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Wallet Payment PIN Entry (shown when Bems Wallet is selected) */}
+                  {user && payMethod === "wallet" && (
+                    <div
+                      style={{
+                        padding: "16px 20px",
+                        borderRadius: "16px",
+                        border: "1px solid #BBF7D0",
+                        backgroundColor: "#F4F9F5",
+                      }}
+                    >
+                      {customerWallet && !customerWallet.has_payment_pin ? (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                          <div>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: "#92400E" }}>
+                              Payment PIN Required
+                            </p>
+                            <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#78350F" }}>
+                              Set a 4-digit Payment PIN in your wallet before paying with Bems Wallet.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => navigate("/profile?tab=wallet")}
+                            style={{
+                              padding: "8px 14px",
+                              borderRadius: "10px",
+                              border: "none",
+                              backgroundColor: "#143c2d",
+                              color: "#FFFFFF",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Set Payment PIN →
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
+                            <label
+                              htmlFor="checkout-wallet-pin"
+                              style={{ fontSize: "12px", fontWeight: 800, color: "#143c2d", letterSpacing: "0.02em" }}
+                            >
+                              Enter 4-Digit Wallet Payment PIN *
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/profile?tab=wallet")}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                padding: 0,
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: "#1B4332",
+                                textDecoration: "underline",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Forgot / Change PIN?
+                            </button>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <input
+                              id="checkout-wallet-pin"
+                              type={showWalletPin ? "text" : "password"}
+                              inputMode="numeric"
+                              maxLength={4}
+                              autoComplete="one-time-code"
+                              value={walletPin}
+                              onChange={(e) => setWalletPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                              placeholder="••••"
+                              style={{
+                                flex: 1,
+                                padding: "10px 14px",
+                                borderRadius: "12px",
+                                border: "1px solid #A7F3D0",
+                                backgroundColor: "#FFFFFF",
+                                fontSize: "16px",
+                                fontWeight: 800,
+                                letterSpacing: "0.35em",
+                                fontFamily: "monospace",
+                                color: "#111827",
+                                outline: "none",
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowWalletPin((s) => !s)}
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "12px",
+                                border: "1px solid #D1D5DB",
+                                backgroundColor: "#FFFFFF",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: "#374151",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {showWalletPin ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
