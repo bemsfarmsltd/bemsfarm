@@ -108,7 +108,13 @@ async function getMonnifyToken(forceRefresh = false) {
       tokenExpiresAt = Date.now() + (data.responseBody.expiresIn || 3300) * 1000;
       return cachedToken;
     } catch (err) {
-      const respMsg = err?.response?.data?.responseMessage || err?.response?.data?.message || err.message;
+      const rawData = err?.response?.data;
+      const respMsg =
+        rawData?.responseMessage ||
+        rawData?.error_description ||
+        rawData?.message ||
+        (typeof rawData === "string" ? rawData.slice(0, 200) : JSON.stringify(rawData || {})) ||
+        err.message;
       console.error(`[Monnify Auth] ${cred.source} (${cred.apiKey.slice(0, 10)}...) failed at ${baseUrl}:`, err?.response?.status, respMsg);
       lastErr = new Error(`Monnify auth (${cred.source}) failed: ${respMsg}`);
     }
