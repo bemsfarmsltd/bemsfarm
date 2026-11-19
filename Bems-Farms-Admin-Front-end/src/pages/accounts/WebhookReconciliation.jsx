@@ -56,6 +56,7 @@ export default function WebhookReconciliation() {
   const [autoMapping, setAutoMapping] = useState(false)
   const [streamFilter, setStreamFilter] = useState('all') // 'all' | 'pos' | 'cod'
   const [channelFilter, setChannelFilter] = useState('all') // 'all' | 'card' | 'transfer'
+  const [terminalFilter, setTerminalFilter] = useState('all')
   const [bottomTab, setBottomTab] = useState('mapped') // 'mapped' | 'logs'
   const [search, setSearch] = useState('')
 
@@ -63,6 +64,15 @@ export default function WebhookReconciliation() {
   const [selectedWebhook, setSelectedWebhook] = useState(null)
   const [forceMismatch, setForceMismatch] = useState(false)
   const [mapping, setMapping] = useState(false)
+
+  // Quick workstation modals
+  const [assignModal, setAssignModal] = useState(null) // { order_ref, target_id, currentSn }
+  const [assignSnInput, setAssignSnInput] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [cashModal, setCashModal] = useState(null) // order object
+  const [cashNotes, setCashNotes] = useState('')
+  const [confirmingCash, setConfirmingCash] = useState(false)
+  const [inspectLog, setInspectLog] = useState(null)
 
   const [data, setData] = useState({
     summary: {
@@ -148,22 +158,77 @@ export default function WebhookReconciliation() {
     }
   }
 
+  async function handleAssignTerminal(e) {
+    e.preventDefault()
+    if (!assignModal || !assignSnInput.trim()) return
+    setAssigning(true)
+    try {
+      const res = await api.post('/admin/pos/webhook-reconciliation/assign-terminal', {
+        order_id: assignModal.target_id,
+        terminal_sn: assignSnInput.trim(),
+      })
+      toast.success(res.data?.message || 'Terminal SN assigned')
+      setAssignModal(null)
+      setAssignSnInput('')
+      await load(true)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not assign terminal SN')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  async function handleConfirmCash(e) {
+    e.preventDefault()
+    if (!cashModal) return
+    setConfirmingCash(true)
+    try {
+      const res = await api.post('/admin/pos/webhook-reconciliation/confirm-cash', {
+        order_id: cashModal.target_id,
+        notes: cashNotes.trim(),
+      })
+      toast.success(res.data?.message || 'Cash collection confirmed')
+      setCashModal(null)
+      setCashNotes('')
+      setSelectedOrder(null)
+      await load(true)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not confirm cash payment')
+    } finally {
+      setConfirmingCash(false)
+    }
+  }
+
+  const terminalOptions = useMemo(() => {
+    const set = new Set()
+    data.awaiting_confirmation.forEach((a) => {
+      if (a.terminal_sn) set.add(a.terminal_sn)
+    })
+    data.unmapped_webhooks.forEach((w) => {
+      if (w.terminal_id) set.add(w.terminal_id)
+    })
+    return Array.from(set).sort()
+  }, [data.awaiting_confirmation, data.unmapped_webhooks])
+
   const q = search.trim().toLowerCase()
 
   const awaitingList = useMemo(() => {
-    const base =
+    let base =
       streamFilter === 'pos'
         ? data.awaiting_pos || data.awaiting_confirmation.filter((a) => a.target_type === 'held_order')
         : streamFilter === 'cod'
         ? data.awaiting_cod || data.awaiting_confirmation.filter((a) => a.target_type === 'order')
         : data.awaiting_confirmation
 
+    if (terminalFilter !== 'all') {
+      base = base.filter((a) => a.terminal_sn === terminalFilter)
+    }
     if (!q) return base
     return base.filter((a) =>
       [a.order_ref, a.target_id, a.terminal_sn, a.customer_name, a.driver_name, a.channel, a.amount]
         .some((v) => String(v || '').toLowerCase().includes(q))
     )
-  }, [data, streamFilter, q])
+  }, [data, streamFilter, terminalFilter, q])
 
   const awaitingPosList = useMemo(
     () => awaitingList.filter((a) => a.target_type === 'held_order'),
@@ -179,12 +244,15 @@ export default function WebhookReconciliation() {
     if (channelFilter !== 'all') {
       base = base.filter((w) => w.payment_channel === channelFilter)
     }
+    if (terminalFilter !== 'all') {
+      base = base.filter((w) => w.terminal_id === terminalFilter)
+    }
     if (!q) return base
     return base.filter((w) =>
       [w.transaction_id, w.terminal_id, w.customer_name, w.sender_bank, w.payment_method, w.rrn, w.amount]
         .some((v) => String(v || '').toLowerCase().includes(q))
     )
-  }, [data.unmapped_webhooks, channelFilter, q])
+  }, [data.unmapped_webhooks, channelFilter, terminalFilter, q])
 
   const filteredMapped = useMemo(() => {
     let base = data.mapped_transactions
@@ -194,12 +262,15 @@ export default function WebhookReconciliation() {
     if (channelFilter !== 'all') {
       base = base.filter((m) => m.payment_channel === channelFilter)
     }
+    if (terminalFilter !== 'all') {
+      base = base.filter((m) => m.terminal_id === terminalFilter)
+    }
     if (!q) return base
     return base.filter((m) =>
       [m.transaction_id, m.terminal_id, m.used_for_order_id, m.order_ref, m.customer_name, m.sender_name, m.amount]
         .some((v) => String(v || '').toLowerCase().includes(q))
     )
-  }, [data.mapped_transactions, streamFilter, channelFilter, q])
+  }, [data.mapped_transactions, streamFilter, channelFilter, terminalFilter, q])
 
   const filteredLogs = useMemo(() => {
     if (!q) return data.webhook_logs
@@ -210,6 +281,19 @@ export default function WebhookReconciliation() {
   }, [data.webhook_logs, q])
 
   const { summary } = data
+  const posTotal = useMemo(
+    () => (data.awaiting_pos || []).reduce((s, a) => s + Number(a.amount || 0), 0),
+    [data.awaiting_pos]
+  )
+  const codTotal = useMemo(
+    () => (data.awaiting_cod || []).reduce((s, a) => s + Number(a.amount || 0), 0),
+    [data.awaiting_cod]
+  )
+  const mappedTotal = useMemo(
+    () => data.mapped_transactions.reduce((s, m) => s + Number(m.amount || 0), 0),
+    [data.mapped_transactions]
+  )
+
   const amountDelta =
     selectedOrder && selectedWebhook
       ? Math.abs(Number(selectedOrder.amount || 0) - Number(selectedWebhook.amount || 0))
@@ -222,15 +306,23 @@ export default function WebhookReconciliation() {
     const isCod = a.target_type === 'order'
 
     return (
-      <button
+      <div
         key={`${a.target_type}-${a.target_id}`}
-        type="button"
         onClick={() => setSelectedOrder(isSel ? null : a)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setSelectedOrder(isSel ? null : a)
+          }
+        }}
         className="w-100 text-start p-3 rounded-3 border transition-all mb-2 bg-white"
         style={{
+          cursor: 'pointer',
           borderColor: isSel ? '#15803d' : matchesSelWebhook ? '#22c55e' : '#e2e8f0',
           boxShadow: isSel
-            ? '0 0 0 2px rgba(21,128,61,0.22)'
+            ? '0 0 0 2px rgba(21,128,61,0.24)'
             : matchesSelWebhook
             ? '0 0 0 2px rgba(34,197,94,0.18)'
             : '0 1px 2px rgba(15,23,42,0.04)',
@@ -238,7 +330,7 @@ export default function WebhookReconciliation() {
         }}
       >
         <div className="d-flex justify-content-between align-items-start gap-2">
-          <div>
+          <div className="min-w-0">
             <div className="d-flex align-items-center gap-1.5 flex-wrap">
               <span className="font-monospace fw-bold text-dark small">{a.order_ref}</span>
               <span
@@ -258,10 +350,12 @@ export default function WebhookReconciliation() {
                 </span>
               )}
             </div>
-            <div className="small text-dark fw-medium mt-1">{a.customer_name}</div>
+            <div className="small text-dark fw-semibold mt-1">{a.customer_name}</div>
             <div className="d-flex align-items-center gap-2 flex-wrap mt-1 text-muted" style={{ fontSize: 11 }}>
               {a.driver_name && <span>Driver: <strong>{a.driver_name}</strong></span>}
-              <span className="font-monospace">SN: {a.terminal_sn || 'Unassigned'}</span>
+              <span className="font-monospace">
+                SN: <strong className={a.terminal_sn ? 'text-dark' : 'text-danger'}>{a.terminal_sn || 'Unassigned'}</strong>
+              </span>
               <span>· {fmtDate(a.created_at)}</span>
             </div>
           </div>
@@ -272,7 +366,46 @@ export default function WebhookReconciliation() {
             </div>
           </div>
         </div>
-      </button>
+
+        {isCod && (
+          <div
+            className="d-flex align-items-center gap-2 mt-2 pt-2 border-top"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="btn btn-xs btn-outline-primary py-0.5 px-2"
+              style={{ fontSize: 11 }}
+              onClick={() => {
+                setAssignModal(a)
+                setAssignSnInput(a.terminal_sn || '')
+              }}
+            >
+              <i className="ri-smartphone-line me-1" />
+              {a.terminal_sn ? 'Change Terminal SN' : 'Assign Terminal SN'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-xs btn-outline-success py-0.5 px-2"
+              style={{ fontSize: 11 }}
+              onClick={() => {
+                setCashModal(a)
+                setCashNotes('')
+              }}
+            >
+              <i className="ri-money-dollar-circle-line me-1" />
+              Confirm Cash Paid
+            </button>
+            <Link
+              to={`/orders?search=${encodeURIComponent(a.order_ref)}`}
+              className="ms-auto small text-decoration-none fw-semibold"
+              style={{ fontSize: 11 }}
+            >
+              Open Order →
+            </Link>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -281,12 +414,18 @@ export default function WebhookReconciliation() {
       {/* Workstation Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
-          <h4 className="fw-bold mb-0 text-dark">
-            <i className="ri-dashboard-3-line text-success me-2" />
-            Payment Webhook Reconciliation Workstation
-          </h4>
-          <div className="text-muted small">
-            Match incoming Moniepoint / Monnify webhooks separately across <strong>POS Sales</strong>, <strong>COD Deliveries</strong>, <strong>Card</strong>, and <strong>Transfer</strong> channels.
+          <div className="d-flex align-items-center gap-2">
+            <h4 className="fw-bold mb-0 text-dark">
+              <i className="ri-dashboard-3-line text-success me-2" />
+              Payment Webhook Reconciliation Workstation
+            </h4>
+            <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1">
+              <span className="rounded-circle bg-success d-inline-block" style={{ width: 6, height: 6 }} />
+              Live
+            </span>
+          </div>
+          <div className="text-muted small mt-0.5">
+            Separate queues for <strong>POS Counter Sales</strong> vs <strong>COD Deliveries</strong>, and <strong>Card</strong> vs <strong>Transfer</strong> webhooks.
           </div>
         </div>
         <div className="d-flex align-items-center gap-2">
@@ -310,12 +449,61 @@ export default function WebhookReconciliation() {
         </div>
       </div>
 
-      {/* Filter & KPI Workstation Bar */}
+      {/* 4-Card Financial Summary Strip */}
+      <div className="row g-3 mb-3">
+        <div className="col-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #2563eb' }}>
+            <div className="card-body py-2.5">
+              <div className="text-muted small fw-semibold">🏪 POS Sales Awaiting</div>
+              <div className="d-flex align-items-baseline justify-content-between mt-1">
+                <span className="fs-4 fw-bold text-primary">{summary.awaiting_pos_count}</span>
+                <span className="small fw-semibold text-dark">{fmt(posTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #d97706' }}>
+            <div className="card-body py-2.5">
+              <div className="text-muted small fw-semibold">🚚 COD Deliveries Awaiting</div>
+              <div className="d-flex align-items-baseline justify-content-between mt-1">
+                <span className="fs-4 fw-bold text-warning">{summary.awaiting_cod_count}</span>
+                <span className="small fw-semibold text-dark">{fmt(codTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #7c3aed' }}>
+            <div className="card-body py-2.5">
+              <div className="text-muted small fw-semibold">⚡ Unmapped Webhooks</div>
+              <div className="d-flex align-items-baseline justify-content-between mt-1">
+                <span className="fs-4 fw-bold" style={{ color: '#6d28d9' }}>{summary.unmapped_count}</span>
+                <span className="small text-muted">
+                  💳 {summary.unmapped_card_count || 0} · 🏦 {summary.unmapped_transfer_count || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-xl-3">
+          <div className="card border-0 shadow-sm h-100" style={{ borderLeft: '4px solid #16a34a' }}>
+            <div className="card-body py-2.5">
+              <div className="text-muted small fw-semibold">✅ Mapped &amp; Confirmed</div>
+              <div className="d-flex align-items-baseline justify-content-between mt-1">
+                <span className="fs-4 fw-bold text-success">{summary.mapped_count}</span>
+                <span className="small fw-semibold text-dark">{fmt(mappedTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Workstation Filter Bar */}
       <div className="card border-0 shadow-sm mb-3">
-        <div className="card-body py-2.5 d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {/* Stream Switcher: All | POS Sales | COD */}
+        <div className="card-body py-2.5 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="text-muted small fw-semibold me-1">Order Stream:</span>
+            <span className="text-muted small fw-semibold">Stream:</span>
             <div className="btn-group btn-group-sm" role="group">
               <button
                 type="button"
@@ -329,21 +517,20 @@ export default function WebhookReconciliation() {
                 className={`btn ${streamFilter === 'pos' ? 'btn-primary fw-semibold' : 'btn-outline-secondary'}`}
                 onClick={() => setStreamFilter('pos')}
               >
-                🏪 POS Sales ({summary.awaiting_pos_count})
+                🏪 POS ({summary.awaiting_pos_count})
               </button>
               <button
                 type="button"
                 className={`btn ${streamFilter === 'cod' ? 'btn-warning fw-semibold text-dark' : 'btn-outline-secondary'}`}
                 onClick={() => setStreamFilter('cod')}
               >
-                🚚 COD Deliveries ({summary.awaiting_cod_count})
+                🚚 COD ({summary.awaiting_cod_count})
               </button>
             </div>
           </div>
 
-          {/* Payment Channel Switcher: All | Card | Transfer */}
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="text-muted small fw-semibold me-1">Channel:</span>
+            <span className="text-muted small fw-semibold">Channel:</span>
             <div className="btn-group btn-group-sm" role="group">
               <button
                 type="button"
@@ -369,15 +556,29 @@ export default function WebhookReconciliation() {
             </div>
           </div>
 
-          {/* Search */}
-          <input
-            type="search"
-            className="form-control form-control-sm"
-            style={{ maxWidth: 260 }}
-            placeholder="Search order, ref, terminal SN, driver…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <select
+              className="form-select form-select-sm"
+              style={{ width: 170 }}
+              value={terminalFilter}
+              onChange={(e) => setTerminalFilter(e.target.value)}
+            >
+              <option value="all">All Terminals ({terminalOptions.length})</option>
+              {terminalOptions.map((sn) => (
+                <option key={sn} value={sn}>
+                  SN: {sn}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              className="form-control form-control-sm"
+              style={{ width: 230 }}
+              placeholder="Search ref, SN, customer, driver…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -458,7 +659,7 @@ export default function WebhookReconciliation() {
 
       {/* Split-Pane Workstation */}
       <div className="row g-3 mb-4">
-        {/* LEFT PANE: Awaiting Orders (POS Sales vs COD Deliveries separated) */}
+        {/* LEFT PANE: Awaiting Orders */}
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-2.5">
@@ -466,13 +667,14 @@ export default function WebhookReconciliation() {
                 <span className="fw-bold text-dark">1. Awaiting Webhook Confirmation</span>
                 <span className="text-muted small ms-2">({awaitingList.length})</span>
               </div>
-              <span className="small text-muted">{fmt(awaitingList.reduce((s, a) => s + a.amount, 0))}</span>
+              <span className="small fw-semibold text-dark">{fmt(awaitingList.reduce((s, a) => s + a.amount, 0))}</span>
             </div>
-            <div className="card-body p-3" style={{ maxHeight: 460, overflowY: 'auto', background: '#f8fafc' }}>
+            <div className="card-body p-3" style={{ minHeight: 360, maxHeight: 480, overflowY: 'auto', background: '#f8fafc' }}>
               {loading ? (
                 <div className="text-center py-5 text-muted small">Loading awaiting queue…</div>
               ) : awaitingList.length === 0 ? (
                 <div className="text-center py-5 text-muted small">
+                  <div className="fs-4 mb-1">✅</div>
                   No POS sales or COD deliveries awaiting confirmation.
                 </div>
               ) : (
@@ -499,7 +701,7 @@ export default function WebhookReconciliation() {
           </div>
         </div>
 
-        {/* RIGHT PANE: Incoming Unmapped Webhooks (Card vs Transfer) */}
+        {/* RIGHT PANE: Incoming Unmapped Webhooks */}
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-2.5">
@@ -507,14 +709,18 @@ export default function WebhookReconciliation() {
                 <span className="fw-bold text-dark">2. Incoming Unmapped Webhooks</span>
                 <span className="text-muted small ms-2">({webhookList.length})</span>
               </div>
-              <span className="small text-muted">{fmt(webhookList.reduce((s, w) => s + Number(w.amount || 0), 0))}</span>
+              <span className="small fw-semibold text-success">{fmt(webhookList.reduce((s, w) => s + Number(w.amount || 0), 0))}</span>
             </div>
-            <div className="card-body p-3" style={{ maxHeight: 460, overflowY: 'auto', background: '#f8fafc' }}>
+            <div className="card-body p-3" style={{ minHeight: 360, maxHeight: 480, overflowY: 'auto', background: '#f8fafc' }}>
               {loading ? (
                 <div className="text-center py-5 text-muted small">Loading incoming webhooks…</div>
               ) : webhookList.length === 0 ? (
-                <div className="text-center py-5 text-muted small">
-                  No unmapped webhooks in this channel.
+                <div className="text-center py-5 text-muted small px-3">
+                  <div className="fs-4 mb-1">📡</div>
+                  <div className="fw-semibold text-dark">Listening for Moniepoint POS &amp; Monnify webhooks</div>
+                  <div className="mt-1">
+                    Unmatched Card &amp; Bank Transfer payments sent to <code className="text-primary">/api/webhooks/moniepoint-pos</code> will appear here in real time for instant pairing.
+                  </div>
                 </div>
               ) : (
                 webhookList.map((w) => {
@@ -673,12 +879,13 @@ export default function WebhookReconciliation() {
                     <th>Amount</th>
                     <th>Signature</th>
                     <th>Received</th>
+                    <th className="text-end">Payload</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-4 text-muted small">
+                      <td colSpan={7} className="text-center py-4 text-muted small">
                         No raw webhook logs recorded yet.
                       </td>
                     </tr>
@@ -701,6 +908,16 @@ export default function WebhookReconciliation() {
                           </span>
                         </td>
                         <td className="small text-muted">{fmtDate(l.created_at)}</td>
+                        <td className="text-end">
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-outline-secondary py-0.5 px-2"
+                            style={{ fontSize: 11 }}
+                            onClick={() => setInspectLog(l)}
+                          >
+                            Inspect JSON
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -710,6 +927,107 @@ export default function WebhookReconciliation() {
           )}
         </div>
       </div>
+
+      {/* Assign Terminal SN Modal */}
+      {assignModal && (
+        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.55)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <form className="modal-content border-0 shadow-lg" onSubmit={handleAssignTerminal}>
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">Assign POS Terminal SN — {assignModal.order_ref}</h5>
+                <button type="button" className="btn-close" onClick={() => setAssignModal(null)} />
+              </div>
+              <div className="modal-body">
+                <label className="form-label small fw-semibold">Moniepoint Terminal Serial Number</label>
+                <input
+                  type="text"
+                  className="form-control font-monospace"
+                  placeholder="e.g. C66P008D08368495"
+                  value={assignSnInput}
+                  onChange={(e) => setAssignSnInput(e.target.value)}
+                  required
+                />
+                <div className="form-text small">
+                  Incoming Moniepoint webhooks from this terminal for {fmt(assignModal.amount)} will automatically confirm and mark this COD order paid.
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={() => setAssignModal(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary fw-semibold" disabled={assigning}>
+                  {assigning ? 'Saving…' : 'Save Terminal SN'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Cash Collection Modal */}
+      {cashModal && (
+        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.55)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <form className="modal-content border-0 shadow-lg" onSubmit={handleConfirmCash}>
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">Confirm Physical Cash — {cashModal.order_ref}</h5>
+                <button type="button" className="btn-close" onClick={() => setCashModal(null)} />
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning small py-2">
+                  Confirming cash collection for <strong>{fmt(cashModal.amount)}</strong> will mark Order{' '}
+                  <strong>{cashModal.order_ref}</strong> as <strong>Paid</strong> and record a Cash on Delivery income entry.
+                </div>
+                <label className="form-label small fw-semibold">Cashier / Remittance Note (optional)</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. Cash handed over by driver to cashier"
+                  value={cashNotes}
+                  onChange={(e) => setCashNotes(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={() => setCashModal(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-success fw-semibold" disabled={confirmingCash}>
+                  {confirmingCash ? 'Confirming…' : 'Confirm Cash Paid'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Raw Webhook JSON Inspector Modal */}
+      {inspectLog && (
+        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.55)' }} tabIndex={-1}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">
+                  {inspectLog.gateway} · {inspectLog.transaction_reference || `Log #${inspectLog.id}`}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setInspectLog(null)} />
+              </div>
+              <div className="modal-body">
+                <pre
+                  className="bg-dark text-light p-3 rounded small mb-0"
+                  style={{ maxHeight: 420, overflow: 'auto' }}
+                >
+                  {JSON.stringify(inspectLog.payload || inspectLog, null, 2)}
+                </pre>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setInspectLog(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

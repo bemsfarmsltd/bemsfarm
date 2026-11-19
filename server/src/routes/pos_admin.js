@@ -2467,7 +2467,7 @@ router.get(
         pool
           .query(
             `SELECT id, gateway, event_type, transaction_reference, amount, currency,
-                    status, signature_verified, created_at
+                    status, signature_verified, payload, created_at
              FROM gateway_webhook_logs
              ORDER BY created_at DESC
              LIMIT 50`
@@ -2771,6 +2771,101 @@ router.post(
 
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Invalid target_type. Must be 'order' or 'held_order'." });
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+router.post(
+  "/webhook-reconciliation/assign-terminal",
+  requireRole("superadmin", "manager", "admin", "accountant", "cashier"),
+  async (req, res, next) => {
+    try {
+      const { order_id, terminal_sn } = req.body;
+      const sn = String(terminal_sn || "").trim();
+      if (!order_id || !sn) {
+        return res.status(400).json({ message: "order_id and terminal_sn are required." });
+      }
+      const { ensureDriverPosSchema } = require("../services/moniepointPosService");
+      await ensureDriverPosSchema();
+
+      const upd = await pool.query(
+        `UPDATE orders SET cod_awaiting_terminal_sn = $1, updated_at = NOW()
+         WHERE id::text = $2 OR order_ref = $2
+         RETURNING id, order_ref, cod_awaiting_terminal_sn`,
+        [sn, String(order_id)]
+      );
+      if (!upd.rows.length) {
+        return res.status(404).json({ message: "Order not found." });
+      }
+      res.json({
+        success: true,
+        message: `Assigned terminal ${sn} to Order #${upd.rows[0].order_ref || upd.rows[0].id}.`,
+        order: upd.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  "/webhook-reconciliation/confirm-cash",
+  requireRole("superadmin", "manager", "admin", "accountant"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const { order_id, notes } = req.body;
+      if (!order_id) {
+        return res.status(400).json({ message: "order_id is required." });
+      }
+      await client.query("BEGIN");
+      const ordRes = await client.query(
+        `SELECT id, order_ref, total, payment_method, payment_status
+         FROM orders WHERE id::text = $1 OR order_ref = $1 LIMIT 1 FOR UPDATE`,
+        [String(order_id)]
+      );
+      const ord = ordRes.rows[0];
+      if (!ord) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found." });
+      }
+      if (ord.payment_status === "paid") {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ message: `Order #${ord.order_ref || ord.id} is already paid.` });
+      }
+      const cashRef = `CASH-${ord.order_ref || ord.id}-${Date.now().toString(36).toUpperCase()}`;
+      await client.query(
+        `UPDATE orders
+         SET payment_status = 'paid',
+             payment_ref = COALESCE(payment_ref, $1),
+             cod_awaiting_terminal_sn = NULL,
+             updated_at = NOW()
+         WHERE id = $2`,
+        [cashRef, ord.id]
+      );
+      await client.query(
+        `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+         VALUES ($1, 'sales', 'online_order', 'Cash on Delivery', $2, $3, 'cash', $4, 'completed', CURRENT_DATE, $5)
+         ON CONFLICT (reference) DO NOTHING`,
+        [
+          `INC-COD-${ord.id}`,
+          notes ? `COD Cash Confirmed: ${notes}` : `COD cash confirmed in Reconciliation Workstation for Order #${ord.order_ref || ord.id}`,
+          parseFloat(ord.total || 0),
+          String(ord.id),
+          req.user.id,
+        ]
+      ).catch(() => {});
+      await client.query("COMMIT");
+      res.json({
+        success: true,
+        message: `Cash payment confirmed for Order #${ord.order_ref || ord.id}.`,
+        order_id: ord.id,
+      });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
       next(err);
