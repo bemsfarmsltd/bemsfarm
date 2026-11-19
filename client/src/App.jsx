@@ -5,6 +5,7 @@ import ProtectedRoute, { STAFF_ROLES } from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import WalletOnboardingModal from "./components/WalletOnboardingModal";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
@@ -86,6 +87,7 @@ function App() {
       <RouteMetadata />
       <LocationPromptBanner />
       <InstallAppPrompt />
+      <WalletOnboardingModal />
       <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#faf8f2] px-6 text-center font-bold text-[#17352a]" role="status">Loading BemsFarms…</div>}>
         <Routes>
         {/* Public */}

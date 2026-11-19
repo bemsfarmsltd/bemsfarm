@@ -46,10 +46,16 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 router.post("/register", validate(authSchemas.register), async (req, res, next) => {
   try {
-    const { name, email, password, phone, address, city, state, latitude, longitude, preferences } = req.body;
+    const { name, email, password, phone, address, city, state, latitude, longitude, bvn, nin, preferences } = req.body;
 
     if (!address || !address.trim()) {
       return res.status(400).json({ message: "Delivery street address is required." });
+    }
+
+    const cleanBvn = String(bvn || "").replace(/\D/g, "");
+    const cleanNin = String(nin || "").replace(/\D/g, "");
+    if (cleanBvn.length !== 11 && cleanNin.length !== 11) {
+      return res.status(400).json({ message: "A valid 11-digit NIN or BVN is required for wallet verification." });
     }
 
     const latNum = parseFloat(latitude);
@@ -102,6 +108,20 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
       raw_context:  preferences?.length ? { preferences } : undefined,
     });
     trackActivity(user.id, "registered", { ip: req.ip });
+
+    // Provision Dedicated Customer Monnify Wallet using NIN/BVN from signup (non-blocking)
+    try {
+      const { getOrCreateCustomerWallet } = require("../services/customerWalletService");
+      getOrCreateCustomerWallet(user.id, {
+        forceProvision: true,
+        bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
+        nin: cleanNin.length === 11 ? cleanNin : undefined,
+      }).catch((walErr) =>
+        console.warn("Customer wallet provisioning at signup notice:", walErr.message)
+      );
+    } catch (walInitErr) {
+      console.warn("Customer wallet service load notice:", walInitErr.message);
+    }
 
     sendWelcomeEmail(user, otp).catch((err) =>
       console.error(`Welcome email failed for ${email}:`, err.message),
@@ -1108,12 +1128,20 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       user = newUser.rows[0];
     }
 
-    // Check if user has a verified delivery address
+    // Check if user has a verified delivery address and provisioned Monnify wallet
     const addrCheck = await pool.query(
       "SELECT id, street_address, city, state, latitude, longitude FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC LIMIT 1",
       [user.id]
     );
     const hasAddress = (addrCheck.rows.length > 0 && Boolean(addrCheck.rows[0].street_address)) || Boolean(user.address && user.address.trim());
+
+    const walletCheck = await pool.query(
+      "SELECT account_number FROM customer_wallets WHERE customer_id = $1 LIMIT 1",
+      [user.id]
+    ).catch(() => ({ rows: [] }));
+    const hasWalletAccount = Boolean(walletCheck.rows[0]?.account_number);
+    const missingPhone = !user.phone || !String(user.phone).trim();
+    const requiresWalletSetup = Boolean(missingPhone || !hasWalletAccount);
 
     const token = generateAccessToken(user);
     const nameParts = (user.name || "").trim().split(" ");
@@ -1152,17 +1180,24 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       token,
       has_address: hasAddress,
       requiresAddress: !hasAddress,
+      requiresWalletSetup,
+      missing_phone: missingPhone,
+      has_wallet_account: hasWalletAccount,
       user: {
         id: user.id,
         name: user.name,
         first_name: nameParts[0] || "",
         last_name: nameParts.slice(1).join(" ") || "",
         email: user.email,
+        phone: user.phone || "",
         role: user.role,
         avatar_url: user.avatar_url || null,
         email_verified: true,
         has_address: hasAddress,
         requires_address_verification: !hasAddress,
+        requiresWalletSetup,
+        missing_phone: missingPhone,
+        has_wallet_account: hasWalletAccount,
         address: addrCheck.rows[0]?.street_address || user.address || "",
       },
     });

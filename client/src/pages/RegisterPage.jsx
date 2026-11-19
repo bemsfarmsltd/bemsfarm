@@ -53,6 +53,8 @@ export default function RegisterPage() {
     latitude: null,
     longitude: null,
     postalCode: "440221",
+    kycType: "bvn",
+    kycNumber: "",
     password: "",
     confirm: "",
   });
@@ -108,6 +110,11 @@ export default function RegisterPage() {
       return setError("Please select your delivery address from the autocomplete suggestions or click '📍 Pin Map' to verify your doorstep coordinates.");
     }
 
+    const cleanKyc = form.kycNumber.replace(/\D/g, "");
+    if (cleanKyc.length !== 11) {
+      return setError(`Please enter a valid 11-digit ${form.kycType.toUpperCase()} for your dedicated Bems Wallet verification.`);
+    }
+
     if (passStrength < 4)
       return setError("Password is not strong enough. See requirements below.");
     if (form.password !== form.confirm)
@@ -122,6 +129,7 @@ export default function RegisterPage() {
         state: form.state.trim(),
         latitude: form.latitude,
         longitude: form.longitude,
+        [form.kycType]: cleanKyc,
       });
       sessionStorage.setItem("bemsfarms_pending_email", email);
       localStorage.setItem("bemsfarms_pending_email", email);
@@ -509,6 +517,44 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+
+              {/* Dedicated Bems Wallet KYC (NIN / BVN) */}
+              <div className="rounded-xl border-2 border-emerald-100 bg-emerald-50/40 p-3.5">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className="block text-[11px] font-bold text-[#143c2d] uppercase tracking-wider">
+                    Wallet &amp; NUBAN Verification (NIN or BVN) *
+                  </label>
+                  <div className="inline-flex rounded-lg bg-white border border-emerald-200 p-0.5">
+                    {["bvn", "nin"].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => handleInputChange("kycType", t)}
+                        className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase transition ${
+                          form.kycType === t
+                            ? "bg-[#143c2d] text-white"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={form.kycNumber}
+                  onChange={(e) => handleInputChange("kycNumber", e.target.value.replace(/\D/g, "").slice(0, 11))}
+                  placeholder={`Enter 11-digit ${form.kycType.toUpperCase()} for Monnify NUBAN`}
+                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-mono font-medium outline-none placeholder-gray-300 bg-white"
+                  required
+                />
+                <p className="text-[10px] text-gray-500 mt-1.5 leading-tight">
+                  Required by CBN/Monnify to generate your personal Dedicated Bems Wallet account number.
+                </p>
+              </div>
 
               {/* Submit button */}
               <button

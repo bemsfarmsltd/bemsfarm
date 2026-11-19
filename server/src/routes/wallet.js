@@ -16,14 +16,24 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// POST /api/wallet/provision — manually trigger or retry Monnify reserved account creation (with optional BVN/NIN)
+// POST /api/wallet/provision — manually trigger or retry Monnify reserved account creation (with optional BVN/NIN & phone)
 router.post("/provision", async (req, res, next) => {
   try {
-    const { bvn, nin } = req.body || {};
+    const { bvn, nin, phone } = req.body || {};
+    const pool = require("../db/pool");
+
+    if (phone && String(phone).trim()) {
+      const cleanPhone = String(phone).trim();
+      await pool.query(
+        "UPDATE users SET phone = $1 WHERE id = $2",
+        [cleanPhone, req.user.id]
+      );
+    }
+
     const data = await getOrCreateCustomerWallet(req.user.id, {
       forceProvision: true,
-      bvn: bvn ? String(bvn).trim() : undefined,
-      nin: nin ? String(nin).trim() : undefined,
+      bvn: bvn ? String(bvn).replace(/\D/g, "").trim() : undefined,
+      nin: nin ? String(nin).replace(/\D/g, "").trim() : undefined,
     });
     res.json({ success: true, ...data });
   } catch (err) {
