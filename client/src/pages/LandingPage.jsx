@@ -1082,23 +1082,39 @@ export default function LandingPage() {
               </>
             )}
           </div>
-          <button
-            type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition xl:hidden"
-            onClick={() => setMenuOpen((value) => !value)}
-            aria-expanded={menuOpen}
-            aria-label="Toggle navigation menu"
-          >
-            {menuOpen ? (
-              <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <div className="flex items-center gap-2 xl:hidden">
+            <Link
+              to="/cart"
+              className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[#143c2d] hover:bg-slate-50 transition"
+              aria-label={`Basket with ${cartCount} items`}
+            >
+              <svg className="h-5 w-5 text-[#143c2d]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-            ) : (
-              <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            )}
-          </button>
+              {cartCount > 0 && (
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#143c2d] px-1 text-[10px] font-extrabold text-white">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+            </Link>
+            <button
+              type="button"
+              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+              onClick={() => setMenuOpen((value) => !value)}
+              aria-expanded={menuOpen}
+              aria-label="Toggle navigation menu"
+            >
+              {menuOpen ? (
+                <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              )}
+            </button>
+          </div>
         </nav>
         <AnimatePresence>
           {menuOpen && (
