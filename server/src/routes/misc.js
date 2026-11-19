@@ -319,7 +319,31 @@ router.post(
       }
 
       // ─────────────────────────────────────────────────────────────
-      // D. Handle Customer Checkout Payments (SUCCESSFUL_TRANSACTION, etc.)
+      // D. Handle Customer Dedicated Wallet (Reserved Account) Top-ups
+      // ─────────────────────────────────────────────────────────────
+      if (
+        eventType === "SUCCESSFUL_TRANSACTION" &&
+        (String(eventData?.product?.type || "").toUpperCase() === "RESERVED_ACCOUNT" ||
+          String(eventData?.product?.reference || "").startsWith("BEMS-CUST-"))
+      ) {
+        const { creditCustomerWalletFromMonnifyWebhook } = require("../services/customerWalletService");
+        const walletCredit = await creditCustomerWalletFromMonnifyWebhook(eventData);
+        if (walletCredit) {
+          await pool.query(
+            `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status)
+             VALUES ($1, $2, $3, true, 'processed')`,
+            [eventType, reference, event]
+          ).catch(() => {});
+          return res.status(200).json({
+            success: true,
+            message: walletCredit.duplicate ? "Wallet top-up already processed" : "Customer wallet credited",
+            wallet: walletCredit,
+          });
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // E. Handle Customer Checkout Payments (SUCCESSFUL_TRANSACTION, etc.)
       // ─────────────────────────────────────────────────────────────
       if (!reference) {
         console.warn(`⚠️ Monnify webhook event '${eventType}' has no transactionReference or paymentReference. Ignoring checkout recording.`);

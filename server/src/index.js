@@ -384,6 +384,7 @@ app.use("/api/driver", driverRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
 app.use("/api/payments", paymentLimiter, paymentsRoutes);
+app.use("/api/wallet", require("./routes/wallet"));
 app.use("/api/issues", issuesRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);

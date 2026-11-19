@@ -13,7 +13,7 @@ const createOrder = z.object({
     )
     .optional(),
   payment_method: z.union([
-    z.enum(["monnify", "cod", "card", "cashOnDelivery", "cash_on_delivery", "pay_on_delivery", "transfer", "online"]),
+    z.enum(["monnify", "cod", "card", "cashOnDelivery", "cash_on_delivery", "pay_on_delivery", "transfer", "online", "wallet", "bemswallet"]),
     z.string()
   ]).optional(),
   payment_ref: z.string().nullish(),

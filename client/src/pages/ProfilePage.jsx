@@ -66,6 +66,23 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  // Customer Monnify Dedicated Wallet
+  const [walletData, setWalletData] = useState({ wallet: null, transactions: [] });
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  const [copiedAcct, setCopiedAcct] = useState(false);
+
+  const loadWallet = () => {
+    setLoadingWallet(true);
+    api.get("/wallet")
+      .then((r) => {
+        if (r.data?.wallet) {
+          setWalletData({ wallet: r.data.wallet, transactions: r.data.transactions || [] });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingWallet(false));
+  };
+
   // Load addresses
   const loadAddresses = () => {
     api.get("/addresses").then((r) => setAddresses(r.data?.addresses || [])).catch(() => {});
@@ -99,6 +116,7 @@ export default function ProfilePage() {
 
     loadAddresses();
     loadOrders();
+    loadWallet();
   }, [user]);
 
   if (!isLoggedIn) {
@@ -381,6 +399,15 @@ export default function ProfilePage() {
       icon: (
         <svg className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "wallet",
+      label: "My Wallet",
+      icon: (
+        <svg className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
         </svg>
       ),
     },
@@ -1217,6 +1244,117 @@ export default function ProfilePage() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ── TAB 4B: MY WALLET (MONNIFY DEDICATED ACCOUNT) ── */}
+              {activeTab === "wallet" && (
+                <motion.div
+                  key="wallet"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-black text-[#143c2d] font-display">
+                        My Dedicated Bems Wallet
+                      </h2>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                        Transfer to your personal Monnify account number anytime to fund your wallet instantly.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={loadWallet}
+                      disabled={loadingWallet}
+                      className="px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#143c2d] hover:bg-gray-50"
+                    >
+                      {loadingWallet ? "Refreshing…" : "Refresh Balance"}
+                    </button>
+                  </div>
+
+                  {/* Wallet Balance & Virtual Account Card */}
+                  <div className="rounded-2xl p-5 sm:p-6 text-white mb-6 shadow-md" style={{ background: "linear-gradient(135deg, #1B4332 0%, #143c2d 100%)" }}>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="text-xs uppercase tracking-wider text-emerald-200 font-bold">
+                          Available Wallet Balance
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black mt-1">
+                          ₦{Number(walletData.wallet?.balance || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-xs text-emerald-100/80 mt-2 flex gap-4">
+                          <span>Topped Up: ₦{Number(walletData.wallet?.total_topped_up || 0).toLocaleString()}</span>
+                          <span>Spent: ₦{Number(walletData.wallet?.total_spent || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      {walletData.wallet?.account_number ? (
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 border border-white/15 min-w-[240px]">
+                          <div className="text-[11px] uppercase tracking-wider text-emerald-200 font-bold">
+                            {walletData.wallet.bank_name || "Dedicated Bank Account"}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <span className="text-xl font-mono font-black tracking-wider">
+                              {walletData.wallet.account_number}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(walletData.wallet.account_number);
+                                setCopiedAcct(true);
+                                setTimeout(() => setCopiedAcct(false), 2000);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white text-[#143c2d] text-xs font-bold hover:bg-emerald-50"
+                            >
+                              {copiedAcct ? "Copied!" : "Copy"}
+                            </button>
+                          </div>
+                          <div className="text-xs text-emerald-100/90 mt-1 truncate">
+                            {walletData.wallet.account_name}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white/10 rounded-xl p-3.5 border border-white/15 text-xs max-w-xs">
+                          {loadingWallet
+                            ? "Generating your dedicated Monnify account…"
+                            : walletData.wallet?.provision_error
+                            ? `Account setup notice: ${walletData.wallet.provision_error}`
+                            : "Click Refresh Balance to generate your dedicated Monnify account."}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Wallet Transactions */}
+                  <h3 className="text-sm font-black text-[#143c2d] mb-3">Recent Wallet Activity</h3>
+                  {walletData.transactions.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500">
+                      No wallet transactions yet. Transfer to your dedicated account number above to top up.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {walletData.transactions.map((tx) => (
+                        <div key={tx.id} className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50/50">
+                          <div>
+                            <div className="text-xs sm:text-sm font-bold text-gray-900">{tx.description}</div>
+                            <div className="text-[11px] text-gray-500 font-mono mt-0.5">
+                              {tx.reference} · {new Date(tx.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-sm font-black ${tx.type === "credit" ? "text-emerald-700" : "text-rose-600"}`}>
+                              {tx.type === "credit" ? "+" : "-"}₦{Number(tx.amount || 0).toLocaleString()}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              Bal: ₦{Number(tx.balance_after || 0).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </motion.div>

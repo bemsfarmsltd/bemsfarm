@@ -273,8 +273,9 @@ export default function CheckoutPage() {
     longitude: null,
   });
 
-  const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod"
+  const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod" | "wallet"
   const [codEnabled, setCodEnabled] = useState(true);
+  const [customerWallet, setCustomerWallet] = useState(null);
   const [monnifyConfig, setMonnifyConfig] = useState({
     apiKey: MONNIFY_API_KEY,
     contractCode: MONNIFY_CONTRACT_CODE,
@@ -370,6 +371,15 @@ export default function CheckoutPage() {
         console.warn("Could not fetch payment settings:", err);
       });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    api.get("/wallet")
+      .then((res) => {
+        if (res.data?.wallet) setCustomerWallet(res.data.wallet);
+      })
+      .catch(() => {});
+  }, [user]);
 
   // Auto-finalize order when returning from Monnify hosted checkout (?paymentReference=...)
   useEffect(() => {
@@ -961,6 +971,33 @@ export default function CheckoutPage() {
       console.error("COD order error:", codErr);
       const detail = codErr?.response?.data?.message || codErr.message;
       setError(detail || "Failed to place order. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Customer Dedicated Wallet Checkout Execution
+  const handleWalletPay = async (e) => {
+    e.preventDefault();
+    const validationErr = validateForm();
+    if (validationErr) {
+      setError(validationErr);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setStaleItems([]);
+    try {
+      const checkout = await prepareCheckout();
+      const orderId = await createOrder(undefined, checkout);
+      clearCart();
+      navigate("/order-confirmed", {
+        state: { orderId, paymentMethod: "WALLET" },
+      });
+    } catch (walErr) {
+      const detail = walErr?.response?.data?.message || walErr.message;
+      setError(detail || "Wallet payment failed. Please top up or choose another method.");
       setLoading(false);
     }
   };
@@ -1905,12 +1942,66 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Option 3: Dedicated Bems Wallet */}
+                  {user && (
+                    <div
+                      onClick={() => setPayMethod("wallet")}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "14px",
+                        padding: "16px 20px",
+                        borderRadius: "16px",
+                        cursor: "pointer",
+                        border: payMethod === "wallet" ? "2px solid #143c2d" : "1px solid #E5E7EB",
+                        backgroundColor: payMethod === "wallet" ? "#F4F9F5" : "#FFFFFF",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                        <div
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            border: payMethod === "wallet" ? "6px solid #143c2d" : "2px solid #D1D5DB",
+                            backgroundColor: "#FFFFFF",
+                            flexShrink: 0,
+                            transition: "all 0.15s",
+                          }}
+                        />
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#111827" }}>
+                              Pay with Bems Wallet
+                            </p>
+                            <span style={{ backgroundColor: "#E8F5E9", color: "#1B4332", fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "12px" }}>
+                              Bal: ₦{Number(customerWallet?.balance || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#6B7280" }}>
+                            {customerWallet?.account_number
+                              ? `Dedicated Account: ${customerWallet.bank_name || "Bank"} · ${customerWallet.account_number}`
+                              : "Instant checkout from your funded BemsFarms wallet"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Action Button */}
                 <motion.button
                   whileTap={{ scale: loading ? 1 : 0.98 }}
-                  onClick={payMethod === "monnify" ? handleMonnify : handleCOD}
+                  onClick={
+                    payMethod === "monnify"
+                      ? handleMonnify
+                      : payMethod === "wallet"
+                      ? handleWalletPay
+                      : handleCOD
+                  }
                   disabled={loading}
                   style={{
                     width: "100%",
@@ -1948,6 +2039,10 @@ export default function CheckoutPage() {
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                       <span>Pay ₦{total.toLocaleString()} Securely</span>
+                    </>
+                  ) : payMethod === "wallet" ? (
+                    <>
+                      <span>Pay ₦{total.toLocaleString()} from Wallet</span>
                     </>
                   ) : (
                     <>

@@ -352,10 +352,12 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
   let method = "monnify";
   if (["cod", "cashondelivery", "payondelivery", "cash"].includes(rawMethod)) {
     method = "cod";
+  } else if (["wallet", "customerwallet", "bemswallet"].includes(rawMethod)) {
+    method = "wallet";
   } else if (["monnify", "card", "transfer", "online", "paynow"].includes(rawMethod)) {
     method = "monnify";
   } else {
-    return res.status(400).json({ message: "Invalid payment method. Supported methods: 'card', 'monnify', or 'cashOnDelivery'" });
+    return res.status(400).json({ message: "Invalid payment method. Supported methods: 'card', 'monnify', 'wallet', or 'cashOnDelivery'" });
   }
 
   // Reject Cash on Delivery if disabled in admin settings
@@ -576,14 +578,23 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
 
     const orderId = "BF-" + Date.now().toString(36).toUpperCase();
     const isCod = ["cod", "cashondelivery", "payondelivery", "cash"].includes(String(method || "").toLowerCase().trim().replace(/[\s-_]+/g, ""));
+    let isWalletPaid = false;
+    if (method === "wallet") {
+      const { debitCustomerWalletForOrder } = require("../services/customerWalletService");
+      const deb = await debitCustomerWalletForOrder(client, req.user.id, total, orderId);
+      if (!deb.ok) {
+        await client.query("ROLLBACK");
+        return res.status(deb.status || 402).json({ message: deb.message });
+      }
+      isWalletPaid = true;
+    }
     const isGatewayPaid = (method === "monnify" && monnifyData && monnifyData.paymentStatus === "PAID");
 
     // Payment & Status resolution:
     // - If placed via Cash on Delivery (COD), bypass payment upfront -> status is 'confirmed'.
-    // - If paid through payment gateway (Monnify), confirm payment -> status is 'confirmed', payment_status is 'paid'.
-    // - Only if an unverified gateway payment intent was submitted -> status is 'pending_payment'.
-    const status = (isCod || isGatewayPaid) ? "confirmed" : "pending_payment";
-    const paymentStatus = isGatewayPaid ? "paid" : "pending";
+    // - If paid via Customer Wallet or Monnify -> status is 'confirmed', payment_status is 'paid'.
+    const status = (isCod || isGatewayPaid || isWalletPaid) ? "confirmed" : "pending_payment";
+    const paymentStatus = (isGatewayPaid || isWalletPaid) ? "paid" : "pending";
     const trackingStatus = status;
 
     await client.query(
@@ -602,7 +613,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         paymentStatus,
         trackingStatus,
         method,
-        method === "monnify" ? effectivePaymentRef : null,
+        method === "monnify" ? effectivePaymentRef : (isWalletPaid ? `WAL-${orderId}` : null),
         address || "",
         latitude || null,
         longitude || null,
