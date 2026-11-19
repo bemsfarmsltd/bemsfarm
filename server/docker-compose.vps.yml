@@ -1,0 +1,29 @@
+services:
+  bems-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bems-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    mem_limit: 1g
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - n8n_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=n8n_default"
+      - "traefik.http.routers.bems-api.rule=Host(`api.bemsfarms.com`)"
+      - "traefik.http.routers.bems-api.entrypoints=web,websecure"
+      - "traefik.http.routers.bems-api.tls=true"
+      - "traefik.http.routers.bems-api.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.bems-api.loadbalancer.server.port=5000"
+
+networks:
+  n8n_default:
+    external: true
