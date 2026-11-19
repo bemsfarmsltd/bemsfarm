@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [kycNumber, setKycNumber] = useState("");
   const [kycType, setKycType] = useState("bvn");
   const [copiedAcct, setCopiedAcct] = useState(false);
+  const [walletFilter, setWalletFilter] = useState("all");
 
   const loadWallet = () => {
     setLoadingWallet(true);
@@ -1284,50 +1285,113 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  {/* Header Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                     <div>
-                      <h2 className="text-lg sm:text-xl font-black text-[#143c2d] font-display">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">
+                          BemsFarms Wallet
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {walletData.wallet?.account_number ? "Account Active" : "Instant Funding"}
+                        </span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black text-[#143c2d] font-display tracking-tight">
                         My Dedicated Bems Wallet
                       </h2>
                       <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                        Transfer to your personal Monnify account number anytime to fund your wallet instantly.
+                        Fund anytime via bank transfer and check out in one tap with zero card fees.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={loadWallet}
-                      disabled={loadingWallet}
-                      className="px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-[#143c2d] hover:bg-gray-50"
-                    >
-                      {loadingWallet ? "Refreshing…" : "Refresh Balance"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={loadWallet}
+                        disabled={loadingWallet}
+                        className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-[#143c2d] hover:bg-gray-50 inline-flex items-center gap-1.5 shadow-2xs transition"
+                      >
+                        <svg className={`w-3.5 h-3.5 ${loadingWallet ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {loadingWallet ? "Refreshing…" : "Refresh"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/products")}
+                        className="px-4 py-2 rounded-xl bg-[#1B4332] hover:bg-[#143c2d] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition"
+                      >
+                        Shop &amp; Pay →
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Wallet Balance & Virtual Account Card */}
-                  <div className="rounded-2xl p-5 sm:p-6 text-white mb-6 shadow-md" style={{ background: "linear-gradient(135deg, #1B4332 0%, #143c2d 100%)" }}>
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                  {/* Hero Balance + Dedicated Account Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
+                    {/* Left: Available Balance + Mini Metrics */}
+                    <div
+                      className="lg:col-span-6 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-between relative overflow-hidden"
+                      style={{ background: "linear-gradient(135deg, #1B4332 0%, #0f2d20 100%)" }}
+                    >
+                      <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-emerald-400/10 pointer-events-none" />
                       <div>
-                        <div className="text-xs uppercase tracking-wider text-emerald-200 font-bold">
+                        <div className="text-[11px] uppercase tracking-[0.14em] text-emerald-200/90 font-bold">
                           Available Wallet Balance
                         </div>
-                        <div className="text-3xl sm:text-4xl font-black mt-1">
+                        <div className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">
                           ₦{Number(walletData.wallet?.balance || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-                        </div>
-                        <div className="text-xs text-emerald-100/80 mt-2 flex gap-4">
-                          <span>Topped Up: ₦{Number(walletData.wallet?.total_topped_up || 0).toLocaleString()}</span>
-                          <span>Spent: ₦{Number(walletData.wallet?.total_spent || 0).toLocaleString()}</span>
                         </div>
                       </div>
 
-                      {walletData.wallet?.account_number ? (
-                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 border border-white/15 min-w-[240px]">
-                          <div className="text-[11px] uppercase tracking-wider text-emerald-200 font-bold">
-                            {walletData.wallet.bank_name || "Dedicated Bank Account"}
+                      <div className="grid grid-cols-3 gap-2.5 mt-6 pt-4 border-t border-white/15">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-emerald-200/75 font-semibold">
+                            Total Funded
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-1">
-                            <span className="text-xl font-mono font-black tracking-wider">
-                              {walletData.wallet.account_number}
+                          <div className="text-sm sm:text-base font-extrabold mt-0.5">
+                            ₦{Number(walletData.wallet?.total_topped_up || 0).toLocaleString()}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-emerald-200/75 font-semibold">
+                            Total Spent
+                          </div>
+                          <div className="text-sm sm:text-base font-extrabold mt-0.5">
+                            ₦{Number(walletData.wallet?.total_spent || 0).toLocaleString()}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-emerald-200/75 font-semibold">
+                            Activity
+                          </div>
+                          <div className="text-sm sm:text-base font-extrabold mt-0.5">
+                            {walletData.transactions.length} {walletData.transactions.length === 1 ? "tx" : "txs"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Dedicated Virtual Account OR Activation Card */}
+                    <div className="lg:col-span-6 rounded-2xl p-5 sm:p-6 bg-emerald-50/50 border border-emerald-200/80 flex flex-col justify-between">
+                      {walletData.wallet?.account_number ? (
+                        <>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] uppercase tracking-wider text-emerald-800 font-extrabold">
+                              {walletData.wallet.bank_name || "Dedicated Bank Account"}
                             </span>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              Instant Top-Up
+                            </span>
+                          </div>
+                          <div className="my-3 p-3.5 rounded-xl bg-white border border-emerald-200 flex items-center justify-between gap-3 shadow-2xs">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                                Account Number (NUBAN)
+                              </div>
+                              <div className="text-2xl font-mono font-black text-[#143c2d] tracking-wider mt-0.5">
+                                {walletData.wallet.account_number}
+                              </div>
+                            </div>
                             <button
                               type="button"
                               onClick={() => {
@@ -1335,87 +1399,178 @@ export default function ProfilePage() {
                                 setCopiedAcct(true);
                                 setTimeout(() => setCopiedAcct(false), 2000);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-white text-[#143c2d] text-xs font-bold hover:bg-emerald-50"
+                              className="px-3.5 py-2 rounded-xl bg-[#1B4332] hover:bg-[#143c2d] text-white text-xs font-bold transition whitespace-nowrap"
                             >
-                              {copiedAcct ? "Copied!" : "Copy"}
+                              {copiedAcct ? "✓ Copied" : "Copy NUBAN"}
                             </button>
                           </div>
-                          <div className="text-xs text-emerald-100/90 mt-1 truncate">
-                            {walletData.wallet.account_name}
+                          <div className="text-xs text-gray-600 flex items-center justify-between gap-2">
+                            <span className="font-semibold text-[#143c2d] truncate">
+                              {walletData.wallet.account_name}
+                            </span>
+                            <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                              Credits automatically
+                            </span>
                           </div>
-                        </div>
+                        </>
                       ) : (
-                        <div className="bg-white/10 rounded-xl p-3.5 border border-white/15 text-xs max-w-sm">
-                          <div className="font-semibold text-emerald-100">
-                            {loadingWallet
-                              ? "Generating your dedicated Monnify account…"
-                              : walletError
-                              ? walletError
-                              : walletData.wallet?.provision_error
-                              ? `Account setup notice: ${walletData.wallet.provision_error}`
-                              : "Complete quick BVN/NIN verification (CBN requirement) or click Refresh Balance to generate your dedicated Monnify account."}
-                          </div>
-                          {!loadingWallet && (
-                            <form onSubmit={handleProvisionWallet} className="mt-2.5 flex flex-col gap-2">
-                              <div className="flex gap-1.5">
-                                <select
-                                  value={kycType}
-                                  onChange={(e) => setKycType(e.target.value)}
-                                  className="px-2 py-1.5 rounded-lg bg-white/15 border border-white/20 text-white text-xs font-bold focus:outline-none"
-                                >
-                                  <option value="bvn" className="text-gray-900">BVN</option>
-                                  <option value="nin" className="text-gray-900">NIN</option>
-                                </select>
-                                <input
-                                  type="text"
-                                  maxLength={11}
-                                  value={kycNumber}
-                                  onChange={(e) => setKycNumber(e.target.value)}
-                                  placeholder={`Enter 11-digit ${kycType.toUpperCase()}`}
-                                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-mono focus:outline-none"
-                                />
-                                <button
-                                  type="submit"
-                                  className="px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-[#143c2d] font-bold text-xs whitespace-nowrap"
-                                >
-                                  Generate
-                                </button>
+                        <>
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className="text-xs font-black text-[#143c2d] uppercase tracking-wider">
+                                Activate Dedicated Bank Account
+                              </span>
+                              <div className="inline-flex rounded-lg bg-white border border-emerald-200 p-0.5">
+                                {["bvn", "nin"].map((t) => (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setKycType(t)}
+                                    className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase transition ${
+                                      kycType === t
+                                        ? "bg-[#1B4332] text-white"
+                                        : "text-gray-500 hover:text-gray-900"
+                                    }`}
+                                  >
+                                    {t}
+                                  </button>
+                                ))}
                               </div>
-                            </form>
-                          )}
-                        </div>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              Enter your 11-digit {kycType.toUpperCase()} (CBN requirement) to generate your personal NUBAN account number.
+                            </p>
+                            {(walletError || walletData.wallet?.provision_error) && (
+                              <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-800">
+                                {walletError || walletData.wallet.provision_error}
+                              </div>
+                            )}
+                          </div>
+
+                          <form onSubmit={handleProvisionWallet} className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={11}
+                              value={kycNumber}
+                              onChange={(e) => setKycNumber(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                              placeholder={`11-digit ${kycType.toUpperCase()}`}
+                              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-emerald-200 text-gray-900 text-xs font-mono font-semibold focus:outline-none focus:border-[#1B4332]"
+                            />
+                            <button
+                              type="submit"
+                              disabled={loadingWallet}
+                              className="px-4 py-2.5 rounded-xl bg-[#1B4332] hover:bg-[#143c2d] text-white font-bold text-xs whitespace-nowrap disabled:opacity-60 transition"
+                            >
+                              {loadingWallet ? "Generating…" : "Activate"}
+                            </button>
+                          </form>
+                        </>
                       )}
                     </div>
                   </div>
 
-                  {/* Wallet Transactions */}
-                  <h3 className="text-sm font-black text-[#143c2d] mb-3">Recent Wallet Activity</h3>
-                  {walletData.transactions.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500">
-                      No wallet transactions yet. Transfer to your dedicated account number above to top up.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {walletData.transactions.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50/50">
-                          <div>
-                            <div className="text-xs sm:text-sm font-bold text-gray-900">{tx.description}</div>
-                            <div className="text-[11px] text-gray-500 font-mono mt-0.5">
-                              {tx.reference} · {new Date(tx.created_at).toLocaleString()}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={`text-sm font-black ${tx.type === "credit" ? "text-emerald-700" : "text-rose-600"}`}>
-                              {tx.type === "credit" ? "+" : "-"}₦{Number(tx.amount || 0).toLocaleString()}
-                            </div>
-                            <div className="text-[11px] text-gray-500">
-                              Bal: ₦{Number(tx.balance_after || 0).toLocaleString()}
-                            </div>
-                          </div>
+                  {/* 3-Step Quick Guide */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+                    {[
+                      { step: "1", title: "Copy Your NUBAN", desc: "Your personal BemsFarms account number" },
+                      { step: "2", title: "Transfer Any Amount", desc: "Instant credit from any Nigerian bank app" },
+                      { step: "3", title: "1-Tap Checkout", desc: "Pay for orders faster with zero card fees" },
+                    ].map((item) => (
+                      <div key={item.step} className="rounded-xl border border-gray-100 bg-gray-50/70 px-3.5 py-3 flex items-start gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-[#1B4332] text-white text-[10px] font-black grid place-items-center shrink-0 mt-0.5">
+                          {item.step}
+                        </span>
+                        <div>
+                          <div className="text-xs font-bold text-[#143c2d]">{item.title}</div>
+                          <div className="text-[11px] text-gray-500 mt-0.5">{item.desc}</div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Wallet Transactions */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="text-sm font-black text-[#143c2d]">Recent Wallet Activity</h3>
+                    <div className="inline-flex rounded-xl bg-gray-100 p-1">
+                      {[
+                        { id: "all", label: "All" },
+                        { id: "credit", label: "Top-Ups" },
+                        { id: "debit", label: "Payments" },
+                      ].map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setWalletFilter(f.id)}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition ${
+                            walletFilter === f.id
+                              ? "bg-white text-[#143c2d] shadow-2xs"
+                              : "text-gray-500 hover:text-gray-800"
+                          }`}
+                        >
+                          {f.label}
+                        </button>
                       ))}
                     </div>
-                  )}
+                  </div>
+                  {(() => {
+                    const filteredTx = walletData.transactions.filter((tx) =>
+                      walletFilter === "all" ? true : String(tx.type || "").toLowerCase() === walletFilter
+                    );
+                    if (filteredTx.length === 0) {
+                      return (
+                        <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                          <div className="text-xs font-bold text-gray-600">
+                            {walletFilter === "all"
+                              ? "No wallet transactions yet"
+                              : `No ${walletFilter === "credit" ? "top-ups" : "order payments"} yet`}
+                          </div>
+                          <div className="text-[11px] text-gray-400 mt-1">
+                            Transfer to your dedicated NUBAN above to fund your wallet instantly.
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2">
+                        {filteredTx.map((tx) => {
+                          const isCredit = String(tx.type || "").toLowerCase() === "credit";
+                          return (
+                            <div
+                              key={tx.id}
+                              className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-gray-100 bg-white hover:border-emerald-200 transition"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`w-9 h-9 rounded-xl grid place-items-center text-sm font-black shrink-0 ${
+                                    isCredit ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
+                                  }`}
+                                >
+                                  {isCredit ? "↓" : "↑"}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                                    {tx.description || (isCredit ? "Wallet Top-Up" : "Order Payment")}
+                                  </div>
+                                  <div className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">
+                                    {tx.reference} · {new Date(tx.created_at).toLocaleString("en-NG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className={`text-sm font-black ${isCredit ? "text-emerald-700" : "text-rose-600"}`}>
+                                  {isCredit ? "+" : "-"}₦{Number(tx.amount || 0).toLocaleString()}
+                                </div>
+                                <div className="text-[11px] text-gray-400">
+                                  Bal: ₦{Number(tx.balance_after || 0).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               )}
 
