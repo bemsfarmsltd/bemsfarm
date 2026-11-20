@@ -165,7 +165,7 @@ export default function WalletOnboardingModal() {
             <div className="space-y-4 text-center">
               <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
                 <div className="text-xs font-bold uppercase text-emerald-700">
-                  {successWallet.bank_name || "Dedicated Monnify Account"}
+                  {successWallet.bank_name || "Dedicated Bems Account"}
                 </div>
                 <div className="text-2xl font-mono font-black text-[#143c2d] tracking-wider mt-1">
                   {successWallet.account_number}
@@ -184,8 +184,8 @@ export default function WalletOnboardingModal() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-xs text-gray-600 leading-relaxed">
                 {missingPhone
-                  ? "Please provide your phone number and NIN or BVN (required by CBN/Monnify) to activate your personal Bems Wallet NUBAN."
-                  : "Enter your 11-digit NIN or BVN (required by CBN/Monnify) to generate your personal Dedicated Bems Wallet account number."}
+                  ? "Please provide your phone number and NIN or BVN (CBN requirement) to activate your personal Bems Wallet NUBAN."
+                  : "Enter your 11-digit NIN or BVN (CBN requirement) to generate your personal Dedicated Bems Wallet account number."}
               </p>
 
               {error && (

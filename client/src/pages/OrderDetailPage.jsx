@@ -1191,7 +1191,7 @@ export default function OrderDetailPage() {
                   </div>
 
                   <div className="text-[11px] text-slate-500 text-right">
-                    Paid via <strong className="text-slate-700">{order.payment_method === "monnify" ? "Online Card/Transfer (Monnify)" : (order.payment_method || "Online Payment")}</strong>
+                    Paid via <strong className="text-slate-700">{order.payment_method === "monnify" ? "Online Card / Bank Transfer" : (order.payment_method || "Online Payment")}</strong>
                   </div>
                 </div>
               </div>

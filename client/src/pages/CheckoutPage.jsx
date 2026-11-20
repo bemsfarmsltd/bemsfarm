@@ -896,7 +896,7 @@ export default function CheckoutPage() {
     const activeContractCode = monnifyConfig.contractCode || MONNIFY_CONTRACT_CODE;
     if (!activeApiKey || !activeContractCode) {
       setLoading(false);
-      setError("Online payment gateway is not configured yet (missing Monnify key or contract code). Please choose Cash on Delivery or contact support.");
+      setError("Online payment gateway is not configured yet. Please choose Cash on Delivery or contact support.");
       return;
     }
 

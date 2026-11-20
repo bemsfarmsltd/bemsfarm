@@ -116,7 +116,7 @@ export default function ProfilePage() {
         }
       })
       .catch((err) => {
-        setWalletError(err?.response?.data?.message || "Failed to generate Monnify account.");
+        setWalletError(err?.response?.data?.message || "Failed to generate dedicated bank account.");
       })
       .finally(() => setLoadingWallet(false));
   };

@@ -547,12 +547,12 @@ export default function RegisterPage() {
                   maxLength={11}
                   value={form.kycNumber}
                   onChange={(e) => handleInputChange("kycNumber", e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  placeholder={`Enter 11-digit ${form.kycType.toUpperCase()} for Monnify NUBAN`}
+                  placeholder={`Enter 11-digit ${form.kycType.toUpperCase()} for Dedicated NUBAN`}
                   className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-mono font-medium outline-none placeholder-gray-300 bg-white"
                   required
                 />
                 <p className="text-[10px] text-gray-500 mt-1.5 leading-tight">
-                  Required by CBN/Monnify to generate your personal Dedicated Bems Wallet account number.
+                  Required by CBN to generate your personal Dedicated Bems Wallet account number.
                 </p>
               </div>
 
