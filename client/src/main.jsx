@@ -20,10 +20,14 @@ if (
   });
 }
 
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  "353945421030-k8k917gf7rhi54d05jhb1s476e2tm7v3.apps.googleusercontent.com";
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThemeProvider>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <AuthProvider>
           <WishlistProvider>
             <CartProvider>
