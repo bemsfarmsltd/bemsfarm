@@ -30,10 +30,13 @@ router.post("/provision", async (req, res, next) => {
       );
     }
 
+    const cleanBvn = bvn ? String(bvn).replace(/\D/g, "").trim() : "";
+    const cleanNin = nin ? String(nin).replace(/\D/g, "").trim() : "";
+
     const data = await getOrCreateCustomerWallet(req.user.id, {
-      forceProvision: true,
-      bvn: bvn ? String(bvn).replace(/\D/g, "").trim() : undefined,
-      nin: nin ? String(nin).replace(/\D/g, "").trim() : undefined,
+      forceProvision: Boolean(cleanBvn || cleanNin),
+      bvn: cleanBvn || undefined,
+      nin: cleanNin || undefined,
     });
     res.json({ success: true, ...data });
   } catch (err) {

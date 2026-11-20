@@ -4,22 +4,25 @@ const register = z.object({
   name: z.string({ error: "Name is required" }).trim().min(1, "Name is required"),
   email: z.string({ error: "Valid email required" }).trim().email("Valid email required"),
   password: z.string({ error: "Password must be at least 6 characters" }).min(6, "Password must be at least 6 characters"),
-  phone: z.string({ error: "Phone number is required" }).trim().min(10, "Valid phone number is required"),
-  address: z.string({ error: "Delivery street address is required" }).trim().min(1, "Delivery street address is required").max(1000),
-  city: z.string({ error: "City / LGA is required" }).trim().min(1, "City / LGA is required").max(100),
-  state: z.string({ error: "State is required" }).trim().min(1, "State is required").max(100),
-  latitude: z.number({ error: "Doorstep GPS latitude is required" }),
-  longitude: z.number({ error: "Doorstep GPS longitude is required" }),
+  phone: z.string().trim().optional(),
+  address: z.string().trim().max(1000).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   bvn: z.string().trim().optional(),
   nin: z.string().trim().optional(),
   preferences: z.array(z.string().trim().max(50)).max(20).optional(),
 }).refine(
   (d) => {
-    const cleanBvn = String(d.bvn || "").replace(/\D/g, "");
-    const cleanNin = String(d.nin || "").replace(/\D/g, "");
+    const rawBvn = String(d.bvn || "").trim();
+    const rawNin = String(d.nin || "").trim();
+    if (!rawBvn && !rawNin) return true;
+    const cleanBvn = rawBvn.replace(/\D/g, "");
+    const cleanNin = rawNin.replace(/\D/g, "");
     return cleanBvn.length === 11 || cleanNin.length === 11;
   },
-  { message: "A valid 11-digit NIN or BVN is required for wallet verification." }
+  { message: "If provided, NIN or BVN must be a valid 11-digit number." }
 );
 
 const login = z.object({

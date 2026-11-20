@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
-import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 import VerifiedLocationModal from "../components/ui/VerifiedLocationModal";
 
 
@@ -39,22 +38,11 @@ const AUTH_CSS = `
 }
 `;
 
-import { NIGERIAN_STATES, normalizeNigerianState } from "../utils/nigerianStates";
-
 export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "Abia",
-    latitude: null,
-    longitude: null,
-    postalCode: "440221",
-    kycType: "bvn",
-    kycNumber: "",
     password: "",
     confirm: "",
   });
@@ -96,24 +84,8 @@ export default function RegisterPage() {
     if (!form.firstName.trim()) return setError("Please enter your first name");
     if (!form.lastName.trim()) return setError("Please enter your last name");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError("Please enter a valid email address");
-    
+
     const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
-    
-    const cleanPhone = form.phone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) return setError("Phone number must be exactly 10 digits (e.g. 8012345678)");
-    
-    const finalPhone = `+234${cleanPhone}`;
-
-    if (!form.address.trim()) return setError("Please enter your delivery street address");
-    if (!form.city.trim()) return setError("Please enter your city or area");
-    if (!form.latitude || !form.longitude) {
-      return setError("Please select your delivery address from the autocomplete suggestions or click '📍 Pin Map' to verify your doorstep coordinates.");
-    }
-
-    const cleanKyc = form.kycNumber.replace(/\D/g, "");
-    if (cleanKyc.length !== 11) {
-      return setError(`Please enter a valid 11-digit ${form.kycType.toUpperCase()} for your dedicated Bems Wallet verification.`);
-    }
 
     if (passStrength < 4)
       return setError("Password is not strong enough. See requirements below.");
@@ -123,14 +95,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const email = form.email.trim().toLowerCase();
-      await register(fullName, email, form.password, finalPhone, undefined, {
-        address: form.address.trim(),
-        city: form.city.trim(),
-        state: form.state.trim(),
-        latitude: form.latitude,
-        longitude: form.longitude,
-        [form.kycType]: cleanKyc,
-      });
+      await register(fullName, email, form.password);
       sessionStorage.setItem("bemsfarms_pending_email", email);
       localStorage.setItem("bemsfarms_pending_email", email);
       sessionStorage.setItem("bemsfarms_post_auth_destination", destination);
@@ -310,128 +275,6 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {/* Phone Field */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                  Phone Number
-                </label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 py-2.5 rounded-l-xl border-2 border-r-0 border-gray-100 bg-gray-100/50 text-gray-600 text-[13px] font-bold whitespace-nowrap shrink-0">
-                    +234
-                  </span>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      handleInputChange("phone", val);
-                    }}
-                    placeholder="8012345678"
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-r-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 10 digits (e.g. 8012345678)</p>
-              </div>
-
-              {/* Delivery Address Field */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                  Delivery Street Address &amp; Map Pin
-                </label>
-                <AddressAutocomplete
-                  value={form.address}
-                  onChange={(e) => {
-                    // Reset verified coordinates if user manually types arbitrary text
-                    setForm((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                      latitude: null,
-                      longitude: null,
-                    }));
-                  }}
-                  onPlaceSelected={(place) => {
-                    const matchedState = normalizeNigerianState(place.state);
-                    setForm((prev) => ({
-                      ...prev,
-                      // Preserve customer's typed address if already entered, else take selected address
-                      address: (prev.address && prev.address.trim().length >= 3) ? prev.address : (place.address || prev.address),
-                      city: place.city || place.lga || prev.city,
-                      state: matchedState || prev.state,
-                      postalCode: place.postal_code || place.postcode || prev.postalCode || "440221",
-                      latitude: place.latitude,
-                      longitude: place.longitude,
-                    }));
-                  }}
-                  initialLat={form.latitude}
-                  initialLng={form.longitude}
-                  placeholder="Type street or click '📍 Pin Map'"
-                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                  required
-                />
-                
-                {/* Live GPS Verification Indicator */}
-                {form.latitude && form.longitude ? (
-                  <div className="mt-1.5 px-2.5 py-1 bg-green-50 border border-green-200 text-green-800 rounded-lg text-[11px] font-semibold flex items-center justify-between animate-fadeIn">
-                    <span className="flex items-center gap-1">
-                      <span>✓</span> <span>Location Verified: {form.city}, {form.state} ({form.postalCode || "440221"})</span>
-                    </span>
-                    <span className="text-[10px] text-green-700 font-mono">
-                      GPS: {Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)}
-                    </span>
-                  </div>
-                ) : form.address.trim().length > 0 ? (
-                  <div className="mt-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[10.5px] font-medium flex items-center gap-1.5 animate-fadeIn">
-                    <span>⚠️</span>
-                    <span>Please select from search suggestions or click <strong>📍 Pin Map</strong> to verify coordinates.</span>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* City/LGA, State, and Postal Code Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    City / LGA
-                  </label>
-                  <input
-                    type="text"
-                    value={form.city}
-                    onChange={(e) => handleInputChange("city", e.target.value)}
-                    placeholder="e.g. Umuahia / Lekki"
-                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    State
-                  </label>
-                  <select
-                    value={form.state}
-                    onChange={(e) => handleInputChange("state", e.target.value)}
-                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none bg-gray-50/50 cursor-pointer"
-                    required
-                  >
-                    {NIGERIAN_STATES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    value={form.postalCode || ""}
-                    onChange={(e) => handleInputChange("postalCode", e.target.value)}
-                    placeholder="e.g. 440221"
-                    className="auth-input w-full px-3.5 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                  />
-                </div>
-              </div>
-
               {/* Password Fields Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -518,43 +361,9 @@ export default function RegisterPage() {
               </div>
 
 
-              {/* Dedicated Bems Wallet KYC (NIN / BVN) */}
-              <div className="rounded-xl border-2 border-emerald-100 bg-emerald-50/40 p-3.5">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <label className="block text-[11px] font-bold text-[#143c2d] uppercase tracking-wider">
-                    Wallet &amp; NUBAN Verification (NIN or BVN) *
-                  </label>
-                  <div className="inline-flex rounded-lg bg-white border border-emerald-200 p-0.5">
-                    {["bvn", "nin"].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => handleInputChange("kycType", t)}
-                        className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase transition ${
-                          form.kycType === t
-                            ? "bg-[#143c2d] text-white"
-                            : "text-gray-500 hover:text-gray-800"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={11}
-                  value={form.kycNumber}
-                  onChange={(e) => handleInputChange("kycNumber", e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  placeholder={`Enter 11-digit ${form.kycType.toUpperCase()} for Dedicated NUBAN`}
-                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-mono font-medium outline-none placeholder-gray-300 bg-white"
-                  required
-                />
-                <p className="text-[10px] text-gray-500 mt-1.5 leading-tight">
-                  Required by CBN to generate your personal Dedicated Bems Wallet account number.
-                </p>
-              </div>
+              <p className="text-[11px] text-emerald-800/80 bg-emerald-50/70 border border-emerald-100 rounded-xl px-3.5 py-2.5 leading-relaxed">
+                Quick signup — you&apos;ll be prompted to add your phone number, delivery address, and Dedicated Bems Wallet right after signing in.
+              </p>
 
               {/* Submit button */}
               <button

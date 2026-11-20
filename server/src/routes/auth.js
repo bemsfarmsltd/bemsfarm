@@ -48,23 +48,15 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
   try {
     const { name, email, password, phone, address, city, state, latitude, longitude, bvn, nin, preferences } = req.body;
 
-    if (!address || !address.trim()) {
-      return res.status(400).json({ message: "Delivery street address is required." });
-    }
-
+    const cleanPhone = phone && String(phone).trim() ? String(phone).trim() : null;
+    const cleanAddress = address && String(address).trim() ? String(address).trim() : null;
     const cleanBvn = String(bvn || "").replace(/\D/g, "");
     const cleanNin = String(nin || "").replace(/\D/g, "");
-    if (cleanBvn.length !== 11 && cleanNin.length !== 11) {
-      return res.status(400).json({ message: "A valid 11-digit NIN or BVN is required for wallet verification." });
-    }
+    const hasKyc = cleanBvn.length === 11 || cleanNin.length === 11;
 
-    const latNum = parseFloat(latitude);
-    const lngNum = parseFloat(longitude);
-    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
-      return res.status(400).json({
-        message: "Verified GPS delivery coordinates (latitude & longitude) are required. Please select your address from the autocomplete suggestions or pin your location on the map.",
-      });
-    }
+    const latNum = latitude !== undefined && latitude !== null ? parseFloat(latitude) : NaN;
+    const lngNum = longitude !== undefined && longitude !== null ? parseFloat(longitude) : NaN;
+    const hasCoords = Number.isFinite(latNum) && Number.isFinite(lngNum);
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -73,21 +65,23 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     if (existing.rows.length > 0)
       return res.status(400).json({ message: "Email already exists" });
 
-    // Enforce 1 wallet per BVN/NIN before creating the account
-    const { assertUniqueWalletKyc } = require("../services/customerWalletService");
-    try {
-      await assertUniqueWalletKyc({
-        bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
-        nin: cleanNin.length === 11 ? cleanNin : undefined,
-      });
-    } catch (kycErr) {
-      if (kycErr.status) {
-        return res.status(kycErr.status).json({
-          message: kycErr.message,
-          ...(kycErr.code ? { code: kycErr.code } : {}),
+    // Enforce 1 wallet per BVN/NIN if provided at signup
+    if (hasKyc) {
+      const { assertUniqueWalletKyc } = require("../services/customerWalletService");
+      try {
+        await assertUniqueWalletKyc({
+          bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
+          nin: cleanNin.length === 11 ? cleanNin : undefined,
         });
+      } catch (kycErr) {
+        if (kycErr.status) {
+          return res.status(kycErr.status).json({
+            message: kycErr.message,
+            ...(kycErr.code ? { code: kycErr.code } : {}),
+          });
+        }
+        throw kycErr;
       }
-      throw kycErr;
     }
 
     const hashedPw = await bcrypt.hash(password, 12);
@@ -97,21 +91,23 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
       `INSERT INTO users (name, email, password, phone, role, verification_token, created_at)
        VALUES ($1, $2, $3, $4, 'user', $5, NOW())
        RETURNING id, name, email, phone, role`,
-      [name.trim(), email.toLowerCase().trim(), hashedPw, phone.trim(), otp],
+      [name.trim(), email.toLowerCase().trim(), hashedPw, cleanPhone, otp],
     );
 
     const user = result.rows[0];
     if (user) req.auditActor = {id:user.id,role:user.role};
 
-    // Save verified delivery address to addresses table
-    try {
-      await pool.query(
-        `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, created_at)
-         VALUES ($1, 'Home', $2, $3, $4, $5, $6, $7, $8, true, NOW())`,
-        [user.id, user.name, user.phone, address.trim(), (city || "Abia State").trim(), (state || "Abia State").trim(), latNum, lngNum],
-      );
-    } catch (addrErr) {
-      console.warn("Failed to seed initial address for user:", addrErr.message);
+    // Save verified delivery address to addresses table if provided at signup
+    if (cleanAddress && hasCoords) {
+      try {
+        await pool.query(
+          `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, created_at)
+           VALUES ($1, 'Home', $2, $3, $4, $5, $6, $7, $8, true, NOW())`,
+          [user.id, user.name, user.phone, cleanAddress, (city || "Abia State").trim(), (state || "Abia State").trim(), latNum, lngNum],
+        );
+      } catch (addrErr) {
+        console.warn("Failed to seed initial address for user:", addrErr.message);
+      }
     }
 
     // Seed AI context record for new user (fire-and-forget)
@@ -126,18 +122,20 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     });
     trackActivity(user.id, "registered", { ip: req.ip });
 
-    // Provision Dedicated Customer Monnify Wallet using NIN/BVN from signup (non-blocking)
-    try {
-      const { getOrCreateCustomerWallet } = require("../services/customerWalletService");
-      getOrCreateCustomerWallet(user.id, {
-        forceProvision: true,
-        bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
-        nin: cleanNin.length === 11 ? cleanNin : undefined,
-      }).catch((walErr) =>
-        console.warn("Customer wallet provisioning at signup notice:", walErr.message)
-      );
-    } catch (walInitErr) {
-      console.warn("Customer wallet service load notice:", walInitErr.message);
+    // Provision Dedicated Customer Wallet if NIN/BVN was provided at signup (non-blocking)
+    if (hasKyc) {
+      try {
+        const { getOrCreateCustomerWallet } = require("../services/customerWalletService");
+        getOrCreateCustomerWallet(user.id, {
+          forceProvision: true,
+          bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
+          nin: cleanNin.length === 11 ? cleanNin : undefined,
+        }).catch((walErr) =>
+          console.warn("Customer wallet provisioning at signup notice:", walErr.message)
+        );
+      } catch (walInitErr) {
+        console.warn("Customer wallet service load notice:", walInitErr.message);
+      }
     }
 
     sendWelcomeEmail(user, otp).catch((err) =>
