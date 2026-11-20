@@ -1529,7 +1529,14 @@ export default function POS() {
         if (activeModal === 'checkout') {
           e.preventDefault()
           if (checkoutStep === 'tender') {
-            if (checkoutPayMethod !== 'Cash' || (cashReceived && Number(cashReceived) >= total)) {
+            const isCashAllowed =
+              checkoutPayMethod === 'Cash' && cashReceived && Number(cashReceived) >= total
+            const isSplitCashOnly =
+              checkoutPayMethod === 'Split Payment' &&
+              splitRows.length > 0 &&
+              splitRows.every((r) => String(r.method || '').toLowerCase() === 'cash') &&
+              splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) >= total
+            if (isCashAllowed || isSplitCashOnly || Boolean(terminalDetectedPayment)) {
               setCheckoutStep('confirm')
             }
           } else if (checkoutStep === 'confirm') {
@@ -5031,16 +5038,9 @@ export default function POS() {
                             <i className={`ri-refresh-line me-1 ${isCheckingTerminal ? 'ri-spin' : ''}`} /> Check Status Now
                           </button>
 
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => {
-                              // Cashier manual override: if terminal is in offline mode or cashier already has paper slip
-                              setCheckoutStep('confirm')
-                            }}
-                          >
-                            Skip Auto-Detect & Proceed Manual <i className="ri-arrow-right-line ms-1" />
-                          </button>
+                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 fs-11">
+                            <i className="ri-lock-line me-1" /> Webhook confirmation required
+                          </span>
 
                           <button
                             type="button"
@@ -5263,23 +5263,45 @@ export default function POS() {
                     )}
 
                     {/* Step 1 Action Buttons */}
-                    <div className="pos-checkout-footer mt-4 pt-3">
-                      <button type="button" className="pos-cancel-btn" onClick={closeModal}>
-                        <i className="ri-close-line me-1" /> Cancel [Esc]
-                      </button>
-                      <button
-                        type="button"
-                        className="pos-confirm-sale-btn"
-                        disabled={checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)}
-                        onClick={() => setCheckoutStep('confirm')}
-                      >
-                        <div className="d-flex align-items-center gap-2">
-                          <i className="ri-shield-check-line fs-20" />
-                          <span>REVIEW & CONFIRM</span>
+                    {(() => {
+                      const isSplitCashOnly =
+                        checkoutPayMethod === 'Split Payment' &&
+                        splitRows.length > 0 &&
+                        splitRows.every((r) => String(r.method || '').toLowerCase() === 'cash') &&
+                        splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) >= total
+                      const requiresWebhook =
+                        checkoutPayMethod !== 'Cash' && !isSplitCashOnly
+                      const waitingForWebhook = requiresWebhook && !terminalDetectedPayment
+                      const isDisabled =
+                        (checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)) ||
+                        waitingForWebhook
+                      return (
+                        <div className="pos-checkout-footer mt-4 pt-3">
+                          <button type="button" className="pos-cancel-btn" onClick={closeModal}>
+                            <i className="ri-close-line me-1" /> Cancel [Esc]
+                          </button>
+                          <button
+                            type="button"
+                            className="pos-confirm-sale-btn"
+                            disabled={isDisabled}
+                            title={
+                              waitingForWebhook
+                                ? 'Only Cash can complete directly — waiting for webhook confirmation or click Hold & Next'
+                                : undefined
+                            }
+                            onClick={() => {
+                              if (!isDisabled) setCheckoutStep('confirm')
+                            }}
+                          >
+                            <div className="d-flex align-items-center gap-2">
+                              <i className={waitingForWebhook ? 'ri-time-line fs-20' : 'ri-shield-check-line fs-20'} />
+                              <span>{waitingForWebhook ? 'AWAITING WEBHOOK...' : 'REVIEW & CONFIRM'}</span>
+                            </div>
+                            <span className="pos-confirm-btn-tag">[F8]</span>
+                          </button>
                         </div>
-                        <span className="pos-confirm-btn-tag">[F8]</span>
-                      </button>
-                    </div>
+                      )
+                    })()}
                   </>
                 )}
 

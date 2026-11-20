@@ -534,7 +534,72 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     // "Pay Later" hands the goods over now but collects payment on credit —
     // everything else about the sale (stock deduction, receipt, items) is
     // identical, only the payment/order status differ from a paid-in-full sale.
-    const isPayLater = payment_method === "Pay Later";
+    const normalizedMethod = String(payment_method || "cash").trim().toLowerCase();
+    const isPayLater = normalizedMethod === "pay later" || normalizedMethod === "store credit / pay later";
+    const isCashOnly =
+      normalizedMethod === "cash" ||
+      (normalizedSplitPayments &&
+        normalizedSplitPayments.every((p) => String(p.method || "").trim().toLowerCase() === "cash"));
+
+    // ── STRICT WEBHOOK PAYMENT GATE ─────────────────────────────────────────
+    // Only Cash (and unpaid Pay Later credit) can complete directly at POS.
+    // All electronic channels (Card / POS, Bank Transfer, QR/USSD, Split with
+    // non-cash portion) MUST match an unused, successful webhook transaction in
+    // `pos_transactions` before the order can be marked paid & completed.
+    let verifiedPosTxnId = null;
+    if (!isPayLater && !isCashOnly) {
+      const requiredElectronicAmount = normalizedSplitPayments
+        ? normalizedSplitPayments
+            .filter((p) => String(p.method || "").trim().toLowerCase() !== "cash")
+            .reduce((s, p) => s + p.amount, 0)
+        : total;
+
+      let matchedTxnRes;
+      if (req.body.pos_transaction_id) {
+        matchedTxnRes = await client.query(
+          `SELECT id, transaction_id, amount
+           FROM pos_transactions
+           WHERE (transaction_id = $1 OR CAST(id AS TEXT) = $1)
+             AND used_for_order_id IS NULL
+             AND LOWER(COALESCE(status, '')) = 'successful'
+           LIMIT 1
+           FOR UPDATE`,
+          [String(req.body.pos_transaction_id).trim()]
+        );
+        if (
+          matchedTxnRes.rows.length > 0 &&
+          Math.abs(parseFloat(matchedTxnRes.rows[0].amount || 0) - requiredElectronicAmount) > 1.0
+        ) {
+          await client.query("ROLLBACK");
+          return res.status(402).json({
+            code: "WEBHOOK_AMOUNT_MISMATCH",
+            message: `Verified terminal payment (₦${parseFloat(matchedTxnRes.rows[0].amount || 0).toLocaleString()}) does not match required electronic amount (₦${requiredElectronicAmount.toLocaleString()}).`,
+          });
+        }
+      } else {
+        matchedTxnRes = await client.query(
+          `SELECT id, transaction_id, amount
+           FROM pos_transactions
+           WHERE used_for_order_id IS NULL
+             AND LOWER(COALESCE(status, '')) = 'successful'
+             AND ABS(amount - $1) <= 1.0
+           ORDER BY payment_time DESC
+           LIMIT 1
+           FOR UPDATE SKIP LOCKED`,
+          [requiredElectronicAmount]
+        );
+      }
+
+      if (!matchedTxnRes || matchedTxnRes.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(402).json({
+          code: "WEBHOOK_CONFIRMATION_REQUIRED",
+          message: `Webhook payment confirmation is required for ${payment_method}. Only Cash payments can be completed directly — please wait for the Moniepoint/Monnify payment webhook or use "Hold & Attend Next Customer".`,
+        });
+      }
+
+      verifiedPosTxnId = matchedTxnRes.rows[0].id;
+    }
 
     // Verify validCustomerId exists in users table to prevent orders_user_id_fkey foreign key constraint crashes
     let validUserId = null;
@@ -603,22 +668,12 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
       }
     }
 
-    // Auto-link Moniepoint POS transaction if provided or matched
-    if (req.body.pos_transaction_id) {
+    // Link the verified Moniepoint/Monnify POS webhook transaction atomically
+    if (verifiedPosTxnId) {
       await client.query(
-        "UPDATE pos_transactions SET used_for_order_id = $1 WHERE transaction_id = $2 OR CAST(id AS TEXT) = $2",
-        [orderId, String(req.body.pos_transaction_id)]
-      ).catch((err) => console.warn("Notice: could not link pos_transaction:", err.message));
-    } else if (payment_method === "Card / POS" || payment_method === "Moniepoint POS") {
-      await client.query(
-        `UPDATE pos_transactions SET used_for_order_id = $1 
-         WHERE id = (
-           SELECT id FROM pos_transactions 
-           WHERE used_for_order_id IS NULL AND status = 'successful' AND ABS(amount - $2) < 0.5 
-           ORDER BY payment_time DESC LIMIT 1
-         )`,
-        [orderId, total]
-      ).catch((err) => console.warn("Notice: could not link recent pos_transaction:", err.message));
+        "UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2",
+        [orderId, verifiedPosTxnId]
+      );
     }
 
     // Insert order items, calculate COGS, and deduct stock

@@ -29,6 +29,7 @@ const sale = z.object({
   split_payments: z.array(z.record(z.string(), z.any())).optional(),
   order_ref: z.string().optional(),
   idempotency_key: z.string().optional(),
+  pos_transaction_id: z.union([z.string(), z.number()]).optional(),
 });
 
 const heldOrder = z.object({
