@@ -352,6 +352,7 @@ export default function POS() {
   const [successData, setSuccessData]       = useState(null)
   const [receiptSearch, setReceiptSearch]   = useState('')
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(true)
+  const [requireWebhookConfirmation, setRequireWebhookConfirmation] = useState(true)
   const [autoPrintPending, setAutoPrintPending] = useState(false)
   const [directPrinterConnected, setDirectPrinterConnected] = useState(isPrinterConnected())
   const [offlineCompletedOrders, setOfflineCompletedOrders] = useState([])
@@ -1536,7 +1537,11 @@ export default function POS() {
               splitRows.length > 0 &&
               splitRows.every((r) => String(r.method || '').toLowerCase() === 'cash') &&
               splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) >= total
-            if (isCashAllowed || isSplitCashOnly || Boolean(terminalDetectedPayment)) {
+            if (
+              !requireWebhookConfirmation
+                ? checkoutPayMethod !== 'Cash' || isCashAllowed
+                : isCashAllowed || isSplitCashOnly || Boolean(terminalDetectedPayment)
+            ) {
               setCheckoutStep('confirm')
             }
           } else if (checkoutStep === 'confirm') {
@@ -2246,8 +2251,14 @@ export default function POS() {
 
   useEffect(() => {
     api.get('/admin/settings/receipt')
-      .then((response) => setAutoPrintReceipt(response.data?.settings?.pos_print_receipt !== 'false'))
-      .catch(() => setAutoPrintReceipt(true))
+      .then((response) => {
+        setAutoPrintReceipt(response.data?.settings?.pos_print_receipt !== 'false')
+        setRequireWebhookConfirmation(response.data?.settings?.pos_require_webhook_confirmation !== 'false')
+      })
+      .catch(() => {
+        setAutoPrintReceipt(true)
+        setRequireWebhookConfirmation(true)
+      })
   }, [])
 
   const handleDirectPrinterToggle = async () => {
@@ -5038,9 +5049,19 @@ export default function POS() {
                             <i className={`ri-refresh-line me-1 ${isCheckingTerminal ? 'ri-spin' : ''}`} /> Check Status Now
                           </button>
 
-                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 fs-11">
-                            <i className="ri-lock-line me-1" /> Webhook confirmation required
-                          </span>
+                          {requireWebhookConfirmation ? (
+                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 fs-11">
+                              <i className="ri-lock-line me-1" /> Webhook confirmation required
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => setCheckoutStep('confirm')}
+                            >
+                              Skip Auto-Detect &amp; Proceed Manual <i className="ri-arrow-right-line ms-1" />
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -5270,7 +5291,7 @@ export default function POS() {
                         splitRows.every((r) => String(r.method || '').toLowerCase() === 'cash') &&
                         splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) >= total
                       const requiresWebhook =
-                        checkoutPayMethod !== 'Cash' && !isSplitCashOnly
+                        requireWebhookConfirmation && checkoutPayMethod !== 'Cash' && !isSplitCashOnly
                       const waitingForWebhook = requiresWebhook && !terminalDetectedPayment
                       const isDisabled =
                         (checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)) ||

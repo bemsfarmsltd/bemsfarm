@@ -347,6 +347,7 @@ router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
         receipt_invoice_title: pos.receipt_invoice_title || "SALES INVOICE",
         receipt_invoice_footer: pos.receipt_invoice_footer || "Abia State. Head Office",
         pos_print_receipt: pos.pos_print_receipt ?? "true",
+        pos_require_webhook_confirmation: pos.pos_require_webhook_confirmation ?? "true",
       },
     });
   } catch (err) {

@@ -42,12 +42,40 @@ export default function PaymentSettings() {
   const [taxForm, setTaxForm] = useState(BLANK_TAX)
   const [taxSaving, setTaxSaving] = useState(false)
 
+  // POS Webhook Confirmation Gate State
+  const [requirePosWebhook, setRequirePosWebhook] = useState(true)
+  const [webhookGateSaving, setWebhookGateSaving] = useState(false)
+
   const load = () => {
     setLoading(true)
     Promise.all([
       api.get('/admin/settings/payment').then(res => setGateways(res.data.gateways || [])).catch(() => toast.error('Failed to load gateways')),
-      api.get('/admin/settings/tax').then(res => setTaxForm(f => ({ ...f, ...res.data.settings }))).catch(() => {})
+      api.get('/admin/settings/tax').then(res => setTaxForm(f => ({ ...f, ...res.data.settings }))).catch(() => {}),
+      api.get('/admin/settings/pos').then(res => {
+        const val = res.data?.settings?.pos_require_webhook_confirmation
+        setRequirePosWebhook(val !== 'false')
+      }).catch(() => {}),
     ]).finally(() => setLoading(false))
+  }
+
+  async function handleTogglePosWebhookGate() {
+    const nextVal = !requirePosWebhook
+    setWebhookGateSaving(true)
+    try {
+      await api.post('/admin/settings/pos', {
+        pos_require_webhook_confirmation: nextVal ? 'true' : 'false',
+      })
+      setRequirePosWebhook(nextVal)
+      toast.success(
+        nextVal
+          ? 'POS Webhook Confirmation ENABLED — only Cash can complete directly.'
+          : 'POS Webhook Confirmation DISABLED — cashiers can complete Card / POS & Transfer manually.'
+      )
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update POS webhook confirmation setting')
+    } finally {
+      setWebhookGateSaving(false)
+    }
   }
 
   useEffect(load, [])
@@ -208,6 +236,66 @@ export default function PaymentSettings() {
                 style={{ width: 44, height: 24, cursor: 'pointer' }}
                 checked={isCodEnabled}
                 onChange={() => handleToggleQuick(cod, isCodEnabled)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Prominent Quick Switch for POS Monnify / Moniepoint Webhook Confirmation */}
+      <div
+        className="card shadow-sm border mb-4"
+        style={{ borderLeft: requirePosWebhook ? '4px solid #10b981' : '4px solid #f59e0b' }}
+      >
+        <div className="card-body p-3 p-md-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-sm"
+              style={{ width: 46, height: 46, background: requirePosWebhook ? '#10b981' : '#f59e0b' }}
+            >
+              <i className="ri-shield-check-line fs-22"></i>
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <h6 className="mb-0 fw-bold text-dark fs-15">POS Webhook Confirmation (Monnify / Moniepoint)</h6>
+                {requirePosWebhook ? (
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 fs-11 fw-bold">
+                    ● Required (Only Cash Direct)
+                  </span>
+                ) : (
+                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 fs-11 fw-bold">
+                    ○ Optional (Manual POS Allowed)
+                  </span>
+                )}
+              </div>
+              <p className="text-muted mb-0" style={{ fontSize: 12.5 }}>
+                {requirePosWebhook
+                  ? 'Only Cash sales can complete directly on POS. Card / POS & Bank Transfer require a confirmed Moniepoint / Monnify webhook.'
+                  : 'Webhook confirmation is NOT enforced. Cashiers can manually complete Card / POS and Bank Transfer sales without waiting for a webhook.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="d-flex align-items-center gap-3 ms-auto">
+            <button
+              type="button"
+              disabled={webhookGateSaving}
+              className={`btn btn-sm d-flex align-items-center gap-2 px-3 py-2 fw-semibold ${requirePosWebhook ? 'btn-outline-warning text-dark' : 'btn-success text-white'}`}
+              onClick={handleTogglePosWebhookGate}
+            >
+              <i className={requirePosWebhook ? 'ri-lock-unlock-line' : 'ri-lock-line'}></i>
+              {webhookGateSaving ? 'Saving...' : requirePosWebhook ? 'Allow Manual POS' : 'Require Webhook'}
+            </button>
+            <div className="form-check form-switch m-0 ms-1">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="pos-webhook-gate-switch"
+                disabled={webhookGateSaving}
+                style={{ width: 44, height: 24, cursor: 'pointer' }}
+                checked={requirePosWebhook}
+                onChange={handleTogglePosWebhookGate}
               />
             </div>
           </div>

@@ -38,6 +38,7 @@ const BLANK = {
   pos_receipt_show_sku: 'true',
   pos_receipt_show_barcode: 'false',
   pos_print_receipt: 'true',
+  pos_require_webhook_confirmation: 'true',
   pos_low_stock_threshold: '',
   receipt_pos_title: 'POS SALES RECEIPT',
   receipt_pos_footer: 'Thank you for shopping with us',
@@ -214,6 +215,7 @@ export default function POSSettings() {
     { key: 'pos_receipt_show_email', title: 'Support Email', desc: 'Display official customer support email', icon: 'ri-mail-line' },
     { key: 'pos_receipt_show_sku', title: 'Item SKU Codes', desc: 'Print inventory SKU under product titles', icon: 'ri-price-tag-3-line' },
     { key: 'pos_print_receipt', title: 'Auto-Print on Tender', desc: 'Trigger printer automatically on sale completion', icon: 'ri-printer-line' },
+    { key: 'pos_require_webhook_confirmation', title: 'Require Monnify / Moniepoint Webhook on POS', desc: 'When ON, only Cash can complete directly — Card / POS & Bank Transfer require a confirmed webhook', icon: 'ri-shield-check-line' },
   ]
 
   return (

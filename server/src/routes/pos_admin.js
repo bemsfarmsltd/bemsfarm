@@ -541,11 +541,25 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
       (normalizedSplitPayments &&
         normalizedSplitPayments.every((p) => String(p.method || "").trim().toLowerCase() === "cash"));
 
-    // ── STRICT WEBHOOK PAYMENT GATE ─────────────────────────────────────────
-    // Only Cash (and unpaid Pay Later credit) can complete directly at POS.
-    // All electronic channels (Card / POS, Bank Transfer, QR/USSD, Split with
-    // non-cash portion) MUST match an unused, successful webhook transaction in
+    // ── CONFIGURABLE WEBHOOK PAYMENT GATE ───────────────────────────────────
+    // Reads `pos_require_webhook_confirmation` from `settings` (default: true).
+    // When ON: only Cash (and unpaid Pay Later credit) can complete directly;
+    // all electronic channels MUST match an unused, successful webhook row in
     // `pos_transactions` before the order can be marked paid & completed.
+    // When OFF: cashiers can complete Card / POS and Bank Transfer manually
+    // (still auto-linking any matching `pos_transactions` row if present).
+    let requireWebhookConfirmation = true;
+    try {
+      const settingRes = await client.query(
+        "SELECT value FROM settings WHERE key = 'pos_require_webhook_confirmation' LIMIT 1"
+      );
+      if (settingRes.rows.length > 0) {
+        requireWebhookConfirmation = String(settingRes.rows[0].value).toLowerCase() !== "false";
+      }
+    } catch (_) {
+      requireWebhookConfirmation = true;
+    }
+
     let verifiedPosTxnId = null;
     if (!isPayLater && !isCashOnly) {
       const requiredElectronicAmount = normalizedSplitPayments
@@ -567,6 +581,7 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
           [String(req.body.pos_transaction_id).trim()]
         );
         if (
+          requireWebhookConfirmation &&
           matchedTxnRes.rows.length > 0 &&
           Math.abs(parseFloat(matchedTxnRes.rows[0].amount || 0) - requiredElectronicAmount) > 1.0
         ) {
@@ -590,15 +605,15 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         );
       }
 
-      if (!matchedTxnRes || matchedTxnRes.rows.length === 0) {
+      if (matchedTxnRes && matchedTxnRes.rows.length > 0) {
+        verifiedPosTxnId = matchedTxnRes.rows[0].id;
+      } else if (requireWebhookConfirmation) {
         await client.query("ROLLBACK");
         return res.status(402).json({
           code: "WEBHOOK_CONFIRMATION_REQUIRED",
           message: `Webhook payment confirmation is required for ${payment_method}. Only Cash payments can be completed directly — please wait for the Moniepoint/Monnify payment webhook or use "Hold & Attend Next Customer".`,
         });
       }
-
-      verifiedPosTxnId = matchedTxnRes.rows[0].id;
     }
 
     // Verify validCustomerId exists in users table to prevent orders_user_id_fkey foreign key constraint crashes
