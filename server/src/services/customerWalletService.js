@@ -1,9 +1,19 @@
 const pool = require("../db/pool");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { createMonnifyReservedAccount } = require("../utils/monnify");
 const { getIO } = require("./socketService");
 
 let schemaEnsured = false;
+
+function hashKycIdentifier(type, rawValue) {
+  const digits = String(rawValue || "").replace(/\D/g, "");
+  if (digits.length !== 11) return null;
+  return crypto
+    .createHash("sha256")
+    .update(`bemsfarms:kyc:v1:${type}:${digits}`)
+    .digest("hex");
+}
 
 async function ensureCustomerWalletSchema() {
   if (schemaEnsured) return;
@@ -32,6 +42,18 @@ async function ensureCustomerWalletSchema() {
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS payment_pin_set_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS pin_failed_attempts INTEGER NOT NULL DEFAULT 0`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS pin_locked_until TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS bvn_hash VARCHAR(64)`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS nin_hash VARCHAR(64)`);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_wallets_bvn_hash_unique
+    ON customer_wallets (bvn_hash)
+    WHERE bvn_hash IS NOT NULL;
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_wallets_nin_hash_unique
+    ON customer_wallets (nin_hash)
+    WHERE nin_hash IS NOT NULL;
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS customer_wallet_transactions (
       id SERIAL PRIMARY KEY,
@@ -60,10 +82,63 @@ async function ensureCustomerWalletSchema() {
 }
 
 /**
- * Fetch or provision a customer's wallet + Monnify dedicated virtual account.
+ * Enforce 1 wallet per BVN / NIN across all customer accounts using one-way SHA-256 hashes.
+ */
+async function assertUniqueWalletKyc({ bvn, nin, excludeCustomerId = null } = {}) {
+  await ensureCustomerWalletSchema();
+  const bvnHash = hashKycIdentifier("bvn", bvn);
+  const ninHash = hashKycIdentifier("nin", nin);
+
+  if (bvnHash) {
+    const dupBvn = await pool.query(
+      `SELECT customer_id FROM customer_wallets
+       WHERE bvn_hash = $1
+         AND ($2::int IS NULL OR customer_id <> $2)
+       LIMIT 1`,
+      [bvnHash, excludeCustomerId]
+    );
+    if (dupBvn.rows.length > 0) {
+      throw Object.assign(
+        new Error("This BVN is already linked to another BemsFarms wallet. Each BVN can only be used to create one wallet."),
+        { status: 409, code: "DUPLICATE_KYC_BVN" }
+      );
+    }
+  }
+
+  if (ninHash) {
+    const dupNin = await pool.query(
+      `SELECT customer_id FROM customer_wallets
+       WHERE nin_hash = $1
+         AND ($2::int IS NULL OR customer_id <> $2)
+       LIMIT 1`,
+      [ninHash, excludeCustomerId]
+    );
+    if (dupNin.rows.length > 0) {
+      throw Object.assign(
+        new Error("This NIN is already linked to another BemsFarms wallet. Each NIN can only be used to create one wallet."),
+        { status: 409, code: "DUPLICATE_KYC_NIN" }
+      );
+    }
+  }
+
+  return { bvnHash, ninHash };
+}
+
+/**
+ * Fetch or provision a customer's wallet + dedicated virtual account.
  */
 async function getOrCreateCustomerWallet(customerId, options = {}) {
   await ensureCustomerWalletSchema();
+
+  // Check BVN/NIN uniqueness before touching wallet rows or calling the provider
+  const { bvnHash, ninHash } =
+    options.bvn || options.nin
+      ? await assertUniqueWalletKyc({
+          bvn: options.bvn,
+          nin: options.nin,
+          excludeCustomerId: customerId,
+        })
+      : { bvnHash: null, ninHash: null };
   const userRes = await pool.query(
     "SELECT id, name, email, phone FROM users WHERE id = $1 LIMIT 1",
     [customerId]
@@ -112,8 +187,10 @@ async function getOrCreateCustomerWallet(customerId, options = {}) {
              bank_code = COALESCE(NULLIF($4, ''), bank_code),
              account_name = COALESCE(NULLIF($5, ''), account_name),
              monnify_accounts = $6::jsonb,
+             bvn_hash = COALESCE($7, bvn_hash),
+             nin_hash = COALESCE($8, nin_hash),
              updated_at = NOW()
-         WHERE customer_id = $7
+         WHERE customer_id = $9
          RETURNING *`,
         [
           reserved.accountReference || accountRef,
@@ -122,11 +199,19 @@ async function getOrCreateCustomerWallet(customerId, options = {}) {
           primary.bankCode || reserved.bankCode || "",
           reserved.accountName || displayName,
           JSON.stringify(accounts),
+          bvnHash,
+          ninHash,
           customerId,
         ]
       );
       wallet = updRes.rows[0] || wallet;
     } catch (err) {
+      if (err?.code === "23505") {
+        throw Object.assign(
+          new Error("This BVN or NIN is already linked to another BemsFarms wallet."),
+          { status: 409, code: "DUPLICATE_KYC" }
+        );
+      }
       provisionError = err?.response?.data?.responseMessage || err.message;
       console.warn(`[CustomerWallet] Monnify reserved account notice for user ${customerId}:`, provisionError);
     }
@@ -468,7 +553,7 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId, 
     return {
       ok: false,
       status: 402,
-      message: `Insufficient wallet balance (Available: ₦${currentBalance.toLocaleString()}, Required: ₦${amt.toLocaleString()}). Please transfer to your dedicated Monnify account or use online payment.`,
+      message: `Insufficient wallet balance (Available: ₦${currentBalance.toLocaleString()}, Required: ₦${amt.toLocaleString()}). Please transfer to your Dedicated Bems Wallet account or use online payment.`,
     };
   }
 
@@ -503,6 +588,7 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId, 
 
 module.exports = {
   ensureCustomerWalletSchema,
+  assertUniqueWalletKyc,
   getOrCreateCustomerWallet,
   setCustomerWalletPin,
   creditCustomerWalletFromMonnifyWebhook,

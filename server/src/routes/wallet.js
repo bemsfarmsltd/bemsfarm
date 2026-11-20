@@ -37,7 +37,12 @@ router.post("/provision", async (req, res, next) => {
     });
     res.json({ success: true, ...data });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ message: err.message });
+    if (err.status) {
+      return res.status(err.status).json({
+        message: err.message,
+        ...(err.code ? { code: err.code } : {}),
+      });
+    }
     next(err);
   }
 });

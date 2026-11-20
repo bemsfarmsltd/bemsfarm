@@ -73,6 +73,23 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     if (existing.rows.length > 0)
       return res.status(400).json({ message: "Email already exists" });
 
+    // Enforce 1 wallet per BVN/NIN before creating the account
+    const { assertUniqueWalletKyc } = require("../services/customerWalletService");
+    try {
+      await assertUniqueWalletKyc({
+        bvn: cleanBvn.length === 11 ? cleanBvn : undefined,
+        nin: cleanNin.length === 11 ? cleanNin : undefined,
+      });
+    } catch (kycErr) {
+      if (kycErr.status) {
+        return res.status(kycErr.status).json({
+          message: kycErr.message,
+          ...(kycErr.code ? { code: kycErr.code } : {}),
+        });
+      }
+      throw kycErr;
+    }
+
     const hashedPw = await bcrypt.hash(password, 12);
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit OTP
 
