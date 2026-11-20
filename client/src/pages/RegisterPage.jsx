@@ -275,8 +275,8 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {/* Password Fields Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Password Fields */}
+              <div className="space-y-3.5">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
                     Password
