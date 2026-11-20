@@ -303,15 +303,6 @@ export default function WalletBalance() {
                         <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{fmt(c.wallet_total_topped_up)}</td>
                         <td className="px-3 py-2">
                           <div className="d-flex gap-1">
-                            <button className="btn btn-sm btn-success" style={{fontSize:11,padding:'3px 8px'}}
-                              onClick={()=>{ setSelectedCust(c); setModal('topup'); setAmount(''); setNote(''); setMethod('Bank Transfer') }}>
-                              <i className="ri-add-line"/>Top Up
-                            </button>
-                            <button className="btn btn-sm btn-outline-secondary" style={{fontSize:11,padding:'3px 8px'}}
-                              disabled={balance===0}
-                              onClick={()=>{ setSelectedCust(c); setModal('debit'); setAmount(''); setNote('') }}>
-                              <i className="ri-subtract-line"/>Debit
-                            </button>
                             <button className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
                               style={{width:28,height:28,padding:0,borderRadius:'50%'}} title="View History"
                               onClick={()=>openHistory(c)}>

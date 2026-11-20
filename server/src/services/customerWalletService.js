@@ -44,6 +44,10 @@ async function ensureCustomerWalletSchema() {
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS pin_locked_until TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS bvn_hash VARCHAR(64)`);
   await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS nin_hash VARCHAR(64)`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS suspended_reason TEXT`);
+  await pool.query(`ALTER TABLE customer_wallets ADD COLUMN IF NOT EXISTS suspended_by INTEGER`);
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_wallets_bvn_hash_unique
     ON customer_wallets (bvn_hash)
@@ -242,6 +246,9 @@ async function getOrCreateCustomerWallet(customerId, options = {}) {
       has_payment_pin: Boolean(wallet.payment_pin_hash),
       payment_pin_set_at: wallet.payment_pin_set_at || null,
       pin_locked_until: wallet.pin_locked_until || null,
+      is_suspended: Boolean(wallet.is_suspended),
+      suspended_at: wallet.suspended_at || null,
+      suspended_reason: wallet.suspended_reason || null,
     },
     transactions: txRes.rows.map((t) => ({
       ...t,
@@ -480,10 +487,21 @@ async function debitCustomerWalletForOrder(client, customerId, amount, orderId, 
   );
 
   const res = await client.query(
-    "SELECT id, balance, payment_pin_hash, pin_failed_attempts, pin_locked_until FROM customer_wallets WHERE customer_id = $1 FOR UPDATE",
+    "SELECT id, balance, is_suspended, suspended_reason, payment_pin_hash, pin_failed_attempts, pin_locked_until FROM customer_wallets WHERE customer_id = $1 FOR UPDATE",
     [customerId]
   );
   const wallet = res.rows[0];
+
+  if (wallet?.is_suspended) {
+    return {
+      ok: false,
+      status: 403,
+      code: "WALLET_SUSPENDED",
+      message: wallet.suspended_reason
+        ? `Your Bems Wallet is currently suspended (${wallet.suspended_reason}). Please contact support.`
+        : "Your Bems Wallet is currently suspended and cannot be used for transactions. Please contact support.",
+    };
+  }
 
   if (!wallet?.payment_pin_hash) {
     return {

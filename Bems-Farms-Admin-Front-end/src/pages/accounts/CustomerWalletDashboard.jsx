@@ -60,12 +60,10 @@ export default function CustomerWalletDashboard() {
     ledger: [],
   })
 
-  // Quick wallet adjustment modal
-  const [adjustModal, setAdjustModal] = useState(null)
-  const [adjustType, setAdjustType] = useState('credit')
-  const [adjustAmount, setAdjustAmount] = useState('')
-  const [adjustReason, setAdjustReason] = useState('')
-  const [adjusting, setAdjusting] = useState(false)
+  // Wallet suspension / reactivation modal
+  const [suspendModal, setSuspendModal] = useState(null)
+  const [suspendReason, setSuspendReason] = useState('')
+  const [suspending, setSuspending] = useState(false)
 
   const fetchStatement = useCallback(
     async (silent = false) => {
@@ -200,30 +198,27 @@ export default function CustomerWalletDashboard() {
     toast.success('CSV exported')
   }
 
-  const handleAdjustWallet = async (e) => {
+  const handleToggleWalletSuspend = async (e) => {
     e.preventDefault()
-    if (!adjustModal) return
-    const amt = Number(adjustAmount)
-    if (!Number.isFinite(amt) || amt <= 0) {
-      toast.error('Enter a valid amount greater than 0')
-      return
-    }
+    if (!suspendModal) return
+    const shouldSuspend = !suspendModal.isSuspended
     try {
-      setAdjusting(true)
-      await api.post(`/admin/customers/${adjustModal.id}/wallet`, {
-        type: adjustType,
-        amount: amt,
-        description: adjustReason.trim() || `Admin manual ${adjustType} via Customer Wallet Studio`,
+      setSuspending(true)
+      const res = await api.patch(`/admin/customers/${suspendModal.id}/wallet/status`, {
+        suspended: shouldSuspend,
+        reason: shouldSuspend ? (suspendReason.trim() || 'Suspended by administrator') : null,
       })
-      toast.success(`Wallet ${adjustType === 'credit' ? 'credited' : 'debited'} by ${fmt(amt)}`)
-      setAdjustModal(null)
-      setAdjustAmount('')
-      setAdjustReason('')
+      toast.success(
+        res.data?.message ||
+          (shouldSuspend ? 'Customer wallet suspended' : 'Customer wallet reactivated')
+      )
+      setSuspendModal(null)
+      setSuspendReason('')
       fetchStatement(true)
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Wallet adjustment failed')
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Failed to update wallet status')
     } finally {
-      setAdjusting(false)
+      setSuspending(false)
     }
   }
 
@@ -512,7 +507,11 @@ export default function CustomerWalletDashboard() {
                         <td className="text-end fw-bold text-dark">{fmt(c.balance)}</td>
                         <td className="text-end text-muted">{fmt(c.totalToppedUp)}</td>
                         <td className="text-center">
-                          {c.balance > 0 ? (
+                          {c.isSuspended ? (
+                            <span className="badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle" title={c.suspendedReason || 'Suspended'}>
+                              Suspended
+                            </span>
+                          ) : c.balance > 0 ? (
                             <span className="badge rounded-pill" style={{ background: '#dcfce7', color: '#14532d' }}>
                               Funded
                             </span>
@@ -525,15 +524,14 @@ export default function CustomerWalletDashboard() {
                         <td className="text-end">
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-secondary"
+                            className={`btn btn-sm ${c.isSuspended ? 'btn-outline-success' : 'btn-outline-danger'}`}
                             onClick={() => {
-                              setAdjustModal(c)
-                              setAdjustType('credit')
-                              setAdjustAmount('')
-                              setAdjustReason('')
+                              setSuspendModal(c)
+                              setSuspendReason('')
                             }}
                           >
-                            <i className="ri-equalizer-line me-1" /> Adjust
+                            <i className={`${c.isSuspended ? 'ri-shield-check-line' : 'ri-forbid-2-line'} me-1`} />
+                            {c.isSuspended ? 'Reactivate' : 'Suspend'}
                           </button>
                         </td>
                       </tr>
@@ -662,8 +660,8 @@ export default function CustomerWalletDashboard() {
         </div>
       </div>
 
-      {/* Quick Adjust Modal */}
-      {adjustModal && (
+      {/* Suspend / Reactivate Customer Wallet Modal */}
+      {suspendModal && (
         <div
           className="modal d-block"
           tabIndex="-1"
@@ -673,87 +671,66 @@ export default function CustomerWalletDashboard() {
             <div className="modal-content border-0 shadow-lg" style={{ borderRadius: 16, overflow: 'hidden' }}>
               <div
                 className="modal-header text-white border-0"
-                style={{ background: '#1B4332' }}
+                style={{ background: suspendModal.isSuspended ? '#1B4332' : '#991b1b' }}
               >
                 <div>
-                  <h6 className="modal-title fw-bold mb-0">Adjust Customer Wallet</h6>
+                  <h6 className="modal-title fw-bold mb-0">
+                    {suspendModal.isSuspended ? 'Reactivate Customer Wallet' : 'Suspend Customer Wallet'}
+                  </h6>
                   <small className="opacity-75">
-                    {adjustModal.name} · Current Balance: {fmt(adjustModal.balance)}
+                    {suspendModal.name} · Current Balance: {fmt(suspendModal.balance)}
                   </small>
                 </div>
                 <button
                   type="button"
                   className="btn-close btn-close-white"
-                  onClick={() => setAdjustModal(null)}
+                  onClick={() => setSuspendModal(null)}
                 />
               </div>
-              <form onSubmit={handleAdjustWallet}>
+              <form onSubmit={handleToggleWalletSuspend}>
                 <div className="modal-body p-4">
-                  <div className="row g-2 mb-3">
-                    <div className="col-6">
-                      <button
-                        type="button"
-                        onClick={() => setAdjustType('credit')}
-                        className={`btn btn-sm w-100 fw-bold ${
-                          adjustType === 'credit' ? 'btn-success' : 'btn-outline-secondary'
-                        }`}
-                      >
-                        + Credit Wallet
-                      </button>
+                  <p className="small text-muted mb-3">
+                    {suspendModal.isSuspended
+                      ? 'Reactivating this wallet will allow the customer to spend from their wallet balance at checkout again.'
+                      : 'Suspending this wallet will block the customer from making any transactions with their wallet balance. Their existing balance will remain untouched.'}
+                  </p>
+                  {!suspendModal.isSuspended && (
+                    <div>
+                      <label className="form-label small fw-semibold">Suspension Reason *</label>
+                      <input
+                        type="text"
+                        required
+                        className="form-control"
+                        value={suspendReason}
+                        onChange={(e) => setSuspendReason(e.target.value)}
+                        placeholder="e.g. Suspected fraudulent activity or dispute"
+                      />
                     </div>
-                    <div className="col-6">
-                      <button
-                        type="button"
-                        onClick={() => setAdjustType('debit')}
-                        className={`btn btn-sm w-100 fw-bold ${
-                          adjustType === 'debit' ? 'btn-danger' : 'btn-outline-secondary'
-                        }`}
-                      >
-                        - Debit Wallet
-                      </button>
+                  )}
+                  {suspendModal.isSuspended && suspendModal.suspendedReason && (
+                    <div className="alert alert-warning py-2 px-3 small mb-0">
+                      <strong>Previous Reason:</strong> {suspendModal.suspendedReason}
                     </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold">Amount (₦)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      required
-                      className="form-control"
-                      value={adjustAmount}
-                      onChange={(e) => setAdjustAmount(e.target.value)}
-                      placeholder="e.g. 5000"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label small fw-semibold">Reason / Reference Note</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={adjustReason}
-                      onChange={(e) => setAdjustReason(e.target.value)}
-                      placeholder="e.g. Refund or manual Monnify reconciliation"
-                    />
-                  </div>
+                  )}
                 </div>
                 <div className="modal-footer border-0 pt-0 px-4 pb-4">
                   <button
                     type="button"
                     className="btn btn-sm btn-light border"
-                    onClick={() => setAdjustModal(null)}
+                    onClick={() => setSuspendModal(null)}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={adjusting}
-                    className="btn btn-sm text-white fw-semibold"
-                    style={{ background: '#1B4332' }}
+                    disabled={suspending}
+                    className={`btn btn-sm text-white fw-semibold ${suspendModal.isSuspended ? 'btn-success' : 'btn-danger'}`}
                   >
-                    {adjusting ? 'Processing...' : 'Confirm Adjustment'}
+                    {suspending
+                      ? 'Processing...'
+                      : suspendModal.isSuspended
+                      ? 'Confirm Reactivation'
+                      : 'Confirm Suspension'}
                   </button>
                 </div>
               </form>

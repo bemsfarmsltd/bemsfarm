@@ -1371,134 +1371,91 @@ router.post(
 );
 
 // ── POST /api/admin/customers/:id/wallet ──────────────────────────
-// Manually top up or debit a customer's wallet
+// Disabled: Admins cannot manually credit or debit customer wallet balances.
 router.post(
   "/:id/wallet",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res, next) => {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      const { amount, type, method = "Admin Adjustment", note } = req.body;
-      const amt = parseFloat(amount);
-      if (!amt || amt <= 0) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: "A positive amount is required" });
-      }
-      if (!["topup", "debit"].includes(type)) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: "type must be topup or debit" });
-      }
+  async (req, res) => {
+    return res.status(403).json({
+      code: "WALLET_ADJUSTMENT_DISABLED",
+      message: "Manual balance adjustment of customer wallets is disabled. Admins can only suspend or reactivate a customer wallet.",
+    });
+  },
+);
 
-      const custRow = await client.query(
-        "SELECT id FROM users WHERE id::text=$1 OR customer_code=$1",
-        [req.params.id],
+// ── PATCH /api/admin/customers/:id/wallet/status ──────────────────
+// Suspend or reactivate a customer's wallet (blocks/resumes wallet transactions)
+router.patch(
+  "/:id/wallet/status",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const { ensureCustomerWalletSchema } = require("../services/customerWalletService");
+      await ensureCustomerWalletSchema();
+
+      const { suspended, reason } = req.body || {};
+      const shouldSuspend = Boolean(suspended);
+      const cleanReason = reason ? String(reason).trim().slice(0, 500) : null;
+
+      const custRow = await pool.query(
+        "SELECT id, name, email FROM users WHERE id::text = $1 OR customer_code = $1 LIMIT 1",
+        [req.params.id]
       );
       if (!custRow.rows.length) {
-        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Customer not found" });
       }
-      const customerId = custRow.rows[0].id;
+      const customer = custRow.rows[0];
 
-      let walletRow = await client.query(
-        "SELECT id, balance FROM customer_wallets WHERE customer_id=$1 FOR UPDATE",
-        [customerId],
-      );
-      if (!walletRow.rows.length) {
-        walletRow = await client.query(
-          `INSERT INTO customer_wallets (customer_id, balance, total_topped_up, total_spent, updated_at)
-           VALUES ($1, 0, 0, 0, NOW()) RETURNING id, balance`,
-          [customerId],
-        );
-      }
-      const walletId = walletRow.rows[0].id;
-      const currentBalance = parseFloat(walletRow.rows[0].balance);
-      const signedAmount = type === "topup" ? amt : -amt;
-      const newBalance = currentBalance + signedAmount;
-
-      if (newBalance < 0) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: `Cannot debit more than the current balance (₦${currentBalance})` });
-      }
-
-      const reference = `${type === "topup" ? "WLT" : "DBT"}-${Date.now().toString(36).toUpperCase()}`;
-      const dbType = type === "topup" ? "top_up" : "admin_debit";
-
-      await client.query(
-        `INSERT INTO wallet_transactions
-           (customer_id, wallet_id, type, amount, balance_after, reference, payment_method, description, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())`,
-        [customerId, walletId, dbType, signedAmount, newBalance, reference, method, note || (type === "debit" ? "Manual admin debit" : null)],
+      await pool.query(
+        `INSERT INTO customer_wallets (customer_id, balance, total_topped_up, total_spent, created_at, updated_at)
+         VALUES ($1, 0, 0, 0, NOW(), NOW())
+         ON CONFLICT (customer_id) DO NOTHING`,
+        [customer.id]
       );
 
-      await client.query(
-        `UPDATE customer_wallets SET
-           balance          = $1,
-           total_topped_up  = total_topped_up + $2,
-           total_spent      = total_spent + $3,
-           updated_at       = NOW()
-         WHERE id = $4`,
-        [newBalance, type === "topup" ? amt : 0, type === "debit" ? amt : 0, walletId],
+      const updRes = await pool.query(
+        `UPDATE customer_wallets
+         SET is_suspended = $1,
+             suspended_at = CASE WHEN $1 THEN NOW() ELSE NULL END,
+             suspended_reason = CASE WHEN $1 THEN COALESCE($2, 'Suspended by administrator') ELSE NULL END,
+             suspended_by = CASE WHEN $1 THEN $3 ELSE NULL END,
+             updated_at = NOW()
+         WHERE customer_id = $4
+         RETURNING id, customer_id, is_suspended, suspended_at, suspended_reason`,
+        [shouldSuspend, cleanReason, req.user.id, customer.id]
       );
-
-      await client.query("COMMIT");
-
-      notifyAdmin({
-        type: 'customer_wallet_adjustment',
-        title: `👛 Customer Wallet ${type === 'topup' ? 'Top-Up' : 'Debit'}: ₦${amt.toLocaleString()}`,
-        message: `${req.user?.name || 'Admin'} ${type === 'topup' ? 'credited' : 'debited'} customer ${custRow.rows[0].name}'s wallet with ₦${amt.toLocaleString()}.${note ? ` Reason: ${note}.` : ''} Balance: ₦${currentBalance.toLocaleString()} → ₦${newBalance.toLocaleString()}.`,
-        link: `/customers/${customerId}`,
-        severity: type === 'debit' ? 'warning' : 'info',
-        data: {
-          customer_id: customerId,
-          customer_name: custRow.rows[0].name,
-          type,
-          amount: amt,
-          balance_before: currentBalance,
-          balance_after: newBalance,
-          note: note || null,
-          reference,
-          adjusted_by: req.user?.name || req.user?.email,
-          adjusted_by_role: req.user?.role,
-        },
-        actor: req.user,
-      }).catch(() => {});
 
       recordAudit({
-        source: 'admin',
-        action: 'CUSTOMER_WALLET_ADJUSTED',
-        category: 'financial',
-        severity: type === 'debit' ? 'warning' : 'info',
-        outcome: 'success',
-        resource: `customers/${customerId}/wallet`,
+        source: "admin",
+        action: shouldSuspend ? "CUSTOMER_WALLET_SUSPENDED" : "CUSTOMER_WALLET_REACTIVATED",
+        category: "financial",
+        severity: shouldSuspend ? "warning" : "info",
+        outcome: "success",
+        resource: `customers/${customer.id}/wallet/status`,
         actor_id: req.user?.id,
         actor_name: req.user?.name || req.user?.email,
         actor_role: req.user?.role,
-        entity_type: 'customer_wallet',
-        entity_id: String(customerId),
-        old_value: { balance: currentBalance },
-        new_value: { balance: newBalance },
+        entity_type: "customer_wallet",
+        entity_id: String(customer.id),
         details: {
-          customer_id: customerId,
-          customer_name: custRow.rows[0].name,
-          type,
-          amount: amt,
-          balance_before: currentBalance,
-          balance_after: newBalance,
-          note: note || null,
-          reference,
-          adjusted_by: req.user?.name || req.user?.email,
-        }
+          customer_id: customer.id,
+          customer_name: customer.name,
+          is_suspended: shouldSuspend,
+          reason: cleanReason,
+        },
       }).catch(() => {});
 
-      res.json({ message: "Wallet updated", balance: newBalance, reference });
+      return res.json({
+        success: true,
+        message: shouldSuspend
+          ? `Wallet suspended for ${customer.name}. Transactions are now blocked.`
+          : `Wallet reactivated for ${customer.name}.`,
+        wallet: updRes.rows[0],
+      });
     } catch (err) {
-      await client.query("ROLLBACK");
       next(err);
-    } finally {
-      client.release();
     }
-  },
+  }
 );
 
 // ── GET /api/admin/customers/loyalty/activity ─────────────────────
