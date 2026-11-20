@@ -58,7 +58,7 @@ router.post('/events', async (req, res, next) => {
 const crypto = require('crypto');
 
 function verifyGitHubWebhookSignature(rawBody, signatureHeader, secret) {
-  if (!secret) return true; // Fail-open if secret is not set in environment
+  if (!secret) return false; // Fail closed if secret is not configured
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
   try {
     const hmac = crypto.createHmac('sha256', secret);
@@ -72,12 +72,13 @@ function verifyGitHubWebhookSignature(rawBody, signatureHeader, secret) {
 // ── Native GitHub Webhook Handler ───────────────────────────────────────────
 router.post(['/github-webhook', '/github'], async (req, res, next) => {
   try {
+    if (!process.env.GITHUB_WEBHOOK_SECRET) {
+      return res.status(503).json({ message: 'GitHub webhook secret not configured' });
+    }
     const sig = req.headers['x-hub-signature-256'];
-    if (process.env.GITHUB_WEBHOOK_SECRET) {
-      const isValid = verifyGitHubWebhookSignature(req.rawBody, sig, process.env.GITHUB_WEBHOOK_SECRET);
-      if (!isValid) {
-        return res.status(401).json({ message: 'Invalid GitHub webhook signature' });
-      }
+    const isValid = verifyGitHubWebhookSignature(req.rawBody, sig, process.env.GITHUB_WEBHOOK_SECRET);
+    if (!isValid) {
+      return res.status(401).json({ message: 'Invalid GitHub webhook signature' });
     }
 
     const eventType = req.headers['x-github-event'] || 'push';

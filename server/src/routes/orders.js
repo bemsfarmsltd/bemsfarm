@@ -480,15 +480,24 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       coupon_code = intent.rows[0].coupon_code || undefined;
     }
 
-    // Idempotency: don't let the same Monnify payment fund two orders
+    // Idempotency: don't let the same Monnify payment fund two orders (check both paymentReference and transactionReference)
     if (method === "monnify") {
-      // Serialize concurrent callbacks for the same payment reference. A
-      // duplicate SELECT without this lock can race before either request
-      // commits and create two orders for one successful payment.
-      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [effectivePaymentRef]);
+      const refCandidates = Array.from(
+        new Set(
+          [
+            effectivePaymentRef,
+            monnifyData?.transactionReference,
+            monnifyData?.paymentReference,
+          ]
+            .map((r) => (r ? String(r).trim() : ""))
+            .filter(Boolean)
+        )
+      );
+      const lockKey = monnifyData?.transactionReference || monnifyData?.paymentReference || effectivePaymentRef;
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [lockKey]);
       const dup = await client.query(
-        "SELECT id FROM orders WHERE payment_ref = $1",
-        [effectivePaymentRef],
+        "SELECT id FROM orders WHERE payment_ref = ANY($1::text[])",
+        [refCandidates],
       );
       if (dup.rows.length) {
         await client.query("ROLLBACK");

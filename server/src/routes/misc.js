@@ -633,7 +633,7 @@ router.post(MONIEPOINT_WEBHOOK_PATHS, async (req, res, next) => {
 // INITIALIZE PAYMENT (CUSTOMER APP / WEB)
 // POST /api/payments/initialize
 // ─────────────────────────────────────────────
-router.post("/payments/initialize", async (req, res, next) => {
+router.post("/payments/initialize", protect, async (req, res, next) => {
   try {
     const { amount, email, customer_name, customer_phone, order_id, gateway = "paystack" } = req.body;
 
