@@ -56,42 +56,76 @@ function initSocketService(httpServer, allowedOrigins = []) {
 
   io.on("connection", (socket) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-    const driverId = socket.handshake.query?.driverId || null;
 
-    // Resolve and verify role strictly from signed JWT + active DB user record
-    const rolePromise = (async () => {
+    // Resolve and verify role + user/driver ID strictly from signed JWT + active DB record
+    const authPromise = (async () => {
       let verifiedRole = "guest";
+      let verifiedUserId = null;
+      let verifiedDriverId = null;
       if (token && process.env.JWT_SECRET) {
         try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           if (decoded?.id) {
-            const uRes = await pool.query("SELECT role, status FROM users WHERE id = $1", [decoded.id]);
-            if (uRes.rows.length && String(uRes.rows[0].status || "active").toLowerCase() === "active") {
-              verifiedRole = String(uRes.rows[0].role || "guest").toLowerCase().trim();
+            if (decoded.role === "driver") {
+              const dRes = await pool.query("SELECT id, status FROM drivers WHERE id = $1", [decoded.id]);
+              if (dRes.rows.length && String(dRes.rows[0].status || "active").toLowerCase() !== "suspended") {
+                verifiedRole = "driver";
+                verifiedDriverId = Number(dRes.rows[0].id);
+              }
+            } else {
+              const uRes = await pool.query("SELECT id, role, status FROM users WHERE id = $1", [decoded.id]);
+              if (uRes.rows.length && String(uRes.rows[0].status || "active").toLowerCase() === "active") {
+                verifiedRole = String(uRes.rows[0].role || "guest").toLowerCase().trim();
+                verifiedUserId = Number(uRes.rows[0].id);
+              }
             }
           }
         } catch (_) {}
       }
       socket.data.role = verifiedRole;
+      socket.data.userId = verifiedUserId;
+      socket.data.driverId = verifiedDriverId;
       socket.join(`role_${verifiedRole}`);
       if (PRIVILEGED_ADMIN_ROLES.includes(verifiedRole)) {
         socket.join("admin_room");
       }
-      return verifiedRole;
+      if (verifiedDriverId) {
+        socket.join(`driver_${verifiedDriverId}`);
+      }
+      if (verifiedUserId) {
+        socket.join(`user_${verifiedUserId}`);
+        socket.join(`customer_${verifiedUserId}`);
+      }
+      return { verifiedRole, verifiedUserId, verifiedDriverId };
     })();
 
-    if (driverId) {
-      socket.join(`driver_${driverId}`);
-    }
-
-    // Allow dynamic room joins while guarding privileged role/admin rooms
+    // Allow dynamic room joins while guarding privileged & private user/driver rooms
     socket.on("join_room", async (room) => {
       if (typeof room !== "string") return;
-      const currentRole = socket.data.role || (await rolePromise);
+      const { verifiedRole, verifiedUserId, verifiedDriverId } = await authPromise;
+      const isStaff = STAFF_ROLES.includes(verifiedRole) || PRIVILEGED_ADMIN_ROLES.includes(verifiedRole);
+
       if (room === "admin_room" || room.startsWith("role_")) {
-        if (room === `role_${currentRole}` || PRIVILEGED_ADMIN_ROLES.includes(currentRole)) {
+        if (room === `role_${verifiedRole}` || PRIVILEGED_ADMIN_ROLES.includes(verifiedRole)) {
           socket.join(room);
         }
+        return;
+      }
+      if (room.startsWith("driver_")) {
+        const targetId = Number(room.replace("driver_", ""));
+        if (isStaff || (verifiedDriverId && verifiedDriverId === targetId)) {
+          socket.join(room);
+        }
+        return;
+      }
+      if (room.startsWith("user_") || room.startsWith("customer_")) {
+        const targetId = Number(room.replace(/^(user_|customer_)/, ""));
+        if (isStaff || (verifiedUserId && verifiedUserId === targetId)) {
+          socket.join(room);
+        }
+        return;
+      }
+      if (room.startsWith("pos_") && !isStaff) {
         return;
       }
       socket.join(room);
@@ -103,10 +137,13 @@ function initSocketService(httpServer, allowedOrigins = []) {
       }
     });
 
-    // Receive real-time location telemetry from connected driver apps
+    // Receive real-time location telemetry strictly from authenticated driver or staff sockets
     socket.on("driver:location", async (payload) => {
       try {
-        const id = payload?.driver_id || payload?.driverId || driverId;
+        const { verifiedRole, verifiedDriverId } = await authPromise;
+        const isStaff = STAFF_ROLES.includes(verifiedRole) || PRIVILEGED_ADMIN_ROLES.includes(verifiedRole);
+        const id = verifiedDriverId || (isStaff ? (payload?.driver_id || payload?.driverId) : null);
+        if (!id) return;
         const coords = payload?.coords || payload?.position || payload || {};
         const lat = parseFloat(payload?.latitude ?? payload?.lat ?? coords?.latitude ?? coords?.lat);
         const lng = parseFloat(payload?.longitude ?? payload?.lng ?? coords?.longitude ?? coords?.lng);

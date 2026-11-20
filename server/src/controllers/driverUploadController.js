@@ -70,28 +70,29 @@ const ALLOWED_DOC_MIMES = new Set([
   "application/pdf"
 ]);
 
-// Helper to determine if file is acceptable image
+// Helper to determine if file is acceptable image (strict allowlist — never accept image/svg+xml)
 function isAcceptableImage(originalname, mimetype) {
   const rawExt = path.extname(originalname || "").toLowerCase();
   const mime = (mimetype || "").toLowerCase();
+  if (mime.includes("svg") || rawExt === ".svg" || rawExt === ".html" || rawExt === ".htm") {
+    return false;
+  }
   return (
-    mime.startsWith("image/") ||
     ALLOWED_IMAGE_MIMES.has(mime) ||
-    ALLOWED_IMAGE_EXTS.has(rawExt) ||
-    ((mime === "application/octet-stream" || !mime) && ALLOWED_IMAGE_EXTS.has(rawExt))
+    (ALLOWED_IMAGE_EXTS.has(rawExt) && (!mime || mime === "application/octet-stream" || ALLOWED_IMAGE_MIMES.has(mime)))
   );
 }
 
-// Helper to determine if file is acceptable doc
+// Helper to determine if file is acceptable doc (strict allowlist — never accept SVG/HTML)
 function isAcceptableDoc(originalname, mimetype) {
   const rawExt = path.extname(originalname || "").toLowerCase();
   const mime = (mimetype || "").toLowerCase();
+  if (mime.includes("svg") || rawExt === ".svg" || rawExt === ".html" || rawExt === ".htm") {
+    return false;
+  }
   return (
-    mime.startsWith("image/") ||
-    mime === "application/pdf" ||
     ALLOWED_DOC_MIMES.has(mime) ||
-    ALLOWED_DOC_EXTS.has(rawExt) ||
-    ((mime === "application/octet-stream" || !mime) && ALLOWED_DOC_EXTS.has(rawExt))
+    (ALLOWED_DOC_EXTS.has(rawExt) && (!mime || mime === "application/octet-stream" || ALLOWED_DOC_MIMES.has(mime)))
   );
 }
 
@@ -411,17 +412,39 @@ const getDriverDocuments = async (req, res, next) => {
   try {
     let driverId = req.driver?.id;
 
-    // Support query lookup if driver_id / id / phone is passed
+    // Only allow querying another driver_id if the caller carries a valid Admin/Staff JWT
     if (!driverId && (req.query?.driver_id || req.query?.driverId || req.query?.id || req.query?.phone)) {
-      const lookupParam = req.query.driver_id || req.query.driverId || req.query.id || req.query.phone;
-      const lookupCol = req.query.phone ? "phone" : "id";
-      const lookupResult = await pool.query(
-        `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate, license_number, nin_number, status, onboarding_status, documents, compliance_notes FROM drivers WHERE ${lookupCol} = $1`,
-        [lookupParam]
-      );
-      if (lookupResult.rows.length > 0) {
-        req.driver = lookupResult.rows[0];
-        driverId = lookupResult.rows[0].id;
+      const authHeader = req.headers.authorization;
+      let isStaffCaller = false;
+      if (authHeader?.startsWith("Bearer ") && process.env.JWT_SECRET) {
+        try {
+          const jwt = require("jsonwebtoken");
+          const { STAFF_ROLES } = require("../config/roles");
+          const decoded = jwt.verify(authHeader.split(" ")[1], process.env.JWT_SECRET);
+          if (decoded?.id) {
+            const uRes = await pool.query("SELECT role, status FROM users WHERE id = $1", [decoded.id]);
+            if (
+              uRes.rows.length > 0 &&
+              String(uRes.rows[0].status || "active").toLowerCase() === "active" &&
+              STAFF_ROLES.includes(uRes.rows[0].role)
+            ) {
+              isStaffCaller = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (isStaffCaller) {
+        const lookupParam = req.query.driver_id || req.query.driverId || req.query.id || req.query.phone;
+        const lookupCol = req.query.phone ? "phone" : "id";
+        const lookupResult = await pool.query(
+          `SELECT id, name, email, phone, avatar_url, vehicle_type, vehicle_plate, license_number, nin_number, status, onboarding_status, documents, compliance_notes FROM drivers WHERE ${lookupCol} = $1`,
+          [lookupParam]
+        );
+        if (lookupResult.rows.length > 0) {
+          req.driver = lookupResult.rows[0];
+          driverId = lookupResult.rows[0].id;
+        }
       }
     }
 
@@ -429,7 +452,7 @@ const getDriverDocuments = async (req, res, next) => {
       return res.status(401).json({
         status: "error",
         success: false,
-        message: "Driver authorization required. Please provide Bearer token in Authorization header, ?token= query parameter, or ?driver_id= query parameter."
+        message: "Driver authorization required. Please provide a valid Bearer token.",
       });
     }
 
@@ -578,8 +601,31 @@ const getDriverDocuments = async (req, res, next) => {
 // Upload Driver License, NIN slip, Vehicle Registration, or Guarantor document
 const uploadKYCDocument = async (req, res, next) => {
   try {
-    const docType = ((req.body && req.body.doc_type) || (req.query && req.query.type) || "document").toLowerCase();
-    const targetDriverId = req.driver?.id || req.body?.driver_id || req.query?.driver_id || req.body?.driverId || req.query?.driverId || null;
+    const rawDocType = ((req.body && req.body.doc_type) || (req.query && req.query.type) || "document").toLowerCase();
+    const docType = rawDocType.replace(/[^a-z0-9_]/g, "").slice(0, 32) || "document";
+    let targetDriverId = req.driver?.id || null;
+
+    // If not authenticated via driver JWT, only allow if a valid onboarding_token or staff JWT is presented
+    if (!targetDriverId) {
+      const onboardingToken = req.body?.onboarding_token || req.query?.onboarding_token || req.body?.token;
+      if (onboardingToken && typeof onboardingToken === "string" && onboardingToken.trim().length >= 16) {
+        const tokRes = await pool.query(
+          "SELECT id FROM drivers WHERE onboarding_token = $1 LIMIT 1",
+          [onboardingToken.trim()]
+        ).catch(() => ({ rows: [] }));
+        if (tokRes.rows.length > 0) {
+          targetDriverId = tokRes.rows[0].id;
+        }
+      }
+    }
+
+    if (!targetDriverId) {
+      return res.status(401).json({
+        status: "error",
+        success: false,
+        message: "Driver authentication required to upload KYC documents.",
+      });
+    }
 
     // 1. Multipart file upload
     const file = req.file || (Array.isArray(req.files) && (req.files.find(f => ['document', 'file', 'image', 'kyc'].includes(f.fieldname)) || req.files[0])) || null;
@@ -612,7 +658,7 @@ const uploadKYCDocument = async (req, res, next) => {
     }
 
     // 2. Base64 file upload
-    const { file_base64, image_base64, filename } = req.body || {};
+    const { file_base64, image_base64 } = req.body || {};
     const rawBase64 = file_base64 || image_base64;
 
     if (rawBase64 && typeof rawBase64 === "string") {
@@ -623,6 +669,13 @@ const uploadKYCDocument = async (req, res, next) => {
 
       if (matches && matches.length === 3) {
         mime = matches[1].toLowerCase();
+        if (!ALLOWED_DOC_MIMES.has(mime)) {
+          return res.status(400).json({
+            status: "error",
+            success: false,
+            message: "Unsupported document format. Allowed formats: JPG, PNG, WEBP, HEIC, PDF.",
+          });
+        }
         base64Data = matches[2];
         if (mime.includes("pdf")) ext = ".pdf";
         else if (mime.includes("png")) ext = ".png";
@@ -630,7 +683,15 @@ const uploadKYCDocument = async (req, res, next) => {
       }
 
       const buffer = Buffer.from(base64Data, "base64");
-      const savedFilename = filename || `${docType.toUpperCase()}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({
+          status: "error",
+          success: false,
+          message: "Document exceeds maximum size of 10MB.",
+        });
+      }
+      // Always generate a safe server-side filename — never trust user-supplied filename (prevents path traversal & XSS)
+      const savedFilename = `${docType.toUpperCase()}_${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
       const filePath = path.join(docUploadDir, savedFilename);
 
       fs.writeFileSync(filePath, buffer);
@@ -877,7 +938,9 @@ const serveDocumentFile = (req, res) => {
 
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox");
+        res.setHeader("Cache-Control", "private, max-age=86400");
         return res.sendFile(candidate);
       }
     } catch (_) {}

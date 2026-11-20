@@ -757,6 +757,14 @@ router.post("/visual-scan", async (req, res, next) => {
 // Dedicated Cart Webhook Endpoint for n8n AI Workflow to push/stage items directly to user cart
 router.post("/cart/webhook", async (req, res, next) => {
   try {
+    const n8nSecret = process.env.N8N_WEBHOOK_SECRET;
+    const providedSecret = req.headers["x-n8n-secret"] || req.headers["x-webhook-secret"];
+    const authedUser = await resolveUser(req);
+
+    if (n8nSecret && providedSecret !== n8nSecret && !authedUser) {
+      return res.status(401).json({ status: "error", message: "Unauthorized AI cart webhook request" });
+    }
+
     const {
       customerId,
       userId,
@@ -771,9 +779,14 @@ router.post("/cart/webhook", async (req, res, next) => {
       recipeBundle,
     } = req.body;
 
-    const targetCustomerId = customerId || userId || null;
-    const targetEmail = customerEmail || email || null;
+    // If caller is a regular browser/mobile user (no n8n secret), scope strictly to their own identity or session_id
+    const isVerifiedN8n = Boolean(n8nSecret && providedSecret === n8nSecret);
+    const targetCustomerId = isVerifiedN8n ? (customerId || userId || null) : (authedUser?.id || null);
+    const targetEmail = isVerifiedN8n ? (customerEmail || email || null) : (authedUser?.email || null);
     const targetSessionId = sessionId || session_id || null;
+    if (!targetCustomerId && !targetEmail && !targetSessionId) {
+      return res.status(401).json({ status: "error", message: "Authentication or valid sessionId required" });
+    }
     const targetRecipeName = recipeName || recipe_name || recipeBundle?.recipe_name || "Chef Bems Recipe Bundle";
 
     let finalItems = Array.isArray(items) && items.length > 0 ? items : (recipeBundle?.items || []);
@@ -823,11 +836,12 @@ router.post("/cart/webhook", async (req, res, next) => {
 router.get("/cart/pending", async (req, res, next) => {
   try {
     const user = await resolveUser(req);
-    const { session_id, email } = req.query;
+    const { session_id } = req.query;
 
+    // Never allow unauthenticated callers to claim staged carts by arbitrary ?email=...
     const customerId = user?.id || null;
-    const customerEmail = user?.email || email || null;
-    const sessionId = session_id || null;
+    const customerEmail = user?.email || null;
+    const sessionId = session_id && String(session_id).trim().length >= 8 ? String(session_id).trim() : null;
 
     if (!customerId && !customerEmail && !sessionId) {
       return res.json({ status: "success", count: 0, staged_items: [] });

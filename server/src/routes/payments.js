@@ -97,6 +97,9 @@ router.post("/initialize", optionalAuth, async (req, res, next) => {
       }
 
       const intent = intentRes.rows[0];
+      if (intent.user_id && (!req.user || Number(req.user.id) !== Number(intent.user_id))) {
+        return res.status(403).json({ message: "Not authorized to access this checkout intent" });
+      }
       if (intent.status !== "pending" || new Date(intent.expires_at) <= new Date()) {
         return res.status(400).json({ message: "Checkout intent has expired or has already been used" });
       }

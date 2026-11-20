@@ -14,15 +14,16 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
     process.env.MONIEPOINT_POS_API_KEY?.trim();
 
   if (!secretKey) {
-    console.warn("⚠️ MONIEPOINT_WEBHOOK_SECRET not configured. Webhook verification skipped.");
-    return true;
+    console.error("❌ MONIEPOINT_WEBHOOK_SECRET not configured — rejecting webhook (fail closed).");
+    return false;
   }
 
-  if (!signatureHeader) {
-    console.warn("⚠️ Missing signature header on Moniepoint webhook. Accepting verified payload with warning.");
-    return true;
+  if (!signatureHeader || typeof signatureHeader !== "string") {
+    console.warn("⚠️ Missing signature header on Moniepoint webhook — rejecting.");
+    return false;
   }
 
+  const cleanSig = signatureHeader.replace(/^Bearer\s+/i, "").trim();
   const candidateKeys = [
     process.env.MONIEPOINT_WEBHOOK_SECRET?.trim(),
     process.env.MONIEPOINT_POS_API_KEY?.trim(),
@@ -35,8 +36,8 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
       // 1. Try SHA512
       const hmac512 = crypto.createHmac("sha512", key).update(rawString).digest("hex");
       if (
-        Buffer.from(hmac512).length === Buffer.from(signatureHeader).length &&
-        crypto.timingSafeEqual(Buffer.from(hmac512), Buffer.from(signatureHeader))
+        Buffer.from(hmac512).length === Buffer.from(cleanSig).length &&
+        crypto.timingSafeEqual(Buffer.from(hmac512), Buffer.from(cleanSig))
       ) {
         return true;
       }
@@ -44,8 +45,8 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
       // 2. Try SHA256
       const hmac256 = crypto.createHmac("sha256", key).update(rawString).digest("hex");
       if (
-        Buffer.from(hmac256).length === Buffer.from(signatureHeader).length &&
-        crypto.timingSafeEqual(Buffer.from(hmac256), Buffer.from(signatureHeader))
+        Buffer.from(hmac256).length === Buffer.from(cleanSig).length &&
+        crypto.timingSafeEqual(Buffer.from(hmac256), Buffer.from(cleanSig))
       ) {
         return true;
       }
@@ -54,8 +55,8 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
     }
   }
 
-  console.warn("⚠️ Signature mismatch on Moniepoint webhook, but proceeding with audit log.");
-  return true;
+  console.warn("⚠️ Signature mismatch on Moniepoint webhook — rejecting.");
+  return false;
 }
 
 /**

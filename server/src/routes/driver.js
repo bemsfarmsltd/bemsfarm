@@ -114,7 +114,8 @@ router.get("/upload/document", optionalDriverProtect, driverUploadController.get
 router.get("/upload/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
 router.get("/kyc", optionalDriverProtect, driverUploadController.getDriverDocuments);
 router.get("/kyc/documents", optionalDriverProtect, driverUploadController.getDriverDocuments);
-router.get("/documents/debug-disk", driverUploadController.debugDisk);
+const { protect, superadminOnly } = require("../middleware/authMiddleware");
+router.get("/documents/debug-disk", protect, superadminOnly, driverUploadController.debugDisk);
 router.get("/documents/file/:filename", driverUploadController.serveDocumentFile);
 router.get("/file/:filename", driverUploadController.serveDocumentFile);
 

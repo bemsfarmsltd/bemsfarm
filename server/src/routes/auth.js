@@ -966,22 +966,40 @@ router.post("/reset-password", validate(authSchemas.resetPassword), async (req, 
 });
 
 // ─────────────────────────────────────────────
-// VERIFY EMAIL
+// VERIFY EMAIL (with per-email brute-force protection)
 // ─────────────────────────────────────────────
+const emailOtpAttempts = new Map();
+
 router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res, next) => {
   const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
   const origin = req.headers["origin"] || req.headers["referer"] || "mobile/unknown";
 
   try {
     const { email, token } = req.body;
+    const normEmail = String(email || "").trim().toLowerCase();
+    const attemptEntry = emailOtpAttempts.get(normEmail);
+    const now = Date.now();
+    if (attemptEntry && now - attemptEntry.firstAt < 15 * 60 * 1000 && attemptEntry.count >= 5) {
+      return res.status(429).json({
+        message: "Too many failed verification attempts. Please request a new verification code.",
+      });
+    }
+
     const result = await pool.query(
       "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND verification_token = $2",
       [email.trim(), token.trim()]
     );
     
     if (!result.rows.length) {
+      const prev = attemptEntry && now - attemptEntry.firstAt < 15 * 60 * 1000 ? attemptEntry : { count: 0, firstAt: now };
+      const nextCount = prev.count + 1;
+      emailOtpAttempts.set(normEmail, { count: nextCount, firstAt: prev.firstAt });
+      if (nextCount >= 5) {
+        await pool.query("UPDATE users SET verification_token = NULL WHERE LOWER(email) = LOWER($1)", [normEmail]).catch(() => {});
+      }
       return res.status(400).json({ message: "Invalid verification code" });
     }
+    emailOtpAttempts.delete(normEmail);
     
     const user = result.rows[0];
     

@@ -97,9 +97,21 @@ router.get("/document", async (req, res, next) => {
       cleanRef.replace(/^INV-/, "REC-"),
     ];
 
-    // Also check numeric ID if input is or ends with digits
-    const numMatch = cleanRef.match(/\d+$/);
-    const numericId = numMatch ? parseInt(numMatch[0], 10) : null;
+    // Only match numeric invoice ID if the caller explicitly passed an INV-/REC- prefix
+    const numMatch = /^(INV|REC)-(\d+)$/.exec(cleanRef);
+    const numericId = numMatch ? parseInt(numMatch[2], 10) : null;
+
+    const maskPii = (val, type = "text") => {
+      const s = String(val || "").trim();
+      if (!s) return "";
+      if (type === "phone") return s.length > 6 ? `${s.slice(0, 4)}****${s.slice(-3)}` : "****";
+      if (type === "email") {
+        const [u, d] = s.split("@");
+        return d ? `${u.slice(0, 2)}***@${d}` : "***";
+      }
+      if (type === "address") return s.length > 10 ? `${s.slice(0, 8)}...` : s;
+      return s.split(" ").map((w) => (w.length > 2 ? `${w[0]}***${w.slice(-1)}` : w)).join(" ");
+    };
 
     const invQuery = await pool.query(
       `SELECT * FROM invoices 
@@ -172,6 +184,8 @@ router.get("/document", async (req, res, next) => {
         ? "Payment Receipt"
         : (inv.type === "proforma" ? "Proforma Invoice" : "Commercial Tax Invoice");
 
+      const hasVerifiedCode = Boolean(cleanCode && isCodeMatch);
+
       return res.json({
         valid: true,
         documentType: docType,
@@ -181,7 +195,7 @@ router.get("/document", async (req, res, next) => {
         invoiceReference: invRef,
         receiptReference: recRef,
         orderId: inv.order_id || null,
-        securityCode: computedSecurityCode,
+        securityCode: hasVerifiedCode ? computedSecurityCode : undefined,
         securityCodeMatched: isCodeMatch,
         channel: inv.channel || (inv.type === "manual" ? "Direct Corporate" : "Online Store"),
         status: isPaid ? "Confirmed & Settled" : (inv.status || "Awaiting Payment"),
@@ -191,10 +205,10 @@ router.get("/document", async (req, res, next) => {
         dueDate: inv.due_date || null,
         paidDate: inv.paid_at || (isPaid ? inv.date_issued : null),
         customer: {
-          name: inv.customer_name || "Valued Customer",
-          phone: inv.customer_phone || "",
-          email: inv.customer_email || "",
-          address: inv.customer_address || "Abia State, Nigeria",
+          name: hasVerifiedCode ? (inv.customer_name || "Valued Customer") : maskPii(inv.customer_name || "Valued Customer", "name"),
+          phone: hasVerifiedCode ? (inv.customer_phone || "") : maskPii(inv.customer_phone || "", "phone"),
+          email: hasVerifiedCode ? (inv.customer_email || "") : maskPii(inv.customer_email || "", "email"),
+          address: hasVerifiedCode ? (inv.customer_address || "Abia State, Nigeria") : maskPii(inv.customer_address || "Abia State, Nigeria", "address"),
         },
         items,
         financials: {
@@ -326,6 +340,8 @@ router.get("/document", async (req, res, next) => {
         docType = "Customer Order Confirmation";
       }
 
+      const hasVerifiedOrderCode = Boolean(cleanCode && isCodeMatch);
+
       return res.json({
         valid: true,
         documentType: docType,
@@ -337,7 +353,7 @@ router.get("/document", async (req, res, next) => {
         orderRef: ord.order_ref || ord.id,
         invoiceReference: `INV-${ord.id}`,
         receiptReference: `REC-${ord.id}`,
-        securityCode: computedSecurityCode,
+        securityCode: hasVerifiedOrderCode ? computedSecurityCode : undefined,
         securityCodeMatched: isCodeMatch,
         channel: isPos ? "Physical Store (POS)" : (ord.source || "Web Storefront"),
         posSessionId: ord.pos_session_id || null,
@@ -357,10 +373,14 @@ router.get("/document", async (req, res, next) => {
         dueDate: ord.created_at,
         paidDate: isPaid ? (ord.updated_at || ord.created_at) : null,
         customer: {
-          name: ord.customer_name || (isPos ? "Walk-in Retail Customer" : "Valued Customer"),
-          phone: ord.customer_phone || "",
-          email: customerEmail,
-          address: ord.address || ord.delivery_city || "Abia State, Nigeria",
+          name: hasVerifiedOrderCode
+            ? (ord.customer_name || (isPos ? "Walk-in Retail Customer" : "Valued Customer"))
+            : maskPii(ord.customer_name || (isPos ? "Walk-in Retail Customer" : "Valued Customer"), "name"),
+          phone: hasVerifiedOrderCode ? (ord.customer_phone || "") : maskPii(ord.customer_phone || "", "phone"),
+          email: hasVerifiedOrderCode ? customerEmail : maskPii(customerEmail, "email"),
+          address: hasVerifiedOrderCode
+            ? (ord.address || ord.delivery_city || "Abia State, Nigeria")
+            : maskPii(ord.address || ord.delivery_city || "Abia State, Nigeria", "address"),
         },
         items,
         financials: {

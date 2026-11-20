@@ -47,9 +47,15 @@ app.use(
         process.env.FRONTEND_URL,
         process.env.ADMIN_URL,
       ].filter(Boolean);
-      if (allowed.includes(origin)) return callback(null, true);
-      console.warn(`[CORS] Non-standard origin: ${origin} — allowing for mobile compatibility`);
-      return callback(null, true);
+      if (
+        allowed.includes(origin) ||
+        /^https:\/\/([a-z0-9-]+\.)?bemsfarms\.com$/i.test(origin) ||
+        /^https:\/\/([a-z0-9-]+\.)?bemserp\.work$/i.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      console.warn(`[CORS] Blocked untrusted browser origin: ${origin}`);
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -103,6 +109,8 @@ const uploadsStatic = express.static(path.join(__dirname, "../uploads"), {
   setHeaders: (res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
   }
 });
 app.use("/uploads", uploadsStatic);
@@ -245,15 +253,7 @@ app.use('/api/audit', require('./routes/audit'));
 
 
 const getClientIp = (req) => {
-  return (
-    req.headers["cf-connecting-ip"] ||
-    req.headers["x-real-ip"] ||
-    (req.headers["x-forwarded-for"]
-      ? req.headers["x-forwarded-for"].split(",")[0].trim()
-      : null) ||
-    req.ip ||
-    "127.0.0.1"
-  );
+  return req.headers["cf-connecting-ip"] || req.ip || "127.0.0.1";
 };
 
 const generalLimiter = rateLimit({
@@ -431,7 +431,12 @@ app.get("/test", (req, res) => res.json({ message: "server works" }));
 
 try {
   const swaggerDocument = require('../swagger-output.json');
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  const { protect, requireRole } = require("./middleware/authMiddleware");
+  const docsGate =
+    process.env.NODE_ENV === "production"
+      ? [protect, requireRole("superadmin", "admin", "manager", "app_developer")]
+      : [];
+  app.use('/api/docs', ...docsGate, swaggerUi.serve, swaggerUi.setup(swaggerDocument));
   console.log("Swagger UI available at /api/docs");
 } catch (error) {
   console.log("Swagger UI not loaded: swagger-output.json not found. Run 'node swagger.js' to generate.");
