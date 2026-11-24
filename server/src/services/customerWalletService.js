@@ -359,6 +359,55 @@ async function creditCustomerWalletFromMonnifyWebhook(eventData) {
       ]
     );
 
+    // Record in core payments, transactions, and income ledgers for unified accounting
+    await client
+      .query(
+        `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, metadata, paid_at, created_at, updated_at)
+         VALUES ($1, NULL, $2, 'paid', 'Monnify Reserved Account', $3::jsonb, NOW(), NOW(), NOW())
+         ON CONFLICT (payment_ref) DO NOTHING`,
+        [
+          txRef,
+          amount,
+          JSON.stringify({
+            type: "wallet_topup",
+            customer_id: wallet.customer_id,
+            account_reference: productRef,
+            destination_account: destAcct,
+            sender_name: senderName,
+          }),
+        ]
+      )
+      .catch(() => {});
+
+    await client
+      .query(
+        `INSERT INTO transactions (reference, date, time, type, sub_type, description, amount, status, related_ref, created_at)
+         VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'income', 'wallet_topup', $2, $3, 'completed', $4, NOW())
+         ON CONFLICT (reference) DO NOTHING`,
+        [
+          txRef,
+          `Customer Wallet Top-up via Monnify (${senderName} -> ${destAcct || productRef})`,
+          amount,
+          productRef || String(wallet.customer_id),
+        ]
+      )
+      .catch(() => {});
+
+    await client
+      .query(
+        `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, status, date, created_by)
+         VALUES ($1, $2, 'wallet_topup', 'Wallet Credit', $3, $4, 'Bank Transfer', 'completed', CURRENT_DATE, $5)
+         ON CONFLICT (reference) DO NOTHING`,
+        [
+          `INC-WAL-${txRef.slice(-36)}`,
+          senderName,
+          `Customer Wallet Top-up via Monnify Reserved Account (${destAcct || productRef}, Ref: ${txRef})`,
+          amount,
+          wallet.customer_id,
+        ]
+      )
+      .catch(() => {});
+
     await client.query("COMMIT");
 
     try {

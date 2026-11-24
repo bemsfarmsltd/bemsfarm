@@ -263,6 +263,71 @@ async function recordMoniepointTransaction(payload) {
 
   console.log(`[Moniepoint POS] Recorded payment ₦${norm.amount} on terminal ${norm.terminalId} (Ref: ${norm.transactionId})`);
 
+  // Persist every Moniepoint POS webhook transaction into the core `payments` and `transactions`
+  // tables immediately so the system keeps a permanent record of every terminal transaction
+  // even if the swipe is not yet mapped to an order.
+  try {
+    const payStatus = norm.status === "successful" ? "paid" : norm.status || "pending";
+    const txnStatus = norm.status === "successful" ? "completed" : norm.status === "failed" ? "failed" : "pending";
+    const desc = [
+      `Moniepoint POS ${norm.paymentMethod || "CARD"} Payment`,
+      norm.terminalId ? `Terminal: ${norm.terminalId}` : null,
+      norm.rrn ? `RRN: ${norm.rrn}` : null,
+      norm.customerName ? `Customer: ${norm.customerName}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    await pool
+      .query(
+        `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, pos_terminal_id, metadata, paid_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW(), NOW(), NOW())
+         ON CONFLICT (payment_ref) DO UPDATE SET
+           status = EXCLUDED.status,
+           order_id = COALESCE(payments.order_id, EXCLUDED.order_id),
+           pos_terminal_id = COALESCE(EXCLUDED.pos_terminal_id, payments.pos_terminal_id),
+           updated_at = NOW()`,
+        [
+          norm.transactionId,
+          row.used_for_order_id || null,
+          norm.amount,
+          payStatus,
+          `Moniepoint POS (${norm.paymentMethod || "CARD"})`,
+          norm.terminalId || null,
+          JSON.stringify({
+            gateway: "MONIEPOINT_POS",
+            pos_transaction_id: row.id,
+            terminal_id: norm.terminalId,
+            rrn: norm.rrn,
+            card_type: norm.cardType,
+            last_four: norm.lastFour,
+            customer_name: norm.customerName,
+            sender_bank: norm.senderBank,
+          }),
+        ]
+      )
+      .catch((e) => console.warn("[Moniepoint POS] payments table record notice:", e.message));
+
+    await pool
+      .query(
+        `INSERT INTO transactions (reference, date, time, type, sub_type, description, amount, status, related_ref, created_at)
+         VALUES ($1, CURRENT_DATE, CURRENT_TIME, 'income', 'moniepoint_pos', $2, $3, $4, $5, NOW())
+         ON CONFLICT (reference) DO UPDATE SET
+           status = EXCLUDED.status,
+           related_ref = COALESCE(transactions.related_ref, EXCLUDED.related_ref)`,
+        [
+          norm.transactionId,
+          desc,
+          norm.amount,
+          txnStatus,
+          row.used_for_order_id || norm.rrn || norm.terminalId || null,
+        ]
+      )
+      .catch((e) => console.warn("[Moniepoint POS] transactions table record notice:", e.message));
+  } catch (ledgerErr) {
+    console.warn("[Moniepoint POS] Ledger record notice:", ledgerErr.message);
+  }
+
   // Broadcast to all connected POS screens via Socket.io
   try {
     const io = getIO();
@@ -422,11 +487,43 @@ async function autoCompleteHeldOrderIfMatched(txnRow, norm) {
       console.warn("[Moniepoint POS Auto] Payment record notice:", pmtErr.message);
     }
 
-    // Link pos_transactions row to this order
+    // Link pos_transactions row and core ledger records to this order
     await client.query(
       `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2`,
       [posRef, txnRow.id]
     );
+    await client
+      .query(`UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2`, [
+        posRef,
+        norm.transactionId,
+      ])
+      .catch(() => {});
+    await client
+      .query(`UPDATE transactions SET related_ref = $1 WHERE reference = $2`, [posRef, norm.transactionId])
+      .catch(() => {});
+
+    // Record in income ledger
+    try {
+      const sysUser = await client.query(
+        "SELECT id FROM users ORDER BY (CASE WHEN role='superadmin' THEN 1 WHEN role='manager' THEN 2 WHEN role='admin' THEN 3 ELSE 4 END) LIMIT 1"
+      );
+      const adminId = sysUser.rows[0]?.id || 1;
+      await client.query(
+        `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+         VALUES ($1, $2, 'pos_sale', 'Walk-in Sale', $3, $4, 'POS Terminal', $5, 'completed', CURRENT_DATE, $6)
+         ON CONFLICT (reference) DO NOTHING`,
+        [
+          `INC-${posRef}`,
+          custName,
+          `Moniepoint POS Retail Sale (${posRef}, Terminal: ${terminalSn}, Ref: ${norm.transactionId})`,
+          total,
+          posRef,
+          adminId,
+        ]
+      );
+    } catch (incErr) {
+      console.warn("[Moniepoint POS Auto] Income record notice:", incErr.message);
+    }
 
     // Build complete receipt payload
     const receiptData = {
@@ -531,6 +628,15 @@ async function ensureDriverPosSchema() {
         `ALTER TABLE pos_transactions ALTER COLUMN used_for_order_id TYPE VARCHAR(100) USING used_for_order_id::text`
       )
       .catch(() => {});
+    await pool
+      .query(
+        `ALTER TABLE transactions ALTER COLUMN reference TYPE VARCHAR(150);
+         ALTER TABLE transactions ALTER COLUMN related_ref TYPE VARCHAR(150);
+         ALTER TABLE income ALTER COLUMN reference TYPE VARCHAR(150);
+         ALTER TABLE income ALTER COLUMN created_by DROP NOT NULL;
+         ALTER TABLE payments ALTER COLUMN payment_ref TYPE VARCHAR(150);`
+      )
+      .catch(() => {});
     driverPosSchemaEnsured = true;
   } catch (err) {
     console.warn("[Moniepoint POS] ensureDriverPosSchema notice:", err.message);
@@ -571,6 +677,19 @@ async function claimDriverCodPaymentWithClient(client, orderRow, txnRow, driverI
     `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2 AND used_for_order_id IS NULL`,
     [String(orderRow.id), txnRow.id]
   );
+
+  await client
+    .query(`UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL`, [
+      String(orderRow.id),
+      txnRow.transaction_id,
+    ])
+    .catch(() => {});
+  await client
+    .query(`UPDATE transactions SET related_ref = $1 WHERE reference = $2`, [
+      String(orderRow.id),
+      txnRow.transaction_id,
+    ])
+    .catch(() => {});
 
   await client.query(
     `UPDATE orders

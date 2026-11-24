@@ -681,31 +681,46 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       );
     }
 
-    // Monnify's webhook can arrive before this order row exists (it fires the
-    // moment Monnify's backend sees the payment, independent of our own
-    // create-order round trip). When that happens, the webhook's order lookup
-    // in misc.js finds nothing, writes its `payments` row with order_id=NULL,
-    // and — since webhooks aren't retried on a 2xx response — never gets
-    // another chance to link it or write the income ledger entry. Close that
-    // gap here: if an orphaned payment for this payment_ref is already
-    // sitting there, link it and backfill the ledger entry the webhook would
-    // have written had it found this order in time.
-    if (method === "monnify") {
-      const orphanedPayment = await client.query(
-        "UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL RETURNING id",
-        [orderId, effectivePaymentRef],
-      );
-      if (orphanedPayment.rows.length > 0) {
-        const systemUserRes = await client.query(
-          "SELECT id FROM users ORDER BY (CASE WHEN role='superadmin' THEN 1 WHEN role='manager' THEN 2 WHEN role='admin' THEN 3 ELSE 4 END) LIMIT 1",
+    // Record paid storefront/app orders in `payments` and `income` ledgers immediately
+    // and link any early Monnify webhook payment row that arrived before the order row existed.
+    if (isGatewayPaid || isWalletPaid) {
+      const payRef = method === "monnify" ? effectivePaymentRef : `WAL-${orderId}`;
+      try {
+        await client.query("SAVEPOINT ord_pay_sp");
+        await client.query(
+          `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, customer_email, metadata, paid_at, created_at, updated_at)
+           VALUES ($1, $2, $3, 'paid', $4, $5, $6::jsonb, NOW(), NOW(), NOW())
+           ON CONFLICT (payment_ref) DO UPDATE SET
+             order_id = COALESCE(payments.order_id, EXCLUDED.order_id),
+             status = 'paid',
+             updated_at = NOW()`,
+          [
+            payRef,
+            orderId,
+            total,
+            method,
+            req.user.email || null,
+            JSON.stringify({ source: source || "Storefront", order_id: orderId }),
+          ]
         );
-        const systemUserId = systemUserRes.rows[0]?.id || null;
         await client.query(
           `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
-           VALUES ($1, 'sales', 'online_order', 'POS/Online Sale', $2, $3, 'transfer', $4, 'completed', CURRENT_DATE, $5)
+           VALUES ($1, $2, 'online_order', 'Online Order', $3, $4, $5, $6, 'completed', CURRENT_DATE, $7)
            ON CONFLICT (reference) DO NOTHING`,
-          [`INC-${effectivePaymentRef}`, `Automated payment reconciliation for Order #${orderId}`, monnifyData.amountPaid, String(orderId), systemUserId],
+          [
+            `INC-${orderId}`,
+            req.user.name || req.user.email || "Customer",
+            `Online Order #${orderId} paid via ${method === "wallet" ? "Bems Wallet" : "Monnify"} (Ref: ${payRef})`,
+            total,
+            method === "wallet" ? "Wallet" : "Monnify",
+            String(orderId),
+            req.user.id,
+          ]
         );
+        await client.query("RELEASE SAVEPOINT ord_pay_sp");
+      } catch (payLedErr) {
+        await client.query("ROLLBACK TO SAVEPOINT ord_pay_sp").catch(() => {});
+        console.warn("Non-fatal storefront order payment/income ledger notice:", payLedErr.message);
       }
     }
 

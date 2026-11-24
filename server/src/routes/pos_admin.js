@@ -689,6 +689,49 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
         "UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2",
         [orderId, verifiedPosTxnId]
       );
+      await client
+        .query(
+          `UPDATE payments p
+           SET order_id = $1, updated_at = NOW()
+           FROM pos_transactions pt
+           WHERE pt.id = $2 AND p.payment_ref = pt.transaction_id`,
+          [orderId, verifiedPosTxnId]
+        )
+        .catch(() => {});
+      await client
+        .query(
+          `UPDATE transactions t
+           SET related_ref = $1
+           FROM pos_transactions pt
+           WHERE pt.id = $2 AND t.reference = pt.transaction_id`,
+          [orderId, verifiedPosTxnId]
+        )
+        .catch(() => {});
+    }
+
+    // Record paid POS sale in the income table for Finance & Accounts -> Income
+    if (!isPayLater) {
+      try {
+        await client.query("SAVEPOINT pos_inc_sp");
+        await client.query(
+          `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+           VALUES ($1, $2, 'pos_sale', 'Walk-in Sale', $3, $4, $5, $6, 'completed', CURRENT_DATE, $7)
+           ON CONFLICT (reference) DO NOTHING`,
+          [
+            `INC-${reference}`,
+            customer_name || "Walk-in Customer",
+            `POS Retail Sale (${reference}) for ${customer_name || "Walk-in Customer"} (${payment_method})`,
+            total,
+            payment_method,
+            orderId,
+            req.user.id,
+          ]
+        );
+        await client.query("RELEASE SAVEPOINT pos_inc_sp");
+      } catch (incErr) {
+        await client.query("ROLLBACK TO SAVEPOINT pos_inc_sp").catch(() => {});
+        console.warn("Non-fatal POS income record notice:", incErr.message);
+      }
     }
 
     // Insert order items, calculate COGS, and deduct stock
@@ -2771,6 +2814,18 @@ router.post(
             `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2 AND used_for_order_id IS NULL`,
             [String(splitOrd.id), txn.id]
           );
+          await pool
+            .query(`UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL`, [
+              String(splitOrd.id),
+              txn.transaction_id,
+            ])
+            .catch(() => {});
+          await pool
+            .query(`UPDATE transactions SET related_ref = $1 WHERE reference = $2`, [
+              String(splitOrd.id),
+              txn.transaction_id,
+            ])
+            .catch(() => {});
           await pool.query(
             `UPDATE payments
              SET gateway_ref = COALESCE(gateway_ref, $1),
@@ -2885,6 +2940,18 @@ router.post(
             `UPDATE pos_transactions SET used_for_order_id = $1 WHERE id = $2`,
             [String(ord.id), txn.id]
           );
+          await client
+            .query(`UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL`, [
+              String(ord.id),
+              txn.transaction_id,
+            ])
+            .catch(() => {});
+          await client
+            .query(`UPDATE transactions SET related_ref = $1 WHERE reference = $2`, [
+              String(ord.id),
+              txn.transaction_id,
+            ])
+            .catch(() => {});
           await client.query(
             `UPDATE payments
              SET gateway_ref = COALESCE(gateway_ref, $1),

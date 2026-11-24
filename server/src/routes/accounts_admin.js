@@ -592,10 +592,8 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
-    const countRes = await pool.query(
-      `
-      WITH unified_transactions AS (
-        -- 1. Direct transactions in transactions table
+    const unifiedQueryBody = `
+        -- 1. Direct transactions in transactions table (excluding ones already covered by a linked order row below)
         SELECT
           t.id::text AS id,
           t.reference,
@@ -606,11 +604,18 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
           t.description,
           t.amount::numeric AS amount,
           t.status,
-          ba.bank_name,
-          ba.account_name AS bank_account,
+          COALESCE(ba.bank_name, CASE WHEN t.sub_type = 'moniepoint_pos' THEN 'Moniepoint POS Terminal' WHEN t.sub_type = 'wallet_topup' THEN 'Monnify Reserved Account' ELSE 'Monnify Vault' END) AS bank_name,
+          COALESCE(ba.account_name, CASE WHEN t.sub_type = 'moniepoint_pos' THEN COALESCE(t.related_ref, 'POS Terminal') WHEN t.sub_type = 'wallet_topup' THEN COALESCE(t.related_ref, 'Customer Wallet') ELSE 'Main Vault' END) AS bank_account,
           t.created_at
         FROM transactions t
         LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
+        WHERE NOT (
+          t.sub_type = 'moniepoint_pos'
+          AND EXISTS (
+            SELECT 1 FROM orders o
+            WHERE o.id = t.related_ref OR o.order_ref = t.related_ref OR o.payment_ref = t.reference
+          )
+        )
 
         UNION ALL
 
@@ -637,7 +642,7 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
 
         UNION ALL
 
-        -- 3. Completed Driver Payouts / Disbursements
+        -- 3. Completed Driver Payouts / Disbursements (excluding ones already written to transactions)
         SELECT
           CONCAT('PAY-', p.id) AS id,
           COALESCE(p.payout_ref, CONCAT('PAY-', p.id)) AS reference,
@@ -653,7 +658,66 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
           p.requested_at AS created_at
         FROM driver_payouts p
         JOIN drivers dr ON p.driver_id = dr.id
-        WHERE p.status = 'paid' OR p.status = 'completed'
+        WHERE (p.status = 'paid' OR p.status = 'completed')
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions t
+            WHERE t.reference = p.payout_ref OR t.related_ref = p.payout_ref
+          )
+
+        UNION ALL
+
+        -- 4. Moniepoint POS Terminal Webhook Transactions (unmapped or standalone terminal payments not already in transactions/orders)
+        SELECT
+          CONCAT('POS-TXN-', pt.id) AS id,
+          pt.transaction_id AS reference,
+          pt.payment_time::date::text AS date,
+          pt.payment_time::time::text AS time,
+          'income' AS type,
+          'moniepoint_pos' AS sub_type,
+          CONCAT(
+            'Moniepoint POS ', COALESCE(pt.payment_method, 'CARD'), ' Payment',
+            CASE WHEN pt.terminal_id IS NOT NULL THEN CONCAT(' · Terminal: ', pt.terminal_id) ELSE '' END,
+            CASE WHEN pt.rrn IS NOT NULL AND pt.rrn <> '' THEN CONCAT(' · RRN: ', pt.rrn) ELSE '' END,
+            CASE WHEN pt.used_for_order_id IS NOT NULL THEN CONCAT(' · Order: ', pt.used_for_order_id) ELSE ' (Unmapped Terminal Receipt)' END
+          ) AS description,
+          pt.amount::numeric AS amount,
+          CASE WHEN pt.status = 'successful' THEN 'completed' WHEN pt.status = 'failed' THEN 'failed' ELSE 'pending' END AS status,
+          'Moniepoint POS Terminal' AS bank_name,
+          COALESCE(pt.terminal_id, 'C66P008D08368495') AS bank_account,
+          pt.payment_time AS created_at
+        FROM pos_transactions pt
+        WHERE pt.used_for_order_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions t WHERE t.reference = pt.transaction_id
+          )
+
+        UNION ALL
+
+        -- 5. Customer Dedicated Wallet Top-ups via Monnify Reserved Account (not already in transactions)
+        SELECT
+          CONCAT('CWAL-', cwt.id) AS id,
+          cwt.reference AS reference,
+          cwt.created_at::date::text AS date,
+          cwt.created_at::time::text AS time,
+          'income' AS type,
+          'wallet_topup' AS sub_type,
+          COALESCE(cwt.description, CONCAT('Customer Wallet Top-up (Customer #', cwt.customer_id, ')')) AS description,
+          cwt.amount::numeric AS amount,
+          'completed' AS status,
+          'Monnify Reserved Account' AS bank_name,
+          COALESCE(cwt.metadata->>'destination_account', cwt.metadata->>'account_reference', CONCAT('BEMS-CUST-', cwt.customer_id)) AS bank_account,
+          cwt.created_at
+        FROM customer_wallet_transactions cwt
+        WHERE cwt.type = 'credit'
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions t WHERE t.reference = cwt.reference
+          )
+    `;
+
+    const countRes = await pool.query(
+      `
+      WITH unified_transactions AS (
+        ${unifiedQueryBody}
       )
       SELECT COUNT(*) FROM unified_transactions u ${whereClause}
       `,
@@ -666,65 +730,7 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
     const rows = await pool.query(
       `
       WITH unified_transactions AS (
-        -- 1. Direct transactions in transactions table
-        SELECT
-          t.id::text AS id,
-          t.reference,
-          t.date::text AS date,
-          t.time::text AS time,
-          t.type,
-          t.sub_type,
-          t.description,
-          t.amount::numeric AS amount,
-          t.status,
-          ba.bank_name,
-          ba.account_name AS bank_account,
-          t.created_at
-        FROM transactions t
-        LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
-
-        UNION ALL
-
-        -- 2. Customer Storefront & POS Orders
-        SELECT
-          CONCAT('ORD-', o.id) AS id,
-          COALESCE(o.order_ref, o.id) AS reference,
-          o.created_at::date::text AS date,
-          o.created_at::time::text AS time,
-          'income' AS type,
-          CASE WHEN o.source LIKE '%POS%' THEN 'pos_sale' ELSE 'customer_checkout' END AS sub_type,
-          CONCAT(
-            CASE WHEN o.source LIKE '%POS%' THEN 'POS Retail Sale: ' ELSE 'Online Order: ' END,
-            COALESCE(o.customer_name, 'Customer'),
-            ' (', COALESCE(o.payment_method, 'Monnify'), ')'
-          ) AS description,
-          o.total::numeric AS amount,
-          CASE WHEN o.payment_status = 'paid' THEN 'completed' ELSE 'pending' END AS status,
-          CASE WHEN o.source LIKE '%POS%' THEN 'POS Cash Drawer' ELSE 'Monnify Settlement Vault' END AS bank_name,
-          CASE WHEN o.source LIKE '%POS%' THEN 'POS Register #1' ELSE 'Monnify Master DVA' END AS bank_account,
-          o.created_at
-        FROM orders o
-        WHERE (o.payment_status = 'paid' OR o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
-
-        UNION ALL
-
-        -- 3. Completed Driver Payouts / Disbursements
-        SELECT
-          CONCAT('PAY-', p.id) AS id,
-          COALESCE(p.payout_ref, CONCAT('PAY-', p.id)) AS reference,
-          p.requested_at::date::text AS date,
-          p.requested_at::time::text AS time,
-          'expense' AS type,
-          'driver_payout' AS sub_type,
-          CONCAT('Driver Bank Payout to ', dr.name, ' (', COALESCE(p.bank_name, 'Bank'), ' - ', p.account_number, ')') AS description,
-          -p.amount::numeric AS amount,
-          p.status,
-          'Monnify Vault' AS bank_name,
-          'Disbursement Channel' AS bank_account,
-          p.requested_at AS created_at
-        FROM driver_payouts p
-        JOIN drivers dr ON p.driver_id = dr.id
-        WHERE p.status = 'paid' OR p.status = 'completed'
+        ${unifiedQueryBody}
       )
       SELECT * FROM unified_transactions u
       ${whereClause}

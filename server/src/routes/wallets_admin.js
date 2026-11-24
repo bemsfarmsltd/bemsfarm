@@ -983,42 +983,83 @@ router.get("/gateway/overview", async (req, res, next) => {
 });
 
 // ── GET /api/admin/wallets/gateway/transactions ────────────────────
-// Real-time customer checkout payments processed via Monnify / Cards
+// Real-time customer checkout payments, Moniepoint POS terminal webhooks, and wallet top-ups
 router.get("/gateway/transactions", async (req, res, next) => {
   try {
     const { status = "all", channel = "all", search = "", limit = 100 } = req.query;
 
     let query = `
-      SELECT 
-        o.id,
-        o.order_ref,
-        o.customer_name,
-        o.customer_phone,
-        o.total AS amount,
-        ROUND(o.total * 0.015, 2) AS gateway_fee,
-        ROUND(o.total * 0.985, 2) AS net_settlement,
-        COALESCE(o.payment_method, 'monnify') AS payment_method,
-        COALESCE(o.payment_status, 'paid') AS payment_status,
-        COALESCE(o.payment_ref, CONCAT('MNFY-', o.order_ref)) AS payment_ref,
-        o.created_at,
-        o.status AS order_status
-      FROM orders o
-      WHERE (o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
+      WITH gateway_feed AS (
+        SELECT 
+          o.id::text AS id,
+          COALESCE(o.order_ref, o.id) AS order_ref,
+          COALESCE(o.customer_name, 'Customer') AS customer_name,
+          COALESCE(o.customer_phone, '') AS customer_phone,
+          o.total::numeric AS amount,
+          ROUND(o.total * 0.015, 2) AS gateway_fee,
+          ROUND(o.total * 0.985, 2) AS net_settlement,
+          COALESCE(o.payment_method, 'monnify') AS payment_method,
+          COALESCE(o.payment_status, 'paid') AS payment_status,
+          COALESCE(o.payment_ref, CONCAT('MNFY-', COALESCE(o.order_ref, o.id))) AS payment_ref,
+          o.created_at,
+          o.status AS order_status
+        FROM orders o
+        WHERE (o.payment_method IN ('monnify', 'card', 'transfer', 'online', 'wallet') OR o.payment_ref IS NOT NULL)
+
+        UNION ALL
+
+        SELECT
+          CONCAT('POS-TXN-', pt.id) AS id,
+          COALESCE(pt.used_for_order_id::text, CONCAT('TERM-', COALESCE(pt.terminal_id, 'POS'))) AS order_ref,
+          COALESCE(NULLIF(pt.customer_name, ''), 'Moniepoint POS Customer') AS customer_name,
+          COALESCE(pt.terminal_id, '') AS customer_phone,
+          pt.amount::numeric AS amount,
+          ROUND(pt.amount * 0.005, 2) AS gateway_fee,
+          ROUND(pt.amount * 0.995, 2) AS net_settlement,
+          CONCAT('Moniepoint POS (', COALESCE(pt.payment_method, 'CARD'), ')') AS payment_method,
+          CASE WHEN pt.status = 'successful' THEN 'paid' ELSE COALESCE(pt.status, 'pending') END AS payment_status,
+          pt.transaction_id AS payment_ref,
+          pt.payment_time AS created_at,
+          CASE WHEN pt.used_for_order_id IS NOT NULL THEN 'reconciled' ELSE 'unmapped_webhook' END AS order_status
+        FROM pos_transactions pt
+        WHERE pt.used_for_order_id IS NULL
+
+        UNION ALL
+
+        SELECT
+          CONCAT('CWAL-', cwt.id) AS id,
+          COALESCE(cwt.metadata->>'account_reference', CONCAT('BEMS-CUST-', cwt.customer_id)) AS order_ref,
+          COALESCE(u.name, 'Customer Wallet') AS customer_name,
+          COALESCE(u.phone, '') AS customer_phone,
+          cwt.amount::numeric AS amount,
+          ROUND(cwt.amount * 0.01, 2) AS gateway_fee,
+          ROUND(cwt.amount * 0.99, 2) AS net_settlement,
+          'Monnify Reserved Account' AS payment_method,
+          'paid' AS payment_status,
+          cwt.reference AS payment_ref,
+          cwt.created_at,
+          'wallet_topup' AS order_status
+        FROM customer_wallet_transactions cwt
+        LEFT JOIN users u ON u.id = cwt.customer_id
+        WHERE cwt.type = 'credit'
+      )
+      SELECT * FROM gateway_feed g
+      WHERE 1=1
     `;
 
     const params = [];
 
     if (status && status !== "all") {
       params.push(status);
-      query += ` AND o.payment_status = $${params.length}`;
+      query += ` AND g.payment_status = $${params.length}`;
     }
 
     if (search.trim()) {
       params.push(`%${search.trim().toLowerCase()}%`);
-      query += ` AND (LOWER(o.order_ref) LIKE $${params.length} OR LOWER(o.customer_name) LIKE $${params.length} OR o.customer_phone LIKE $${params.length} OR LOWER(o.payment_ref) LIKE $${params.length})`;
+      query += ` AND (LOWER(g.order_ref) LIKE $${params.length} OR LOWER(g.customer_name) LIKE $${params.length} OR g.customer_phone LIKE $${params.length} OR LOWER(g.payment_ref) LIKE $${params.length})`;
     }
 
-    query += ` ORDER BY o.created_at DESC LIMIT $${params.length + 1}`;
+    query += ` ORDER BY g.created_at DESC LIMIT $${params.length + 1}`;
     params.push(parseInt(limit) || 100);
 
     const result = await pool.query(query, params);
