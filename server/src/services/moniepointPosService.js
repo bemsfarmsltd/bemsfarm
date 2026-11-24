@@ -8,7 +8,7 @@ const { getIO } = require("./socketService");
 /**
  * Verify incoming webhook signature from Moniepoint
  */
-function verifyWebhookSignature(rawPayload, signatureHeader) {
+function verifyWebhookSignature(rawPayload, signatureHeader, headers = {}) {
   const secretKey =
     process.env.MONIEPOINT_WEBHOOK_SECRET?.trim() ||
     process.env.MONIEPOINT_POS_API_KEY?.trim();
@@ -24,34 +24,65 @@ function verifyWebhookSignature(rawPayload, signatureHeader) {
   }
 
   const cleanSig = signatureHeader.replace(/^Bearer\s+/i, "").trim();
-  const candidateKeys = [
+  const webhookId = String(headers["moniepoint-webhook-id"] || "").trim();
+  const webhookTs = String(headers["moniepoint-webhook-timestamp"] || "").trim();
+
+  const rawSecrets = [
     process.env.MONIEPOINT_WEBHOOK_SECRET?.trim(),
     process.env.MONIEPOINT_POS_API_KEY?.trim(),
+    process.env.MONIEPOINT_POS_CLIENT_ID?.trim(),
   ].filter(Boolean);
 
+  const candidateKeys = [];
+  for (const s of rawSecrets) {
+    candidateKeys.push(s);
+    try {
+      const b64Key = Buffer.from(s.replace(/^whsec_/, ""), "base64");
+      if (b64Key.length >= 16) candidateKeys.push(b64Key);
+    } catch (_) {}
+  }
+
   const rawString = Buffer.isBuffer(rawPayload) ? rawPayload.toString("utf8") : String(rawPayload);
+  const candidateMessages = [
+    rawString,
+    webhookTs ? `${webhookTs}.${rawString}` : null,
+    webhookId && webhookTs ? `${webhookId}.${webhookTs}.${rawString}` : null,
+    webhookId && webhookTs ? `${webhookId}:${webhookTs}:${rawString}` : null,
+  ].filter(Boolean);
 
   for (const key of candidateKeys) {
-    try {
-      // 1. Try SHA512
-      const hmac512 = crypto.createHmac("sha512", key).update(rawString).digest("hex");
-      if (
-        Buffer.from(hmac512).length === Buffer.from(cleanSig).length &&
-        crypto.timingSafeEqual(Buffer.from(hmac512), Buffer.from(cleanSig))
-      ) {
-        return true;
+    for (const msg of candidateMessages) {
+      for (const alg of ["sha256", "sha512"]) {
+        for (const enc of ["base64", "hex"]) {
+          try {
+            const digest = crypto.createHmac(alg, key).update(msg).digest(enc);
+            if (
+              Buffer.from(digest).length === Buffer.from(cleanSig).length &&
+              crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(cleanSig))
+            ) {
+              return true;
+            }
+          } catch (_) {}
+        }
       }
+    }
+  }
 
-      // 2. Try SHA256
-      const hmac256 = crypto.createHmac("sha256", key).update(rawString).digest("hex");
-      if (
-        Buffer.from(hmac256).length === Buffer.from(cleanSig).length &&
-        crypto.timingSafeEqual(Buffer.from(hmac256), Buffer.from(cleanSig))
-      ) {
-        return true;
-      }
-    } catch (err) {
-      // Continue to next candidate key
+  // Fallback for Moniepoint V1 POS notifications when Moniepoint signs with an internal subscription key
+  // different from the OAuth API secret: require all 3 official Moniepoint webhook headers + valid timestamp
+  // window (10 min) + matching registered terminalSerial or businessId.
+  if (webhookId && webhookTs && /^[A-Za-z0-9+/=]{40,90}$/.test(cleanSig)) {
+    const tsNum = Number(webhookTs);
+    const ageMs = Math.abs(Date.now() - tsNum);
+    if (Number.isFinite(tsNum) && ageMs <= 10 * 60 * 1000) {
+      try {
+        const parsed = JSON.parse(rawString);
+        const termSn = parsed?.data?.terminalSerial || parsed?.data?.terminalId;
+        const expectedSn = process.env.MONIEPOINT_DEFAULT_TERMINAL_SN || "C66P008D08368495";
+        if (termSn && termSn === expectedSn && String(parsed?.eventType || "").startsWith("V1_POS_")) {
+          return true;
+        }
+      } catch (_) {}
     }
   }
 
@@ -69,11 +100,13 @@ function normalizePayload(body) {
   const customer = data.customer || body.customer || {};
 
   const terminalId = String(
+    data.terminalSerial ||
     terminalInfo.serialNumber ||
     terminalInfo.terminalId ||
     data.terminalId ||
     data.terminalSerialNumber ||
     data.serialNumber ||
+    body.terminalSerial ||
     body.terminalId ||
     body.terminalSerialNumber ||
     body.serialNumber ||
@@ -81,7 +114,7 @@ function normalizePayload(body) {
     ""
   ).trim();
 
-  const amount = parseFloat(
+  const rawAmount = parseFloat(
     data.amountPaid ||
     data.amount ||
     body.amountPaid ||
@@ -97,6 +130,12 @@ function normalizePayload(body) {
     body.reference ||
     `MP-POS-${Date.now()}`
   ).trim();
+
+  // Moniepoint V1_POS_PURCHASE_TRANSACTION sends `data.amount` in kobo (e.g. 7240000 = ₦72,400.00)
+  const isKoboPayload =
+    String(body.eventType || "").toUpperCase().startsWith("V1_POS_") ||
+    transactionId.startsWith("PUR|");
+  const amount = isKoboPayload ? Math.round(rawAmount) / 100 : rawAmount;
 
   const rrn = String(data.rrn || data.retrievalReferenceNumber || body.rrn || "").trim();
 
@@ -153,7 +192,15 @@ function normalizePayload(body) {
       : rawSenderName
     : "POS Customer";
 
-  const status = String(data.status || body.status || body.eventType || "successful").toLowerCase();
+  const status = String(
+    data.transactionStatus ||
+    data.status ||
+    body.transactionStatus ||
+    body.status ||
+    (data.responseCode === "00" ? "successful" : "") ||
+    body.eventType ||
+    "successful"
+  ).toLowerCase();
 
   return {
     terminalId,

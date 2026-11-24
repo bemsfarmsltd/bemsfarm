@@ -565,6 +565,7 @@ router.get(MONIEPOINT_WEBHOOK_PATHS, (req, res) => {
 router.post(MONIEPOINT_WEBHOOK_PATHS, async (req, res, next) => {
   console.log("🔔 Moniepoint POS webhook event received at path:", req.path);
   const signature =
+    req.headers["moniepoint-webhook-signature"] ||
     req.headers["moniepoint-signature"] ||
     req.headers["monnify-signature"] ||
     req.headers["x-moniepoint-signature"] ||
@@ -582,13 +583,17 @@ router.post(MONIEPOINT_WEBHOOK_PATHS, async (req, res, next) => {
     }
   }
 
-  const isVerified = verifyWebhookSignature(rawPayload, signature);
+  const isVerified = verifyWebhookSignature(rawPayload, signature, req.headers);
 
   // Always log webhook payload into gateway_webhook_logs for full auditability
   try {
     const data = event?.data || event?.eventData || event || {};
     const ref = data.transactionReference || data.reference || data.transactionId || event?.transaction_id || null;
-    const amt = parseFloat(data.amount || event?.amount || 0) || null;
+    const rawAmt = parseFloat(data.amount || event?.amount || 0) || null;
+    const isKoboEvent =
+      String(event?.eventType || "").toUpperCase().startsWith("V1_POS_") ||
+      String(ref || "").startsWith("PUR|");
+    const amt = rawAmt && isKoboEvent ? rawAmt / 100 : rawAmt;
     await pool.query(
       `INSERT INTO gateway_webhook_logs (gateway, event_type, transaction_reference, amount, currency, status, signature_verified, payload, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
