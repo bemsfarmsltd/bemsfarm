@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const QRCode = require("qrcode");
 const { renderDriverStatementHtml, generateSecurityCode } = require("../utils/driverStatementTemplate");
+const { parseDateBound, buildDriverWalletHistory } = require("../utils/driverWalletHistory");
 
 // ── GET /api/driver/earnings ─────────────────────────────────────────
 // Get current wallet balance, commission breakdown, and payout history
@@ -181,109 +182,174 @@ const getEarnings = async (req, res, next) => {
   }
 };
 
-// ── GET /api/driver/wallet/history ───────────────────────────────────
-// Chronological transaction feed separated into income and payouts
+// ── GET /api/driver/wallet/history (& /api/driver/wallet/transactions) ─
+// Complete incoming & outgoing wallet transaction feed + authoritative current wallet balance
 const getWalletHistory = async (req, res, next) => {
   try {
     const driverId = req.driver.id;
-    const { page = 1, limit = 50, type } = req.query;
-    const lim = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
-    const offset = (Math.max(1, parseInt(page, 10) || 1) - 1) * lim;
+    const {
+      page = 1,
+      limit = 50,
+      type,
+      category,
+      start_date,
+      startDate,
+      end_date,
+      endDate,
+    } = req.query;
 
-    // 1. Fetch balance & summary
+    const parsedStart = parseDateBound(start_date ?? startDate, false);
+    const parsedEnd = parseDateBound(end_date ?? endDate, true);
+
+    if (!parsedStart.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid start_date format. Use YYYY-MM-DD or ISO-8601 timestamp.",
+      });
+    }
+    if (!parsedEnd.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid end_date format. Use YYYY-MM-DD or ISO-8601 timestamp.",
+      });
+    }
+    if (parsedStart.date && parsedEnd.date && parsedStart.date > parsedEnd.date) {
+      return res.status(400).json({
+        success: false,
+        message: "start_date cannot be after end_date.",
+      });
+    }
+
+    // 1. Fetch authoritative driver wallet profile & lock status
     const driverResult = await pool.query(
-      `SELECT total_earnings, wallet_account_number, wallet_bank_name, bank_name, account_number, account_name
-       FROM drivers WHERE id = $1`,
+      `SELECT
+         id,
+         name,
+         COALESCE(total_earnings, 0) AS total_earnings,
+         COALESCE(commission_per_delivery, 700) AS commission_per_delivery,
+         wallet_account_number,
+         COALESCE(wallet_bank_name, 'Bems Farms Internal Wallet') AS wallet_bank_name,
+         COALESCE(wallet_account_name, CONCAT('BEMS - ', UPPER(name))) AS wallet_account_name,
+         bank_name,
+         account_number,
+         account_name,
+         COALESCE(wallet_is_frozen, false) AS wallet_is_frozen,
+         wallet_frozen_reason,
+         COALESCE(payout_locked, false) AS payout_locked,
+         payout_locked_reason
+       FROM drivers
+       WHERE id = $1`,
       [driverId]
     );
-    const driver = driverResult.rows[0] || {};
-    const totalEarned = parseFloat(driver.total_earnings) || 0;
 
-    const payoutSummary = await pool.query(
-      `SELECT 
-        COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
-       FROM driver_payouts WHERE driver_id = $1`,
-      [driverId]
-    );
-    const totalPaid = parseFloat(payoutSummary.rows[0].total_paid) || 0;
-    const pendingPayouts = parseFloat(payoutSummary.rows[0].pending_payouts) || 0;
-    const availableBalance = Math.max(0, totalEarned - totalPaid - pendingPayouts);
+    if (driverResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+    const driver = driverResult.rows[0];
 
-    // 2. Fetch income (commissions from deliveries)
-    const commissionsRes = await pool.query(
-      `SELECT id, week_start, week_end, trips, deliveries, commission_per_delivery, total_earned AS amount, status, created_at AS date, 'income' AS type, 'delivery_earning' AS category
-       FROM driver_commissions
-       WHERE driver_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [driverId, lim, offset]
-    );
+    // 2. Fetch all-time payout summary, itemized ledger, payout requests, and legacy commissions in parallel
+    const [payoutSummaryRes, ledgerRes, payoutsRes, commissionsRes] = await Promise.all([
+      pool.query(
+        `SELECT
+           COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+           COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts
+         WHERE driver_id = $1`,
+        [driverId]
+      ),
+      pool
+        .query(
+          `SELECT
+             l.id,
+             l.type,
+             l.category,
+             l.amount,
+             l.balance_before,
+             l.balance_after,
+             l.reference,
+             l.description,
+             l.created_at,
+             d.id AS delivery_id,
+             d.order_id,
+             COALESCE(o.order_ref, d.order_id) AS order_ref,
+             d.delivery_address
+           FROM driver_wallet_ledger l
+           LEFT JOIN deliveries d
+             ON l.reference IS NOT NULL
+            AND l.reference = d.delivery_ref
+            AND d.driver_id = l.driver_id
+           LEFT JOIN orders o
+             ON d.order_id IS NOT NULL
+            AND o.id::text = d.order_id::text
+           WHERE l.driver_id = $1
+           ORDER BY l.created_at DESC, l.id DESC`,
+          [driverId]
+        )
+        .catch((err) => {
+          console.warn("getWalletHistory driver_wallet_ledger notice:", err.message);
+          return { rows: [] };
+        }),
+      pool.query(
+        `SELECT
+           id,
+           payout_ref,
+           amount,
+           bank_name,
+           account_number,
+           account_name,
+           status,
+           requested_at,
+           processed_at,
+           rejection_reason,
+           notes,
+           gateway_reference,
+           disbursement_method,
+           created_at
+         FROM driver_payouts
+         WHERE driver_id = $1
+         ORDER BY COALESCE(requested_at, created_at) DESC, id DESC`,
+        [driverId]
+      ),
+      pool
+        .query(
+          `SELECT
+             id,
+             week_start,
+             week_end,
+             trips,
+             deliveries,
+             commission_per_delivery,
+             total_earned,
+             status,
+             created_at
+           FROM driver_commissions
+           WHERE driver_id = $1
+           ORDER BY created_at DESC, id DESC`,
+          [driverId]
+        )
+        .catch((err) => {
+          console.warn("getWalletHistory driver_commissions notice:", err.message);
+          return { rows: [] };
+        }),
+    ]);
 
-    // 3. Fetch payouts (bank withdrawals)
-    const payoutsRes = await pool.query(
-      `SELECT id, payout_ref, amount, bank_name, account_number, account_name, status, requested_at AS date, processed_at, rejection_reason, notes, 'payout' AS type, 'withdrawal' AS category
-       FROM driver_payouts
-       WHERE driver_id = $1
-       ORDER BY requested_at DESC
-       LIMIT $2 OFFSET $3`,
-      [driverId, lim, offset]
-    );
-
-    const income = commissionsRes.rows.map((c) => ({
-      id: c.id,
-      amount: parseFloat(c.amount) || 0,
-      type: "income",
-      category: c.category,
-      deliveries: parseInt(c.deliveries, 10) || 0,
-      description: `Delivery Earning (${c.deliveries || 1} drop${(c.deliveries || 1) === 1 ? "" : "s"})`,
-      status: c.status,
-      date: c.date,
-      created_at: c.date,
-    }));
-
-    const payouts = payoutsRes.rows.map((p) => ({
-      id: p.id,
-      amount: parseFloat(p.amount) || 0,
-      type: "payout",
-      category: p.category,
-      payout_ref: p.payout_ref,
-      bank_name: p.bank_name,
-      account_number: p.account_number,
-      account_name: p.account_name,
-      description: `Bank Withdrawal to ${p.bank_name || "Bank"} (${p.account_number || ""})`,
-      status: p.status,
-      date: p.date,
-      requested_at: p.date,
-      processed_at: p.processed_at,
-      rejection_reason: p.rejection_reason,
-    }));
-
-    // Combined unified chronological feed
-    const allTransactions = [...income, ...payouts].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    );
-
-    let filteredTransactions = allTransactions;
-    if (type === "income") filteredTransactions = income;
-    if (type === "payout" || type === "payouts") filteredTransactions = payouts;
-
-    res.json({
-      success: true,
-      summary: {
-        available_balance: availableBalance,
-        total_earned: totalEarned,
-        total_paid: totalPaid,
-        pending_payouts: pendingPayouts,
+    const payload = buildDriverWalletHistory({
+      driver,
+      payoutTotals: payoutSummaryRes.rows[0] || {},
+      ledgerRows: ledgerRes.rows,
+      payoutRows: payoutsRes.rows,
+      commissionRows: commissionsRes.rows,
+      query: {
+        page,
+        limit,
+        type,
+        category,
+        startDate: parsedStart.date,
+        endDate: parsedEnd.date,
       },
-      // Explicit separated arrays:
-      income,
-      payouts,
-      // Unified array with 'type' flag:
-      transactions: filteredTransactions,
-      total_income_count: income.length,
-      total_payouts_count: payouts.length,
     });
+
+    res.json(payload);
   } catch (err) {
     console.error("Driver getWalletHistory error:", err.message);
     next(err);

@@ -684,6 +684,116 @@ Retrieves available balance, total accumulated earnings, pending payout requests
 
 ---
 
+### 5.1b Wallet Transaction History (All Incomings, Outgoings & Current Balance)
+Returns the driver's authoritative current wallet balance alongside a unified, deduplicated, newest-first list of **all incoming and outgoing wallet transactions** (individual delivery drop commissions, performance bonuses, stipends, tip reimbursements, penalties, administrative deductions, pending/paid/rejected bank withdrawals, and payout reversals).
+
+* **Method:** `GET`
+* **Path:** `/api/driver/wallet/history` *(Alias: `/api/driver/wallet/transactions`)*
+* **Auth Required:** Yes (`Bearer <token>`)
+* **Query Parameters:**
+  - `type` (optional): `all` (default) | `in` / `credit` / `income` | `out` / `debit` / `payout` | `withdrawal`
+  - `category` (optional): e.g. `delivery_commission`, `bonus`, `fuel_allowance`, `penalty`, `withdrawal`, `refund`
+  - `start_date` (optional): `YYYY-MM-DD` or ISO-8601 timestamp
+  - `end_date` (optional): `YYYY-MM-DD` or ISO-8601 timestamp
+  - `page` (optional): Page number (default `1`)
+  - `limit` (optional): Items per page (default `50`, max `100`)
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "summary": {
+    "available_balance": 9000.00,
+    "current_balance": 9000.00,
+    "total_earned": 64000.00,
+    "total_paid": 50000.00,
+    "pending_payouts": 5000.00,
+    "total_incoming": 14000.00,
+    "total_outgoing": 5500.00,
+    "currency": "NGN",
+    "wallet_is_frozen": false,
+    "wallet_frozen_reason": null,
+    "payout_locked": false,
+    "payout_locked_reason": null,
+    "wallet_account": {
+      "account_number": "8550000001",
+      "bank_name": "Bems Farms Internal Wallet",
+      "account_name": "BEMS - IBRAHIM MUSA"
+    }
+  },
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 4,
+    "total_pages": 1,
+    "has_more": false
+  },
+  "filters": {
+    "type": "all",
+    "category": null,
+    "start_date": null,
+    "end_date": null
+  },
+  "transactions": [
+    {
+      "id": 102,
+      "transaction_key": "ledger_102",
+      "source": "ledger",
+      "direction": "in",
+      "type": "income",
+      "ledger_type": "credit",
+      "category": "delivery_commission",
+      "title": "Delivery Drop Commission",
+      "description": "Zone Delivery Drop: Umuahia Central",
+      "amount": 700,
+      "signed_amount": 700,
+      "currency": "NGN",
+      "status": "completed",
+      "reference": "DEL-2026-0042",
+      "date": "2026-11-20T11:05:00.000Z",
+      "created_at": "2026-11-20T11:05:00.000Z",
+      "order_id": "BF-105",
+      "order_ref": "ORD-2026-0105",
+      "delivery_id": 42
+    },
+    {
+      "id": 7,
+      "transaction_key": "payout_7",
+      "source": "payout",
+      "direction": "out",
+      "type": "payout",
+      "ledger_type": "debit",
+      "category": "withdrawal",
+      "title": "Bank Withdrawal",
+      "description": "Bank Withdrawal to GTBank (0123456789)",
+      "amount": 5000,
+      "signed_amount": -5000,
+      "currency": "NGN",
+      "status": "pending",
+      "reference": "PAY-MK91-8C3D",
+      "payout_id": 7,
+      "payout_ref": "PAY-MK91-8C3D",
+      "bank_name": "GTBank",
+      "account_number": "0123456789",
+      "account_name": "Ibrahim Musa",
+      "date": "2026-11-20T10:15:00.000Z",
+      "created_at": "2026-11-20T10:15:00.000Z"
+    }
+  ],
+  "income": [],
+  "payouts": [],
+  "incomings": [],
+  "outgoings": [],
+  "total_count": 4,
+  "total_income_count": 2,
+  "total_payouts_count": 2,
+  "total_incoming_count": 2,
+  "total_outgoing_count": 2
+}
+```
+
+---
+
 ### 5.2 Request Earnings Withdrawal
 Submits a bank transfer withdrawal request for approval and processing.
 

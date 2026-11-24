@@ -34,7 +34,7 @@ router.get("/", (req, res) => {
       actions: "POST /api/driver/deliveries/:orderId/accept | POST /api/driver/deliveries/:orderId/decline | POST /api/driver/deliveries/:orderId/report-issue",
       proof_upload: "POST /api/driver/upload/proof",
       telemetry: "POST /api/driver/location",
-      wallet: "GET /api/driver/earnings | GET /api/driver/banks | POST /api/driver/bank/resolve | POST /api/driver/withdraw",
+      wallet: "GET /api/driver/earnings | GET /api/driver/wallet/history | GET /api/driver/wallet/transactions | GET /api/driver/banks | POST /api/driver/bank/resolve | POST /api/driver/withdraw",
       pin_security: "POST /api/driver/pin/setup | POST /api/driver/pin/verify | GET /api/driver/pin/status | POST /api/driver/pin/reset",
       notifications: "POST /api/driver/device-token | GET /api/driver/notifications | PATCH /api/driver/notifications/:id/read | PATCH /api/driver/notifications/read-all",
       performance: "GET /api/driver/stats | GET /api/driver/performance",
@@ -182,6 +182,7 @@ router.get("/earnings/payouts", driverProtect, driverDeliveryController.getDeliv
 router.get("/earnings/summary", driverProtect, driverDeliveryController.getDeliveriesPayoutSummary);
 router.get("/wallet", driverProtect, driverEarningsController.getEarnings);
 router.get("/wallet/history", driverProtect, driverEarningsController.getWalletHistory);
+router.get("/wallet/transactions", driverProtect, driverEarningsController.getWalletHistory);
 router.get("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
 router.post("/wallet/statement", driverProtect, driverEarningsController.requestAccountStatement);
 router.post("/wallet/statement/email", driverProtect, driverEarningsController.requestAccountStatement);

@@ -129,6 +129,14 @@ async function main() {
         () => request({ path: "/api/driver/earnings" }).then((r) => r.status === 401),
       ],
       [
+        "GET /api/driver/wallet/history (no auth) -> 401",
+        () => request({ path: "/api/driver/wallet/history" }).then((r) => r.status === 401),
+      ],
+      [
+        "GET /api/driver/wallet/transactions (no auth) -> 401",
+        () => request({ path: "/api/driver/wallet/transactions" }).then((r) => r.status === 401),
+      ],
+      [
         "POST /api/driver/withdraw (no auth) -> 401",
         () => request({ path: "/api/driver/withdraw", method: "POST" }, { amount: 1000 }).then((r) => r.status === 401),
       ],
@@ -150,7 +158,7 @@ async function main() {
       console.log(`✅ ${label}`);
     }
 
-    console.log("\n🎉 All 12 driver endpoint smoke tests passed cleanly!");
+    console.log(`\n🎉 All ${checks.length} driver endpoint smoke tests passed cleanly!`);
     child.kill();
     process.exit(0);
   } catch (err) {
