@@ -521,6 +521,21 @@ router.post(
         [eventType, reference, event]
       );
 
+      try {
+        const { getIO } = require("../services/socketService");
+        const io = getIO();
+        if (io) {
+          io.emit("finance:transaction_recorded", {
+            gateway: "MONNIFY",
+            event_type: eventType,
+            payment_ref: reference,
+            order_id: orderId,
+            amount,
+            status,
+          });
+        }
+      } catch (_) {}
+
       res.status(200).json({ success: true, message: "Webhook processed successfully" });
     } catch (err) {
       console.error("❌ Webhook db processor failed:", err.message);

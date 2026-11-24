@@ -489,6 +489,25 @@ export function RealtimeProvider({ children }) {
     socket.on('support:message', handleSupportMessage)
     socket.on('driver:support_message', handleDriverSupportMessage)
 
+    // 12. Real-time Payment & Wallet Webhook Streams (Moniepoint POS, Monnify, Customer/Driver Wallets)
+    const forwardEvents = [
+      'pos:moniepoint_payment',
+      'pos:order_completed_offline',
+      'driver:cod_payment_confirmed',
+      'customer:wallet_credited',
+      'driver:wallet_updated',
+      'driver:payout_requested',
+      'finance:transaction_recorded',
+    ]
+    const forwardHandlers = forwardEvents.map((evtName) => {
+      const handler = (data) => {
+        if (!canRoleReceiveSocketEvent(currentRole, evtName, data)) return
+        notifySubscribers(evtName, data)
+      }
+      socket.on(evtName, handler)
+      return [evtName, handler]
+    })
+
     // Handle Window Focus: when admin returns to tab, refresh current views
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -513,6 +532,7 @@ export function RealtimeProvider({ children }) {
       socket.off('dashboard:update', handleDashboardUpdate)
       socket.off('support:message', handleSupportMessage)
       socket.off('driver:support_message', handleDriverSupportMessage)
+      forwardHandlers.forEach(([evtName, handler]) => socket.off(evtName, handler))
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('focus', onVisibilityChange)
     }

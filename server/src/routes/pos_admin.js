@@ -39,6 +39,7 @@ const { clampLimit } = require("../utils/pagination");
 const validate = require("../middleware/validate");
 const posSchemas = require("../schemas/posSchemas");
 const { notifyAdmin } = require("../services/notificationService");
+const { getIO } = require("../services/socketService");
 const { COA, postGeneralJournal, postInventoryDoubleEntry } = require("../utils/doubleEntryLedger");
 const { logOrderAudit, logInventoryTransaction } = require("../utils/workflowAudit");
 const { autoAssignClosestDriver } = require("../services/dispatchEngine");
@@ -878,6 +879,18 @@ router.post(["/sale", "/sales"], requireRole("superadmin","manager","admin","cas
     }
 
     await client.query("COMMIT");
+
+    try {
+      const io = getIO();
+      if (io) {
+        io.emit("finance:transaction_recorded", {
+          type: "pos_sale",
+          reference,
+          amount: total,
+          payment_method,
+        });
+      }
+    } catch (_) {}
 
     notifyAdmin({
       type: 'pos_sale',
@@ -2847,6 +2860,13 @@ router.post(
         }
       }
 
+      if (results.length > 0) {
+        try {
+          const io = getIO();
+          if (io) io.emit("finance:transaction_recorded", { type: "automap", mapped_count: results.length });
+        } catch (_) {}
+      }
+
       res.json({
         success: true,
         mapped_count: results.length,
@@ -2966,6 +2986,10 @@ router.post(
           ).catch(() => {});
 
           await client.query("COMMIT");
+          try {
+            const io = getIO();
+            if (io) io.emit("finance:transaction_recorded", { type: "manual_map_split", order_id: ord.id });
+          } catch (_) {}
           return res.json({
             success: true,
             message: `Mapped ${txn.transaction_id} (₦${parseFloat(txn.amount).toLocaleString()}) to Split Order #${ord.order_ref || ord.id} (Transfer/POS: ₦${expectedAmount.toLocaleString()}, Cash: ₦${cashAmount.toLocaleString()}).`,
@@ -3141,6 +3165,10 @@ router.post(
         ]
       ).catch(() => {});
       await client.query("COMMIT");
+      try {
+        const io = getIO();
+        if (io) io.emit("finance:transaction_recorded", { type: "cod_cash_confirmed", order_id: ord.id });
+      } catch (_) {}
       res.json({
         success: true,
         message: `Cash payment confirmed for Order #${ord.order_ref || ord.id}.`,

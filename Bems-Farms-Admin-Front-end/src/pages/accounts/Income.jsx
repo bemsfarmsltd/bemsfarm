@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 const fmt  = n => `₦${Number(n || 0).toLocaleString()}`
 const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
@@ -64,19 +65,33 @@ export default function Income() {
   const [selected, setSelected] = useState(null)
   const [form, setForm]         = useState(BLANK_FORM)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(false)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    setError(false)
     try {
       const res = await api.get('/admin/accounts/income', { params: { limit: 200 } })
       setRecords((res.data?.income || []).map(mapIncome))
       setStats(res.data?.stats || null)
     } catch {
-      setError(true)
+      if (!silent) setError(true)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load(false)
+    const timer = setInterval(() => load(true), 20000)
+    return () => clearInterval(timer)
+  }, [load])
+
+  useRealtimeEvent('pos:moniepoint_payment', () => load(true))
+  useRealtimeEvent('pos:order_completed_offline', () => load(true))
+  useRealtimeEvent('driver:cod_payment_confirmed', () => load(true))
+  useRealtimeEvent('customer:wallet_credited', () => load(true))
+  useRealtimeEvent('order:created', () => load(true))
+  useRealtimeEvent('order:updated', () => load(true))
+  useRealtimeEvent('finance:transaction_recorded', () => load(true))
+  useRealtimeEvent('window:focused', () => load(true))
 
   useEffect(() => {
     api.get('/admin/accounts/bank-accounts').then(res => {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import api from '../../lib/api'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 import BemsDriverStatementDocument, { printOfficialDocument } from '../../components/documents/BemsDriverStatementDocument'
 
 const DUTY_STATUS_CFG = {
@@ -143,8 +144,8 @@ export default function WalletManagement() {
   const [activeWebhook, setActiveWebhook] = useState(null)
 
   // ── Data Fetching ───────────────────────────────────────────────────
-  const fetchAllData = async () => {
-    setLoading(true)
+  const fetchAllData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [sumRes, payRes, gwRes, txRes, whRes, zoneRes, rulesRes, ledRes] = await Promise.all([
         api.get(`/admin/wallets/summary?search=${encodeURIComponent(searchDriver)}&status=${statusFilter}`),
@@ -167,15 +168,28 @@ export default function WalletManagement() {
       setLedgerLogs(ledRes.data?.ledger || [])
     } catch (err) {
       console.error('Wallet fetch error:', err)
-      toast.error('Failed to load wallet, gateway, and zone records')
+      if (!silent) toast.error('Failed to load wallet, gateway, and zone records')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [searchDriver, statusFilter, payoutStatusFilter])
 
   useEffect(() => {
-    fetchAllData()
-  }, [statusFilter, payoutStatusFilter])
+    fetchAllData(false)
+    const timer = setInterval(() => fetchAllData(true), 20000)
+    return () => clearInterval(timer)
+  }, [fetchAllData])
+
+  useRealtimeEvent('pos:moniepoint_payment', () => fetchAllData(true))
+  useRealtimeEvent('pos:order_completed_offline', () => fetchAllData(true))
+  useRealtimeEvent('driver:cod_payment_confirmed', () => fetchAllData(true))
+  useRealtimeEvent('customer:wallet_credited', () => fetchAllData(true))
+  useRealtimeEvent('driver:wallet_updated', () => fetchAllData(true))
+  useRealtimeEvent('driver:payout_requested', () => fetchAllData(true))
+  useRealtimeEvent('order:created', () => fetchAllData(true))
+  useRealtimeEvent('order:updated', () => fetchAllData(true))
+  useRealtimeEvent('finance:transaction_recorded', () => fetchAllData(true))
+  useRealtimeEvent('window:focused', () => fetchAllData(true))
 
   // ── Actions ─────────────────────────────────────────────────────────
 

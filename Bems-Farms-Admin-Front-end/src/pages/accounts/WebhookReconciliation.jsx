@@ -111,10 +111,17 @@ export default function WebhookReconciliation() {
 
   useEffect(() => {
     load(false)
+    const timer = setInterval(() => load(true), 15000)
+    return () => clearInterval(timer)
   }, [load])
 
   useRealtimeEvent('pos:moniepoint_payment', () => load(true))
+  useRealtimeEvent('pos:order_completed_offline', () => load(true))
   useRealtimeEvent('driver:cod_payment_confirmed', () => load(true))
+  useRealtimeEvent('order:created', () => load(true))
+  useRealtimeEvent('order:updated', () => load(true))
+  useRealtimeEvent('finance:transaction_recorded', () => load(true))
+  useRealtimeEvent('window:focused', () => load(true))
 
   async function handleAutoMap() {
     setAutoMapping(true)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
+import { useRealtimeEvent } from '../../context/RealtimeContext'
 
 const fmt = n => `₦${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -60,8 +61,9 @@ export default function Transactions() {
   const [trialSummary, setTrialSummary] = useState(null)
   const [loadingTrial, setLoadingTrial] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(false)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    setError(false)
     try {
       const res = await api.get('/admin/accounts/transactions', {
         params: {
@@ -73,9 +75,9 @@ export default function Transactions() {
       })
       setRecords((res.data?.transactions || []).map(mapTxn))
     } catch {
-      setError(true)
+      if (!silent) setError(true)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [filterType, dateFrom, dateTo])
 
@@ -112,11 +114,31 @@ export default function Transactions() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load(false)
+    const timer = setInterval(() => load(true), 20000)
+    return () => clearInterval(timer)
+  }, [load])
   useEffect(() => {
     if (viewMode === 'general_journal') loadJournal()
     if (viewMode === 'trial_balance') loadTrialBalance()
   }, [viewMode, loadJournal, loadTrialBalance])
+
+  const refreshAllViews = useCallback(() => {
+    load(true)
+    if (viewMode === 'general_journal') loadJournal()
+    if (viewMode === 'trial_balance') loadTrialBalance()
+  }, [load, viewMode, loadJournal, loadTrialBalance])
+
+  useRealtimeEvent('pos:moniepoint_payment', refreshAllViews)
+  useRealtimeEvent('pos:order_completed_offline', refreshAllViews)
+  useRealtimeEvent('driver:cod_payment_confirmed', refreshAllViews)
+  useRealtimeEvent('customer:wallet_credited', refreshAllViews)
+  useRealtimeEvent('driver:wallet_updated', refreshAllViews)
+  useRealtimeEvent('order:created', refreshAllViews)
+  useRealtimeEvent('order:updated', refreshAllViews)
+  useRealtimeEvent('finance:transaction_recorded', refreshAllViews)
+  useRealtimeEvent('window:focused', refreshAllViews)
 
   const filtered = useMemo(() => {
     return records.filter(t => {

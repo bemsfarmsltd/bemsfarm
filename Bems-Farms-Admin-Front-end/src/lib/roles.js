@@ -164,6 +164,30 @@ const SOCKET_EVENT_ROLE_MAP = {
     'cashier', 'salesperson', 'sales_person', 'sales', 'pos',
   ],
   'support:message': ['superadmin', 'admin', 'manager'],
+  'pos:moniepoint_payment': [
+    'superadmin', 'admin', 'manager', 'accountant',
+    'cashier', 'salesperson', 'sales_person', 'sales', 'pos',
+  ],
+  'pos:order_completed_offline': [
+    'superadmin', 'admin', 'manager', 'accountant',
+    'cashier', 'salesperson', 'sales_person', 'sales', 'pos',
+  ],
+  'driver:cod_payment_confirmed': [
+    'superadmin', 'admin', 'manager', 'accountant', 'delivery_manager',
+    'cashier', 'salesperson', 'sales_person', 'sales', 'pos',
+  ],
+  'customer:wallet_credited': [
+    'superadmin', 'admin', 'manager', 'accountant',
+  ],
+  'driver:wallet_updated': [
+    'superadmin', 'admin', 'manager', 'accountant', 'delivery_manager',
+  ],
+  'driver:payout_requested': [
+    'superadmin', 'admin', 'manager', 'accountant', 'delivery_manager',
+  ],
+  'finance:transaction_recorded': [
+    'superadmin', 'admin', 'manager', 'accountant',
+  ],
 }
 
 export const canRoleReceiveSocketEvent = (role, eventName, payload = null) => {
