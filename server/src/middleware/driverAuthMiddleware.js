@@ -55,6 +55,23 @@ const driverProtect = async (req, res, next) => {
         ) AS total_deliveries,
         d.success_rate,
         d.total_earnings,
+        COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = d.id AND p.status IN ('paid', 'approved')), 0) AS total_paid,
+        COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = d.id AND p.status = 'pending'), 0) AS pending_payouts,
+        GREATEST(
+          0,
+          COALESCE(d.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = d.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS current_balance,
+        GREATEST(
+          0,
+          COALESCE(d.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = d.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS available_balance,
+        GREATEST(
+          0,
+          COALESCE(d.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = d.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS wallet_balance,
         d.commission_per_delivery,
         d.status,
         d.onboarding_status,

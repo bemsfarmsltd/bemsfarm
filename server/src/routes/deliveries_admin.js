@@ -984,7 +984,30 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
         COUNT(DISTINCT d.id)                                       AS total_assigned,
         COALESCE(AVG(df.rating), 0)                                AS rating,
-        COALESCE(dr.total_earnings, 0)                              AS earnings,
+        COALESCE(dr.total_earnings, 0)                             AS total_earnings,
+        COALESCE(dr.total_earnings, 0)                             AS gross_earnings,
+        COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status IN ('paid', 'approved')), 0) AS total_paid,
+        COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status = 'pending'), 0) AS pending_payouts,
+        GREATEST(
+          0,
+          COALESCE(dr.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS available_balance,
+        GREATEST(
+          0,
+          COALESCE(dr.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS current_balance,
+        GREATEST(
+          0,
+          COALESCE(dr.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS wallet_balance,
+        GREATEST(
+          0,
+          COALESCE(dr.total_earnings, 0)
+          - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = dr.id AND p.status IN ('paid', 'approved', 'pending')), 0)
+        ) AS earnings,
         (SELECT o.id FROM deliveries d2
          JOIN orders o ON d2.order_id = o.id
          WHERE d2.driver_id = dr.id AND d2.status NOT IN ('delivered','cancelled')

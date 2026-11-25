@@ -615,9 +615,27 @@ const login = async (req, res, next) => {
       }
     }
 
+    const payoutSumRes = await pool
+      .query(
+        `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts WHERE driver_id = $1`,
+        [driver.id]
+      )
+      .catch(() => ({ rows: [{}] }));
+    const loginTotalEarned = parseFloat(driver.total_earnings) || 0;
+    const loginTotalPaid = parseFloat(payoutSumRes.rows[0]?.total_paid) || 0;
+    const loginPendingPayouts = parseFloat(payoutSumRes.rows[0]?.pending_payouts) || 0;
+    const loginCurrentBalance = Math.max(0, loginTotalEarned - loginTotalPaid - loginPendingPayouts);
+
     const formattedDriver = resolveDriverProfile(driver, req);
     const driverPayload = {
       ...formattedDriver,
+      current_balance: loginCurrentBalance,
+      available_balance: loginCurrentBalance,
+      wallet_balance: loginCurrentBalance,
+      total_paid: loginTotalPaid,
+      pending_payouts: loginPendingPayouts,
       wallet_account_number: walletAccountNumber,
       wallet_bank_name: walletBankName,
       wallet_account_name: walletAccountName,
@@ -633,12 +651,21 @@ const login = async (req, res, next) => {
       passport_photo_url: driverPayload.passport_photo_url,
       emergency_contact: driverPayload.emergency_contact,
       emergency_contact_phone: driverPayload.emergency_contact_phone,
+      current_balance: loginCurrentBalance,
+      available_balance: loginCurrentBalance,
+      wallet_balance: loginCurrentBalance,
       driver: driverPayload,
       wallet: {
         account_number: walletAccountNumber,
         bank_name: walletBankName,
         account_name: walletAccountName,
-        total_earnings: parseFloat(driver.total_earnings) || 0,
+        current_balance: loginCurrentBalance,
+        available_balance: loginCurrentBalance,
+        wallet_balance: loginCurrentBalance,
+        total_earnings: loginTotalEarned,
+        total_gross: loginTotalEarned,
+        total_paid: loginTotalPaid,
+        pending_payouts: loginPendingPayouts,
         commission_per_delivery: parseFloat(driver.commission_per_delivery) || 700,
       },
       verification: {
@@ -739,6 +766,11 @@ const getMe = async (req, res, next) => {
     formattedDriver.is_available = isVerified ? rawDriver.is_available : false;
     formattedDriver.saved_bank_accounts = savedBankAccounts;
 
+    const curBal = parseFloat(rawDriver.current_balance ?? rawDriver.available_balance ?? 0) || 0;
+    const totEarned = parseFloat(rawDriver.total_earnings) || 0;
+    const totPaid = parseFloat(rawDriver.total_paid) || 0;
+    const pendPay = parseFloat(rawDriver.pending_payouts) || 0;
+
     res.json({
       // Root-level fields to strictly satisfy the Driver Profile API specification:
       // { id, name, phone, avatar_url, passport_photo_url, emergency_contact }
@@ -757,6 +789,24 @@ const getMe = async (req, res, next) => {
       status: formattedDriver.status,
       onboarding_status: formattedDriver.onboarding_status,
       is_available: formattedDriver.is_available,
+      current_balance: curBal,
+      available_balance: curBal,
+      wallet_balance: curBal,
+      total_earnings: totEarned,
+      total_paid: totPaid,
+      pending_payouts: pendPay,
+      wallet: {
+        current_balance: curBal,
+        available_balance: curBal,
+        wallet_balance: curBal,
+        total_earnings: totEarned,
+        total_gross: totEarned,
+        total_paid: totPaid,
+        pending_payouts: pendPay,
+        account_number: rawDriver.wallet_account_number || `855${String(rawDriver.id).padStart(7, "0")}`,
+        bank_name: rawDriver.wallet_bank_name || "Bems Farms Internal Wallet",
+        account_name: rawDriver.wallet_account_name || `BEMS - ${String(rawDriver.name || "").toUpperCase()}`,
+      },
       // Full nested driver object for existing app components
       driver: formattedDriver,
       saved_bank_accounts: savedBankAccounts,

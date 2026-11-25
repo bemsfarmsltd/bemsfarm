@@ -1213,7 +1213,14 @@ export default function DriversManagement() {
 
                           {/* Earnings & Settlement Bank */}
                           <td>
-                            <div className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</div>
+                            <div className="fw-bold font-monospace text-emerald fs-13" title={`Current Balance: ${fmt(driver.available_balance ?? driver.current_balance ?? driver.earnings ?? 0)} · Gross Lifetime: ${fmt(driver.gross_earnings ?? driver.total_earnings ?? 0)}`}>
+                              {fmt(driver.available_balance ?? driver.current_balance ?? driver.earnings ?? 0)}
+                            </div>
+                            {Number(driver.total_paid || 0) > 0 && (
+                              <div className="text-muted font-monospace" style={{ fontSize: 10 }}>
+                                Gross: {fmt(driver.gross_earnings ?? driver.total_earnings ?? 0)} · Paid: {fmt(driver.total_paid)}
+                              </div>
+                            )}
                             <div className="d-flex align-items-center flex-wrap gap-1 mt-0.5" style={{ fontSize: 11 }}>
                               <span className="badge bg-light text-dark border font-monospace px-1.5 py-0.5">
                                 {driver.bank_name ? `${driver.bank_name} · ${driver.account_number || 'No NUBAN'}` : (driver.account_number || 'Bank Not Set')}
@@ -3121,7 +3128,7 @@ export default function DriversManagement() {
                           </button>
                         </div>
                         <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: '6px 0 2px' }}>
-                          {fmt(selected.earnings || selected.total_earnings || 0)}
+                          {fmt(selected.available_balance ?? selected.current_balance ?? selected.earnings ?? 0)}
                         </div>
                         <div style={{ fontSize: 11, color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
                           <span>Total Lifetime Completed: <strong>{selected.total_deliveries || 0} Deliveries</strong></span>
@@ -3220,7 +3227,7 @@ export default function DriversManagement() {
                             Wallet Balance
                           </div>
                           <div style={{ fontSize: 18, fontWeight: 900, color: '#059669', fontFamily: 'monospace', marginTop: 2 }}>
-                            {fmt(selected.earnings || selected.total_earnings || 0)}
+                            {fmt(selected.available_balance ?? selected.current_balance ?? selected.earnings ?? 0)}
                           </div>
                         </div>
                       </div>

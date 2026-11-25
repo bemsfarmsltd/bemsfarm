@@ -1057,13 +1057,42 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
     const allCount = parseInt(allTimeStatsResult.rows[0]?.deliveries_count, 10) || 0;
     const allEarned = parseFloat(allTimeStatsResult.rows[0]?.total_earned) || 0.0;
 
+    // Fetch live wallet balance so the Driver App always gets current_balance / available_balance alongside gross totals
+    const [drvWalletRes, payoutTotalsRes] = await Promise.all([
+      pool.query(
+        `SELECT COALESCE(total_earnings, 0) AS total_earnings,
+                wallet_account_number,
+                COALESCE(wallet_bank_name, 'Bems Farms Internal Wallet') AS wallet_bank_name,
+                COALESCE(wallet_account_name, CONCAT('BEMS - ', UPPER(name))) AS wallet_account_name,
+                COALESCE(wallet_is_frozen, false) AS wallet_is_frozen,
+                COALESCE(payout_locked, false) AS payout_locked
+         FROM drivers WHERE id = $1`,
+        [driverId]
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts WHERE driver_id = $1`,
+        [driverId]
+      ),
+    ]);
+    const drvWallet = drvWalletRes.rows[0] || {};
+    const walletGrossEarned = parseFloat(drvWallet.total_earnings) || 0;
+    const walletTotalPaid = parseFloat(payoutTotalsRes.rows[0]?.total_paid) || 0;
+    const walletPendingPayouts = parseFloat(payoutTotalsRes.rows[0]?.pending_payouts) || 0;
+    const currentBalance = Math.max(0, walletGrossEarned - walletTotalPaid - walletPendingPayouts);
+
     const formattedDeliveries = deliveriesResult.rows.map(formatDelivery);
 
     const thisWeekSummary = {
       deliveries_count: weekCount,
       total_earned: weekEarned,
+      current_balance: currentBalance,
+      available_balance: currentBalance,
+      wallet_balance: currentBalance,
       total_with_surge: weekEarned + (weekCount * 300),
       formatted_total_earned: `₦${weekEarned.toFixed(2)}`,
+      formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
       formatted_total_with_surge: `₦${(weekEarned + (weekCount * 300)).toFixed(2)}`,
       formatted_label: `${weekCount} Deliveries • ₦${weekEarned.toFixed(2)} earned`,
       percentage_change: "+14%",
@@ -1072,19 +1101,62 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
     const allTimeSummary = {
       deliveries_count: allCount,
       total_earned: allEarned,
+      total_gross: walletGrossEarned,
+      total_paid: walletTotalPaid,
+      pending_payouts: walletPendingPayouts,
+      current_balance: currentBalance,
+      available_balance: currentBalance,
+      wallet_balance: currentBalance,
       formatted_total_earned: `₦${allEarned.toFixed(2)}`,
+      formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
+    };
+
+    const walletSummary = {
+      current_balance: currentBalance,
+      available_balance: currentBalance,
+      wallet_balance: currentBalance,
+      withdrawable_balance: currentBalance,
+      total_earned: walletGrossEarned,
+      total_gross: walletGrossEarned,
+      total_paid: walletTotalPaid,
+      pending_payouts: walletPendingPayouts,
+      currency: "NGN",
+      formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
+      wallet_is_frozen: Boolean(drvWallet.wallet_is_frozen),
+      payout_locked: Boolean(drvWallet.payout_locked),
+      account_number: drvWallet.wallet_account_number || `855${String(driverId).padStart(7, "0")}`,
+      bank_name: drvWallet.wallet_bank_name || "Bems Farms Internal Wallet",
+      account_name: drvWallet.wallet_account_name || null,
     };
 
     res.json({
       success: true,
       timeframe,
       total_deliveries: allCount,
+      current_balance: currentBalance,
+      available_balance: currentBalance,
+      wallet_balance: currentBalance,
+      withdrawable_balance: currentBalance,
+      total_gross: walletGrossEarned,
+      total_earned: walletGrossEarned,
+      total_paid: walletTotalPaid,
+      pending_payouts: walletPendingPayouts,
+      wallet: walletSummary,
       this_week_summary: thisWeekSummary,
       summary: thisWeekSummary,
       all_time_summary: allTimeSummary,
       deliveries: formattedDeliveries,
       data: {
         total_deliveries: allCount,
+        current_balance: currentBalance,
+        available_balance: currentBalance,
+        wallet_balance: currentBalance,
+        withdrawable_balance: currentBalance,
+        total_gross: walletGrossEarned,
+        total_earned: walletGrossEarned,
+        total_paid: walletTotalPaid,
+        pending_payouts: walletPendingPayouts,
+        wallet: walletSummary,
         this_week_summary: thisWeekSummary,
         all_time_summary: allTimeSummary,
         deliveries: formattedDeliveries,

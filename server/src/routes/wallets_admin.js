@@ -598,6 +598,14 @@ router.post("/payouts/:id/disburse", requireRole("superadmin", "manager", "admin
       ]
     );
 
+    await client.query(
+      `UPDATE drivers
+       SET wallet_balance = GREATEST(0, COALESCE(total_earnings, 0) - COALESCE((SELECT SUM(p.amount) FROM driver_payouts p WHERE p.driver_id = drivers.id AND p.status IN ('paid', 'approved', 'pending')), 0)),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [payout.driver_id]
+    );
+
     // Double-Entry Ledger Side B: Central Company Accounts Debit (valid type 'expense')
     try {
       await client.query("SAVEPOINT sp_payout_txn");
@@ -1366,8 +1374,8 @@ router.post("/drivers/:id/adjust", requireRole("superadmin", "manager", "admin",
     const cleanReason = description.trim();
 
     await client.query(
-      "UPDATE drivers SET total_earnings = $1, updated_at = NOW() WHERE id = $2",
-      [newEarned, id]
+      "UPDATE drivers SET total_earnings = $1, wallet_balance = $2, updated_at = NOW() WHERE id = $3",
+      [newEarned, balanceAfter, id]
     );
 
     const adjRef = reference || `ADJ-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
@@ -2151,7 +2159,7 @@ router.get("/driver-statement", async (req, res, next) => {
     const drivers = driversRes.rows.map((d) => {
       const grossEarned = parseFloat(d.delivery_gross || 0) + parseFloat(d.bonuses || 0);
       const charges = parseFloat(d.charges || 0);
-      const walletBalance = parseFloat(d.wallet_balance || 0);
+      const walletBalance = Math.max(0, parseFloat(d.wallet_balance || 0));
       const settledToBank = parseFloat(d.settled_to_bank || 0);
       const pendingRequestsAmt = parseFloat(d.pending_requests_amount || 0);
       const pendingUnpaid = walletBalance + pendingRequestsAmt;

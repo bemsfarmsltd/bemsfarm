@@ -91,8 +91,28 @@ const getDriverStats = async (req, res, next) => {
       { id: "verified_pro", name: "Verified Bems Courier", earned: true, icon: "🛡️" }
     ];
 
+    const [payoutRes] = await Promise.all([
+      pool.query(
+        `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts WHERE driver_id = $1`,
+        [driverId]
+      ),
+    ]);
+    const statsTotalEarned = parseFloat(driver.total_earnings) || 0;
+    const statsTotalPaid = parseFloat(payoutRes.rows[0]?.total_paid) || 0;
+    const statsPendingPayouts = parseFloat(payoutRes.rows[0]?.pending_payouts) || 0;
+    const statsCurrentBalance = Math.max(0, statsTotalEarned - statsTotalPaid - statsPendingPayouts);
+
     res.json({
       status: "success",
+      current_balance: statsCurrentBalance,
+      available_balance: statsCurrentBalance,
+      wallet_balance: statsCurrentBalance,
+      total_earnings: statsTotalEarned,
+      total_gross: statsTotalEarned,
+      total_paid: statsTotalPaid,
+      pending_payouts: statsPendingPayouts,
       scorecard: {
         customer_rating: parseFloat(parseFloat(counts.computed_rating || driver.rating).toFixed(2)),
         total_ratings_count: parseInt(driver.total_ratings_count, 10) || Math.max(1, completedCount),

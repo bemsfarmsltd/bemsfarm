@@ -133,11 +133,26 @@ const getEarnings = async (req, res, next) => {
     );
 
     res.json({
+      success: true,
+      current_balance: availableBalance,
+      available_balance: availableBalance,
+      wallet_balance: availableBalance,
+      withdrawable_balance: availableBalance,
+      total_earned: totalEarned,
+      total_gross: totalEarned,
+      total_paid: totalPaid,
+      pending_payouts: pendingPayouts,
+      currency: "NGN",
       wallet: {
+        current_balance: availableBalance,
+        available_balance: availableBalance,
+        wallet_balance: availableBalance,
+        withdrawable_balance: availableBalance,
         total_earned: totalEarned,
+        total_gross: totalEarned,
         total_paid: totalPaid,
         pending_payouts: pendingPayouts,
-        available_balance: availableBalance,
+        currency: "NGN",
         commission_per_delivery: parseFloat(driver.commission_per_delivery) || 700,
         dedicated_virtual_account: {
           account_number: driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0')),
@@ -349,9 +364,100 @@ const getWalletHistory = async (req, res, next) => {
       },
     });
 
-    res.json(payload);
+    res.json({
+      ...payload,
+      current_balance: payload.summary.current_balance,
+      available_balance: payload.summary.available_balance,
+      wallet_balance: payload.summary.current_balance,
+      withdrawable_balance: payload.summary.available_balance,
+      total_earned: payload.summary.total_earned,
+      total_gross: payload.summary.total_earned,
+      total_paid: payload.summary.total_paid,
+      pending_payouts: payload.summary.pending_payouts,
+    });
   } catch (err) {
     console.error("Driver getWalletHistory error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/wallet/balance (& /api/driver/balance) ──────────
+// Dedicated lightweight endpoint for the Driver Mobile App to fetch current wallet balance
+const getWalletBalance = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const [driverRes, payoutRes] = await Promise.all([
+      pool.query(
+        `SELECT id, name,
+                COALESCE(total_earnings, 0) AS total_earnings,
+                COALESCE(commission_per_delivery, 700) AS commission_per_delivery,
+                wallet_account_number,
+                COALESCE(wallet_bank_name, 'Bems Farms Internal Wallet') AS wallet_bank_name,
+                COALESCE(wallet_account_name, CONCAT('BEMS - ', UPPER(name))) AS wallet_account_name,
+                bank_name, account_number, account_name,
+                COALESCE(wallet_is_frozen, false) AS wallet_is_frozen,
+                wallet_frozen_reason,
+                COALESCE(payout_locked, false) AS payout_locked,
+                payout_locked_reason
+         FROM drivers WHERE id = $1`,
+        [driverId]
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts WHERE driver_id = $1`,
+        [driverId]
+      ),
+    ]);
+
+    const driver = driverRes.rows[0];
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    const totalEarned = parseFloat(driver.total_earnings) || 0;
+    const totalPaid = parseFloat(payoutRes.rows[0]?.total_paid) || 0;
+    const pendingPayouts = parseFloat(payoutRes.rows[0]?.pending_payouts) || 0;
+    const currentBalance = Math.max(0, totalEarned - totalPaid - pendingPayouts);
+    const walletAccountNumber = driver.wallet_account_number || `855${String(driver.id).padStart(7, "0")}`;
+
+    res.json({
+      success: true,
+      current_balance: currentBalance,
+      available_balance: currentBalance,
+      wallet_balance: currentBalance,
+      withdrawable_balance: currentBalance,
+      balance: currentBalance,
+      total_earned: totalEarned,
+      total_gross: totalEarned,
+      total_paid: totalPaid,
+      pending_payouts: pendingPayouts,
+      currency: "NGN",
+      formatted_current_balance: `₦${currentBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      wallet_is_frozen: Boolean(driver.wallet_is_frozen),
+      wallet_frozen_reason: driver.wallet_frozen_reason || null,
+      payout_locked: Boolean(driver.payout_locked),
+      payout_locked_reason: driver.payout_locked_reason || null,
+      wallet: {
+        current_balance: currentBalance,
+        available_balance: currentBalance,
+        wallet_balance: currentBalance,
+        withdrawable_balance: currentBalance,
+        balance: currentBalance,
+        total_earned: totalEarned,
+        total_gross: totalEarned,
+        total_paid: totalPaid,
+        pending_payouts: pendingPayouts,
+        currency: "NGN",
+        account_number: walletAccountNumber,
+        bank_name: driver.wallet_bank_name || "Bems Farms Internal Wallet",
+        account_name: driver.wallet_account_name || `BEMS - ${String(driver.name || "").toUpperCase()}`,
+        wallet_is_frozen: Boolean(driver.wallet_is_frozen),
+        payout_locked: Boolean(driver.payout_locked),
+      },
+    });
+  } catch (err) {
+    console.error("Driver getWalletBalance error:", err.message);
     next(err);
   }
 };
@@ -1389,6 +1495,7 @@ const requestAccountStatement = async (req, res, next) => {
 
 module.exports = {
   getEarnings,
+  getWalletBalance,
   getWalletHistory,
   requestAccountStatement,
   requestWithdrawal,
