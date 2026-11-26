@@ -276,9 +276,33 @@ assert.strictEqual(del101.delivery_id, 41);
 
 // Verify period totals exclude rejected payout & its unhold refund
 // Real incoming: 700 + 700 + 2000 + 9500 = 12900
-// Real outgoing: 500 (penalty) + 4000 (paid) + 2000 (legacy paid) + 1500 (pending) = 8000
+// Real outgoing (including pending): 500 (penalty) + 4000 (paid) + 2000 (legacy paid) + 1500 (pending) = 8000
+// Total approved withdrawals: 4000 (paid) + 2000 (legacy paid) = 6000
+// Confirmed expenses (approved withdrawals + penalties): 6000 + 500 = 6500
 assert.strictEqual(full.summary.total_incoming, 12900);
+assert.strictEqual(full.summary.total_income, 12900);
 assert.strictEqual(full.summary.total_outgoing, 8000);
+assert.strictEqual(full.summary.total_approved_withdrawals, 6000);
+assert.strictEqual(full.summary.approved_withdrawals_count, 2);
+assert.strictEqual(full.summary.pending_withdrawals, 1500);
+assert.strictEqual(full.summary.rejected_withdrawals, 1000);
+assert.strictEqual(full.summary.total_penalties_and_deductions, 500);
+assert.strictEqual(full.summary.total_expenses, 6500);
+
+// Verify Statistical Analysis (Expenses vs Income) breakdown
+assert(full.statistical_analysis, "statistical_analysis object must be present");
+assert.strictEqual(full.statistical_analysis.income.total, 12900);
+assert.strictEqual(full.statistical_analysis.income.count, 4); // 2 drops + 1 bonus + 1 legacy comm (refund excluded)
+assert.strictEqual(full.statistical_analysis.expenses.total, 6500); // 6000 approved withdrawals + 500 penalty
+assert.strictEqual(full.statistical_analysis.expenses.total_approved_withdrawals, 6000);
+assert.strictEqual(full.statistical_analysis.expenses.approved_withdrawals_count, 2);
+assert.strictEqual(full.statistical_analysis.expenses.total_penalties_and_deductions, 500);
+assert.strictEqual(full.statistical_analysis.expenses.pending_withdrawals, 1500);
+assert.strictEqual(full.statistical_analysis.expenses.rejected_withdrawals, 1000);
+assert.strictEqual(full.statistical_analysis.income.categories.length, 2); // delivery_commission (10900) & bonus (2000)
+assert.strictEqual(full.statistical_analysis.expenses.categories.length, 2); // withdrawal (6000) & penalty (500)
+assert.strictEqual(full.statistical_analysis.expenses.categories[0].category, "withdrawal");
+assert.strictEqual(full.statistical_analysis.expenses.categories[0].amount, 6000);
 
 // Verify descending chronological sort
 for (let i = 1; i < full.transactions.length; i++) {

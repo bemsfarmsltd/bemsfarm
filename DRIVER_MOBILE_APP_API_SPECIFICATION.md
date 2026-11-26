@@ -706,10 +706,18 @@ Returns the driver's authoritative current wallet balance alongside a unified, d
     "available_balance": 9000.00,
     "current_balance": 9000.00,
     "total_earned": 64000.00,
+    "total_gross": 64000.00,
     "total_paid": 50000.00,
+    "total_approved_withdrawals": 50000.00,
+    "approved_withdrawals_count": 3,
     "pending_payouts": 5000.00,
+    "pending_withdrawals": 5000.00,
+    "rejected_withdrawals": 0.00,
+    "total_penalties_and_deductions": 500.00,
     "total_incoming": 14000.00,
+    "total_income": 14000.00,
     "total_outgoing": 5500.00,
+    "total_expenses": 50500.00,
     "currency": "NGN",
     "wallet_is_frozen": false,
     "wallet_frozen_reason": null,
@@ -789,6 +797,111 @@ Returns the driver's authoritative current wallet balance alongside a unified, d
   "total_payouts_count": 2,
   "total_incoming_count": 2,
   "total_outgoing_count": 2
+}
+```
+
+---
+
+### 5.1c Statistical Analysis (`Expenses` vs `Income`) & Total Approved Withdrawals
+Powers the Driver Mobile App's **`< Statistical Analysis`** screen with **`Expenses`** and **`Income`** tabs, category breakdowns (amounts, counts, percentages), monthly trends, and **`total_approved_withdrawals`**.
+
+* **Method:** `GET`
+* **Path:** `/api/driver/wallet/statistics` *(Aliases: `/api/driver/wallet/statistical-analysis`, `/api/driver/wallet/analytics`, `/api/driver/earnings/statistics`)*
+* **Auth Required:** Yes (`Bearer <token>`)
+* **Query Parameters:**
+  - `period` (optional): `today` | `week` | `month` | `year` | `all`
+  - `month` (optional): `YYYY-MM` (e.g. `2026-11`) or `1`–`12` (with optional `year=2026`)
+  - `start_date` (optional): `YYYY-MM-DD` or ISO-8601 timestamp
+  - `end_date` (optional): `YYYY-MM-DD` or ISO-8601 timestamp
+  - `category` (optional): Filter by a single category
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "currency": "NGN",
+  "current_balance": 9000.00,
+  "available_balance": 9000.00,
+  "total_earned": 64000.00,
+  "total_gross": 64000.00,
+  "total_paid": 50000.00,
+  "total_approved_withdrawals": 50000.00,
+  "all_time_approved_withdrawals": 50000.00,
+  "approved_withdrawals_count": 3,
+  "pending_payouts": 5000.00,
+  "pending_withdrawals": 5000.00,
+  "rejected_withdrawals": 0.00,
+  "total_penalties_and_deductions": 500.00,
+  "total_income": 64500.00,
+  "total_expenses": 50500.00,
+  "net_flow": 14000.00,
+  "expenses": {
+    "total": 50500.00,
+    "formatted_total": "₦50,500.00",
+    "total_approved_withdrawals": 50000.00,
+    "formatted_approved_withdrawals": "₦50,000.00",
+    "approved_withdrawals_count": 3,
+    "pending_withdrawals": 5000.00,
+    "pending_withdrawals_count": 1,
+    "rejected_withdrawals": 0.00,
+    "total_penalties_and_deductions": 500.00,
+    "penalties_and_deductions_count": 1,
+    "count": 4,
+    "categories": [
+      {
+        "category": "withdrawal",
+        "title": "Bank Withdrawal",
+        "amount": 50000.00,
+        "formatted_amount": "₦50,000.00",
+        "count": 3,
+        "percentage": 99.01
+      },
+      {
+        "category": "penalty",
+        "title": "Shortage / Damage Penalty",
+        "amount": 500.00,
+        "formatted_amount": "₦500.00",
+        "count": 1,
+        "percentage": 0.99
+      }
+    ],
+    "transactions": []
+  },
+  "income": {
+    "total": 64500.00,
+    "formatted_total": "₦64,500.00",
+    "count": 45,
+    "categories": [
+      {
+        "category": "delivery_commission",
+        "title": "Delivery Drop Commission",
+        "amount": 62500.00,
+        "formatted_amount": "₦62,500.00",
+        "count": 44,
+        "percentage": 96.9
+      },
+      {
+        "category": "bonus",
+        "title": "Performance Bonus",
+        "amount": 2000.00,
+        "formatted_amount": "₦2,000.00",
+        "count": 1,
+        "percentage": 3.1
+      }
+    ],
+    "transactions": []
+  },
+  "monthly_breakdown": [
+    {
+      "month": "2026-11",
+      "income": 64500.00,
+      "expenses": 50500.00,
+      "approved_withdrawals": 50000.00,
+      "penalties_and_deductions": 500.00,
+      "income_count": 45,
+      "expenses_count": 4
+    }
+  ]
 }
 ```
 

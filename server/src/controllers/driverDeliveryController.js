@@ -1071,6 +1071,7 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
       ),
       pool.query(
         `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+                COUNT(CASE WHEN status IN ('paid', 'approved') THEN 1 END) AS approved_withdrawals_count,
                 COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
          FROM driver_payouts WHERE driver_id = $1`,
         [driverId]
@@ -1079,6 +1080,7 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
     const drvWallet = drvWalletRes.rows[0] || {};
     const walletGrossEarned = parseFloat(drvWallet.total_earnings) || 0;
     const walletTotalPaid = parseFloat(payoutTotalsRes.rows[0]?.total_paid) || 0;
+    const approvedWithdrawalsCount = parseInt(payoutTotalsRes.rows[0]?.approved_withdrawals_count, 10) || 0;
     const walletPendingPayouts = parseFloat(payoutTotalsRes.rows[0]?.pending_payouts) || 0;
     const currentBalance = Math.max(0, walletGrossEarned - walletTotalPaid - walletPendingPayouts);
 
@@ -1090,9 +1092,11 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
       current_balance: currentBalance,
       available_balance: currentBalance,
       wallet_balance: currentBalance,
+      total_approved_withdrawals: walletTotalPaid,
       total_with_surge: weekEarned + (weekCount * 300),
       formatted_total_earned: `₦${weekEarned.toFixed(2)}`,
       formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
+      formatted_total_approved_withdrawals: `₦${walletTotalPaid.toFixed(2)}`,
       formatted_total_with_surge: `₦${(weekEarned + (weekCount * 300)).toFixed(2)}`,
       formatted_label: `${weekCount} Deliveries • ₦${weekEarned.toFixed(2)} earned`,
       percentage_change: "+14%",
@@ -1103,12 +1107,16 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
       total_earned: allEarned,
       total_gross: walletGrossEarned,
       total_paid: walletTotalPaid,
+      total_approved_withdrawals: walletTotalPaid,
+      approved_withdrawals_count: approvedWithdrawalsCount,
       pending_payouts: walletPendingPayouts,
+      pending_withdrawals: walletPendingPayouts,
       current_balance: currentBalance,
       available_balance: currentBalance,
       wallet_balance: currentBalance,
       formatted_total_earned: `₦${allEarned.toFixed(2)}`,
       formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
+      formatted_total_approved_withdrawals: `₦${walletTotalPaid.toFixed(2)}`,
     };
 
     const walletSummary = {
@@ -1119,9 +1127,13 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
       total_earned: walletGrossEarned,
       total_gross: walletGrossEarned,
       total_paid: walletTotalPaid,
+      total_approved_withdrawals: walletTotalPaid,
+      approved_withdrawals_count: approvedWithdrawalsCount,
       pending_payouts: walletPendingPayouts,
+      pending_withdrawals: walletPendingPayouts,
       currency: "NGN",
       formatted_current_balance: `₦${currentBalance.toFixed(2)}`,
+      formatted_total_approved_withdrawals: `₦${walletTotalPaid.toFixed(2)}`,
       wallet_is_frozen: Boolean(drvWallet.wallet_is_frozen),
       payout_locked: Boolean(drvWallet.payout_locked),
       account_number: drvWallet.wallet_account_number || `855${String(driverId).padStart(7, "0")}`,
@@ -1140,7 +1152,10 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
       total_gross: walletGrossEarned,
       total_earned: walletGrossEarned,
       total_paid: walletTotalPaid,
+      total_approved_withdrawals: walletTotalPaid,
+      approved_withdrawals_count: approvedWithdrawalsCount,
       pending_payouts: walletPendingPayouts,
+      pending_withdrawals: walletPendingPayouts,
       wallet: walletSummary,
       this_week_summary: thisWeekSummary,
       summary: thisWeekSummary,
@@ -1155,7 +1170,10 @@ const getDeliveriesPayoutSummary = async (req, res, next) => {
         total_gross: walletGrossEarned,
         total_earned: walletGrossEarned,
         total_paid: walletTotalPaid,
+        total_approved_withdrawals: walletTotalPaid,
+        approved_withdrawals_count: approvedWithdrawalsCount,
         pending_payouts: walletPendingPayouts,
+        pending_withdrawals: walletPendingPayouts,
         wallet: walletSummary,
         this_week_summary: thisWeekSummary,
         all_time_summary: allTimeSummary,

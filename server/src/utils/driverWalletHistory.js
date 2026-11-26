@@ -343,17 +343,171 @@ function buildDriverWalletHistory({
 
   // Compute period totals (excluding rejected/failed payouts and payout-rejection unhold reversals
   // so real incoming/outgoing totals are never inflated)
+  const validIncomings = allIncomings.filter((tx) => !tx.is_reversal);
+  const validOutgoings = allOutgoings.filter((tx) => !["rejected", "failed"].includes(tx.status));
+
   const totalIncoming = Math.round(
-    allIncomings
-      .filter((tx) => !tx.is_reversal)
-      .reduce((sum, tx) => sum + tx.amount, 0) * 100
+    validIncomings.reduce((sum, tx) => sum + tx.amount, 0) * 100
   ) / 100;
 
   const totalOutgoing = Math.round(
-    allOutgoings
-      .filter((tx) => !["rejected", "failed"].includes(tx.status))
-      .reduce((sum, tx) => sum + tx.amount, 0) * 100
+    validOutgoings.reduce((sum, tx) => sum + tx.amount, 0) * 100
   ) / 100;
+
+  // Breakdown of outgoings (Approved Withdrawals vs Pending Withdrawals vs Rejected Withdrawals vs Penalties/Deductions)
+  const approvedWithdrawalTxs = allOutgoings.filter(
+    (tx) => tx.category === "withdrawal" && ["paid", "approved", "completed"].includes(tx.status)
+  );
+  const pendingWithdrawalTxs = allOutgoings.filter(
+    (tx) => tx.category === "withdrawal" && tx.status === "pending"
+  );
+  const rejectedWithdrawalTxs = allOutgoings.filter(
+    (tx) => tx.category === "withdrawal" && ["rejected", "failed"].includes(tx.status)
+  );
+  const penaltyDeductionTxs = validOutgoings.filter((tx) => tx.category !== "withdrawal");
+
+  const periodApprovedWithdrawals = Math.round(
+    approvedWithdrawalTxs.reduce((sum, tx) => sum + tx.amount, 0) * 100
+  ) / 100;
+  const periodPendingWithdrawals = Math.round(
+    pendingWithdrawalTxs.reduce((sum, tx) => sum + tx.amount, 0) * 100
+  ) / 100;
+  const periodRejectedWithdrawals = Math.round(
+    rejectedWithdrawalTxs.reduce((sum, tx) => sum + tx.amount, 0) * 100
+  ) / 100;
+  const periodPenaltiesAndDeductions = Math.round(
+    penaltyDeductionTxs.reduce((sum, tx) => sum + tx.amount, 0) * 100
+  ) / 100;
+
+  // All-time approved withdrawals from payoutTotals (fallback to periodApprovedWithdrawals if no date filter)
+  const hasDateOrCatFilter = Boolean(startDate || endDate || categoryFilter);
+  const totalApprovedWithdrawals =
+    payoutTotals.total_paid !== undefined && payoutTotals.total_paid !== null
+      ? totalPaid
+      : periodApprovedWithdrawals;
+
+  // Build Statistical Analysis breakdown for Expenses (Outgoings) and Income (Incomings)
+  function buildCategoryBreakdown(txList, totalAmount) {
+    const map = new Map();
+    for (const tx of txList) {
+      const cat = tx.category || "other";
+      const existing = map.get(cat) || {
+        category: cat,
+        title: tx.title || getCategoryTitle(cat, tx.direction === "in"),
+        amount: 0,
+        count: 0,
+      };
+      existing.amount = Math.round((existing.amount + tx.amount) * 100) / 100;
+      existing.count += 1;
+      map.set(cat, existing);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => b.amount - a.amount)
+      .map((item) => ({
+        ...item,
+        formatted_amount: `₦${item.amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        percentage: totalAmount > 0 ? Math.round((item.amount / totalAmount) * 10000) / 100 : 0,
+      }));
+  }
+
+  function buildMonthlyBreakdown(inTxs, outTxs) {
+    const monthMap = new Map();
+    const ensureMonth = (isoDate) => {
+      const key = String(isoDate || "").slice(0, 7); // YYYY-MM
+      if (!key || key.length < 7) return null;
+      if (!monthMap.has(key)) {
+        monthMap.set(key, {
+          month: key,
+          income: 0,
+          expenses: 0,
+          approved_withdrawals: 0,
+          penalties_and_deductions: 0,
+          income_count: 0,
+          expenses_count: 0,
+        });
+      }
+      return monthMap.get(key);
+    };
+
+    for (const tx of inTxs) {
+      const m = ensureMonth(tx.date);
+      if (!m) continue;
+      m.income = Math.round((m.income + tx.amount) * 100) / 100;
+      m.income_count += 1;
+    }
+
+    for (const tx of outTxs) {
+      const m = ensureMonth(tx.date);
+      if (!m) continue;
+      m.expenses = Math.round((m.expenses + tx.amount) * 100) / 100;
+      m.expenses_count += 1;
+      if (tx.category === "withdrawal" && ["paid", "approved", "completed"].includes(tx.status)) {
+        m.approved_withdrawals = Math.round((m.approved_withdrawals + tx.amount) * 100) / 100;
+      } else if (tx.category !== "withdrawal") {
+        m.penalties_and_deductions = Math.round((m.penalties_and_deductions + tx.amount) * 100) / 100;
+      }
+    }
+
+    return Array.from(monthMap.values()).sort((a, b) => b.month.localeCompare(a.month));
+  }
+
+  // Confirmed expenses = approved withdrawals + penalties/deductions (excludes pending requests)
+  const confirmedExpenseTxs = [...approvedWithdrawalTxs, ...penaltyDeductionTxs].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const totalConfirmedExpenses = Math.round((periodApprovedWithdrawals + periodPenaltiesAndDeductions) * 100) / 100;
+
+  const incomeCategories = buildCategoryBreakdown(validIncomings, totalIncoming);
+  const expenseCategories = buildCategoryBreakdown(confirmedExpenseTxs, totalConfirmedExpenses);
+  const monthlyBreakdown = buildMonthlyBreakdown(validIncomings, confirmedExpenseTxs);
+
+  const statisticalAnalysis = {
+    currency: "NGN",
+    period: {
+      start_date: startDate ? startDate.toISOString() : null,
+      end_date: endDate ? endDate.toISOString() : null,
+      is_filtered: hasDateOrCatFilter,
+    },
+    totals: {
+      total_income: totalIncoming,
+      total_expenses: totalConfirmedExpenses,
+      total_outgoing_including_pending: totalOutgoing,
+      total_approved_withdrawals: hasDateOrCatFilter ? periodApprovedWithdrawals : totalApprovedWithdrawals,
+      all_time_approved_withdrawals: totalApprovedWithdrawals,
+      pending_withdrawals: hasDateOrCatFilter ? periodPendingWithdrawals : pendingPayouts,
+      rejected_withdrawals: periodRejectedWithdrawals,
+      total_penalties_and_deductions: periodPenaltiesAndDeductions,
+      net_flow: Math.round((totalIncoming - totalConfirmedExpenses) * 100) / 100,
+      available_balance: availableBalance,
+      current_balance: availableBalance,
+    },
+    expenses: {
+      total: totalConfirmedExpenses,
+      formatted_total: `₦${totalConfirmedExpenses.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      total_including_pending: totalOutgoing,
+      total_approved_withdrawals: hasDateOrCatFilter ? periodApprovedWithdrawals : totalApprovedWithdrawals,
+      formatted_approved_withdrawals: `₦${(hasDateOrCatFilter ? periodApprovedWithdrawals : totalApprovedWithdrawals).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      approved_withdrawals_count: approvedWithdrawalTxs.length,
+      pending_withdrawals: hasDateOrCatFilter ? periodPendingWithdrawals : pendingPayouts,
+      pending_withdrawals_count: pendingWithdrawalTxs.length,
+      rejected_withdrawals: periodRejectedWithdrawals,
+      rejected_withdrawals_count: rejectedWithdrawalTxs.length,
+      total_penalties_and_deductions: periodPenaltiesAndDeductions,
+      penalties_and_deductions_count: penaltyDeductionTxs.length,
+      count: confirmedExpenseTxs.length,
+      categories: expenseCategories,
+      transactions: confirmedExpenseTxs,
+      all_outgoing_transactions: allOutgoings,
+    },
+    income: {
+      total: totalIncoming,
+      formatted_total: `₦${totalIncoming.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      count: validIncomings.length,
+      categories: incomeCategories,
+      transactions: validIncomings,
+    },
+    monthly_breakdown: monthlyBreakdown,
+  };
 
   // Apply type filter for the unified `transactions` feed
   const normalizedType = normalizeTypeFilter(query.type);
@@ -386,10 +540,19 @@ function buildDriverWalletHistory({
       available_balance: availableBalance,
       current_balance: availableBalance,
       total_earned: totalEarned,
+      total_gross: totalEarned,
       total_paid: totalPaid,
+      total_approved_withdrawals: totalApprovedWithdrawals,
+      period_approved_withdrawals: periodApprovedWithdrawals,
+      approved_withdrawals_count: approvedWithdrawalTxs.length,
       pending_payouts: pendingPayouts,
+      pending_withdrawals: pendingPayouts,
+      rejected_withdrawals: periodRejectedWithdrawals,
+      total_penalties_and_deductions: periodPenaltiesAndDeductions,
       total_incoming: totalIncoming,
+      total_income: totalIncoming,
       total_outgoing: totalOutgoing,
+      total_expenses: totalConfirmedExpenses,
       currency: "NGN",
       wallet_is_frozen: Boolean(driver.wallet_is_frozen),
       wallet_frozen_reason: driver.wallet_frozen_reason || null,
@@ -401,6 +564,8 @@ function buildDriverWalletHistory({
         account_name: driver.wallet_account_name || (driver.name ? `BEMS - ${String(driver.name).toUpperCase()}` : null),
       },
     },
+    statistical_analysis: statisticalAnalysis,
+    statistics: statisticalAnalysis,
     pagination: {
       page,
       limit: lim,

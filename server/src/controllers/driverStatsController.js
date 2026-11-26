@@ -112,7 +112,9 @@ const getDriverStats = async (req, res, next) => {
       total_earnings: statsTotalEarned,
       total_gross: statsTotalEarned,
       total_paid: statsTotalPaid,
+      total_approved_withdrawals: statsTotalPaid,
       pending_payouts: statsPendingPayouts,
+      pending_withdrawals: statsPendingPayouts,
       scorecard: {
         customer_rating: parseFloat(parseFloat(counts.computed_rating || driver.rating).toFixed(2)),
         total_ratings_count: parseInt(driver.total_ratings_count, 10) || Math.max(1, completedCount),

@@ -35,12 +35,15 @@ const getEarnings = async (req, res, next) => {
 
     const driver = driverResult.rows[0];
 
-    // Compute total paid out and pending payouts
+    // Compute total paid out, pending payouts, and rejected payouts
     const payoutSummary = await pool.query(
       `
       SELECT 
         COALESCE(SUM(CASE WHEN status = 'paid' OR status = 'approved' THEN amount ELSE 0 END), 0) AS total_paid,
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+        COUNT(CASE WHEN status = 'paid' OR status = 'approved' THEN 1 END) AS approved_withdrawals_count,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending_withdrawals_count,
+        COALESCE(SUM(CASE WHEN status IN ('rejected', 'failed') THEN amount ELSE 0 END), 0) AS rejected_payouts
       FROM driver_payouts
       WHERE driver_id = $1
       `,
@@ -49,7 +52,10 @@ const getEarnings = async (req, res, next) => {
 
     const totalEarned = parseFloat(driver.total_earnings) || 0;
     const totalPaid = parseFloat(payoutSummary.rows[0].total_paid) || 0;
+    const approvedWithdrawalsCount = parseInt(payoutSummary.rows[0].approved_withdrawals_count, 10) || 0;
     const pendingPayouts = parseFloat(payoutSummary.rows[0].pending_payouts) || 0;
+    const pendingWithdrawalsCount = parseInt(payoutSummary.rows[0].pending_withdrawals_count, 10) || 0;
+    const rejectedPayouts = parseFloat(payoutSummary.rows[0].rejected_payouts) || 0;
     const availableBalance = Math.max(0, totalEarned - totalPaid - pendingPayouts);
 
     // Recent commission entries
@@ -132,6 +138,15 @@ const getEarnings = async (req, res, next) => {
       [driverId]
     );
 
+    const mappedPayouts = payoutsResult.rows.map(p => ({
+      ...p,
+      id: parseInt(p.id, 10) || 0,
+      amount: parseFloat(p.amount) || 0,
+    }));
+    const approvedWithdrawalsList = mappedPayouts.filter(p =>
+      ["paid", "approved"].includes(String(p.status || "").toLowerCase())
+    );
+
     res.json({
       success: true,
       current_balance: availableBalance,
@@ -141,7 +156,13 @@ const getEarnings = async (req, res, next) => {
       total_earned: totalEarned,
       total_gross: totalEarned,
       total_paid: totalPaid,
+      total_approved_withdrawals: totalPaid,
+      approved_withdrawals_total: totalPaid,
+      approved_withdrawals_count: approvedWithdrawalsCount,
       pending_payouts: pendingPayouts,
+      pending_withdrawals: pendingPayouts,
+      pending_withdrawals_count: pendingWithdrawalsCount,
+      rejected_withdrawals: rejectedPayouts,
       currency: "NGN",
       wallet: {
         current_balance: availableBalance,
@@ -151,7 +172,13 @@ const getEarnings = async (req, res, next) => {
         total_earned: totalEarned,
         total_gross: totalEarned,
         total_paid: totalPaid,
+        total_approved_withdrawals: totalPaid,
+        approved_withdrawals_total: totalPaid,
+        approved_withdrawals_count: approvedWithdrawalsCount,
         pending_payouts: pendingPayouts,
+        pending_withdrawals: pendingPayouts,
+        pending_withdrawals_count: pendingWithdrawalsCount,
+        rejected_withdrawals: rejectedPayouts,
         currency: "NGN",
         commission_per_delivery: parseFloat(driver.commission_per_delivery) || 700,
         dedicated_virtual_account: {
@@ -185,11 +212,8 @@ const getEarnings = async (req, res, next) => {
         commission_per_delivery: parseFloat(c.commission_per_delivery) || 0,
         total_earned: parseFloat(c.total_earned) || 0,
       })),
-      recent_payouts: payoutsResult.rows.map(p => ({
-        ...p,
-        id: parseInt(p.id, 10) || 0,
-        amount: parseFloat(p.amount) || 0,
-      }))
+      recent_payouts: mappedPayouts,
+      approved_withdrawals: approvedWithdrawalsList,
     });
   } catch (err) {
     console.error("Driver getEarnings error:", err.message);
@@ -373,10 +397,258 @@ const getWalletHistory = async (req, res, next) => {
       total_earned: payload.summary.total_earned,
       total_gross: payload.summary.total_earned,
       total_paid: payload.summary.total_paid,
+      total_approved_withdrawals: payload.summary.total_approved_withdrawals,
+      approved_withdrawals_count: payload.summary.approved_withdrawals_count,
       pending_payouts: payload.summary.pending_payouts,
+      pending_withdrawals: payload.summary.pending_payouts,
+      rejected_withdrawals: payload.summary.rejected_withdrawals,
+      total_penalties_and_deductions: payload.summary.total_penalties_and_deductions,
+      total_income: payload.summary.total_income,
+      total_expenses: payload.summary.total_expenses,
     });
   } catch (err) {
     console.error("Driver getWalletHistory error:", err.message);
+    next(err);
+  }
+};
+
+// ── GET /api/driver/wallet/statistics (& /api/driver/wallet/statistical-analysis) ─
+// Dedicated endpoint for the Driver Mobile App's `< Statistical Analysis` (Expenses | Income) screen
+// and Total Approved Withdrawals breakdown. Supports start_date, end_date, month (YYYY-MM or 1-12), year, period (week|month|year|all).
+const getWalletStatistics = async (req, res, next) => {
+  try {
+    const driverId = req.driver.id;
+    const {
+      start_date,
+      startDate,
+      end_date,
+      endDate,
+      month,
+      year,
+      period,
+      category,
+    } = req.query;
+
+    let effectiveStart = start_date ?? startDate ?? null;
+    let effectiveEnd = end_date ?? endDate ?? null;
+
+    // Convenience support for ?month=2026-11 or ?month=11&year=2026 or ?period=week|month|year
+    if (!effectiveStart && !effectiveEnd) {
+      if (month) {
+        const mStr = String(month).trim();
+        if (/^\d{4}-\d{2}$/.test(mStr)) {
+          const [y, m] = mStr.split("-").map(Number);
+          const firstDay = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+          const lastDay = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+          effectiveStart = firstDay.toISOString();
+          effectiveEnd = lastDay.toISOString();
+        } else {
+          const mNum = parseInt(mStr, 10);
+          const yNum = parseInt(year, 10) || new Date().getUTCFullYear();
+          if (mNum >= 1 && mNum <= 12) {
+            const firstDay = new Date(Date.UTC(yNum, mNum - 1, 1, 0, 0, 0, 0));
+            const lastDay = new Date(Date.UTC(yNum, mNum, 0, 23, 59, 59, 999));
+            effectiveStart = firstDay.toISOString();
+            effectiveEnd = lastDay.toISOString();
+          }
+        }
+      } else if (period) {
+        const p = String(period).toLowerCase().trim();
+        const now = new Date();
+        if (p === "today" || p === "day") {
+          effectiveStart = now.toISOString().slice(0, 10);
+          effectiveEnd = now.toISOString().slice(0, 10);
+        } else if (p === "week" || p === "this_week") {
+          const d = new Date(now.getTime());
+          const utcDay = d.getUTCDay();
+          const diffToMonday = utcDay === 0 ? -6 : 1 - utcDay;
+          d.setUTCDate(d.getUTCDate() + diffToMonday);
+          effectiveStart = d.toISOString().slice(0, 10);
+        } else if (p === "month" || p === "this_month") {
+          const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+          effectiveStart = firstDay.toISOString();
+        } else if (p === "year" || p === "this_year") {
+          const firstDay = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
+          effectiveStart = firstDay.toISOString();
+        }
+      }
+    }
+
+    const parsedStart = parseDateBound(effectiveStart, false);
+    const parsedEnd = parseDateBound(effectiveEnd, true);
+
+    if (!parsedStart.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid start_date format. Use YYYY-MM-DD or ISO-8601 timestamp.",
+      });
+    }
+    if (!parsedEnd.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid end_date format. Use YYYY-MM-DD or ISO-8601 timestamp.",
+      });
+    }
+    if (parsedStart.date && parsedEnd.date && parsedStart.date > parsedEnd.date) {
+      return res.status(400).json({
+        success: false,
+        message: "start_date cannot be after end_date.",
+      });
+    }
+
+    const driverResult = await pool.query(
+      `SELECT
+         id,
+         name,
+         COALESCE(total_earnings, 0) AS total_earnings,
+         COALESCE(commission_per_delivery, 700) AS commission_per_delivery,
+         wallet_account_number,
+         COALESCE(wallet_bank_name, 'Bems Farms Internal Wallet') AS wallet_bank_name,
+         COALESCE(wallet_account_name, CONCAT('BEMS - ', UPPER(name))) AS wallet_account_name,
+         bank_name,
+         account_number,
+         account_name,
+         COALESCE(wallet_is_frozen, false) AS wallet_is_frozen,
+         wallet_frozen_reason,
+         COALESCE(payout_locked, false) AS payout_locked,
+         payout_locked_reason
+       FROM drivers
+       WHERE id = $1`,
+      [driverId]
+    );
+
+    if (driverResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+    const driver = driverResult.rows[0];
+
+    const [payoutSummaryRes, ledgerRes, payoutsRes, commissionsRes] = await Promise.all([
+      pool.query(
+        `SELECT
+           COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
+           COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+         FROM driver_payouts
+         WHERE driver_id = $1`,
+        [driverId]
+      ),
+      pool
+        .query(
+          `SELECT
+             l.id,
+             l.type,
+             l.category,
+             l.amount,
+             l.balance_before,
+             l.balance_after,
+             l.reference,
+             l.description,
+             l.created_at,
+             d.id AS delivery_id,
+             d.order_id,
+             COALESCE(o.order_ref, d.order_id) AS order_ref,
+             d.delivery_address
+           FROM driver_wallet_ledger l
+           LEFT JOIN deliveries d
+             ON l.reference IS NOT NULL
+            AND l.reference = d.delivery_ref
+            AND d.driver_id = l.driver_id
+           LEFT JOIN orders o
+             ON d.order_id IS NOT NULL
+            AND o.id::text = d.order_id::text
+           WHERE l.driver_id = $1
+           ORDER BY l.created_at DESC, l.id DESC`,
+          [driverId]
+        )
+        .catch(() => ({ rows: [] })),
+      pool.query(
+        `SELECT
+           id,
+           payout_ref,
+           amount,
+           bank_name,
+           account_number,
+           account_name,
+           status,
+           requested_at,
+           processed_at,
+           rejection_reason,
+           notes,
+           gateway_reference,
+           disbursement_method,
+           created_at
+         FROM driver_payouts
+         WHERE driver_id = $1
+         ORDER BY COALESCE(requested_at, created_at) DESC, id DESC`,
+        [driverId]
+      ),
+      pool
+        .query(
+          `SELECT
+             id,
+             week_start,
+             week_end,
+             trips,
+             deliveries,
+             commission_per_delivery,
+             total_earned,
+             status,
+             created_at
+           FROM driver_commissions
+           WHERE driver_id = $1
+           ORDER BY created_at DESC, id DESC`,
+          [driverId]
+        )
+        .catch(() => ({ rows: [] })),
+    ]);
+
+    const payload = buildDriverWalletHistory({
+      driver,
+      payoutTotals: payoutSummaryRes.rows[0] || {},
+      ledgerRows: ledgerRes.rows,
+      payoutRows: payoutsRes.rows,
+      commissionRows: commissionsRes.rows,
+      query: {
+        page: 1,
+        limit: 100,
+        category,
+        startDate: parsedStart.date,
+        endDate: parsedEnd.date,
+      },
+    });
+
+    const stats = payload.statistical_analysis;
+
+    res.json({
+      success: true,
+      currency: "NGN",
+      current_balance: payload.summary.current_balance,
+      available_balance: payload.summary.available_balance,
+      wallet_balance: payload.summary.current_balance,
+      withdrawable_balance: payload.summary.available_balance,
+      total_earned: payload.summary.total_earned,
+      total_gross: payload.summary.total_earned,
+      total_paid: payload.summary.total_paid,
+      total_approved_withdrawals: stats.totals.total_approved_withdrawals,
+      all_time_approved_withdrawals: stats.totals.all_time_approved_withdrawals,
+      approved_withdrawals_count: stats.expenses.approved_withdrawals_count,
+      pending_payouts: payload.summary.pending_payouts,
+      pending_withdrawals: stats.totals.pending_withdrawals,
+      rejected_withdrawals: stats.totals.rejected_withdrawals,
+      total_penalties_and_deductions: stats.totals.total_penalties_and_deductions,
+      total_income: stats.income.total,
+      total_expenses: stats.expenses.total,
+      net_flow: stats.totals.net_flow,
+      period: stats.period,
+      totals: stats.totals,
+      expenses: stats.expenses,
+      income: stats.income,
+      monthly_breakdown: stats.monthly_breakdown,
+      summary: payload.summary,
+      statistical_analysis: stats,
+      statistics: stats,
+    });
+  } catch (err) {
+    console.error("Driver getWalletStatistics error:", err.message);
     next(err);
   }
 };
@@ -404,7 +676,9 @@ const getWalletBalance = async (req, res, next) => {
       ),
       pool.query(
         `SELECT COALESCE(SUM(CASE WHEN status IN ('paid', 'approved') THEN amount ELSE 0 END), 0) AS total_paid,
-                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts
+                COUNT(CASE WHEN status IN ('paid', 'approved') THEN 1 END) AS approved_withdrawals_count,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pending_payouts,
+                COALESCE(SUM(CASE WHEN status IN ('rejected', 'failed') THEN amount ELSE 0 END), 0) AS rejected_payouts
          FROM driver_payouts WHERE driver_id = $1`,
         [driverId]
       ),
@@ -417,7 +691,9 @@ const getWalletBalance = async (req, res, next) => {
 
     const totalEarned = parseFloat(driver.total_earnings) || 0;
     const totalPaid = parseFloat(payoutRes.rows[0]?.total_paid) || 0;
+    const approvedWithdrawalsCount = parseInt(payoutRes.rows[0]?.approved_withdrawals_count, 10) || 0;
     const pendingPayouts = parseFloat(payoutRes.rows[0]?.pending_payouts) || 0;
+    const rejectedPayouts = parseFloat(payoutRes.rows[0]?.rejected_payouts) || 0;
     const currentBalance = Math.max(0, totalEarned - totalPaid - pendingPayouts);
     const walletAccountNumber = driver.wallet_account_number || `855${String(driver.id).padStart(7, "0")}`;
 
@@ -431,9 +707,14 @@ const getWalletBalance = async (req, res, next) => {
       total_earned: totalEarned,
       total_gross: totalEarned,
       total_paid: totalPaid,
+      total_approved_withdrawals: totalPaid,
+      approved_withdrawals_count: approvedWithdrawalsCount,
       pending_payouts: pendingPayouts,
+      pending_withdrawals: pendingPayouts,
+      rejected_withdrawals: rejectedPayouts,
       currency: "NGN",
       formatted_current_balance: `₦${currentBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      formatted_total_approved_withdrawals: `₦${totalPaid.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       wallet_is_frozen: Boolean(driver.wallet_is_frozen),
       wallet_frozen_reason: driver.wallet_frozen_reason || null,
       payout_locked: Boolean(driver.payout_locked),
@@ -447,7 +728,11 @@ const getWalletBalance = async (req, res, next) => {
         total_earned: totalEarned,
         total_gross: totalEarned,
         total_paid: totalPaid,
+        total_approved_withdrawals: totalPaid,
+        approved_withdrawals_count: approvedWithdrawalsCount,
         pending_payouts: pendingPayouts,
+        pending_withdrawals: pendingPayouts,
+        rejected_withdrawals: rejectedPayouts,
         currency: "NGN",
         account_number: walletAccountNumber,
         bank_name: driver.wallet_bank_name || "Bems Farms Internal Wallet",
@@ -1497,6 +1782,7 @@ module.exports = {
   getEarnings,
   getWalletBalance,
   getWalletHistory,
+  getWalletStatistics,
   requestAccountStatement,
   requestWithdrawal,
   getBanks,
