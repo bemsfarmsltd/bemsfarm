@@ -54,6 +54,7 @@ const rootHtaccess = `<IfModule LiteSpeed>
 </IfModule>
 
 <IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
@@ -67,6 +68,11 @@ DirectoryIndex index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Enforce HTTPS if request arrives over plain HTTP
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
   # 0. Mobile App Version Static & Download Direct Routing -> Dynamic Express API
   RewriteRule ^app-version$ /app-version.json [L]
