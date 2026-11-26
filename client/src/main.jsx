@@ -10,13 +10,29 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./styles/responsive.css";
 import "./styles/theme.css";
 
+if (typeof window !== "undefined") {
+  // Automatically upgrade plain HTTP to HTTPS in production so ISP captive portals (e.g. gain-access.to) cannot intercept
+  if (
+    window.location.protocol === "http:" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  ) {
+    window.location.replace(
+      `https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`
+    );
+  }
+}
+
 if (
   import.meta.env.PROD &&
   "serviceWorker" in navigator &&
   !window.location.pathname.startsWith("/admin")
 ) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("/sw.js?v=2", { updateViaCache: "none" })
+      .then((reg) => reg.update().catch(() => {}))
+      .catch(() => {});
   });
 }
 
